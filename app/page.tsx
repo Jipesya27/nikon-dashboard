@@ -225,20 +225,18 @@ export default function NikonDashboard() {
 
   // Prepare chart data
   const messagesByDate = Array.from(
-  messages.reduce((acc, msg) => {
-    if (!msg.created_at) return acc; // Skip jika tidak ada date
-    const date = new Date(msg.created_at).toISOString().split('T')[0];
-    const entry = acc.get(date) || { date, IN: 0, OUT: 0 };
-    if (msg.arah_pesan === 'IN') entry.IN++;
-    else entry.OUT++;
-    acc.set(date, entry);
-    return acc;
-  }, new Map())
-).sort((a, b) => {
-  // Handle undefined date
-  if (!a.date || !b.date) return 0;
-  return a.date.localeCompare(b.date);
-});
+    messages.reduce((acc, msg) => {
+      if (!msg.created_at) return acc;
+      const date = new Date(msg.created_at).toISOString().split('T')[0];
+      const entry = acc.get(date) || { date, IN: 0, OUT: 0 };
+      
+      if (msg.arah_pesan === 'IN') entry.IN++;
+      else entry.OUT++;
+      
+      acc.set(date, entry);
+      return acc;
+    }, new Map<string, { date: string; IN: number; OUT: number }>()).values() // Tambahkan .values() di sini
+  ).sort((a, b) => a.date.localeCompare(b.date));
 
 
   const claimsByStatus = [
