@@ -11,16 +11,7 @@ const FONNTE_TOKEN = process.env.NEXT_PUBLIC_FONNTE_TOKEN || 'xYsGrYetdkLXoK72dD
 
 // --- TYPES ---
 interface Karyawan { username: string; nama_karyawan: string; role: string; }
-interface RiwayatPesan { 
-  id_pesan?: string; 
-  nomor_wa: string; 
-  nama_profil_wa: string; 
-  arah_pesan: 'IN' | 'OUT'; 
-  isi_pesan: string; 
-  waktu_pesan: string; 
-  bicara_dengan_cs?: boolean; 
-  created_at?: string; // Telah ditambahkan untuk mengatasi Error TS
-}
+interface RiwayatPesan { id_pesan?: string; nomor_wa: string; nama_profil_wa: string; arah_pesan: 'IN' | 'OUT'; isi_pesan: string; waktu_pesan: string; bicara_dengan_cs?: boolean; created_at?: string; }
 interface ClaimPromo { id_claim?: string; nomor_wa: string; nomor_seri: string; tipe_barang: string; tanggal_pembelian: string; nama_toko?: string; jenis_promosi?: string; validasi_by_mkt: string; validasi_by_fa: string; nama_jasa_pengiriman?: string; nomor_resi?: string; link_kartu_garansi?: string; link_nota_pembelian?: string; }
 interface Garansi { id_garansi?: string; nomor_seri: string; tipe_barang: string; status_validasi: string; jenis_garansi: string; lama_garansi: string; }
 interface Promosi { id_promo?: string; nama_promo: string; tipe_produk: string; tanggal_mulai: string; tanggal_selesai: string; status_aktif: boolean; }
@@ -47,7 +38,12 @@ export default function NikonDashboard() {
   const [consumers, setConsumers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('messages');
-  const [dateRange, setDateRange] = useState({ start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] });
+  
+  // PERBAIKAN: Default rentang ditarik jauh ke belakang agar semua data tampil
+  const [dateRange, setDateRange] = useState({ 
+    start: '2024-01-01', 
+    end: new Date().toISOString().split('T')[0] 
+  });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalAction, setModalAction] = useState<'create' | 'edit'>('create');
@@ -63,18 +59,12 @@ export default function NikonDashboard() {
   const [promoForm, setPromoForm] = useState<Partial<Promosi>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Cek sesi login saat halaman dimuat
   useEffect(() => {
     const savedSession = localStorage.getItem('nikon_karyawan');
-    if (savedSession) {
-      setCurrentUser(JSON.parse(savedSession));
-      setIsLoggedIn(true);
-    } else {
-      setLoading(false);
-    }
+    if (savedSession) { setCurrentUser(JSON.parse(savedSession)); setIsLoggedIn(true); } 
+    else { setLoading(false); }
   }, []);
 
-  // Fetch data jika sudah login
   useEffect(() => {
     if (!isLoggedIn) return;
     setLoading(true);
@@ -90,49 +80,27 @@ export default function NikonDashboard() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault(); setLoginError('');
     const { data } = await supabase.from('karyawan').select('username, nama_karyawan, role').eq('username', loginForm.username).eq('password', loginForm.password).single();
-    if (data) {
-      setCurrentUser(data); setIsLoggedIn(true);
-      localStorage.setItem('nikon_karyawan', JSON.stringify(data));
-    } else {
-      setLoginError('Username atau Password salah!');
-    }
+    if (data) { setCurrentUser(data); setIsLoggedIn(true); localStorage.setItem('nikon_karyawan', JSON.stringify(data)); } 
+    else { setLoginError('Username atau Password salah!'); }
   };
 
   const handleLogout = () => { localStorage.removeItem('nikon_karyawan'); setIsLoggedIn(false); setCurrentUser(null); };
 
-  // FUNGSI BARU: Ambil Nama Lengkap, jika kosong ambil Nama Profil WA asli dari database
   const fetchConsumers = async () => { 
     const map: Record<string, string> = {};
-    
-    // 1. Ambil nama_lengkap dari tabel konsumen (Prioritas 1)
     const { data: konsumenData } = await supabase.from('konsumen').select('nomor_wa, nama_lengkap');
-    if (konsumenData) {
-       konsumenData.forEach(k => { if (k.nama_lengkap) map[k.nomor_wa] = k.nama_lengkap; });
-    }
+    if (konsumenData) konsumenData.forEach(k => { if (k.nama_lengkap) map[k.nomor_wa] = k.nama_lengkap; });
 
-    // 2. Fallback: Ambil nama_profil_wa dari riwayat pesan (Abaikan Sistem Bot)
-    const { data: riwayatData } = await supabase.from('riwayat_pesan')
-      .select('nomor_wa, nama_profil_wa')
-      .neq('nama_profil_wa', 'Sistem Bot')
-      .order('created_at', { ascending: false })
-      .limit(2000); // Batasi agar ringan
-      
-    if (riwayatData) {
-       riwayatData.forEach(r => {
-          // Jika belum punya nama, dan nama profilnya bukan nomor WA itu sendiri
-          if (!map[r.nomor_wa] && r.nama_profil_wa && r.nama_profil_wa !== r.nomor_wa) {
-             map[r.nomor_wa] = r.nama_profil_wa;
-          }
-       });
-    }
-    
+    const { data: riwayatData } = await supabase.from('riwayat_pesan').select('nomor_wa, nama_profil_wa').neq('nama_profil_wa', 'Sistem Bot').order('created_at', { ascending: false }).limit(2000);
+    if (riwayatData) riwayatData.forEach(r => { if (!map[r.nomor_wa] && r.nama_profil_wa && r.nama_profil_wa !== r.nomor_wa) map[r.nomor_wa] = r.nama_profil_wa; });
     setConsumers(map); 
   };
 
-  const fetchMessages = async () => { const { data } = await supabase.from('riwayat_pesan').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); setMessages(data || []); };
-  const fetchClaims = async () => { const { data } = await supabase.from('claim_promo').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); setClaims(data || []); };
-  const fetchWarranties = async () => { const { data } = await supabase.from('garansi').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); setWarranties(data || []); };
-  const fetchPromos = async () => { const { data } = await supabase.from('promosi').select('*').order('created_at', { ascending: false }); setPromos(data || []); setLoading(false); };
+  // PERBAIKAN: Menambahkan Error Log jika koneksi / RLS gagal
+  const fetchMessages = async () => { const { data, error } = await supabase.from('riwayat_pesan').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); if(error) console.error("Err Msg:", error); setMessages(data || []); };
+  const fetchClaims = async () => { const { data, error } = await supabase.from('claim_promo').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); if(error) console.error("Err Claim:", error); setClaims(data || []); };
+  const fetchWarranties = async () => { const { data, error } = await supabase.from('garansi').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); if(error) console.error("Err Warranty:", error); setWarranties(data || []); };
+  const fetchPromos = async () => { const { data, error } = await supabase.from('promosi').select('*').order('created_at', { ascending: false }); if(error) console.error("Err Promo:", error); setPromos(data || []); setLoading(false); };
 
   const openModal = (action: 'create'|'edit', type: 'claim'|'warranty'|'promo', item?: any) => {
     setModalAction(action);
@@ -152,7 +120,6 @@ export default function NikonDashboard() {
       if (claimForm.nomor_wa && claimForm.nomor_seri && window.confirm(`Kirim otomatis ke WA (${claimForm.nomor_wa}) mengenai Claim ini?`)) {
           const autoMessage = `Data ditemukan,\nNomor Seri : ${claimForm.nomor_seri}\nBarang : ${claimForm.tipe_barang || '-'}\nValidasi MKT : ${claimForm.validasi_by_mkt || '-'}\nJasa Kirim : ${claimForm.nama_jasa_pengiriman || '-'}\nNo Resi : ${claimForm.nomor_resi || '-'}`;
           await sendWhatsAppMessageViaFonnte(claimForm.nomor_wa, autoMessage);
-          
           const profilName = getRealProfileName(claimForm.nomor_wa);
           await supabase.from('riwayat_pesan').insert([{ nomor_wa: claimForm.nomor_wa, nama_profil_wa: profilName, arah_pesan: 'OUT', isi_pesan: autoMessage, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: true }]);
       }
@@ -200,7 +167,6 @@ export default function NikonDashboard() {
     return diff < 0 ? 'Garansi Habis' : `${Math.ceil(diff / (1000 * 60 * 60 * 24))} Hari`;
   };
 
-  // Helper untuk mendapatkan nama yang bersih (Anti "Sistem Bot")
   const getRealProfileName = (nomorWa: string | null) => {
     if (!nomorWa) return 'Pelanggan';
     return consumers[nomorWa] || nomorWa;
@@ -236,7 +202,6 @@ export default function NikonDashboard() {
     );
   }
 
-  // --- TAMPILAN DASHBOARD ---
   if (loading) return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div>;
 
   return (
@@ -275,14 +240,13 @@ export default function NikonDashboard() {
         {/* PESAN */}
         {activeTab === 'messages' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[550px]">
-              <div className="bg-white rounded-lg shadow-sm border flex flex-col">
-                 <div className="p-4 border-b flex justify-between items-center"><span className="font-bold">Percakapan</span><button onClick={() => setIsNewChatModalOpen(true)} className="bg-blue-100 text-blue-700 px-3 py-1 text-xs font-medium rounded hover:bg-blue-200 transition">+ Chat</button></div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
+              <div className="bg-white rounded-lg shadow-sm border flex flex-col h-full overflow-hidden">
+                 <div className="p-4 border-b flex justify-between items-center bg-white z-10"><span className="font-bold">Percakapan</span><button onClick={() => setIsNewChatModalOpen(true)} className="bg-blue-100 text-blue-700 px-3 py-1 text-xs font-medium rounded hover:bg-blue-200 transition">+ Chat</button></div>
                  <div className="overflow-y-auto flex-1 divide-y">
                    {uniqueContacts.map((c: any) => (
                      <div key={c.nomor_wa} onClick={() => setSelectedWa(c.nomor_wa)} className={`p-4 cursor-pointer hover:bg-slate-50 transition ${selectedWa === c.nomor_wa ? 'border-l-4 border-blue-500 bg-blue-50/50' : 'border-l-4 border-transparent'}`}>
                        <div className="flex justify-between text-sm">
-                         {/* MENGGUNAKAN FUNGSI NAMA ASLI */}
                          <span className="font-bold truncate">{getRealProfileName(c.nomor_wa)}</span>
                          <span className="text-[10px] text-slate-400 whitespace-nowrap">{new Date(c.waktu_pesan).toLocaleDateString('id-ID')}</span>
                        </div>
@@ -292,30 +256,43 @@ export default function NikonDashboard() {
                    {uniqueContacts.length === 0 && <div className="p-8 text-center text-slate-400 text-sm">Belum ada percakapan</div>}
                  </div>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border lg:col-span-2 flex flex-col">
+              
+              {/* PERBAIKAN: Layout Chat Fixed dengan Background Pattern WhatsApp */}
+              <div className="bg-white rounded-lg shadow-sm border lg:col-span-2 flex flex-col h-full overflow-hidden relative">
                  {selectedWa ? (
                     <>
-                      <div className="p-4 border-b bg-slate-50">
-                        {/* MENGGUNAKAN FUNGSI NAMA ASLI */}
+                      <div className="p-4 border-b bg-slate-50 z-10">
                         <h3 className="font-bold">{getRealProfileName(selectedWa)}</h3>
                         <p className="text-xs text-slate-500">{selectedWa}</p>
                       </div>
-                      <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50">
+                      
+                      {/* Area Pesan Chat */}
+                      <div 
+                         className="flex-1 p-4 overflow-y-auto space-y-4"
+                         style={{ 
+                           backgroundColor: '#efeae2', 
+                           backgroundImage: `url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')`, 
+                           backgroundSize: '400px', 
+                           backgroundRepeat: 'repeat' 
+                         }}
+                      >
                         {currentChatThread.map((msg: any) => (
                           <div key={msg.id_pesan || Math.random().toString()} className={`flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[75%] p-3 text-sm rounded-lg shadow-sm ${msg.arah_pesan === 'OUT' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border rounded-bl-none'}`}>
-                              <p className="whitespace-pre-wrap">{msg.isi_pesan}</p>
-                              <div className={`text-[10px] mt-1 text-right ${msg.arah_pesan === 'OUT' ? 'opacity-70' : 'text-slate-400'}`}>{new Date(msg.waktu_pesan).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})}</div>
+                            {/* Styling Bubble Chat ala WA */}
+                            <div className={`max-w-[75%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-slate-800 rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none'}`}>
+                              <p className="whitespace-pre-wrap leading-relaxed">{msg.isi_pesan}</p>
+                              <div className="text-[10px] mt-1 text-right text-slate-500">{new Date(msg.waktu_pesan).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})}</div>
                             </div>
                           </div>
                         ))}
                       </div>
-                      <form onSubmit={handleSendReply} className="p-4 border-t flex gap-2 bg-white">
-                        <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Balas pesan..." className="flex-1 border rounded-full px-5 py-2.5 text-sm outline-none focus:border-blue-500 shadow-sm" />
+
+                      <form onSubmit={handleSendReply} className="p-4 border-t flex gap-2 bg-slate-50 z-10">
+                        <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="flex-1 border border-slate-300 rounded-full px-5 py-2.5 text-sm outline-none focus:border-blue-500 shadow-sm" />
                         <button type="submit" disabled={!replyText.trim()} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full text-sm font-medium disabled:opacity-50 transition shadow-sm">Kirim</button>
                       </form>
                     </>
-                 ) : <div className="flex-1 flex justify-center items-center text-slate-400 bg-slate-50/50">Pilih chat di samping untuk memulai</div>}
+                 ) : <div className="flex-1 flex justify-center items-center text-slate-500 bg-slate-100">Pilih chat di samping untuk memulai percakapan</div>}
               </div>
             </div>
           </div>
