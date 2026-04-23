@@ -38,12 +38,7 @@ export default function NikonDashboard() {
   const [consumers, setConsumers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('messages');
-  
-  // PERBAIKAN: Default rentang ditarik jauh ke belakang agar semua data tampil
-  const [dateRange, setDateRange] = useState({ 
-    start: '2024-01-01', 
-    end: new Date().toISOString().split('T')[0] 
-  });
+  const [dateRange, setDateRange] = useState({ start: '2024-01-01', end: new Date().toISOString().split('T')[0] });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalAction, setModalAction] = useState<'create' | 'edit'>('create');
@@ -96,7 +91,6 @@ export default function NikonDashboard() {
     setConsumers(map); 
   };
 
-  // PERBAIKAN: Menambahkan Error Log jika koneksi / RLS gagal
   const fetchMessages = async () => { const { data, error } = await supabase.from('riwayat_pesan').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); if(error) console.error("Err Msg:", error); setMessages(data || []); };
   const fetchClaims = async () => { const { data, error } = await supabase.from('claim_promo').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); if(error) console.error("Err Claim:", error); setClaims(data || []); };
   const fetchWarranties = async () => { const { data, error } = await supabase.from('garansi').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); if(error) console.error("Err Warranty:", error); setWarranties(data || []); };
@@ -117,12 +111,17 @@ export default function NikonDashboard() {
       if (modalAction === 'create') await supabase.from('claim_promo').insert([claimForm]);
       else await supabase.from('claim_promo').update(claimForm).eq('id_claim', editingId);
 
-      if (claimForm.nomor_wa && claimForm.nomor_seri && window.confirm(`Kirim otomatis ke WA (${claimForm.nomor_wa}) mengenai Claim ini?`)) {
-          const autoMessage = `Data ditemukan,\nNomor Seri : ${claimForm.nomor_seri}\nBarang : ${claimForm.tipe_barang || '-'}\nValidasi MKT : ${claimForm.validasi_by_mkt || '-'}\nJasa Kirim : ${claimForm.nama_jasa_pengiriman || '-'}\nNo Resi : ${claimForm.nomor_resi || '-'}`;
-          await sendWhatsAppMessageViaFonnte(claimForm.nomor_wa, autoMessage);
-          const profilName = getRealProfileName(claimForm.nomor_wa);
-          await supabase.from('riwayat_pesan').insert([{ nomor_wa: claimForm.nomor_wa, nama_profil_wa: profilName, arah_pesan: 'OUT', isi_pesan: autoMessage, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: true }]);
+      // FITUR: Notifikasi hanya jika "nomor_resi" sudah diisi (tidak kosong)
+      if (claimForm.nomor_wa && claimForm.nomor_resi && claimForm.nomor_resi.trim() !== '') {
+          if (window.confirm(`Nomor Resi terdeteksi. Kirim notifikasi otomatis ke WA (${claimForm.nomor_wa}) mengenai pengiriman barang ini?`)) {
+            const autoMessage = `Data Claim Promo Anda telah selesai diproses,\n\nNomor Seri : ${claimForm.nomor_seri}\nBarang : ${claimForm.tipe_barang || '-'}\nValidasi MKT : ${claimForm.validasi_by_mkt || '-'}\nJasa Kirim : ${claimForm.nama_jasa_pengiriman || '-'}\nNo Resi : ${claimForm.nomor_resi}\n\nTerima kasih.`;
+            await sendWhatsAppMessageViaFonnte(claimForm.nomor_wa, autoMessage);
+            
+            const profilName = getRealProfileName(claimForm.nomor_wa);
+            await supabase.from('riwayat_pesan').insert([{ nomor_wa: claimForm.nomor_wa, nama_profil_wa: profilName, arah_pesan: 'OUT', isi_pesan: autoMessage, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: true }]);
+          }
       }
+      
       fetchClaims(); closeModal();
     } catch (err: any) { alert('Gagal: ' + err.message); } finally { setIsSubmitting(false); }
   };
@@ -170,6 +169,17 @@ export default function NikonDashboard() {
   const getRealProfileName = (nomorWa: string | null) => {
     if (!nomorWa) return 'Pelanggan';
     return consumers[nomorWa] || nomorWa;
+  };
+
+  // Fungsi untuk mencocokkan Tipe Barang dengan Nama Promo
+  const getNamaPromo = (tipeBarang: string) => {
+    if (!tipeBarang) return '-';
+    // Cari promo yang tipe_produk-nya mengandung kata dari tipe_barang (Case Insensitive)
+    const matchedPromo = promos.find(p => 
+      tipeBarang.toLowerCase().includes(p.tipe_produk.toLowerCase()) || 
+      p.tipe_produk.toLowerCase().includes(tipeBarang.toLowerCase())
+    );
+    return matchedPromo ? matchedPromo.nama_promo : '-';
   };
 
   const uniqueContacts = Array.from(messages.reduce((map, msg) => { if (!map.has(msg.nomor_wa)) map.set(msg.nomor_wa, msg); return map; }, new Map()).values());
@@ -257,7 +267,6 @@ export default function NikonDashboard() {
                  </div>
               </div>
               
-              {/* PERBAIKAN: Layout Chat Fixed dengan Background Pattern WhatsApp */}
               <div className="bg-white rounded-lg shadow-sm border lg:col-span-2 flex flex-col h-full overflow-hidden relative">
                  {selectedWa ? (
                     <>
@@ -266,7 +275,6 @@ export default function NikonDashboard() {
                         <p className="text-xs text-slate-500">{selectedWa}</p>
                       </div>
                       
-                      {/* Area Pesan Chat */}
                       <div 
                          className="flex-1 p-4 overflow-y-auto space-y-4"
                          style={{ 
@@ -278,7 +286,6 @@ export default function NikonDashboard() {
                       >
                         {currentChatThread.map((msg: any) => (
                           <div key={msg.id_pesan || Math.random().toString()} className={`flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
-                            {/* Styling Bubble Chat ala WA */}
                             <div className={`max-w-[75%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-slate-800 rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none'}`}>
                               <p className="whitespace-pre-wrap leading-relaxed">{msg.isi_pesan}</p>
                               <div className="text-[10px] mt-1 text-right text-slate-500">{new Date(msg.waktu_pesan).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})}</div>
@@ -312,10 +319,20 @@ export default function NikonDashboard() {
         {/* CLAIMS & WARRANTIES */}
         {activeTab === 'claims' && (
           <div className="bg-white rounded-lg shadow-sm border overflow-x-auto animate-fade-in">
-             <table className="w-full text-sm"><thead className="bg-slate-50 border-b whitespace-nowrap"><tr><th className="px-4 py-3 text-left">Nama</th><th className="px-4 py-3 text-left">No Seri</th><th className="px-4 py-3 text-left">Barang</th><th className="px-4 py-3 text-left">Tgl Beli</th><th className="px-4 py-3 text-left">Toko</th><th className="px-4 py-3 text-left">Nota/Garansi</th><th className="px-4 py-3 text-left">MKT / FA</th><th className="px-4 py-3 text-left">Aksi</th></tr></thead>
+             <table className="w-full text-sm"><thead className="bg-slate-50 border-b whitespace-nowrap"><tr><th className="px-4 py-3 text-left">Nama</th><th className="px-4 py-3 text-left">No Seri</th><th className="px-4 py-3 text-left">Barang</th><th className="px-4 py-3 text-left">Nama Promo</th><th className="px-4 py-3 text-left">Tgl Beli</th><th className="px-4 py-3 text-left">Toko</th><th className="px-4 py-3 text-left">Nota/Garansi</th><th className="px-4 py-3 text-left">MKT / FA</th><th className="px-4 py-3 text-left">Aksi</th></tr></thead>
              <tbody className="divide-y">{claims.map(c => (
-               <tr key={c.id_claim} className="whitespace-nowrap hover:bg-slate-50"><td className="px-4 py-3 text-slate-700">{consumers[c.nomor_wa]||c.nomor_wa}</td><td className="px-4 py-3 font-mono">{c.nomor_seri}</td><td className="px-4 py-3">{c.tipe_barang}</td><td className="px-4 py-3">{c.tanggal_pembelian}</td><td className="px-4 py-3">{c.nama_toko || '-'}</td><td className="px-4 py-3 text-blue-500 font-medium">{c.link_nota_pembelian && <a href={c.link_nota_pembelian} target="_blank" rel="noreferrer" className="mr-3 hover:underline">Nota</a>} {c.link_kartu_garansi && <a href={c.link_kartu_garansi} target="_blank" rel="noreferrer" className="hover:underline">Garansi</a>}</td><td className="px-4 py-3 text-xs">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
-               <td className="px-4 py-3 flex gap-2"><button onClick={()=>openModal('edit','claim',c)} className="text-blue-600 text-xs font-medium hover:underline">Edit</button><button onClick={()=>handleDelete('claim',c.id_claim!)} className="text-red-600 text-xs font-medium hover:underline">Hapus</button></td></tr>
+               <tr key={c.id_claim} className="whitespace-nowrap hover:bg-slate-50">
+                 <td className="px-4 py-3 text-slate-700">{consumers[c.nomor_wa]||c.nomor_wa}</td>
+                 <td className="px-4 py-3 font-mono">{c.nomor_seri}</td>
+                 <td className="px-4 py-3">{c.tipe_barang}</td>
+                 {/* Menampilkan Nama Promo Hasil Pengecekan Database Promosi */}
+                 <td className="px-4 py-3 font-medium text-blue-700">{getNamaPromo(c.tipe_barang)}</td>
+                 <td className="px-4 py-3">{c.tanggal_pembelian}</td>
+                 <td className="px-4 py-3">{c.nama_toko || '-'}</td>
+                 <td className="px-4 py-3 text-blue-500 font-medium">{c.link_nota_pembelian && <a href={c.link_nota_pembelian} target="_blank" rel="noreferrer" className="mr-3 hover:underline">Nota</a>} {c.link_kartu_garansi && <a href={c.link_kartu_garansi} target="_blank" rel="noreferrer" className="hover:underline">Garansi</a>}</td>
+                 <td className="px-4 py-3 text-xs">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
+                 <td className="px-4 py-3 flex gap-2"><button onClick={()=>openModal('edit','claim',c)} className="text-blue-600 text-xs font-medium hover:underline">Edit</button><button onClick={()=>handleDelete('claim',c.id_claim!)} className="text-red-600 text-xs font-medium hover:underline">Hapus</button></td>
+               </tr>
              ))}</tbody></table>
           </div>
         )}
@@ -349,7 +366,16 @@ export default function NikonDashboard() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b bg-slate-50 flex justify-between items-center"><h2 className="text-lg font-bold">{modalAction === 'create' ? 'Tambah' : 'Edit'} Data</h2><button onClick={closeModal} className="text-2xl text-slate-400 hover:text-slate-600 leading-none">×</button></div>
             <div className="p-6 overflow-y-auto">
-               {activeTab === 'claims' && (<form id="claimForm" onSubmit={handleSaveClaim} className="space-y-4"><div><label className="block text-sm font-medium mb-1">Nomor WA</label><input required type="text" value={claimForm.nomor_wa || ''} onChange={e => setClaimForm({...claimForm, nomor_wa: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div><label className="block text-sm font-medium mb-1">Nomor Seri</label><input required type="text" value={claimForm.nomor_seri || ''} onChange={e => setClaimForm({...claimForm, nomor_seri: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Tipe Barang</label><input type="text" value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({...claimForm, tipe_barang: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div><label className="block text-sm font-medium mb-1">Tgl Pembelian</label><input type="date" value={claimForm.tanggal_pembelian || ''} onChange={e => setClaimForm({...claimForm, tanggal_pembelian: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Validasi MKT</label><select value={claimForm.validasi_by_mkt || ''} onChange={e => setClaimForm({...claimForm, validasi_by_mkt: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option><option value="Valid">Valid</option><option value="Tidak Valid">Tidak Valid</option></select></div><div><label className="block text-sm font-medium mb-1">Validasi FA</label><select value={claimForm.validasi_by_fa || ''} onChange={e => setClaimForm({...claimForm, validasi_by_fa: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option><option value="Valid">Valid</option><option value="Tidak Valid">Tidak Valid</option></select></div></div></form>)}
+               {activeTab === 'claims' && (<form id="claimForm" onSubmit={handleSaveClaim} className="space-y-4"><div><label className="block text-sm font-medium mb-1">Nomor WA</label><input required type="text" value={claimForm.nomor_wa || ''} onChange={e => setClaimForm({...claimForm, nomor_wa: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div><label className="block text-sm font-medium mb-1">Nomor Seri</label><input required type="text" value={claimForm.nomor_seri || ''} onChange={e => setClaimForm({...claimForm, nomor_seri: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Tipe Barang</label><input type="text" value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({...claimForm, tipe_barang: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div><label className="block text-sm font-medium mb-1">Tgl Pembelian</label><input type="date" value={claimForm.tanggal_pembelian || ''} onChange={e => setClaimForm({...claimForm, tanggal_pembelian: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Validasi MKT</label><select value={claimForm.validasi_by_mkt || ''} onChange={e => setClaimForm({...claimForm, validasi_by_mkt: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option><option value="Valid">Valid</option><option value="Tidak Valid">Tidak Valid</option></select></div><div><label className="block text-sm font-medium mb-1">Validasi FA</label><select value={claimForm.validasi_by_fa || ''} onChange={e => setClaimForm({...claimForm, validasi_by_fa: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option><option value="Valid">Valid</option><option value="Tidak Valid">Tidak Valid</option></select></div></div>
+               
+               {/* INPUT JASA KIRIM DAN NOMOR RESI DENGAN PERHATIAN KHUSUS */}
+               <div className="grid grid-cols-2 gap-4 p-3 bg-blue-50 border border-blue-100 rounded-md">
+                 <div className="col-span-2"><p className="text-xs text-blue-700 font-medium mb-2">*Catatan: Notifikasi pengiriman WhatsApp otomatis ke pelanggan hanya akan aktif jika Anda mengisi Nomor Resi di bawah ini.</p></div>
+                 <div><label className="block text-sm font-medium mb-1">Jasa Pengiriman</label><input type="text" value={claimForm.nama_jasa_pengiriman || ''} onChange={e => setClaimForm({...claimForm, nama_jasa_pengiriman: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="JNE / J&T / dll" /></div>
+                 <div><label className="block text-sm font-medium mb-1">Nomor Resi</label><input type="text" value={claimForm.nomor_resi || ''} onChange={e => setClaimForm({...claimForm, nomor_resi: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Masukkan nomor resi..." /></div>
+               </div>
+               </form>)}
+               
                {activeTab === 'warranties' && (<form id="warrantyForm" onSubmit={handleSaveWarranty} className="space-y-4"><div><label className="block text-sm font-medium mb-1">Nomor Seri</label><input required type="text" value={warrantyForm.nomor_seri || ''} onChange={e => setWarrantyForm({...warrantyForm, nomor_seri: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Status Validasi</label><select value={warrantyForm.status_validasi || ''} onChange={e => setWarrantyForm({...warrantyForm, status_validasi: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Menunggu">Menunggu</option><option value="Valid">Valid</option><option value="Tidak Valid">Tidak Valid</option></select></div><div><label className="block text-sm font-medium mb-1">Lama Garansi</label><select value={warrantyForm.lama_garansi || ''} onChange={e => setWarrantyForm({...warrantyForm, lama_garansi: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="1 Tahun">1 Tahun</option><option value="2 Tahun">2 Tahun</option><option value="Tidak Garansi">Tidak Garansi</option></select></div></div></form>)}
                {activeTab === 'promos' && (<form id="promoForm" onSubmit={handleSavePromo} className="space-y-4"><div><label className="block text-sm font-medium mb-1">Nama Promo</label><input required type="text" value={promoForm.nama_promo || ''} onChange={e => setPromoForm({...promoForm, nama_promo: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div><label className="block text-sm font-medium mb-1">Tipe Produk</label><input required type="text" value={promoForm.tipe_produk || ''} onChange={e => setPromoForm({...promoForm, tipe_produk: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Tgl Mulai</label><input required type="date" value={promoForm.tanggal_mulai || ''} onChange={e => setPromoForm({...promoForm, tanggal_mulai: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div><label className="block text-sm font-medium mb-1">Tgl Selesai</label><input required type="date" value={promoForm.tanggal_selesai || ''} onChange={e => setPromoForm({...promoForm, tanggal_selesai: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div></div></form>)}
             </div>
