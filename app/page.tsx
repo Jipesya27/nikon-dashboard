@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const supabaseUrl = 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -14,14 +14,11 @@ interface Karyawan { username: string; nama_karyawan: string; role: string; }
 interface KonsumenData { nomor_wa: string; id_konsumen: string; nama_lengkap: string; status_langkah: string; alamat_rumah: string; created_at: string; }
 interface RiwayatPesan { id_pesan?: string; nomor_wa: string; nama_profil_wa: string; arah_pesan: 'IN' | 'OUT'; isi_pesan: string; waktu_pesan: string; bicara_dengan_cs?: boolean; created_at?: string; }
 interface ClaimPromo { id_claim?: string; nomor_wa: string; nomor_seri: string; tipe_barang: string; tanggal_pembelian: string; nama_toko?: string; jenis_promosi?: string; validasi_by_mkt: string; validasi_by_fa: string; nama_jasa_pengiriman?: string; nomor_resi?: string; link_kartu_garansi?: string; link_nota_pembelian?: string; }
-interface Garansi { id_garansi?: string; nomor_seri: string; tipe_barang: string; status_validasi: string; jenis_garansi: string; lama_garansi: string; }
+interface Garansi { id_garansi?: string; nomor_seri: string; tipe_barang: string; status_validasi: string; jenis_garansi: string; lama_garansi: string; link_kartu_garansi?: string; link_nota_pembelian?: string;}
+interface Promosi { id_promo?: string; nama_promo: string; tipe_produk: {nama_produk:string}[]; tanggal_mulai: string; tanggal_selesai: string; status_aktif: boolean; created_at?: string; }
 interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor_seri: string; status_service: string; created_at?: string; }
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
 interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; items: BudgetItem[]; created_at?: string; attachment_url?: string; }
-
-// --- NEW PROMO TYPES ---
-interface PromoProduk { nama_produk: string; }
-interface Promosi { id_promo?: string; nama_promo: string; tipe_produk: PromoProduk[]; tanggal_mulai: string; tanggal_selesai: string; status_aktif: boolean; created_at?: string; }
 
 const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) => {
   try {
@@ -45,12 +42,22 @@ export default function NikonDashboard() {
   
   const [consumers, setConsumers] = useState<Record<string, string>>({});
   const [consumersList, setConsumersList] = useState<KonsumenData[]>([]);
+  
+  // SEARCH STATES
   const [searchKonsumen, setSearchKonsumen] = useState('');
   const [searchChat, setSearchChat] = useState('');
+  const [searchPromo, setSearchPromo] = useState('');
+  const [searchClaim, setSearchClaim] = useState('');
+  const [searchGaransi, setSearchGaransi] = useState('');
+  const [searchService, setSearchService] = useState('');
+  const [searchBudget, setSearchBudget] = useState('');
   
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('messages');
   const [dateRange, setDateRange] = useState({ start: '2024-01-01', end: new Date().toISOString().split('T')[0] });
+
+  // PENGATURAN GRAFIK PESAN
+  const [msgTimeFilter, setMsgTimeFilter] = useState<'day'|'week'|'month'>('day');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalAction, setModalAction] = useState<'create' | 'edit'>('create');
@@ -174,13 +181,18 @@ export default function NikonDashboard() {
     }; reader.readAsText(file);
   };
 
+  const generateProposalNo = () => {
+    const d = new Date(); const pad = (n:number) => String(n).padStart(2,'0');
+    return `MKTG/BA${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  };
+
   const openModal = (action: 'create'|'edit', type: 'claim'|'warranty'|'promo'|'service'|'budget', item?: any) => {
     setModalAction(action);
     if (type === 'claim') { setClaimForm(item || { validasi_by_mkt: 'Dalam Proses Verifikasi', validasi_by_fa: 'Dalam Proses Verifikasi' }); setEditingId(item?.id_claim || null); }
-    else if (type === 'warranty') { setWarrantyForm(item || { status_validasi: 'Menunggu', jenis_garansi: 'Extended to 2 Year', lama_garansi: '1 Tahun' }); setEditingId(item?.id_garansi || null); }
+    else if (type === 'warranty') { setWarrantyForm(item || { status_validasi: 'Menunggu', jenis_garansi: 'Jasa 30%', lama_garansi: '1 Tahun' }); setEditingId(item?.id_garansi || null); }
     else if (type === 'promo') { setPromoForm(item || { status_aktif: true, tipe_produk: [] }); setEditingId(item?.id_promo || null); }
     else if (type === 'service') { setServiceForm(item || {}); setEditingId(item?.id_service || null); }
-    else if (type === 'budget') { setBudgetForm(item || { total_cost: 0, items: [], drafter_name: currentUser?.nama_karyawan, budget_source: 'Marketing Budget' }); setEditingId(item?.id_budget || null); }
+    else if (type === 'budget') { setBudgetForm(item || { proposal_no: generateProposalNo(), total_cost: 0, items: [], drafter_name: currentUser?.nama_karyawan, budget_source: 'Marketing Budget' }); setEditingId(item?.id_budget || null); }
     setIsModalOpen(true);
   };
   const closeModal = () => { setIsModalOpen(false); setClaimForm({}); setWarrantyForm({}); setPromoForm({tipe_produk: []}); setServiceForm({}); setBudgetForm({items:[]}); setEditingId(null); };
@@ -190,13 +202,7 @@ export default function NikonDashboard() {
     e.preventDefault(); setIsSubmitting(true);
     try {
       if (modalAction === 'create') await supabase.from('claim_promo').insert([claimForm]); else await supabase.from('claim_promo').update(claimForm).eq('id_claim', editingId);
-      if (claimForm.nomor_wa && claimForm.nomor_resi && claimForm.nomor_resi.trim() !== '') {
-          if (window.confirm(`Nomor Resi terdeteksi. Kirim notifikasi otomatis ke WA (${claimForm.nomor_wa}) mengenai pengiriman barang ini?`)) {
-            const autoMessage = `Data Claim Promo Anda telah selesai diproses,\n\nNomor Seri : ${claimForm.nomor_seri}\nBarang : ${claimForm.tipe_barang || '-'}\nValidasi MKT : ${claimForm.validasi_by_mkt || '-'}\nJasa Kirim : ${claimForm.nama_jasa_pengiriman || '-'}\nNo Resi : ${claimForm.nomor_resi}\n\nTerima kasih.`;
-            await sendWhatsAppMessageViaFonnte(claimForm.nomor_wa, autoMessage);
-            await supabase.from('riwayat_pesan').insert([{ nomor_wa: claimForm.nomor_wa, nama_profil_wa: getRealProfileName(claimForm.nomor_wa), arah_pesan: 'OUT', isi_pesan: autoMessage, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
-          }
-      }
+      // Auto notification for No Resi has been removed per instruction 3d.
       fetchClaims(); closeModal();
     } catch (err: any) { alert('Gagal: ' + err.message); } finally { setIsSubmitting(false); }
   };
@@ -230,21 +236,35 @@ export default function NikonDashboard() {
     setIsNewChatModalOpen(false); setNewChatWa(''); setNewChatMsg(''); setSelectedWa(newChatWa); scrollToBottom();
   };
 
+  // KIRIM MANUAL STATUS KE KONSUMEN
+  const handleKirimStatusClaim = async (c: ClaimPromo) => {
+    if(!window.confirm('Kirim status claim ke WA konsumen?')) return;
+    const msg = `Status Claim Promo Anda:\n\nNo Seri: ${c.nomor_seri}\nBarang: ${c.tipe_barang}\nStatus MKT: ${c.validasi_by_mkt}\nStatus FA: ${c.validasi_by_fa}\nJasa Kirim: ${c.nama_jasa_pengiriman||'-'}\nNo Resi: ${c.nomor_resi||'-'}\n\nTerima kasih.`;
+    await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
+    await supabase.from('riwayat_pesan').insert([{ nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
+    alert('Pesan status berhasil dikirim!'); fetchMessages();
+  };
+
+  const handleKirimStatusGaransi = async (w: Garansi) => {
+    const linked = claims.find(c => c.nomor_seri === w.nomor_seri);
+    if(!linked || !linked.nomor_wa) return alert('Gagal: Tidak dapat menemukan Nomor WA (Barang ini tidak ada di tabel Claim Promo).');
+    if(!window.confirm('Kirim status garansi ke WA konsumen?')) return;
+    const msg = `Status Garansi Anda:\n\nNo Seri: ${w.nomor_seri}\nTipe Barang: ${w.tipe_barang}\nJenis Garansi: ${w.jenis_garansi}\nLama Garansi: ${w.lama_garansi}\nSisa Garansi: ${calculateSisaGaransi(linked.tanggal_pembelian, w.lama_garansi)}\n\nTerima kasih.`;
+    await sendWhatsAppMessageViaFonnte(linked.nomor_wa, msg);
+    await supabase.from('riwayat_pesan').insert([{ nomor_wa: linked.nomor_wa, nama_profil_wa: getRealProfileName(linked.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
+    alert('Pesan status berhasil dikirim!'); fetchMessages();
+  };
+
   const handleSelesaiCS = async (nomor_wa: string) => { try { await supabase.from('riwayat_pesan').update({ bicara_dengan_cs: false }).eq('nomor_wa', nomor_wa); fetchMessages(); } catch (error: any) { console.error('Gagal update CS:', error.message); } };
   const calculateSisaGaransi = (tgl: string | undefined, lama: string) => { if (!tgl || !lama || lama === 'Tidak Garansi') return 'Tidak Garansi'; const beli = new Date(tgl); beli.setFullYear(beli.getFullYear() + (lama === '1 Tahun' ? 1 : 2)); const diff = beli.getTime() - new Date().getTime(); return diff < 0 ? 'Garansi Habis' : `${Math.ceil(diff / (1000 * 60 * 60 * 24))} Hari`; };
   const getRealProfileName = (nomorWa: string | null) => { if (!nomorWa) return 'Pelanggan'; return consumers[nomorWa] || nomorWa; };
-  
-  // Mencocokkan Tipe Produk dari Array JSON
-  const getNamaPromo = (tipeBarang: string) => { 
-    if (!tipeBarang) return '-'; 
-    const matchedPromo = promos.find(p => 
-       p.tipe_produk && p.tipe_produk.some(prod => 
-          tipeBarang.toLowerCase().includes(prod.nama_produk.toLowerCase()) || 
-          prod.nama_produk.toLowerCase().includes(tipeBarang.toLowerCase())
-       )
-    ); 
-    return matchedPromo ? matchedPromo.nama_promo : '-'; 
-  };
+  const getNamaPromo = (tipeBarang: string) => { if (!tipeBarang) return '-'; const matchedPromo = promos.find(p => p.tipe_produk && p.tipe_produk.some(prod => tipeBarang.toLowerCase().includes(prod.nama_produk.toLowerCase()) || prod.nama_produk.toLowerCase().includes(tipeBarang.toLowerCase()))); return matchedPromo ? matchedPromo.nama_promo : '-'; };
+
+  // Helper Array Unique Data untuk Datalist (Autofill Isian Berulang)
+  const uniqueTipeBarang = Array.from(new Set([...claims.map(c=>c.tipe_barang), ...warranties.map(w=>w.tipe_barang)])).filter(Boolean);
+  const uniqueToko = Array.from(new Set(claims.map(c=>c.nama_toko))).filter(Boolean);
+  const uniqueJasa = Array.from(new Set(claims.map(c=>c.nama_jasa_pengiriman))).filter(Boolean);
+  const uniqueJenisPromo = Array.from(new Set([...claims.map(c=>c.jenis_promosi), ...promos.map(p=>p.nama_promo)])).filter(Boolean);
 
   const uniqueContacts = Array.from(messages.reduce((map, msg) => { 
       if (!map.has(msg.nomor_wa)) map.set(msg.nomor_wa, { ...msg }); 
@@ -252,19 +272,49 @@ export default function NikonDashboard() {
       return map; 
   }, new Map()).values()) as RiwayatPesan[];
 
+  // --- FILTER & STATISTIK CHAT ---
+  const processMessageStats = () => {
+    const grouped = new Map<string, Set<string>>();
+    messages.forEach(msg => {
+       const d = new Date(msg.created_at || msg.waktu_pesan);
+       let key = '';
+       if (msgTimeFilter === 'day') key = d.toISOString().split('T')[0];
+       else if (msgTimeFilter === 'week') {
+          const firstDayOfYear = new Date(d.getFullYear(), 0, 1);
+          const pastDaysOfYear = (d.getTime() - firstDayOfYear.getTime()) / 86400000;
+          const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+          key = `${d.getFullYear()}-Minggu ${weekNum}`;
+       } else {
+          key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+       }
+       if(!grouped.has(key)) grouped.set(key, new Set());
+       grouped.get(key)!.add(msg.nomor_wa);
+    });
+    const result = Array.from(grouped.entries()).map(([k, v]) => ({ periode: k, jumlah_konsumen: v.size }));
+    return result.sort((a, b) => a.periode.localeCompare(b.periode));
+  };
+  const messageStats = processMessageStats();
+  const currentTotalConsumers = messageStats.reduce((sum, item) => sum + item.jumlah_konsumen, 0);
+
+  // Filter Data Tab Berdasarkan Search Bar
   const filteredContacts = uniqueContacts.filter(c => getRealProfileName(c.nomor_wa).toLowerCase().includes(searchChat.toLowerCase()) || c.nomor_wa.includes(searchChat) );
   const currentChatThread = selectedWa ? messages.filter(m => m.nomor_wa === selectedWa).sort((a, b) => new Date(a.waktu_pesan).getTime() - new Date(b.waktu_pesan).getTime()) : [];
+  const filteredPromos = promos.filter(p => p.nama_promo.toLowerCase().includes(searchPromo.toLowerCase()) || p.tanggal_mulai.includes(searchPromo) || p.tanggal_selesai.includes(searchPromo));
+  const filteredClaims = claims.filter(c => (consumers[c.nomor_wa]||c.nomor_wa).toLowerCase().includes(searchClaim.toLowerCase()) || c.nomor_seri.toLowerCase().includes(searchClaim.toLowerCase()) || getNamaPromo(c.tipe_barang).toLowerCase().includes(searchClaim.toLowerCase()) || c.validasi_by_mkt.toLowerCase().includes(searchClaim.toLowerCase()) || c.validasi_by_fa.toLowerCase().includes(searchClaim.toLowerCase()));
+  const filteredWarranties = warranties.filter(w => w.nomor_seri.toLowerCase().includes(searchGaransi.toLowerCase()));
+  const filteredServices = services.filter(s => s.nomor_tanda_terima.toLowerCase().includes(searchService.toLowerCase()) || s.nomor_seri.toLowerCase().includes(searchService.toLowerCase()) || s.status_service.toLowerCase().includes(searchService.toLowerCase()));
+  const filteredBudgets = budgets.filter(b => b.title.toLowerCase().includes(searchBudget.toLowerCase()));
 
   // --- TAMPILAN LOGIN ---
   if (!isLoggedIn) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-900">
+      <div className="flex items-center justify-center min-h-screen bg-slate-900 text-slate-900">
         <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm">
-          <div className="text-center mb-6"><h1 className="text-2xl font-bold text-slate-900">Nikon Admin</h1><p className="text-sm text-slate-500">Masuk untuk mengelola Bot & Data</p></div>
+          <div className="text-center mb-6"><h1 className="text-2xl font-bold">Nikon Admin</h1><p className="text-sm text-slate-500">Masuk untuk mengelola Bot & Data</p></div>
           {loginError && <div className="bg-red-100 text-red-700 p-3 rounded text-sm mb-4">{loginError}</div>}
           <form onSubmit={handleLogin} className="space-y-4">
-            <div><label className="block text-sm font-medium mb-1">Username</label><input type="text" value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} required className="w-full border rounded px-3 py-2 outline-none focus:border-blue-500"/></div>
-            <div><label className="block text-sm font-medium mb-1">Password</label><input type="password" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} required className="w-full border rounded px-3 py-2 outline-none focus:border-blue-500"/></div>
+            <div><label className="block text-sm font-medium mb-1">Username</label><input type="text" value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white text-slate-900"/></div>
+            <div><label className="block text-sm font-medium mb-1">Password</label><input type="password" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white text-slate-900"/></div>
             <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-medium mt-2 transition">Login</button>
           </form>
         </div>
@@ -272,19 +322,27 @@ export default function NikonDashboard() {
     );
   }
 
-  if (loading) return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div>;
+  if (loading) return <div className="flex justify-center items-center h-screen bg-white"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-12 print:hidden relative">
-      <header className="bg-white shadow-sm border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-        <div><h1 className="text-2xl font-bold text-slate-900">Alta Nikindo Dashboard</h1><p className="text-xs text-slate-500">Role: {currentUser?.role}</p></div>
+    // Tambahan className dasar untuk FIX DARK MODE
+    <div className="min-h-screen bg-slate-50 pb-12 print:hidden relative text-slate-900">
+      
+      {/* --- DATALIST (Autocomplete/Enum Global) --- */}
+      <datalist id="list-tipe-barang">{uniqueTipeBarang.map(t => <option key={t} value={t}/>)}</datalist>
+      <datalist id="list-nama-toko">{uniqueToko.map(t => <option key={t} value={t}/>)}</datalist>
+      <datalist id="list-jasa-kirim">{uniqueJasa.map(t => <option key={t} value={t}/>)}</datalist>
+      <datalist id="list-jenis-promo">{uniqueJenisPromo.map(t => <option key={t} value={t}/>)}</datalist>
+
+      <header className="bg-white shadow-sm border-b border-slate-200 px-6 py-4 flex justify-between items-center text-slate-900">
+        <div><h1 className="text-2xl font-bold">Alta Nikindo Dashboard</h1><p className="text-xs text-slate-500">Role: {currentUser?.role}</p></div>
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium">Hi, {currentUser?.nama_karyawan}</span>
           <button onClick={handleLogout} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded text-sm font-medium transition">Logout</button>
         </div>
       </header>
       
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10 px-6">
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-10 px-6 text-slate-900">
         <div className="flex gap-8 overflow-x-auto justify-center max-w-7xl mx-auto">
           {[
             { id: 'messages', label: '💬 Pesan', count: messages.length }, 
@@ -293,20 +351,20 @@ export default function NikonDashboard() {
             { id: 'claims', label: '🎫 Claim', count: claims.length }, 
             { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
             { id: 'services', label: '🔧 Service', count: services.length },
-            { id: 'budgets', label: '💳 Budget', count: budgets.length }
+            { id: 'budgets', label: '💳 ProposalEvent', count: budgets.length }
           ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-4 font-medium whitespace-nowrap transition ${activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-600 hover:text-slate-900'}`}>{tab.label} <span className="text-xs bg-slate-100 px-2 py-1 rounded-full">{tab.count}</span></button>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-4 font-medium whitespace-nowrap transition ${activeTab === tab.id ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-600 hover:text-slate-900'}`}>{tab.label} <span className="text-xs bg-slate-100 text-slate-800 px-2 py-1 rounded-full">{tab.count}</span></button>
           ))}
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-4">
-        <div className="bg-white rounded-lg p-4 shadow-sm border flex flex-wrap gap-4 justify-between items-center">
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 flex flex-wrap gap-4 justify-between items-center text-slate-900">
           <div className="flex gap-4">
             {activeTab !== 'konsumen' && activeTab !== 'budgets' && (
               <>
-                <label className="text-sm font-medium">Dari: <input type="date" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} className="ml-2 border rounded p-1 outline-none focus:border-blue-500"/></label>
-                <label className="text-sm font-medium">Sampai: <input type="date" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} className="ml-2 border rounded p-1 outline-none focus:border-blue-500"/></label>
+                <label className="text-sm font-medium">Dari: <input type="date" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} className="ml-2 border border-slate-300 bg-white text-slate-900 rounded p-1 outline-none focus:border-blue-500"/></label>
+                <label className="text-sm font-medium">Sampai: <input type="date" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} className="ml-2 border border-slate-300 bg-white text-slate-900 rounded p-1 outline-none focus:border-blue-500"/></label>
               </>
             )}
           </div>
@@ -319,25 +377,55 @@ export default function NikonDashboard() {
                 <div className="w-px h-6 bg-slate-300 mx-2"></div>
               </>
             )}
-
             {activeTab === 'claims' && <button onClick={() => openModal('create', 'claim')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm transition shadow-sm">+ Tambah Claim</button>}
             {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm transition shadow-sm">+ Tambah Garansi</button>}
             {activeTab === 'services' && <button onClick={() => openModal('create', 'service')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm transition shadow-sm">+ Tambah Service</button>}
-            {activeTab === 'budgets' && <button onClick={() => openModal('create', 'budget')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm transition shadow-sm">+ Buat Budget Approval</button>}
+            {activeTab === 'budgets' && <button onClick={() => openModal('create', 'budget')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm transition shadow-sm">+ Buat Proposal</button>}
             {activeTab === 'promos' && currentUser?.role === 'Admin' && <button onClick={() => openModal('create', 'promo')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm transition shadow-sm">+ Tambah Promo</button>}
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 space-y-6">
-        {/* ======================= PESAN ======================= */}
+        
+        {/* =========================================================
+            1. PESAN
+        ========================================================= */}
         {activeTab === 'messages' && (
-          <div className="space-y-6 animate-fade-in">
+          <div className="space-y-6 animate-fade-in text-slate-900">
+            {/* KOTAK STATISTIK CHAT KONSUMEN */}
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200">
+               <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold">Interaksi Konsumen</h3>
+                    <p className="text-sm text-slate-500">Jumlah konsumen unik yang melakukan chat berdasarkan periode</p>
+                  </div>
+                  <select value={msgTimeFilter} onChange={e => setMsgTimeFilter(e.target.value as any)} className="border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm font-medium outline-none">
+                     <option value="day">Harian</option><option value="week">Mingguan</option><option value="month">Bulanan</option>
+                  </select>
+               </div>
+               
+               <div className="mb-4">
+                  <div className="text-3xl font-extrabold text-blue-600">{currentTotalConsumers} <span className="text-sm font-normal text-slate-500">Total Konsumen Unik</span></div>
+               </div>
+
+               <ResponsiveContainer width="100%" height={250}>
+                 <BarChart data={messageStats}>
+                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                   <XAxis dataKey="periode" stroke="#64748b" tick={{fontSize: 12}} />
+                   <YAxis stroke="#64748b" allowDecimals={false} />
+                   <Tooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius:'8px', border:'none', boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                   <Bar dataKey="jumlah_konsumen" name="Konsumen Unik" fill="#3b82f6" radius={[4,4,0,0]} />
+                 </BarChart>
+               </ResponsiveContainer>
+            </div>
+
+            {/* AREA CHAT UTAMA */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
-              <div className="bg-white rounded-lg shadow-sm border flex flex-col h-full overflow-hidden">
-                 <div className="p-4 border-b flex justify-between items-center bg-white z-10"><span className="font-bold">Percakapan</span><button onClick={() => setIsNewChatModalOpen(true)} className="bg-blue-100 text-blue-700 px-3 py-1 text-xs font-medium rounded hover:bg-blue-200 transition">+ Chat</button></div>
-                 <div className="p-3 border-b bg-slate-50 z-10"><input type="text" placeholder="🔍 Cari nama / no WA..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm outline-none focus:border-blue-500 shadow-sm" /></div>
-                 <div className="overflow-y-auto flex-1 divide-y">
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                 <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-white z-10"><span className="font-bold">Percakapan</span><button onClick={() => setIsNewChatModalOpen(true)} className="bg-blue-100 text-blue-700 px-3 py-1 text-xs font-medium rounded hover:bg-blue-200 transition">+ Chat</button></div>
+                 <div className="p-3 border-b border-slate-200 bg-slate-50 z-10"><input type="text" placeholder="🔍 Cari nama / no WA..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm outline-none focus:border-blue-500 shadow-sm" /></div>
+                 <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
                    {filteredContacts.map((c: any) => (
                      <div key={c.nomor_wa} onClick={() => setSelectedWa(c.nomor_wa)} className={`p-4 cursor-pointer hover:bg-slate-50 transition ${selectedWa === c.nomor_wa ? 'border-l-4 border-blue-500 bg-blue-50/50' : 'border-l-4 border-transparent'}`}>
                        <div className="flex justify-between text-sm">
@@ -347,15 +435,16 @@ export default function NikonDashboard() {
                        <div className="text-xs text-slate-500 truncate mt-1">{c.isi_pesan}</div>
                      </div>
                    ))}
+                   {filteredContacts.length === 0 && <div className="p-8 text-center text-slate-400 text-sm">Tidak ada percakapan</div>}
                  </div>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border lg:col-span-2 flex flex-col h-full overflow-hidden relative">
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 lg:col-span-2 flex flex-col h-full overflow-hidden relative">
                  {selectedWa ? (
                     <>
-                      <div className="p-4 border-b bg-slate-50 z-10 flex justify-between items-center">
+                      <div className="p-4 border-b border-slate-200 bg-slate-50 z-10 flex justify-between items-center">
                         <div><h3 className="font-bold">{getRealProfileName(selectedWa)}</h3><p className="text-xs text-slate-500">{selectedWa}</p></div>
                         {uniqueContacts.find(c => c.nomor_wa === selectedWa)?.bicara_dengan_cs && (
-                           <button onClick={() => handleSelesaiCS(selectedWa)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1 shadow-sm">✅ Tandai Selesai</button>
+                           <button onClick={() => handleSelesaiCS(selectedWa)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1 shadow-sm border border-emerald-300">✅ Tandai Selesai</button>
                         )}
                       </div>
                       <div className="flex-1 p-4 overflow-y-auto space-y-4 relative scroll-smooth" style={{ backgroundColor: '#efeae2', backgroundImage: `url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')`, backgroundSize: '400px', backgroundRepeat: 'repeat' }}>
@@ -370,8 +459,8 @@ export default function NikonDashboard() {
                         <div ref={messagesEndRef} />
                       </div>
                       <button onClick={scrollToBottom} className="absolute bottom-20 right-6 bg-white p-2.5 rounded-full shadow-lg border border-slate-200 text-blue-600 hover:bg-blue-50 transition-colors z-20" title="Ke pesan terbaru">⬇️</button>
-                      <form onSubmit={handleSendReply} className="p-4 border-t flex gap-2 bg-slate-50 z-10 relative">
-                        <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="flex-1 border border-slate-300 rounded-full px-5 py-2.5 text-sm outline-none focus:border-blue-500 shadow-sm" />
+                      <form onSubmit={handleSendReply} className="p-4 border-t border-slate-200 flex gap-2 bg-slate-50 z-10 relative">
+                        <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-full px-5 py-2.5 text-sm outline-none focus:border-blue-500 shadow-sm" />
                         <button type="submit" disabled={!replyText.trim()} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full text-sm font-medium disabled:opacity-50 transition shadow-sm">Kirim</button>
                       </form>
                     </>
@@ -383,13 +472,14 @@ export default function NikonDashboard() {
 
         {/* ======================= DATA KONSUMEN ======================= */}
         {activeTab === 'konsumen' && (
-          <div className="space-y-4 animate-fade-in"><input type="text" placeholder="🔍 Cari berdasarkan Nama / No Whatsapp / ID Konsumen" value={searchKonsumen} onChange={e => setSearchKonsumen(e.target.value)} className="w-full p-4 border border-slate-300 rounded-lg shadow-sm outline-none focus:border-blue-500 text-sm" />
+          <div className="space-y-4 animate-fade-in text-slate-900">
+            <input type="text" placeholder="🔍 Cari berdasarkan Nama / No Whatsapp / ID Konsumen" value={searchKonsumen} onChange={e => setSearchKonsumen(e.target.value)} className="w-full p-4 border border-slate-300 bg-white text-slate-900 rounded-lg shadow-sm outline-none focus:border-blue-500 text-sm" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {consumersList.filter(k => k.nama_lengkap?.toLowerCase().includes(searchKonsumen.toLowerCase()) || k.nomor_wa.includes(searchKonsumen) || k.id_konsumen?.toLowerCase().includes(searchKonsumen.toLowerCase())).map(k => {
                   const userClaims = claims.filter(c => c.nomor_wa === k.nomor_wa);
                   return (
                     <div key={k.nomor_wa} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-blue-300 transition">
-                      <div className="flex justify-between items-start border-b pb-3 mb-3"><div><h3 className="font-bold text-lg text-slate-800">{k.nama_lengkap || k.nomor_wa}</h3><div className="text-sm text-slate-500 mt-1 flex gap-3"><span>📱 {k.nomor_wa}</span>{k.id_konsumen && <span className="font-medium text-blue-600">ID: {k.id_konsumen}</span>}</div></div></div>
+                      <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3"><div><h3 className="font-bold text-lg text-slate-800">{k.nama_lengkap || k.nomor_wa}</h3><div className="text-sm text-slate-500 mt-1 flex gap-3"><span>📱 {k.nomor_wa}</span>{k.id_konsumen && <span className="font-medium text-blue-600">ID: {k.id_konsumen}</span>}</div></div></div>
                       <div className="flex-1"><h4 className="font-semibold text-slate-700 text-sm mb-2">Riwayat Barang ({userClaims.length})</h4>{userClaims.length === 0 ? <p className="text-xs text-slate-400 italic">Belum ada riwayat</p> : (<div className="space-y-3">{userClaims.map(c => { const w = warranties.find(wa => wa.nomor_seri === c.nomor_seri); const s = services.filter(se => se.nomor_seri === c.nomor_seri); return ( <div key={c.id_claim} className="text-xs p-3 bg-slate-50 border border-slate-100 rounded-md"><div className="font-bold text-slate-800 mb-1">{c.tipe_barang} <span className="text-slate-500 font-normal ml-1">(Seri: {c.nomor_seri})</span></div><div className="grid grid-cols-1 gap-1 text-slate-600 mt-2"><div><span className="font-medium text-slate-700">🎫 Claim:</span> {c.validasi_by_mkt} / {c.validasi_by_fa}</div><div><span className="font-medium text-slate-700">🛡️ Garansi:</span> {w ? w.status_validasi : 'Belum Terdaftar'}</div><div><span className="font-medium text-slate-700">🔧 Service:</span> {s.length > 0 ? s.map(se => `[${se.nomor_tanda_terima}] ${se.status_service}`).join(', ') : 'Tidak ada riwayat'}</div></div></div> ) })}</div>)}</div>
                     </div>
                   )
@@ -398,171 +488,247 @@ export default function NikonDashboard() {
           </div>
         )}
 
-        {/* ======================= PROMOS (GRID CARD) ======================= */}
+        {/* ======================= PROMOS ======================= */}
         {activeTab === 'promos' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
-             {promos.map(p => (
-               <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-blue-300 transition">
-                 <div className="flex justify-between items-start border-b pb-3 mb-3">
-                    <div>
-                       <h3 className="font-bold text-lg text-slate-800">{p.nama_promo}</h3>
-                       <div className="text-sm text-slate-500 mt-1">📅 {p.tanggal_mulai} s/d {p.tanggal_selesai}</div>
-                    </div>
-                    <span className={`px-2 py-1 rounded text-[10px] font-bold ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
-                 </div>
-                 <div className="flex-1">
-                    <h4 className="font-semibold text-slate-700 text-sm mb-2">Tipe Produk Berlaku ({p.tipe_produk?.length || 0})</h4>
-                    {(!p.tipe_produk || p.tipe_produk.length === 0) ? <p className="text-xs text-slate-400 italic">Belum ada produk</p> : (
-                       <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2">
-                          {p.tipe_produk.map((prod, idx) => (
-                             <div key={idx} className="text-xs p-2 bg-slate-50 border border-slate-100 rounded-md font-medium text-slate-700 flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 block"></span>{prod.nama_produk}
-                             </div>
-                          ))}
-                       </div>
-                    )}
-                 </div>
-                 {currentUser?.role === 'Admin' && (
-                    <div className="mt-4 pt-3 border-t flex gap-3 justify-end">
-                       <button onClick={()=>openModal('edit','promo',p)} className="text-blue-600 text-xs font-medium hover:underline">Edit Promo</button>
-                       <button onClick={()=>handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-medium hover:underline">Hapus</button>
-                    </div>
-                 )}
-               </div>
-             ))}
+          <div className="space-y-4 animate-fade-in text-slate-900">
+            <input type="text" placeholder="🔍 Cari Nama Promo atau Periode Tanggal..." value={searchPromo} onChange={e => setSearchPromo(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-blue-500 text-sm" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredPromos.map(p => (
+                <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-blue-300 transition">
+                  <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
+                      <div><h3 className="font-bold text-lg text-slate-800">{p.nama_promo}</h3><div className="text-sm text-slate-500 mt-1">📅 {p.tanggal_mulai} s/d {p.tanggal_selesai}</div></div>
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
+                  </div>
+                  <div className="flex-1">
+                      <h4 className="font-semibold text-slate-700 text-sm mb-2">Tipe Produk Berlaku ({p.tipe_produk?.length || 0})</h4>
+                      {(!p.tipe_produk || p.tipe_produk.length === 0) ? <p className="text-xs text-slate-400 italic">Belum ada produk</p> : (
+                        <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2">
+                            {p.tipe_produk.map((prod, idx) => ( <div key={idx} className="text-xs p-2 bg-slate-50 border border-slate-100 rounded-md font-medium text-slate-700 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 block"></span>{prod.nama_produk}</div> ))}
+                        </div>
+                      )}
+                  </div>
+                  {currentUser?.role === 'Admin' && (
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                        <button onClick={()=>openModal('edit','promo',p)} className="text-blue-600 text-xs font-medium hover:underline">Edit Promo</button>
+                        <button onClick={()=>handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-medium hover:underline">Hapus</button>
+                      </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
         
         {/* ======================= CLAIMS ======================= */}
         {activeTab === 'claims' && (
-          <div className="bg-white rounded-lg shadow-sm border overflow-x-auto animate-fade-in">
-             <table className="w-full text-sm"><thead className="bg-slate-50 border-b whitespace-nowrap"><tr><th className="px-4 py-3 text-left">Nama</th><th className="px-4 py-3 text-left">No Seri</th><th className="px-4 py-3 text-left">Barang</th><th className="px-4 py-3 text-left">Nama Promo</th><th className="px-4 py-3 text-left">Tgl Beli</th><th className="px-4 py-3 text-left">Toko</th><th className="px-4 py-3 text-left">Nota/Garansi</th><th className="px-4 py-3 text-left">MKT / FA</th><th className="px-4 py-3 text-left">Aksi</th></tr></thead>
-             <tbody className="divide-y">{claims.map(c => (
-               <tr key={c.id_claim} className="whitespace-nowrap hover:bg-slate-50">
-                 <td className="px-4 py-3 text-slate-700">{consumers[c.nomor_wa]||c.nomor_wa}</td><td className="px-4 py-3 font-mono">{c.nomor_seri}</td><td className="px-4 py-3">{c.tipe_barang}</td><td className="px-4 py-3 font-medium text-blue-700">{getNamaPromo(c.tipe_barang)}</td><td className="px-4 py-3">{c.tanggal_pembelian}</td><td className="px-4 py-3">{c.nama_toko || '-'}</td><td className="px-4 py-3 text-blue-500 font-medium">{c.link_nota_pembelian && <a href={c.link_nota_pembelian} target="_blank" rel="noreferrer" className="mr-3 hover:underline">Nota</a>} {c.link_kartu_garansi && <a href={c.link_kartu_garansi} target="_blank" rel="noreferrer" className="hover:underline">Garansi</a>}</td><td className="px-4 py-3 text-xs">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
-                 <td className="px-4 py-3 flex gap-2"><button onClick={()=>openModal('edit','claim',c)} className="text-blue-600 text-xs font-medium hover:underline">Edit</button><button onClick={()=>handleDelete('claim',c.id_claim!)} className="text-red-600 text-xs font-medium hover:underline">Hapus</button></td>
-               </tr>
-             ))}</tbody></table>
+          <div className="space-y-4 animate-fade-in text-slate-900">
+             <input type="text" placeholder="🔍 Cari Nama / No Seri / Nama Promo / Status MKT / Status FA..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-blue-500 text-sm" />
+             <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+               <table className="w-full text-sm"><thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap"><tr><th className="px-4 py-3 text-left">Nama</th><th className="px-4 py-3 text-left">No Seri</th><th className="px-4 py-3 text-left">Barang</th><th className="px-4 py-3 text-left">Nama Promo</th><th className="px-4 py-3 text-left">Tgl Beli</th><th className="px-4 py-3 text-left">Toko</th><th className="px-4 py-3 text-left">Nota/Garansi</th><th className="px-4 py-3 text-left">MKT / FA</th><th className="px-4 py-3 text-left">Aksi</th></tr></thead>
+               <tbody className="divide-y divide-slate-200">{filteredClaims.map(c => (
+                 <tr key={c.id_claim} className="whitespace-nowrap hover:bg-slate-50">
+                   <td className="px-4 py-3 text-slate-800 font-medium">{consumers[c.nomor_wa]||c.nomor_wa}</td><td className="px-4 py-3 font-mono">{c.nomor_seri}</td><td className="px-4 py-3">{c.tipe_barang}</td><td className="px-4 py-3 font-medium text-blue-700">{getNamaPromo(c.tipe_barang)}</td><td className="px-4 py-3">{c.tanggal_pembelian}</td><td className="px-4 py-3">{c.nama_toko || '-'}</td>
+                   <td className="px-4 py-3 text-blue-600 font-medium text-xs flex gap-3">{c.link_nota_pembelian && <a href={c.link_nota_pembelian} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Nota</a>} {c.link_kartu_garansi && <a href={c.link_kartu_garansi} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Garansi</a>}</td>
+                   <td className="px-4 py-3 text-xs">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
+                   <td className="px-4 py-3">
+                     <div className="flex gap-3">
+                        <button onClick={()=>handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
+                        <button onClick={()=>openModal('edit','claim',c)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                        <button onClick={()=>handleDelete('claim',c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                     </div>
+                   </td>
+                 </tr>
+               ))}</tbody></table>
+            </div>
           </div>
         )}
 
         {/* ======================= WARRANTIES ======================= */}
         {activeTab === 'warranties' && (
-           <div className="bg-white rounded-lg shadow-sm border overflow-x-auto animate-fade-in">
-             <table className="w-full text-sm"><thead className="bg-slate-50 border-b whitespace-nowrap"><tr><th className="px-4 py-3 text-left">No Seri</th><th className="px-4 py-3 text-left">Barang</th><th className="px-4 py-3 text-left">Status</th><th className="px-4 py-3 text-left">Jenis</th><th className="px-4 py-3 text-left">Sisa Garansi</th><th className="px-4 py-3 text-left">Aksi</th></tr></thead>
-             <tbody className="divide-y">{warranties.map(w => {
-               const linked = claims.find(c => c.nomor_seri === w.nomor_seri);
-               return (<tr key={w.id_garansi} className="whitespace-nowrap hover:bg-slate-50"><td className="px-4 py-3 font-mono">{w.nomor_seri}</td><td className="px-4 py-3">{w.tipe_barang}</td><td className="px-4 py-3"><span className={`px-2 py-1 rounded text-xs ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{w.status_validasi}</span></td><td className="px-4 py-3">{w.jenis_garansi}</td><td className="px-4 py-3 font-bold text-slate-700">{calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</td><td className="px-4 py-3 flex gap-2"><button onClick={()=>openModal('edit','warranty',w)} className="text-blue-600 text-xs font-medium hover:underline">Edit</button><button onClick={()=>handleDelete('warranty',w.id_garansi!)} className="text-red-600 text-xs font-medium hover:underline">Hapus</button></td></tr>)
-             })}</tbody></table>
+           <div className="space-y-4 animate-fade-in text-slate-900">
+             <input type="text" placeholder="🔍 Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-blue-500 text-sm" />
+             <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+               <table className="w-full text-sm"><thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap"><tr><th className="px-4 py-3 text-left">No Seri</th><th className="px-4 py-3 text-left">Barang</th><th className="px-4 py-3 text-left">Nota/Garansi</th><th className="px-4 py-3 text-left">Status</th><th className="px-4 py-3 text-left">Jenis</th><th className="px-4 py-3 text-left">Sisa Garansi</th><th className="px-4 py-3 text-left">Aksi</th></tr></thead>
+               <tbody className="divide-y divide-slate-200">{filteredWarranties.map(w => {
+                 const linked = claims.find(c => c.nomor_seri === w.nomor_seri);
+                 const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
+                 const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
+                 return (<tr key={w.id_garansi} className="whitespace-nowrap hover:bg-slate-50">
+                   <td className="px-4 py-3 font-mono font-medium">{w.nomor_seri}</td><td className="px-4 py-3">{w.tipe_barang}</td>
+                   <td className="px-4 py-3 text-blue-600 font-medium text-xs flex gap-3">{linkNota && <a href={linkNota} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Nota</a>} {linkGaransi && <a href={linkGaransi} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Garansi</a>}</td>
+                   <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-xs font-bold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{w.status_validasi}</span></td><td className="px-4 py-3">{w.jenis_garansi}</td><td className="px-4 py-3 font-bold text-slate-700">{calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</td>
+                   <td className="px-4 py-3">
+                      <div className="flex gap-3">
+                         <button onClick={()=>handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
+                         <button onClick={()=>openModal('edit','warranty',w)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                         <button onClick={()=>handleDelete('warranty',w.id_garansi!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                      </div>
+                   </td>
+                 </tr>)
+               })}</tbody></table>
+            </div>
           </div>
         )}
 
         {/* ======================= SERVICES ======================= */}
         {activeTab === 'services' && (
-           <div className="bg-white rounded-lg shadow-sm border overflow-x-auto animate-fade-in">
-             <table className="w-full text-sm"><thead className="bg-slate-50 border-b whitespace-nowrap"><tr><th className="px-6 py-3 text-left">No Tanda Terima</th><th className="px-6 py-3 text-left">No Seri Barang</th><th className="px-6 py-3 text-left">Status Service</th><th className="px-6 py-3 text-left">Tgl Update</th><th className="px-6 py-3 text-left">Aksi</th></tr></thead>
-             <tbody className="divide-y">{services.map(s => (
-               <tr key={s.id_service} className="whitespace-nowrap hover:bg-slate-50"><td className="px-6 py-3 font-mono font-medium text-slate-800">{s.nomor_tanda_terima}</td><td className="px-6 py-3">{s.nomor_seri}</td><td className="px-6 py-3"><span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800 font-medium">{s.status_service}</span></td><td className="px-6 py-3 text-slate-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</td><td className="px-6 py-3 flex gap-3"><button onClick={()=>openModal('edit','service',s)} className="text-blue-600 text-xs font-medium hover:underline">Edit</button><button onClick={()=>handleDelete('service',s.id_service!)} className="text-red-600 text-xs font-medium hover:underline">Hapus</button></td></tr>
-             ))}</tbody></table>
+           <div className="space-y-4 animate-fade-in text-slate-900">
+             <input type="text" placeholder="🔍 Cari No Tanda Terima / No Seri / Status..." value={searchService} onChange={e => setSearchService(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-blue-500 text-sm" />
+             <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+               <table className="w-full text-sm"><thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap"><tr><th className="px-6 py-3 text-left">No Tanda Terima</th><th className="px-6 py-3 text-left">No Seri Barang</th><th className="px-6 py-3 text-left">Status Service</th><th className="px-6 py-3 text-left">Tgl Update</th><th className="px-6 py-3 text-left">Aksi</th></tr></thead>
+               <tbody className="divide-y divide-slate-200">{filteredServices.map(s => (
+                 <tr key={s.id_service} className="whitespace-nowrap hover:bg-slate-50"><td className="px-6 py-3 font-mono font-bold text-slate-800">{s.nomor_tanda_terima}</td><td className="px-6 py-3">{s.nomor_seri}</td><td className="px-6 py-3"><span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800 font-bold">{s.status_service}</span></td><td className="px-6 py-3 text-slate-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</td><td className="px-6 py-3 flex gap-3"><button onClick={()=>openModal('edit','service',s)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button><button onClick={()=>handleDelete('service',s.id_service!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button></td></tr>
+               ))}</tbody></table>
+            </div>
           </div>
         )}
 
-        {/* ======================= BUDGETS ======================= */}
+        {/* ======================= PROPOSAL EVENT (BUDGETS) ======================= */}
         {activeTab === 'budgets' && (
-           <div className="bg-white rounded-lg shadow-sm border overflow-x-auto animate-fade-in">
-             <table className="w-full text-sm"><thead className="bg-slate-50 border-b whitespace-nowrap"><tr><th className="px-6 py-3 text-left">Proposal No</th><th className="px-6 py-3 text-left">Title</th><th className="px-6 py-3 text-left">Period</th><th className="px-6 py-3 text-left">Total Cost</th><th className="px-6 py-3 text-left">Aksi</th></tr></thead>
-             <tbody className="divide-y">{budgets.map(b => (
-               <tr key={b.id_budget} className="whitespace-nowrap hover:bg-slate-50"><td className="px-6 py-3 font-mono font-medium text-slate-800">{b.proposal_no}</td><td className="px-6 py-3">{b.title}</td><td className="px-6 py-3">{b.period}</td><td className="px-6 py-3 font-bold text-slate-700">Rp {Number(b.total_cost).toLocaleString('id-ID')}</td>
-               <td className="px-6 py-3 flex gap-3">
-                 <button onClick={() => setPrintData(b)} className="text-emerald-600 text-xs font-medium hover:underline">Print PDF</button>
-                 <button onClick={()=>openModal('edit','budget',b)} className="text-blue-600 text-xs font-medium hover:underline">Edit</button>
-                 <button onClick={()=>handleDelete('budget',b.id_budget!)} className="text-red-600 text-xs font-medium hover:underline">Hapus</button>
-               </td></tr>
-             ))}</tbody></table>
+           <div className="space-y-4 animate-fade-in text-slate-900">
+             <input type="text" placeholder="🔍 Cari Title Proposal..." value={searchBudget} onChange={e => setSearchBudget(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-blue-500 text-sm" />
+             <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+               <table className="w-full text-sm"><thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap"><tr><th className="px-6 py-3 text-left">Proposal No</th><th className="px-6 py-3 text-left">Title</th><th className="px-6 py-3 text-left">Period</th><th className="px-6 py-3 text-left">Total Cost</th><th className="px-6 py-3 text-left">Aksi</th></tr></thead>
+               <tbody className="divide-y divide-slate-200">{filteredBudgets.map(b => (
+                 <tr key={b.id_budget} className="whitespace-nowrap hover:bg-slate-50"><td className="px-6 py-3 font-mono font-medium text-slate-800">{b.proposal_no}</td><td className="px-6 py-3">{b.title}</td><td className="px-6 py-3">{b.period}</td><td className="px-6 py-3 font-bold text-slate-700">Rp {Number(b.total_cost).toLocaleString('id-ID')}</td>
+                 <td className="px-6 py-3 flex gap-3">
+                   <button onClick={() => setPrintData(b)} className="text-emerald-600 text-xs font-bold hover:underline">Print PDF</button>
+                   <button onClick={()=>openModal('edit','budget',b)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                   <button onClick={()=>handleDelete('budget',b.id_budget!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                 </td></tr>
+               ))}</tbody></table>
+            </div>
           </div>
         )}
       </div>
 
       {/* --- MODALS CREATE / EDIT --- */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
-          <div className={`bg-white rounded-xl shadow-xl w-full ${activeTab === 'budgets' ? 'max-w-4xl' : 'max-w-2xl'} overflow-hidden flex flex-col max-h-[90vh]`}>
-            <div className="px-6 py-4 border-b bg-slate-50 flex justify-between items-center"><h2 className="text-lg font-bold">{modalAction === 'create' ? 'Tambah' : 'Edit'} Data</h2><button onClick={closeModal} className="text-2xl text-slate-400 hover:text-slate-600 leading-none">×</button></div>
+        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 text-slate-900">
+          <div className={`bg-white rounded-xl shadow-2xl w-full ${activeTab === 'budgets' ? 'max-w-4xl' : 'max-w-2xl'} overflow-hidden flex flex-col max-h-[90vh]`}>
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center"><h2 className="text-lg font-bold">{modalAction === 'create' ? 'Tambah' : 'Edit'} Data</h2><button onClick={closeModal} className="text-2xl text-slate-400 hover:text-slate-700 leading-none transition">×</button></div>
             <div className="p-6 overflow-y-auto">
                
-               {activeTab === 'claims' && (<form id="claimForm" onSubmit={handleSaveClaim} className="space-y-4"><div><label className="block text-sm font-medium mb-1">Nomor WA</label><input required type="text" value={claimForm.nomor_wa || ''} onChange={e => setClaimForm({...claimForm, nomor_wa: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div><label className="block text-sm font-medium mb-1">Nomor Seri</label><input required type="text" value={claimForm.nomor_seri || ''} onChange={e => setClaimForm({...claimForm, nomor_seri: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Tipe Barang</label><input type="text" value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({...claimForm, tipe_barang: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div><label className="block text-sm font-medium mb-1">Tgl Pembelian</label><input type="date" value={claimForm.tanggal_pembelian || ''} onChange={e => setClaimForm({...claimForm, tanggal_pembelian: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Validasi MKT</label><select value={claimForm.validasi_by_mkt || ''} onChange={e => setClaimForm({...claimForm, validasi_by_mkt: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option><option value="Valid">Valid</option><option value="Tidak Valid">Tidak Valid</option></select></div><div><label className="block text-sm font-medium mb-1">Validasi FA</label><select value={claimForm.validasi_by_fa || ''} onChange={e => setClaimForm({...claimForm, validasi_by_fa: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option><option value="Valid">Valid</option><option value="Tidak Valid">Tidak Valid</option></select></div></div><div className="grid grid-cols-2 gap-4 p-3 bg-blue-50 border border-blue-100 rounded-md"><div className="col-span-2"><p className="text-xs text-blue-700 font-medium mb-2">*Catatan: Notifikasi pengiriman WA HANYA aktif jika Anda mengisi Nomor Resi di bawah ini.</p></div><div><label className="block text-sm font-medium mb-1">Jasa Pengiriman</label><input type="text" value={claimForm.nama_jasa_pengiriman || ''} onChange={e => setClaimForm({...claimForm, nama_jasa_pengiriman: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="JNE / J&T / dll" /></div><div><label className="block text-sm font-medium mb-1">Nomor Resi</label><input type="text" value={claimForm.nomor_resi || ''} onChange={e => setClaimForm({...claimForm, nomor_resi: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Masukkan nomor resi..." /></div></div></form>)}
+               {activeTab === 'claims' && (
+                 <form id="claimForm" onSubmit={handleSaveClaim} className="space-y-4">
+                   <div><label className="block text-sm font-bold mb-1">Nomor WA</label><input required type="text" value={claimForm.nomor_wa || ''} onChange={e => setClaimForm({...claimForm, nomor_wa: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                   <div><label className="block text-sm font-bold mb-1">Nomor Seri</label><input required type="text" value={claimForm.nomor_seri || ''} onChange={e => setClaimForm({...claimForm, nomor_seri: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div><label className="block text-sm font-bold mb-1">Tipe Barang</label><input type="text" list="list-tipe-barang" value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({...claimForm, tipe_barang: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                     <div><label className="block text-sm font-bold mb-1">Tgl Pembelian</label><input type="date" value={claimForm.tanggal_pembelian || ''} onChange={e => setClaimForm({...claimForm, tanggal_pembelian: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                   </div>
+                   
+                   {/* Tampilan Link Klik jika mode Edit */}
+                   {(modalAction === 'edit' && (claimForm.link_kartu_garansi || claimForm.link_nota_pembelian)) && (
+                     <div className="bg-blue-50 p-3 rounded-md border border-blue-100 flex flex-col gap-2">
+                       <span className="text-xs font-bold text-blue-800">Dokumen Lampiran (Klik untuk Buka):</span>
+                       {claimForm.link_nota_pembelian && <a href={claimForm.link_nota_pembelian} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline break-all">🔗 Link Nota Pembelian</a>}
+                       {claimForm.link_kartu_garansi && <a href={claimForm.link_kartu_garansi} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline break-all">🔗 Link Kartu Garansi</a>}
+                     </div>
+                   )}
+
+                   <div className="grid grid-cols-2 gap-4">
+                     <div><label className="block text-sm font-bold mb-1">Validasi MKT</label><select value={claimForm.validasi_by_mkt || ''} onChange={e => setClaimForm({...claimForm, validasi_by_mkt: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option><option value="Valid">Valid</option><option value="Tidak Valid">Tidak Valid</option></select></div>
+                     <div><label className="block text-sm font-bold mb-1">Validasi FA</label><select value={claimForm.validasi_by_fa || ''} onChange={e => setClaimForm({...claimForm, validasi_by_fa: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option><option value="Valid">Valid</option><option value="Tidak Valid">Tidak Valid</option></select></div>
+                   </div>
+                   <div className="grid grid-cols-2 gap-4 bg-slate-50 border border-slate-200 p-3 rounded-md">
+                     <div><label className="block text-sm font-bold mb-1">Jasa Pengiriman</label><input type="text" list="list-jasa-kirim" value={claimForm.nama_jasa_pengiriman || ''} onChange={e => setClaimForm({...claimForm, nama_jasa_pengiriman: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="JNE / J&T / dll" /></div>
+                     <div><label className="block text-sm font-bold mb-1">Nomor Resi</label><input type="text" value={claimForm.nomor_resi || ''} onChange={e => setClaimForm({...claimForm, nomor_resi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Masukkan nomor resi..." /></div>
+                   </div>
+                 </form>
+               )}
                
                {activeTab === 'warranties' && (
                  <form id="warrantyForm" onSubmit={handleSaveWarranty} className="space-y-4">
-                   <div><label className="block text-sm font-medium mb-1">Nomor Seri</label><input required type="text" value={warrantyForm.nomor_seri || ''} onChange={e => setWarrantyForm({...warrantyForm, nomor_seri: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
-                   <div><label className="block text-sm font-medium mb-1">Tipe Barang</label><input required type="text" value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({...warrantyForm, tipe_barang: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                   <div><label className="block text-sm font-bold mb-1">Nomor Seri</label><input required type="text" value={warrantyForm.nomor_seri || ''} onChange={e => setWarrantyForm({...warrantyForm, nomor_seri: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                   <div><label className="block text-sm font-bold mb-1">Tipe Barang</label><input required type="text" list="list-tipe-barang" value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({...warrantyForm, tipe_barang: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                   
+                   {/* Tampilan Link Klik jika mode Edit dan Garansi punya Link */}
+                   {(modalAction === 'edit') && (
+                     <div className="bg-blue-50 p-3 rounded-md border border-blue-100 flex flex-col gap-2">
+                       <span className="text-xs font-bold text-blue-800">Dokumen Lampiran Garansi/Nota:</span>
+                       {/* Coba tarik link dari Garansi, kalau kosong tarik dari Claim terkait */}
+                       {(() => {
+                           const linked = claims.find(c => c.nomor_seri === warrantyForm.nomor_seri);
+                           const n = warrantyForm.link_nota_pembelian || linked?.link_nota_pembelian;
+                           const g = warrantyForm.link_kartu_garansi || linked?.link_kartu_garansi;
+                           return (
+                             <>
+                               {n ? <a href={n} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline break-all">🔗 Lihat Bukti Nota</a> : <span className="text-xs text-slate-500 italic">Tidak ada link Nota</span>}
+                               {g ? <a href={g} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline break-all">🔗 Lihat Bukti Kartu Garansi</a> : <span className="text-xs text-slate-500 italic">Tidak ada link Kartu Garansi</span>}
+                             </>
+                           );
+                       })()}
+                     </div>
+                   )}
+
                    <div className="grid grid-cols-3 gap-4">
-                     <div><label className="block text-sm font-medium mb-1">Status Validasi</label><select value={warrantyForm.status_validasi || ''} onChange={e => setWarrantyForm({...warrantyForm, status_validasi: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Menunggu">Menunggu</option><option value="Valid">Valid</option><option value="Tidak Valid">Tidak Valid</option></select></div>
-                     <div><label className="block text-sm font-medium mb-1">Jenis Garansi</label><select value={warrantyForm.jenis_garansi || ''} onChange={e => setWarrantyForm({...warrantyForm, jenis_garansi: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Jasa 30%">Jasa 30%</option><option value="Extended to 2 Year">Extended to 2 Year</option></select></div>
-                     <div><label className="block text-sm font-medium mb-1">Lama Garansi</label><select value={warrantyForm.lama_garansi || ''} onChange={e => setWarrantyForm({...warrantyForm, lama_garansi: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="1 Tahun">1 Tahun</option><option value="2 Tahun">2 Tahun</option><option value="Tidak Garansi">Tidak Garansi</option></select></div>
+                     <div><label className="block text-sm font-bold mb-1">Status Validasi</label><select value={warrantyForm.status_validasi || ''} onChange={e => setWarrantyForm({...warrantyForm, status_validasi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Menunggu">Menunggu</option><option value="Valid">Valid</option><option value="Tidak Valid">Tidak Valid</option></select></div>
+                     <div><label className="block text-sm font-bold mb-1">Jenis Garansi</label><select value={warrantyForm.jenis_garansi || ''} onChange={e => setWarrantyForm({...warrantyForm, jenis_garansi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="Jasa 30%">Jasa 30%</option><option value="Extended to 2 Year">Extended to 2 Year</option></select></div>
+                     <div><label className="block text-sm font-bold mb-1">Lama Garansi</label><select value={warrantyForm.lama_garansi || ''} onChange={e => setWarrantyForm({...warrantyForm, lama_garansi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="1 Tahun">1 Tahun</option><option value="2 Tahun">2 Tahun</option><option value="Tidak Garansi">Tidak Garansi</option></select></div>
                    </div>
                  </form>
                )}
                
                {activeTab === 'promos' && (
                  <form id="promoForm" onSubmit={handleSavePromo} className="space-y-4">
-                    <div><label className="block text-sm font-medium mb-1">Nama Promo</label><input required type="text" value={promoForm.nama_promo || ''} onChange={e => setPromoForm({...promoForm, nama_promo: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                    <div><label className="block text-sm font-bold mb-1">Nama Promo</label><input required type="text" list="list-jenis-promo" value={promoForm.nama_promo || ''} onChange={e => setPromoForm({...promoForm, nama_promo: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
                     <div className="grid grid-cols-2 gap-4">
-                       <div><label className="block text-sm font-medium mb-1">Tgl Mulai</label><input required type="date" value={promoForm.tanggal_mulai || ''} onChange={e => setPromoForm({...promoForm, tanggal_mulai: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
-                       <div><label className="block text-sm font-medium mb-1">Tgl Selesai</label><input required type="date" value={promoForm.tanggal_selesai || ''} onChange={e => setPromoForm({...promoForm, tanggal_selesai: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                       <div><label className="block text-sm font-bold mb-1">Tgl Mulai</label><input required type="date" value={promoForm.tanggal_mulai || ''} onChange={e => setPromoForm({...promoForm, tanggal_mulai: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                       <div><label className="block text-sm font-bold mb-1">Tgl Selesai</label><input required type="date" value={promoForm.tanggal_selesai || ''} onChange={e => setPromoForm({...promoForm, tanggal_selesai: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
                     </div>
-                    <div><label className="flex items-center gap-2"><input type="checkbox" checked={promoForm.status_aktif || false} onChange={e => setPromoForm({...promoForm, status_aktif: e.target.checked})} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" /> <span className="text-sm font-medium text-slate-700">Promo Aktif</span></label></div>
+                    <div><label className="flex items-center gap-2"><input type="checkbox" checked={promoForm.status_aktif || false} onChange={e => setPromoForm({...promoForm, status_aktif: e.target.checked})} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" /> <span className="text-sm font-bold text-slate-900">Promo Aktif</span></label></div>
                     
                     {/* BUILDER TIPE PRODUK UNTUK PROMO */}
-                    <div className="mt-4 border-t pt-4">
+                    <div className="mt-4 border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-md">
                        <div className="flex justify-between items-center mb-2">
-                         <label className="block text-sm font-medium">Tipe Produk yang Berlaku</label>
-                         <button type="button" onClick={() => setPromoForm({...promoForm, tipe_produk: [...(promoForm.tipe_produk || []), {nama_produk: ''}]})} className="bg-slate-200 px-3 py-1 rounded text-xs font-medium hover:bg-slate-300 transition">+ Tambah Produk</button>
+                         <label className="block text-sm font-bold text-slate-900">Tipe Produk yang Berlaku</label>
+                         <button type="button" onClick={() => setPromoForm({...promoForm, tipe_produk: [...(promoForm.tipe_produk || []), {nama_produk: ''}]})} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold hover:bg-slate-300 transition text-slate-900 border border-slate-300">+ Tambah Produk</button>
                        </div>
                        {promoForm.tipe_produk?.map((item, index) => (
                          <div key={index} className="flex gap-2 mb-2 items-center">
                             <div className="flex-1">
-                               <input type="text" required value={item.nama_produk} onChange={e => { const newItems = [...(promoForm.tipe_produk||[])]; newItems[index].nama_produk = e.target.value; setPromoForm({...promoForm, tipe_produk: newItems})}} className="w-full border rounded px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Contoh: Nikon Z6 III / Lensa Z 50mm"/>
+                               <input type="text" list="list-tipe-barang" required value={item.nama_produk} onChange={e => { const newItems = [...(promoForm.tipe_produk||[])]; newItems[index].nama_produk = e.target.value; setPromoForm({...promoForm, tipe_produk: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Ketik nama produk..."/>
                             </div>
-                            <button type="button" onClick={() => { const newItems = [...(promoForm.tipe_produk||[])]; newItems.splice(index, 1); setPromoForm({...promoForm, tipe_produk: newItems}); }} className="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-2 rounded text-sm transition">X</button>
+                            <button type="button" onClick={() => { const newItems = [...(promoForm.tipe_produk||[])]; newItems.splice(index, 1); setPromoForm({...promoForm, tipe_produk: newItems}); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2 rounded text-sm transition border border-red-200">X</button>
                          </div>
                        ))}
-                       {(!promoForm.tipe_produk || promoForm.tipe_produk.length === 0) && <p className="text-xs text-slate-400 italic">Belum ada produk ditambahkan</p>}
+                       {(!promoForm.tipe_produk || promoForm.tipe_produk.length === 0) && <p className="text-xs text-slate-500 italic mt-2">Belum ada produk ditambahkan</p>}
                     </div>
                  </form>
                )}
                
-               {activeTab === 'services' && (<form id="serviceForm" onSubmit={handleSaveService} className="space-y-4"><div><label className="block text-sm font-medium mb-1">Nomor Tanda Terima</label><input required type="text" value={serviceForm.nomor_tanda_terima || ''} onChange={e => setServiceForm({...serviceForm, nomor_tanda_terima: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Masukkan ID/Resi service" /></div><div><label className="block text-sm font-medium mb-1">Nomor Seri</label><input required type="text" value={serviceForm.nomor_seri || ''} onChange={e => setServiceForm({...serviceForm, nomor_seri: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div><label className="block text-sm font-medium mb-1">Status Service</label><input required type="text" value={serviceForm.status_service || ''} onChange={e => setServiceForm({...serviceForm, status_service: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Contoh: Menunggu Sparepart / Selesai" /></div></form>)}
+               {activeTab === 'services' && (<form id="serviceForm" onSubmit={handleSaveService} className="space-y-4"><div><label className="block text-sm font-bold mb-1">Nomor Tanda Terima</label><input required type="text" value={serviceForm.nomor_tanda_terima || ''} onChange={e => setServiceForm({...serviceForm, nomor_tanda_terima: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Masukkan ID/Resi service" /></div><div><label className="block text-sm font-bold mb-1">Nomor Seri</label><input required type="text" value={serviceForm.nomor_seri || ''} onChange={e => setServiceForm({...serviceForm, nomor_seri: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div><div><label className="block text-sm font-bold mb-1">Status Service</label><input required type="text" value={serviceForm.status_service || ''} onChange={e => setServiceForm({...serviceForm, status_service: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Contoh: Menunggu Sparepart / Selesai" /></div></form>)}
 
                {activeTab === 'budgets' && (
                  <form id="budgetForm" onSubmit={handleSaveBudget} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Proposal No</label><input required type="text" value={budgetForm.proposal_no || ''} onChange={e => setBudgetForm({...budgetForm, proposal_no: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm" placeholder="MKTG-2025..." /></div><div><label className="block text-sm font-medium mb-1">Title</label><input required type="text" value={budgetForm.title || ''} onChange={e => setBudgetForm({...budgetForm, title: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm" /></div></div>
-                    <div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Period (Tanggal)</label><input required type="text" value={budgetForm.period || ''} onChange={e => setBudgetForm({...budgetForm, period: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm" /></div><div><label className="block text-sm font-medium mb-1">Budget Source</label><input required type="text" value={budgetForm.budget_source || ''} onChange={e => setBudgetForm({...budgetForm, budget_source: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm" /></div></div>
-                    <div><label className="block text-sm font-medium mb-1">Objectives</label><textarea required rows={2} value={budgetForm.objectives || ''} onChange={e => setBudgetForm({...budgetForm, objectives: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm" /></div>
-                    <div><label className="block text-sm font-medium mb-1">Detail of Activity</label><textarea required rows={2} value={budgetForm.detail_activity || ''} onChange={e => setBudgetForm({...budgetForm, detail_activity: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm" /></div>
-                    <div><label className="block text-sm font-medium mb-1">Expected Result</label><textarea required rows={2} value={budgetForm.expected_result || ''} onChange={e => setBudgetForm({...budgetForm, expected_result: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm" /></div>
-                    <div><label className="block text-sm font-medium mb-1">Lampiran Poster (Link URL Gambar)</label><input type="url" value={budgetForm.attachment_url || ''} onChange={e => setBudgetForm({...budgetForm, attachment_url: e.target.value})} className="w-full border rounded-md px-3 py-2 text-sm" placeholder="https://contoh.com/gambar.jpg" /></div>
+                    <div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-bold mb-1">Proposal No</label><input required type="text" value={budgetForm.proposal_no || ''} onChange={e => setBudgetForm({...budgetForm, proposal_no: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm font-mono" /></div><div><label className="block text-sm font-bold mb-1">Title</label><input required type="text" value={budgetForm.title || ''} onChange={e => setBudgetForm({...budgetForm, title: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" /></div></div>
+                    <div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-bold mb-1">Period (Tanggal)</label><input required type="text" value={budgetForm.period || ''} onChange={e => setBudgetForm({...budgetForm, period: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" /></div><div><label className="block text-sm font-bold mb-1">Budget Source</label><input required type="text" value={budgetForm.budget_source || ''} onChange={e => setBudgetForm({...budgetForm, budget_source: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" /></div></div>
+                    <div><label className="block text-sm font-bold mb-1">Objectives</label><textarea required rows={2} value={budgetForm.objectives || ''} onChange={e => setBudgetForm({...budgetForm, objectives: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" /></div>
+                    <div><label className="block text-sm font-bold mb-1">Detail of Activity</label><textarea required rows={2} value={budgetForm.detail_activity || ''} onChange={e => setBudgetForm({...budgetForm, detail_activity: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" /></div>
+                    <div><label className="block text-sm font-bold mb-1">Expected Result</label><textarea required rows={2} value={budgetForm.expected_result || ''} onChange={e => setBudgetForm({...budgetForm, expected_result: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" /></div>
+                    <div><label className="block text-sm font-bold mb-1">Lampiran Poster (Link URL Gambar)</label><input type="url" value={budgetForm.attachment_url || ''} onChange={e => setBudgetForm({...budgetForm, attachment_url: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="https://contoh.com/gambar.jpg" /></div>
                     
-                    <div className="mt-6 border-t pt-4">
-                       <div className="flex justify-between items-center mb-2"><label className="block text-sm font-medium">Rincian Budget (Items)</label><button type="button" onClick={() => setBudgetForm({...budgetForm, items: [...(budgetForm.items || []), {purpose: '', qty: 1, cost_unit: 0, value: 0}]})} className="bg-slate-200 px-3 py-1 rounded text-xs font-medium hover:bg-slate-300 transition">+ Tambah Item</button></div>
+                    <div className="mt-6 border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-md">
+                       <div className="flex justify-between items-center mb-2"><label className="block text-sm font-bold text-slate-900">Rincian Budget (Items)</label><button type="button" onClick={() => setBudgetForm({...budgetForm, items: [...(budgetForm.items || []), {purpose: '', qty: 1, cost_unit: 0, value: 0}]})} className="bg-slate-200 px-3 py-1 rounded text-xs font-bold hover:bg-slate-300 transition text-slate-900 border border-slate-300">+ Tambah Item</button></div>
                        {budgetForm.items?.map((item, index) => (
                          <div key={index} className="flex gap-2 mb-2 items-end">
-                            <div className="flex-1"><label className="text-xs text-slate-500">Purpose</label><input type="text" value={item.purpose} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].purpose = e.target.value; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border rounded px-2 py-1 text-sm outline-none focus:border-blue-500"/></div>
-                            <div className="w-16"><label className="text-xs text-slate-500">Qty</label><input type="number" value={item.qty} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].qty = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border rounded px-2 py-1 text-sm outline-none focus:border-blue-500"/></div>
-                            <div className="w-32"><label className="text-xs text-slate-500">Cost/Unit</label><input type="number" value={item.cost_unit} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].cost_unit = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border rounded px-2 py-1 text-sm outline-none focus:border-blue-500"/></div>
-                            <div className="w-32"><label className="text-xs text-slate-500">Value (Auto)</label><input type="number" readOnly value={item.value} className="w-full border bg-slate-50 rounded px-2 py-1 text-sm"/></div>
-                            <button type="button" onClick={() => { const newItems = [...(budgetForm.items||[])]; newItems.splice(index, 1); setBudgetForm({...budgetForm, items: newItems}); }} className="bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded text-sm mb-0.5 transition">X</button>
+                            <div className="flex-1"><label className="text-xs font-bold text-slate-700">Purpose</label><input type="text" value={item.purpose} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].purpose = e.target.value; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-blue-500"/></div>
+                            <div className="w-16"><label className="text-xs font-bold text-slate-700">Qty</label><input type="number" value={item.qty} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].qty = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-blue-500"/></div>
+                            <div className="w-32"><label className="text-xs font-bold text-slate-700">Cost/Unit</label><input type="number" value={item.cost_unit} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].cost_unit = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-blue-500"/></div>
+                            <div className="w-32"><label className="text-xs font-bold text-slate-700">Value (Auto)</label><input type="number" readOnly value={item.value} className="w-full border border-slate-300 bg-slate-100 text-slate-600 rounded px-2 py-1 text-sm font-mono"/></div>
+                            <button type="button" onClick={() => { const newItems = [...(budgetForm.items||[])]; newItems.splice(index, 1); setBudgetForm({...budgetForm, items: newItems}); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2 py-1.5 rounded text-sm mb-0.5 transition border border-red-200">X</button>
                          </div>
                        ))}
                        <div className="flex justify-end items-center mt-4 gap-4">
-                          <button type="button" onClick={() => { const total = (budgetForm.items || []).reduce((acc, curr) => acc + curr.value, 0); setBudgetForm({...budgetForm, total_cost: total}); }} className="text-xs text-blue-600 hover:text-blue-800 underline transition">Hitung Ulang Total</button>
-                          <div className="font-bold">Total Cost: Rp {Number(budgetForm.total_cost || 0).toLocaleString('id-ID')}</div>
+                          <button type="button" onClick={() => { const total = (budgetForm.items || []).reduce((acc, curr) => acc + curr.value, 0); setBudgetForm({...budgetForm, total_cost: total}); }} className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition">Hitung Ulang Total</button>
+                          <div className="font-extrabold text-slate-900">Total Cost: Rp {Number(budgetForm.total_cost || 0).toLocaleString('id-ID')}</div>
                        </div>
                     </div>
                  </form>
                )}
             </div>
-            <div className="px-6 py-4 border-t bg-slate-50 flex justify-end gap-3"><button onClick={closeModal} className="px-4 py-2 border border-slate-300 bg-white hover:bg-slate-50 rounded-md text-sm font-medium transition">Batal</button><button type="submit" form={activeTab === 'claims' ? 'claimForm' : activeTab === 'warranties' ? 'warrantyForm' : activeTab === 'services' ? 'serviceForm' : activeTab === 'promos' ? 'promoForm' : 'budgetForm'} disabled={isSubmitting} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition disabled:opacity-50">{isSubmitting ? 'Menyimpan...' : 'Simpan Data'}</button></div>
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3"><button onClick={closeModal} className="px-4 py-2 border border-slate-300 bg-white hover:bg-slate-100 text-slate-900 rounded-md text-sm font-bold transition">Batal</button><button type="submit" form={activeTab === 'claims' ? 'claimForm' : activeTab === 'warranties' ? 'warrantyForm' : activeTab === 'services' ? 'serviceForm' : activeTab === 'promos' ? 'promoForm' : 'budgetForm'} disabled={isSubmitting} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-bold transition disabled:opacity-50">{isSubmitting ? 'Menyimpan...' : 'Simpan Data'}</button></div>
           </div>
         </div>
       )}
@@ -580,70 +746,62 @@ export default function NikonDashboard() {
                  <span className="font-normal text-sm">(SALES/MARKETING/SERVICE)</span>
                </div>
              </div>
-             
              <div className="border-2 border-black">
                 <div className="flex border-b border-black">
-                   <div className="w-24 p-1 border-r border-black font-bold">Section:</div>
-                   <div className="w-32 p-1 font-bold">MARKETING</div>
+                   <div className="w-24 p-1 border-r border-black font-bold">Section:</div><div className="w-32 p-1 font-bold">MARKETING</div>
                 </div>
                 <div className="flex">
-                   <div className="w-24 p-1 border-r border-black">No. of pages:</div>
-                   <div className="w-32 p-1">1</div>
+                   <div className="w-24 p-1 border-r border-black">No. of pages:</div><div className="w-32 p-1">1</div>
                 </div>
              </div>
           </div>
 
           <div className="flex gap-2 mb-4 text-center">
              <div className="border-2 border-black w-48 flex flex-col">
-                <div className="border-b-2 border-black p-1 font-bold bg-gray-50">Proposed/Prepared by</div>
+                <div className="border-b-2 border-black p-1 font-bold bg-gray-50 text-black">Proposed/Prepared by</div>
                 <div className="flex-1 flex items-end justify-center pb-2 font-bold">{printData.drafter_name || 'Firza'}</div>
-                <div className="border-t border-black flex text-xs divide-x divide-black bg-gray-50">
-                   <div className="p-1 w-1/2 text-left">Sign</div>
-                   <div className="p-1 w-1/2 text-left">Date:</div>
+                <div className="border-t border-black flex text-xs divide-x divide-black bg-gray-50 text-black">
+                   <div className="p-1 w-1/2 text-left">Sign</div><div className="p-1 w-1/2 text-left">Date:</div>
                 </div>
              </div>
              
              <div className="border-2 border-black flex-1 flex flex-col relative pt-5">
                 <div className="absolute top-0 left-0 bg-white px-2 text-sm font-bold ml-2 -mt-2.5">PT Alta Nikindo</div>
-                <div className="border-b border-black p-1 font-bold bg-gray-50">Management Approval</div>
+                <div className="border-b border-black p-1 font-bold bg-gray-50 text-black">Management Approval</div>
                 <div className="flex-1 flex divide-x divide-black min-h-[70px]">
-                   <div className="flex-1 flex flex-col justify-end p-2 relative">
-                      <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
-                   </div>
+                   <div className="flex-1 flex flex-col justify-end p-2 relative"><div className="border-b border-dotted border-black w-full absolute bottom-4"></div></div>
                    <div className="flex-1 flex items-end justify-center pb-2 font-bold">Larry Handra</div>
                 </div>
-                <div className="border-t border-black flex text-xs divide-x divide-black bg-gray-50">
-                   <div className="p-1 w-1/2 text-left font-bold border-b border-black">Comment</div>
-                   <div className="p-1 w-1/2 text-left font-bold border-b border-black">Consent</div>
+                <div className="border-t border-black flex text-xs divide-x divide-black bg-gray-50 text-black">
+                   <div className="p-1 w-1/2 text-left font-bold border-b border-black">Comment</div><div className="p-1 w-1/2 text-left font-bold border-b border-black">Consent</div>
                 </div>
                 <div className="flex text-xs divide-x divide-black">
-                   <div className="p-1 w-1/2 text-right">Date:</div>
-                   <div className="p-1 w-1/2 text-right">Date:</div>
+                   <div className="p-1 w-1/2 text-right">Date:</div><div className="p-1 w-1/2 text-right">Date:</div>
                 </div>
              </div>
 
              <div className="border-2 border-black w-48 flex flex-col">
-                <div className="border-b-2 border-black p-1 font-bold bg-gray-50">Finance Accounting Dept</div>
+                <div className="border-b-2 border-black p-1 font-bold bg-gray-50 text-black">Finance Accounting Dept</div>
                 <div className="flex-1 flex items-end justify-center pb-2"></div>
-                <div className="border-t border-black text-xs p-1 text-left font-bold border-b border-black bg-gray-50">Consent</div>
+                <div className="border-t border-black text-xs p-1 text-left font-bold border-b border-black bg-gray-50 text-black">Consent</div>
                 <div className="text-xs p-1 text-right">Date:</div>
              </div>
           </div>
 
           <div className="border-2 border-black mb-4">
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Title:</div><div className="p-1.5 flex-1 font-bold">{printData.title}</div></div>
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Proposal No:</div><div className="p-1.5 flex-1">{printData.proposal_no}</div></div>
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Period:</div><div className="p-1.5 flex-1">{printData.period}</div></div>
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Objectives:</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.objectives}</div></div>
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Detail of Activity:</div><div className="p-1.5 flex-1 whitespace-pre-wrap min-h-[30px]">{printData.detail_activity}</div></div>
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Expected Result:</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.expected_result}</div></div>
-             <div className="flex"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Total Cost:</div><div className="p-1.5 flex-1 font-bold">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</div></div>
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Title:</div><div className="p-1.5 flex-1 font-bold">{printData.title}</div></div>
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Proposal No:</div><div className="p-1.5 flex-1">{printData.proposal_no}</div></div>
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Period:</div><div className="p-1.5 flex-1">{printData.period}</div></div>
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Objectives:</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.objectives}</div></div>
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Detail of Activity:</div><div className="p-1.5 flex-1 whitespace-pre-wrap min-h-[30px]">{printData.detail_activity}</div></div>
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Expected Result:</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.expected_result}</div></div>
+             <div className="flex"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Total Cost:</div><div className="p-1.5 flex-1 font-bold">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</div></div>
           </div>
 
           <div className="mb-4">
-             <table className="w-full border-collapse border-2 border-black">
+             <table className="w-full border-collapse border-2 border-black text-black">
                 <thead>
-                   <tr className="bg-gray-50">
+                   <tr className="bg-gray-100">
                       <th className="border border-black p-1 w-10 text-center font-bold">No</th>
                       <th className="border border-black p-1 text-center font-bold">Purpose</th>
                       <th className="border border-black p-1 w-16 text-center font-bold">Qty</th>
@@ -669,13 +827,13 @@ export default function NikonDashboard() {
                    )}
                    <tr>
                       <td colSpan={3} className="border-l border-b border-black bg-white"></td>
-                      <td colSpan={2} className="border border-black p-1 text-right font-bold pr-4 bg-gray-50">Subtotal</td>
-                      <td className="border border-black p-1 text-right font-bold bg-gray-50">{Number(printData.total_cost).toLocaleString('id-ID')}</td>
+                      <td colSpan={2} className="border border-black p-1 text-right font-bold pr-4 bg-gray-100">Subtotal</td>
+                      <td className="border border-black p-1 text-right font-bold bg-gray-100">{Number(printData.total_cost).toLocaleString('id-ID')}</td>
                    </tr>
                    <tr>
                       <td colSpan={3} className="border-l border-b border-black bg-white"></td>
-                      <td colSpan={2} className="border border-black p-1 text-right font-bold pr-4 bg-gray-50">Total</td>
-                      <td className="border border-black p-1 text-right font-bold bg-gray-50">{Number(printData.total_cost).toLocaleString('id-ID')}</td>
+                      <td colSpan={2} className="border border-black p-1 text-right font-bold pr-4 bg-gray-100">Total</td>
+                      <td className="border border-black p-1 text-right font-bold bg-gray-100">{Number(printData.total_cost).toLocaleString('id-ID')}</td>
                    </tr>
                 </tbody>
              </table>
