@@ -17,7 +17,7 @@ interface Garansi { id_garansi?: string; nomor_seri: string; tipe_barang: string
 interface Promosi { id_promo?: string; nama_promo: string; tipe_produk: {nama_produk:string}[]; tanggal_mulai: string; tanggal_selesai: string; status_aktif: boolean; created_at?: string; }
 interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor_seri: string; status_service: string; created_at?: string; }
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
-interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; items: BudgetItem[]; created_at?: string; attachment_url?: string; }
+interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_url?: string; }
 
 // --- API PENGIRIMAN AMAN VIA SUPABASE EDGE FUNCTION ---
 const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) => {
@@ -1344,9 +1344,35 @@ export default function NikonDashboard() {
                        <label className="block text-sm font-bold mb-1">Expected Result</label>
                        <textarea required rows={2} value={budgetForm.expected_result || ''} onChange={e => setBudgetForm({...budgetForm, expected_result: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" />
                     </div>
+
+                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-md space-y-4">
+                       <label className="block text-sm font-bold text-slate-900 border-b border-slate-200 pb-2">Nama Penandatangan (Approval)</label>
+                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          <div>
+                             <label className="block text-[11px] font-bold text-slate-600 mb-1">Proposed By</label>
+                             <input type="text" value={budgetForm.drafter_name || ''} onChange={e => setBudgetForm({...budgetForm, drafter_name: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="Nama Pembuat" />
+                          </div>
+                          <div>
+                             <label className="block text-[11px] font-bold text-slate-600 mb-1">Mgt. Comment 1</label>
+                             <input type="text" value={budgetForm.mgt_comment_1 || ''} onChange={e => setBudgetForm({...budgetForm, mgt_comment_1: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="Kosongkan jika tidak perlu" />
+                          </div>
+                          <div>
+                             <label className="block text-[11px] font-bold text-slate-600 mb-1">Mgt. Comment 2</label>
+                             <input type="text" value={budgetForm.mgt_comment_2 || ''} onChange={e => setBudgetForm({...budgetForm, mgt_comment_2: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="Kosongkan jika tidak perlu" />
+                          </div>
+                          <div>
+                             <label className="block text-[11px] font-bold text-slate-600 mb-1">Mgt. Consent</label>
+                             <input type="text" value={budgetForm.mgt_consent || ''} onChange={e => setBudgetForm({...budgetForm, mgt_consent: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="Contoh: Larry Handra" />
+                          </div>
+                          <div>
+                             <label className="block text-[11px] font-bold text-slate-600 mb-1">Finance Consent</label>
+                             <input type="text" value={budgetForm.finance_consent || ''} onChange={e => setBudgetForm({...budgetForm, finance_consent: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="Nama Finance" />
+                          </div>
+                       </div>
+                    </div>
+
                     <div>
-                       <label className="block text-sm font-bold mb-1">Lampiran Poster (Upload File Gambar)</label>
-                       <div className="flex gap-2 items-center">
+                       <label className="block text-sm font-bold mb-1">Lampiran Poster (Upload File Gambar)</label>                       <div className="flex gap-2 items-center">
                          <input type="file" accept="image/*" onChange={e => {
                             const file = e.target.files?.[0];
                             if (file) {
@@ -1529,15 +1555,15 @@ export default function NikonDashboard() {
                   <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Management Approval</div>
                   <div className="flex-1 flex divide-x divide-black min-h-[60px]">
                      <div className="flex-1 flex flex-col justify-end p-2 relative">
-                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" placeholder="Nama Comment 1..." />
+                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.mgt_comment_1 || ''} placeholder="Nama Comment 1..." />
                         <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
                      </div>
                      <div className="flex-1 flex flex-col justify-end p-2 relative">
-                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" placeholder="Nama Comment 2..." />
+                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.mgt_comment_2 || ''} placeholder="Nama Comment 2..." />
                         <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
                      </div>
                      <div className="flex-1 flex flex-col justify-end p-2 relative">
-                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-lg z-10" defaultValue="Larry Handra" placeholder="Nama Consent..." />
+                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-lg z-10" defaultValue={printData.mgt_consent || ''} placeholder="Nama Consent..." />
                         <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
                      </div>
                   </div>
@@ -1555,7 +1581,7 @@ export default function NikonDashboard() {
                <div className="border-2 border-black w-48 flex flex-col bg-white">
                   <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Finance & Accounting</div>
                   <div className="flex-1 flex flex-col justify-end p-2 relative pt-8 min-h-[60px]">
-                     <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-lg z-10" placeholder="Ketik nama..." />
+                     <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-lg z-10" defaultValue={printData.finance_consent || ''} placeholder="Ketik nama..." />
                      <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
                   </div>
                   <div className="border-t border-black text-[10px] p-1 text-left font-bold border-b border-black bg-gray-50 text-black uppercase">Consent</div>
