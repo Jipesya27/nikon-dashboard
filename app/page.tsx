@@ -554,6 +554,7 @@ export default function NikonDashboard() {
   });
 
   useEffect(() => {
+     if (activeTab === 'import' && currentUser?.role === 'Admin') return;
      if (currentUser && visibleTabs.length > 0 && !visibleTabs.find(t => t.id === activeTab)) { setActiveTab(visibleTabs[0].id); }
   }, [currentUser, activeTab, visibleTabs]);
 
