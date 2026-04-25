@@ -7,7 +7,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 const supabaseUrl = 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
-const FONNTE_TOKEN = process.env.NEXT_PUBLIC_FONNTE_TOKEN || 'xYsGrYetdkLXoK72dDtc'; 
 
 // --- TYPES ---
 interface Karyawan { id_karyawan?: string; username: string; password?: string; nama_karyawan: string; role: string; status_aktif: boolean; akses_halaman: string[]; created_at?: string; }
@@ -20,18 +19,29 @@ interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
 interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; items: BudgetItem[]; created_at?: string; attachment_url?: string; }
 
+// --- API PENGIRIMAN AMAN VIA SUPABASE EDGE FUNCTION ---
 const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) => {
   try {
-    const formData = new FormData(); formData.append('target', targetWa); formData.append('message', message);
-    await fetch('https://api.fonnte.com/send', { method: 'POST', headers: { 'Authorization': FONNTE_TOKEN }, body: formData });
-  } catch (error) { console.error("Gagal mengirim Fonnte:", error); }
+    // Memanggil Edge Function "send-wa" (Token Fonnte tersimpan aman di server Supabase)
+    const { error } = await supabase.functions.invoke('send-wa', {
+      body: { target: targetWa, message: message }
+    });
+    if (error) throw error;
+  } catch (error) { 
+    console.error("Gagal mengirim via Edge Function:", error); 
+  }
 };
 
 export default function NikonDashboard() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<Karyawan | null>(null);
+  
+  // LOGIN & FORGOT PASSWORD STATES
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
+  const [isForgotPw, setIsForgotPw] = useState(false);
+  const [forgotPwUsername, setForgotPwUsername] = useState('');
+  const [forgotPwMessage, setForgotPwMessage] = useState('');
 
   const [messages, setMessages] = useState<RiwayatPesan[]>([]);
   const [claims, setClaims] = useState<ClaimPromo[]>([]);
@@ -60,12 +70,10 @@ export default function NikonDashboard() {
   const [msgTimeFilter, setMsgTimeFilter] = useState<'day'|'week'|'month'>('day');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalAction, setModalAction] = useState<'create' | 'edit'>('create');
+  const [modalAction, setModalAction] = useState<'create' | 'edit' | 'reset_pw'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedWa, setSelectedWa] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
-  
-  // STATE MODAL CHAT BARU
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [newChatWa, setNewChatWa] = useState('');
   const [newChatMsg, setNewChatMsg] = useState('');
@@ -106,7 +114,7 @@ export default function NikonDashboard() {
   const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); };
   useEffect(() => { if (selectedWa) setTimeout(() => { scrollToBottom(); }, 300); }, [selectedWa]);
 
-  // --- LOGIN LOGIC ---
+  // --- LOGIN & LUPA PASSWORD LOGIC ---
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault(); setLoginError('');
     const { data } = await supabase.from('karyawan').select('*').eq('username', loginForm.username).eq('password', loginForm.password).single();
@@ -116,6 +124,18 @@ export default function NikonDashboard() {
     } 
     else { setLoginError('Username atau Password salah!'); }
   };
+
+  const handleForgotPwSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); setForgotPwMessage('');
+    const { data } = await supabase.from('karyawan').select('role').eq('username', forgotPwUsername).single();
+    if (data) {
+      if (data.role === 'Admin') setForgotPwMessage('Akun Admin hanya dapat di-reset melalui database Supabase (Table: karyawan) secara langsung demi keamanan.');
+      else setForgotPwMessage('Silakan hubungi Administrator (Admin) untuk mereset password akun Anda.');
+    } else {
+      setForgotPwMessage('Username tidak ditemukan.');
+    }
+  };
+
   const handleLogout = () => { localStorage.removeItem('nikon_karyawan'); setIsLoggedIn(false); setCurrentUser(null); };
 
   // --- FETCH DATA ---
@@ -187,16 +207,21 @@ export default function NikonDashboard() {
     return `MKTG/BA${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
   };
 
-  const openModal = (action: 'create'|'edit', type: 'claim'|'warranty'|'promo'|'service'|'budget'|'karyawan', item?: any) => {
+  const openModal = (action: 'create'|'edit'|'reset_pw', type: 'claim'|'warranty'|'promo'|'service'|'budget'|'karyawan', item?: any) => {
     setModalAction(action);
     if (type === 'claim') { setClaimForm(item || { validasi_by_mkt: 'Dalam Proses Verifikasi', validasi_by_fa: 'Dalam Proses Verifikasi' }); setEditingId(item?.id_claim || null); }
     else if (type === 'warranty') { setWarrantyForm(item || { status_validasi: 'Menunggu', jenis_garansi: 'Jasa 30%', lama_garansi: '1 Tahun' }); setEditingId(item?.id_garansi || null); }
     else if (type === 'promo') { setPromoForm(item || { status_aktif: true, tipe_produk: [] }); setEditingId(item?.id_promo || null); }
     else if (type === 'service') { setServiceForm(item || {}); setEditingId(item?.id_service || null); }
     else if (type === 'budget') { setBudgetForm(item || { proposal_no: generateProposalNo(), total_cost: 0, items: [], drafter_name: currentUser?.nama_karyawan, budget_source: 'Marketing Budget' }); setEditingId(item?.id_budget || null); }
-    else if (type === 'karyawan') { setKaryawanForm(item || { role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] }); setEditingId(item?.id_karyawan || null); }
+    else if (type === 'karyawan') { 
+       if (action === 'reset_pw') { setKaryawanForm({ id_karyawan: item.id_karyawan, username: item.username, password: '' }); }
+       else { setKaryawanForm(item || { role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] }); }
+       setEditingId(item?.id_karyawan || null); 
+    }
     setIsModalOpen(true);
   };
+  
   const closeModal = () => { setIsModalOpen(false); setClaimForm({}); setWarrantyForm({}); setPromoForm({tipe_produk: []}); setServiceForm({}); setBudgetForm({items:[]}); setKaryawanForm({}); setEditingId(null); };
 
   // --- CRUD HANDLERS ---
@@ -205,7 +230,31 @@ export default function NikonDashboard() {
   const handleSavePromo = async (e: React.FormEvent) => { e.preventDefault(); setIsSubmitting(true); try { if (modalAction === 'create') await supabase.from('promosi').insert([promoForm]); else await supabase.from('promosi').update(promoForm).eq('id_promo', editingId); fetchPromos(); closeModal(); } catch (err: any) { alert('Gagal: ' + err.message); } finally { setIsSubmitting(false); } };
   const handleSaveService = async (e: React.FormEvent) => { e.preventDefault(); setIsSubmitting(true); try { if (modalAction === 'create') await supabase.from('status_service').insert([serviceForm]); else await supabase.from('status_service').update(serviceForm).eq('id_service', editingId); fetchServices(); closeModal(); } catch (err: any) { alert('Gagal: ' + err.message); } finally { setIsSubmitting(false); } };
   const handleSaveBudget = async (e: React.FormEvent) => { e.preventDefault(); setIsSubmitting(true); try { if (modalAction === 'create') await supabase.from('budget_approval').insert([budgetForm]); else await supabase.from('budget_approval').update(budgetForm).eq('id_budget', editingId); fetchBudgets(); closeModal(); } catch (err: any) { alert('Gagal: ' + err.message); } finally { setIsSubmitting(false); } };
-  const handleSaveKaryawan = async (e: React.FormEvent) => { e.preventDefault(); setIsSubmitting(true); try { if (modalAction === 'create') { if (!karyawanForm.password) throw new Error("Password wajib diisi untuk pengguna baru!"); await supabase.from('karyawan').insert([karyawanForm]); } else { const updateData = { ...karyawanForm }; if (!updateData.password) delete updateData.password; await supabase.from('karyawan').update(updateData).eq('id_karyawan', editingId); } fetchKaryawans(); closeModal(); } catch (err: any) { alert('Gagal: ' + err.message); } finally { setIsSubmitting(false); } };
+  
+  const handleSaveKaryawan = async (e: React.FormEvent) => { 
+    e.preventDefault(); setIsSubmitting(true); 
+    try { 
+      if (modalAction === 'create') { 
+        if (!karyawanForm.password) throw new Error("Password wajib diisi untuk pengguna baru!"); 
+        await supabase.from('karyawan').insert([karyawanForm]); 
+      } else { 
+        const updateData = { ...karyawanForm }; 
+        if (!updateData.password) delete updateData.password; 
+        await supabase.from('karyawan').update(updateData).eq('id_karyawan', editingId); 
+      } 
+      fetchKaryawans(); closeModal(); 
+    } catch (err: any) { alert('Gagal: ' + err.message); } finally { setIsSubmitting(false); } 
+  };
+
+  const handleResetPwAdmin = async (e: React.FormEvent) => {
+    e.preventDefault(); setIsSubmitting(true);
+    try {
+      if(!karyawanForm.password) throw new Error("Password baru wajib diisi!");
+      await supabase.from('karyawan').update({ password: karyawanForm.password }).eq('id_karyawan', editingId);
+      alert(`Password untuk ${karyawanForm.username} berhasil di-reset!`);
+      fetchKaryawans(); closeModal();
+    } catch (err: any) { alert('Gagal: ' + err.message); } finally { setIsSubmitting(false); }
+  };
 
   const handleDelete = async (type: 'claim'|'warranty'|'promo'|'service'|'budget'|'karyawan', id: string) => {
     if (!window.confirm('Yakin menghapus data?')) return;
@@ -316,13 +365,24 @@ export default function NikonDashboard() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-900 text-slate-900">
         <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm">
-          <div className="text-center mb-6"><h1 className="text-2xl font-bold">Nikon Admin</h1><p className="text-sm text-slate-500">Masuk untuk mengelola Pesan & Data</p></div>
+          <div className="text-center mb-6"><h1 className="text-2xl font-bold">Nikon Dashboard</h1><p className="text-sm text-slate-500">Simplify your workflow</p></div>
           {loginError && <div className="bg-red-100 text-red-700 p-3 rounded text-sm mb-4 font-medium">{loginError}</div>}
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div><label className="block text-sm font-bold mb-1">Username</label><input type="text" value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white text-slate-900"/></div>
-            <div><label className="block text-sm font-bold mb-1">Password</label><input type="password" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white text-slate-900"/></div>
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold mt-2 transition">Login</button>
-          </form>
+          
+          {!isForgotPw ? (
+            <form onSubmit={handleLogin} className="space-y-4 animate-fade-in">
+              <div><label className="block text-sm font-bold mb-1">Username</label><input type="text" value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white text-slate-900"/></div>
+              <div><label className="block text-sm font-bold mb-1">Password</label><input type="password" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white text-slate-900"/></div>
+              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold mt-2 transition">Login</button>
+              <div className="text-center mt-4"><button type="button" onClick={() => setIsForgotPw(true)} className="text-sm font-bold text-blue-600 hover:underline">Lupa Password?</button></div>
+            </form>
+          ) : (
+            <form onSubmit={handleForgotPwSubmit} className="space-y-4 animate-fade-in">
+              {forgotPwMessage && <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded text-sm font-medium mb-4">{forgotPwMessage}</div>}
+              <div><label className="block text-sm font-bold mb-1">Masukkan Username Anda</label><input type="text" value={forgotPwUsername} onChange={e => setForgotPwUsername(e.target.value)} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white text-slate-900" placeholder="Username..."/></div>
+              <button type="submit" className="w-full bg-slate-800 hover:bg-slate-900 text-white py-2 rounded font-bold mt-2 transition">Cek Akun</button>
+              <div className="text-center mt-4"><button type="button" onClick={() => { setIsForgotPw(false); setForgotPwMessage(''); setForgotPwUsername(''); }} className="text-sm font-bold text-slate-500 hover:text-slate-800">Kembali ke Login</button></div>
+            </form>
+          )}
         </div>
       </div>
     );
@@ -385,9 +445,7 @@ export default function NikonDashboard() {
 
       <div className="max-w-7xl mx-auto px-6 space-y-6">
         
-        {/* =========================================================
-            1. PESAN
-        ========================================================= */}
+        {/* ======================= PESAN ======================= */}
         {activeTab === 'messages' && (
           <div className="space-y-6 animate-fade-in text-slate-900">
             <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200">
@@ -503,11 +561,12 @@ export default function NikonDashboard() {
                <tbody className="divide-y divide-slate-200">{filteredClaims.map(c => (
                  <tr key={c.id_claim} className="whitespace-nowrap hover:bg-slate-50 font-medium">
                    <td className="px-4 py-3 text-slate-800 font-bold">{consumers[c.nomor_wa]||c.nomor_wa}</td><td className="px-4 py-3 font-mono">{c.nomor_seri}</td><td className="px-4 py-3">{c.tipe_barang}</td><td className="px-4 py-3 font-bold text-blue-700">{getNamaPromo(c.tipe_barang)}</td><td className="px-4 py-3">{c.tanggal_pembelian}</td><td className="px-4 py-3">{c.nama_toko || '-'}</td>
-                   <td className="px-4 py-3 text-blue-600 font-bold text-xs flex gap-3">{c.link_nota_pembelian && <a href={c.link_nota_pembelian} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Nota</a>} {c.link_kartu_garansi && <a href={c.link_kartu_garansi} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Garansi</a>}</td>
+                   <td className="px-4 py-3 text-blue-600 font-bold text-xs flex flex-col gap-1">{c.link_nota_pembelian && <a href={c.link_nota_pembelian} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Nota</a>} {c.link_kartu_garansi && <a href={c.link_kartu_garansi} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Garansi</a>}</td>
                    <td className="px-4 py-3 text-xs font-bold">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
                    <td className="px-4 py-3">
-                     <div className="flex gap-3">
+                     <div className="flex gap-3 items-center">
                         <button onClick={()=>handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
+                        <div className="w-px h-3 bg-slate-300"></div>
                         <button onClick={()=>openModal('edit','claim',c)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
                         <button onClick={()=>handleDelete('claim',c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                      </div>
@@ -530,11 +589,12 @@ export default function NikonDashboard() {
                  const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
                  return (<tr key={w.id_garansi} className="whitespace-nowrap hover:bg-slate-50 font-medium">
                    <td className="px-4 py-3 font-mono font-bold">{w.nomor_seri}</td><td className="px-4 py-3">{w.tipe_barang}</td>
-                   <td className="px-4 py-3 text-blue-600 font-bold text-xs flex gap-3">{linkNota && <a href={linkNota} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Nota</a>} {linkGaransi && <a href={linkGaransi} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Garansi</a>}</td>
+                   <td className="px-4 py-3 text-blue-600 font-bold text-xs flex flex-col gap-1">{linkNota && <a href={linkNota} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Nota</a>} {linkGaransi && <a href={linkGaransi} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Garansi</a>}</td>
                    <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{w.status_validasi}</span></td><td className="px-4 py-3">{w.jenis_garansi}</td><td className="px-4 py-3 font-bold text-slate-700">{calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</td>
                    <td className="px-4 py-3">
-                      <div className="flex gap-3">
+                      <div className="flex gap-3 items-center">
                          <button onClick={()=>handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
+                         <div className="w-px h-3 bg-slate-300"></div>
                          <button onClick={()=>openModal('edit','warranty',w)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
                          <button onClick={()=>handleDelete('warranty',w.id_garansi!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                       </div>
@@ -589,6 +649,7 @@ export default function NikonDashboard() {
                    <td className="px-6 py-3 font-mono text-xs text-slate-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman||[]).join(', ')}</td>
                    <td className="px-6 py-3 flex gap-3">
                      <button onClick={()=>openModal('edit','karyawan',k)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                     <button onClick={()=>openModal('reset_pw','karyawan',k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
                      <button onClick={()=>handleDelete('karyawan',k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline" disabled={k.username === 'admin'}>Hapus</button>
                    </td>
                  </tr>
@@ -615,7 +676,7 @@ export default function NikonDashboard() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 text-slate-900">
           <div className={`bg-white rounded-xl shadow-2xl w-full ${activeTab === 'budgets' ? 'max-w-4xl' : 'max-w-2xl'} overflow-hidden flex flex-col max-h-[90vh]`}>
-            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center"><h2 className="text-lg font-bold">{modalAction === 'create' ? 'Tambah' : 'Edit'} Data</h2><button onClick={closeModal} className="text-2xl text-slate-400 hover:text-slate-700 leading-none transition">×</button></div>
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center"><h2 className="text-lg font-bold">{modalAction === 'create' ? 'Tambah' : modalAction === 'reset_pw' ? 'Reset Password' : 'Edit'} Data</h2><button onClick={closeModal} className="text-2xl text-slate-400 hover:text-slate-700 leading-none transition">×</button></div>
             <div className="p-6 overflow-y-auto">
                
                {activeTab === 'claims' && (
@@ -736,36 +797,46 @@ export default function NikonDashboard() {
                )}
 
                {activeTab === 'userrole' && (
-                 <form id="karyawanForm" onSubmit={handleSaveKaryawan} className="space-y-4">
-                    <div><label className="block text-sm font-bold mb-1">Nama Karyawan</label><input required type="text" value={karyawanForm.nama_karyawan || ''} onChange={e => setKaryawanForm({...karyawanForm, nama_karyawan: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                       <div><label className="block text-sm font-bold mb-1">Username Login</label><input required type="text" value={karyawanForm.username || ''} onChange={e => setKaryawanForm({...karyawanForm, username: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" disabled={karyawanForm.username === 'admin'}/></div>
-                       <div><label className="block text-sm font-bold mb-1">Password {modalAction === 'edit' && <span className="text-[10px] font-normal text-slate-500">(Kosongkan jika tidak diubah)</span>}</label><input type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({...karyawanForm, password: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                       <div><label className="block text-sm font-bold mb-1">Role Akun</label><select value={karyawanForm.role || ''} onChange={e => setKaryawanForm({...karyawanForm, role: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" disabled={karyawanForm.username === 'admin'}><option value="Karyawan">Karyawan</option><option value="Admin">Admin</option></select></div>
-                       <div><label className="block text-sm font-bold mb-1">Status Akun</label><select value={karyawanForm.status_aktif ? 'true' : 'false'} onChange={e => setKaryawanForm({...karyawanForm, status_aktif: e.target.value === 'true'})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" disabled={karyawanForm.username === 'admin'}><option value="true">Aktif</option><option value="false">Tidak Aktif (Blokir)</option></select></div>
-                    </div>
-                    
-                    <div className="mt-4 border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-md">
-                       <label className="block text-sm font-bold text-slate-900 mb-2">Akses Halaman yang Diizinkan</label>
-                       <p className="text-xs font-bold text-slate-500 mb-3">Pilih tab mana saja yang boleh dilihat oleh karyawan ini.</p>
-                       <div className="grid grid-cols-2 gap-2">
-                          {[ { id: 'messages', label: 'Pesan' }, { id: 'konsumen', label: 'Konsumen' }, { id: 'promos', label: 'Promo' }, { id: 'claims', label: 'Claim' }, { id: 'warranties', label: 'Garansi' }, { id: 'services', label: 'Service' }, { id: 'budgets', label: 'ProposalEvent' } ].map(tab => {
-                              const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
-                              return (
-                                 <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'} cursor-pointer`}>
-                                    <input type="checkbox" checked={isChecked} disabled={karyawanForm.role === 'Admin'} onChange={() => {
-                                       const current = karyawanForm.akses_halaman || [];
-                                       if (current.includes(tab.id)) setKaryawanForm({...karyawanForm, akses_halaman: current.filter(x => x !== tab.id)});
-                                       else setKaryawanForm({...karyawanForm, akses_halaman: [...current, tab.id]});
-                                    }} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
-                                    <span className="text-sm font-bold text-slate-700">{tab.label}</span>
-                                 </label>
-                              )
-                          })}
-                       </div>
-                    </div>
+                 <form id="karyawanForm" onSubmit={modalAction === 'reset_pw' ? handleResetPwAdmin : handleSaveKaryawan} className="space-y-4">
+                    {modalAction === 'reset_pw' ? (
+                       <>
+                          <div className="bg-amber-50 p-4 rounded-md border border-amber-200 text-amber-800 text-sm mb-4 font-medium">
+                             Anda sedang mengatur ulang kata sandi (Reset Password) untuk user: <b className="text-amber-900 text-lg ml-1">{karyawanForm.username}</b>
+                          </div>
+                          <div><label className="block text-sm font-bold mb-1">Ketik Password Baru</label><input required type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({...karyawanForm, password: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Minimal 6 karakter..." /></div>
+                       </>
+                    ) : (
+                       <>
+                          <div><label className="block text-sm font-bold mb-1">Nama Karyawan</label><input required type="text" value={karyawanForm.nama_karyawan || ''} onChange={e => setKaryawanForm({...karyawanForm, nama_karyawan: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                          <div className="grid grid-cols-2 gap-4">
+                             <div><label className="block text-sm font-bold mb-1">Username Login</label><input required type="text" value={karyawanForm.username || ''} onChange={e => setKaryawanForm({...karyawanForm, username: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" disabled={karyawanForm.username === 'admin'}/></div>
+                             <div><label className="block text-sm font-bold mb-1">Password {modalAction === 'edit' && <span className="text-[10px] font-normal text-slate-500">(Kosongkan jika tidak diubah)</span>}</label><input type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({...karyawanForm, password: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" /></div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                             <div><label className="block text-sm font-bold mb-1">Role Akun</label><select value={karyawanForm.role || ''} onChange={e => setKaryawanForm({...karyawanForm, role: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" disabled={karyawanForm.username === 'admin'}><option value="Karyawan">Karyawan</option><option value="Admin">Admin</option></select></div>
+                             <div><label className="block text-sm font-bold mb-1">Status Akun</label><select value={karyawanForm.status_aktif ? 'true' : 'false'} onChange={e => setKaryawanForm({...karyawanForm, status_aktif: e.target.value === 'true'})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" disabled={karyawanForm.username === 'admin'}><option value="true">Aktif</option><option value="false">Tidak Aktif (Blokir)</option></select></div>
+                          </div>
+                          <div className="mt-4 border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-md">
+                             <label className="block text-sm font-bold text-slate-900 mb-2">Akses Halaman yang Diizinkan</label>
+                             <p className="text-xs font-bold text-slate-500 mb-3">Pilih tab mana saja yang boleh dilihat oleh karyawan ini.</p>
+                             <div className="grid grid-cols-2 gap-2">
+                                {[ { id: 'messages', label: 'Pesan' }, { id: 'konsumen', label: 'Konsumen' }, { id: 'promos', label: 'Promo' }, { id: 'claims', label: 'Claim' }, { id: 'warranties', label: 'Garansi' }, { id: 'services', label: 'Service' }, { id: 'budgets', label: 'ProposalEvent' } ].map(tab => {
+                                    const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
+                                    return (
+                                       <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'} cursor-pointer`}>
+                                          <input type="checkbox" checked={isChecked} disabled={karyawanForm.role === 'Admin'} onChange={() => {
+                                             const current = karyawanForm.akses_halaman || [];
+                                             if (current.includes(tab.id)) setKaryawanForm({...karyawanForm, akses_halaman: current.filter(x => x !== tab.id)});
+                                             else setKaryawanForm({...karyawanForm, akses_halaman: [...current, tab.id]});
+                                          }} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                                          <span className="text-sm font-bold text-slate-700">{tab.label}</span>
+                                       </label>
+                                    )
+                                })}
+                             </div>
+                          </div>
+                       </>
+                    )}
                  </form>
                )}
             </div>
