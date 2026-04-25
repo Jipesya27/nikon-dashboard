@@ -329,7 +329,7 @@ export default function NikonDashboard() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-900 text-slate-900">
         <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm">
-          <div className="text-center mb-6"><h1 className="text-2xl font-bold">Nikon Admin</h1><p className="text-sm text-slate-500">Masuk untuk mengelola Bot & Data</p></div>
+          <div className="text-center mb-6"><h1 className="text-2xl font-bold">Nikon Admin</h1><p className="text-sm text-slate-500">Masuk untuk mengelola Pesan & Data</p></div>
           {loginError && <div className="bg-red-100 text-red-700 p-3 rounded text-sm mb-4 font-medium">{loginError}</div>}
           <form onSubmit={handleLogin} className="space-y-4">
             <div><label className="block text-sm font-bold mb-1">Username</label><input type="text" value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white text-slate-900"/></div>
