@@ -606,9 +606,10 @@ export default function NikonDashboard() {
   if (loading) return <div className="flex justify-center items-center h-screen bg-white"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-12 print:hidden relative text-slate-900">
-      
-      <datalist id="list-tipe-barang">{uniqueTipeBarang.map(t => <option key={t} value={t}/>)}</datalist>
+    <>
+      <div className={`min-h-screen bg-slate-50 pb-12 relative text-slate-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
+        
+        <datalist id="list-tipe-barang">{uniqueTipeBarang.map(t => <option key={t} value={t}/>)}</datalist>
       <datalist id="list-nama-toko">{uniqueToko.map(t => <option key={t} value={t}/>)}</datalist>
       <datalist id="list-jasa-kirim">{uniqueJasa.map(t => <option key={t} value={t}/>)}</datalist>
       <datalist id="list-jenis-promo">{uniqueJenisPromo.map(t => <option key={t} value={t}/>)}</datalist>
@@ -1476,11 +1477,13 @@ export default function NikonDashboard() {
         </div>
       )}
 
+      </div>
+
       {/* =========================================================
           PRINT AREA (FORMAT PERSIS PDF MKTG)
       ========================================================= */}
       {printData && (
-        <div className="hidden print:flex flex-col absolute top-0 left-0 w-full bg-white text-black font-sans z-[100] min-h-screen pb-10 px-4 pt-6" style={{ fontSize: '13px', lineHeight: '1.4' }}>
+        <div className="flex flex-col absolute top-0 left-0 w-full bg-white text-black font-sans z-[100] min-h-screen pb-10 px-4 pt-6" style={{ fontSize: '13px', lineHeight: '1.4' }}>
           
           {/* HEADER */}
           <div className="flex justify-between items-start border-b-2 border-black pb-3 mb-5">
@@ -1604,6 +1607,6 @@ export default function NikonDashboard() {
         </div>
       )}
 
-    </div>
+    </>
   );
 }
