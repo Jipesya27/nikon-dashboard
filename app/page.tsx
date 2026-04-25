@@ -1523,15 +1523,18 @@ export default function NikonDashboard() {
                 <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Management Approval</div>
                 <div className="flex-1 flex divide-x divide-black min-h-[60px]">
                    <div className="flex-1 flex flex-col justify-end p-2 relative"><div className="border-b border-dotted border-black w-full absolute bottom-4"></div></div>
+                   <div className="flex-1 flex flex-col justify-end p-2 relative"><div className="border-b border-dotted border-black w-full absolute bottom-4"></div></div>
                    <div className="flex-1 flex items-end justify-center pb-2 font-bold text-lg">Larry Handra</div>
                 </div>
                 <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
-                   <div className="p-1 w-1/2 text-left border-b border-black">Comment</div>
-                   <div className="p-1 w-1/2 text-left border-b border-black">Consent</div>
+                   <div className="p-1 w-1/3 text-left border-b border-black">Comment</div>
+                   <div className="p-1 w-1/3 text-left border-b border-black">Comment</div>
+                   <div className="p-1 w-1/3 text-left border-b border-black">Consent</div>
                 </div>
                 <div className="flex text-[10px] divide-x divide-black bg-white">
-                   <div className="p-1 w-1/2 text-right">Date:</div>
-                   <div className="p-1 w-1/2 text-right">Date:</div>
+                   <div className="p-1 w-1/3 text-right">Date:</div>
+                   <div className="p-1 w-1/3 text-right">Date:</div>
+                   <div className="p-1 w-1/3 text-right">Date:</div>
                 </div>
              </div>
              <div className="border-2 border-black w-48 flex flex-col bg-white">
@@ -1549,8 +1552,7 @@ export default function NikonDashboard() {
              <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Period</div><div className="p-1.5 flex-1 font-bold">{printData.period}</div></div>
              <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Objectives</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.objectives}</div></div>
              <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Detail of Activity</div><div className="p-1.5 flex-1 whitespace-pre-wrap min-h-[40px]">{printData.detail_activity}</div></div>
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Expected Result</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.expected_result}</div></div>
-             <div className="flex"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-lg">Total Cost</div><div className="p-1.5 flex-1 font-extrabold text-lg">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</div></div>
+             <div className="flex"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Expected Result</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.expected_result}</div></div>
           </div>
 
           {/* ITEMS TABLE */}
@@ -1590,6 +1592,11 @@ export default function NikonDashboard() {
                       <td colSpan={3} className="border-l border-b border-transparent bg-white"></td>
                       <td colSpan={2} className="border border-black p-1.5 text-right font-extrabold pr-4 bg-gray-200 uppercase text-xs text-black">Grand Total</td>
                       <td className="border border-black p-1.5 text-right font-extrabold bg-gray-200 text-black text-sm">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
+                   </tr>
+                   <tr>
+                      <td colSpan={3} className="border-l border-b border-transparent bg-white"></td>
+                      <td colSpan={2} className="border-2 border-black p-2 text-right font-extrabold pr-4 bg-black text-white uppercase text-sm">TOTAL COST</td>
+                      <td className="border-2 border-black p-2 text-right font-extrabold bg-black text-white text-lg">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
                    </tr>
                 </tbody>
              </table>
