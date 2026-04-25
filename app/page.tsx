@@ -1328,7 +1328,7 @@ export default function NikonDashboard() {
                     <div className="grid grid-cols-2 gap-4">
                        <div>
                           <label className="block text-sm font-bold mb-1">Period (Tanggal)</label>
-                          <input required type="text" value={budgetForm.period || ''} onChange={e => setBudgetForm({...budgetForm, period: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" />
+                          <input required type="date" value={budgetForm.period || ''} onChange={e => setBudgetForm({...budgetForm, period: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" />
                        </div>
                        <div>
                           <label className="block text-sm font-bold mb-1">Budget Source</label>
@@ -1348,10 +1348,24 @@ export default function NikonDashboard() {
                        <textarea required rows={2} value={budgetForm.expected_result || ''} onChange={e => setBudgetForm({...budgetForm, expected_result: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" />
                     </div>
                     <div>
-                       <label className="block text-sm font-bold mb-1">Lampiran Poster (Link URL Gambar)</label>
-                       <input type="url" value={budgetForm.attachment_url || ''} onChange={e => setBudgetForm({...budgetForm, attachment_url: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="https://contoh.com/gambar.jpg" />
-                    </div>
-                    
+                       <label className="block text-sm font-bold mb-1">Lampiran Poster (Upload File Gambar)</label>
+                       <div className="flex gap-2 items-center">
+                         <input type="file" accept="image/*" onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => setBudgetForm({...budgetForm, attachment_url: reader.result as string});
+                              reader.readAsDataURL(file);
+                            }
+                         }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
+                         {budgetForm.attachment_url && <button type="button" onClick={() => setBudgetForm({...budgetForm, attachment_url: ''})} className="bg-red-100 text-red-700 font-bold px-3 py-1.5 rounded text-sm hover:bg-red-200 transition">Hapus</button>}
+                       </div>
+                       {budgetForm.attachment_url && (
+                         <div className="mt-2 border rounded p-1 inline-block bg-slate-50">
+                            <img src={budgetForm.attachment_url} alt="Preview" className="h-24 object-contain" />
+                         </div>
+                       )}
+                    </div>                    
                     <div className="mt-6 border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-md">
                        <div className="flex justify-between items-center mb-2">
                           <label className="block text-sm font-bold text-slate-900">Rincian Budget (Items)</label>
@@ -1466,118 +1480,125 @@ export default function NikonDashboard() {
           PRINT AREA (FORMAT PERSIS PDF MKTG)
       ========================================================= */}
       {printData && (
-        <div className="hidden print:block absolute top-0 left-0 w-full bg-white text-black font-sans z-[100] min-h-screen pb-10" style={{ fontSize: '13px' }}>
+        <div className="hidden print:flex flex-col absolute top-0 left-0 w-full bg-white text-black font-sans z-[100] min-h-screen pb-10 px-4 pt-6" style={{ fontSize: '13px', lineHeight: '1.4' }}>
           
-          <div className="flex justify-between items-start border-b-2 border-black pb-2 mb-4">
+          {/* HEADER */}
+          <div className="flex justify-between items-start border-b-2 border-black pb-3 mb-5">
              <div className="flex items-center gap-4">
-               <div className="font-extrabold text-xl tracking-tight">
-                 ■BUDGET APPROVAL <br/>
-                 <span className="font-normal text-sm">(SALES/MARKETING/SERVICE)</span>
+               <div className="w-14 h-14 bg-black text-white flex flex-col items-center justify-center font-bold text-[10px] uppercase text-center p-1 leading-none shadow-sm">
+                 <span>ALTA</span>
+                 <span>NIKINDO</span>
+               </div>
+               <div className="font-extrabold text-2xl tracking-tight leading-tight">
+                 BUDGET APPROVAL <br/>
+                 <span className="font-normal text-sm tracking-normal">(SALES / MARKETING / SERVICE)</span>
                </div>
              </div>
-             <div className="border-2 border-black">
+             <div className="border-2 border-black bg-white">
                 <div className="flex border-b border-black">
-                   <div className="w-24 p-1 border-r border-black font-bold">Section:</div>
-                   <div className="w-32 p-1 font-bold">MARKETING</div>
+                   <div className="w-20 p-1 border-r border-black font-bold text-xs bg-gray-50">Section:</div>
+                   <div className="w-36 p-1 font-bold text-xs uppercase">{printData.budget_source || 'MARKETING'}</div>
                 </div>
                 <div className="flex">
-                   <div className="w-24 p-1 border-r border-black">No. of pages:</div>
-                   <div className="w-32 p-1">1</div>
+                   <div className="w-20 p-1 border-r border-black font-bold text-xs bg-gray-50">Page(s):</div>
+                   <div className="w-36 p-1 text-xs">1</div>
                 </div>
              </div>
           </div>
 
-          <div className="flex gap-2 mb-4 text-center">
-             <div className="border-2 border-black w-48 flex flex-col">
-                <div className="border-b-2 border-black p-1 font-bold bg-gray-50 text-black">Proposed/Prepared by</div>
-                <div className="flex-1 flex items-end justify-center pb-2 font-bold">{printData.drafter_name || 'Firza'}</div>
-                <div className="border-t border-black flex text-xs divide-x divide-black bg-gray-50 text-black">
+          {/* SIGNATURE GRID */}
+          <div className="flex gap-2 mb-5 text-center">
+             <div className="border-2 border-black w-48 flex flex-col bg-white">
+                <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Proposed / Prepared by</div>
+                <div className="flex-1 flex items-end justify-center pb-2 font-bold text-lg min-h-[60px] pt-8">{printData.drafter_name || '-'}</div>
+                <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
                    <div className="p-1 w-1/2 text-left">Sign</div>
                    <div className="p-1 w-1/2 text-left">Date:</div>
                 </div>
              </div>
-             <div className="border-2 border-black flex-1 flex flex-col relative pt-5">
-                <div className="absolute top-0 left-0 bg-white px-2 text-sm font-bold ml-2 -mt-2.5">PT Alta Nikindo</div>
-                <div className="border-b border-black p-1 font-bold bg-gray-50 text-black">Management Approval</div>
-                <div className="flex-1 flex divide-x divide-black min-h-[70px]">
+             <div className="border-2 border-black flex-1 flex flex-col relative bg-white">
+                <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Management Approval</div>
+                <div className="flex-1 flex divide-x divide-black min-h-[60px]">
                    <div className="flex-1 flex flex-col justify-end p-2 relative"><div className="border-b border-dotted border-black w-full absolute bottom-4"></div></div>
-                   <div className="flex-1 flex items-end justify-center pb-2 font-bold">Larry Handra</div>
+                   <div className="flex-1 flex items-end justify-center pb-2 font-bold text-lg">Larry Handra</div>
                 </div>
-                <div className="border-t border-black flex text-xs divide-x divide-black bg-gray-50 text-black">
-                   <div className="p-1 w-1/2 text-left font-bold border-b border-black">Comment</div>
-                   <div className="p-1 w-1/2 text-left font-bold border-b border-black">Consent</div>
+                <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
+                   <div className="p-1 w-1/2 text-left border-b border-black">Comment</div>
+                   <div className="p-1 w-1/2 text-left border-b border-black">Consent</div>
                 </div>
-                <div className="flex text-xs divide-x divide-black">
+                <div className="flex text-[10px] divide-x divide-black bg-white">
                    <div className="p-1 w-1/2 text-right">Date:</div>
                    <div className="p-1 w-1/2 text-right">Date:</div>
                 </div>
              </div>
-             <div className="border-2 border-black w-48 flex flex-col">
-                <div className="border-b-2 border-black p-1 font-bold bg-gray-50 text-black">Finance Accounting Dept</div>
-                <div className="flex-1 flex items-end justify-center pb-2"></div>
-                <div className="border-t border-black text-xs p-1 text-left font-bold border-b border-black bg-gray-50 text-black">Consent</div>
-                <div className="text-xs p-1 text-right">Date:</div>
+             <div className="border-2 border-black w-48 flex flex-col bg-white">
+                <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Finance & Accounting</div>
+                <div className="flex-1 flex items-end justify-center pb-2 min-h-[60px]"></div>
+                <div className="border-t border-black text-[10px] p-1 text-left font-bold border-b border-black bg-gray-50 text-black uppercase">Consent</div>
+                <div className="text-[10px] p-1 text-right bg-white uppercase font-bold">Date:</div>
              </div>
           </div>
 
-          <div className="border-2 border-black mb-4">
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Title:</div><div className="p-1.5 flex-1 font-bold">{printData.title}</div></div>
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Proposal No:</div><div className="p-1.5 flex-1">{printData.proposal_no}</div></div>
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Period:</div><div className="p-1.5 flex-1">{printData.period}</div></div>
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Objectives:</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.objectives}</div></div>
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Detail of Activity:</div><div className="p-1.5 flex-1 whitespace-pre-wrap min-h-[30px]">{printData.detail_activity}</div></div>
-             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Expected Result:</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.expected_result}</div></div>
-             <div className="flex"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-black">Total Cost:</div><div className="p-1.5 flex-1 font-bold">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</div></div>
+          {/* MAIN DETAILS */}
+          <div className="border-2 border-black mb-5 bg-white">
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Title</div><div className="p-1.5 flex-1 font-bold uppercase text-sm">{printData.title}</div></div>
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Proposal No.</div><div className="p-1.5 flex-1 font-mono font-bold">{printData.proposal_no}</div></div>
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Period</div><div className="p-1.5 flex-1 font-bold">{printData.period}</div></div>
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Objectives</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.objectives}</div></div>
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Detail of Activity</div><div className="p-1.5 flex-1 whitespace-pre-wrap min-h-[40px]">{printData.detail_activity}</div></div>
+             <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Expected Result</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.expected_result}</div></div>
+             <div className="flex"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50 text-lg">Total Cost</div><div className="p-1.5 flex-1 font-extrabold text-lg">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</div></div>
           </div>
 
-          <div className="mb-4">
-             <table className="w-full border-collapse border-2 border-black text-black">
+          {/* ITEMS TABLE */}
+          <div className="mb-5 flex-1">
+             <table className="w-full border-collapse border-2 border-black text-black bg-white">
                 <thead>
-                   <tr className="bg-gray-100">
-                      <th className="border border-black p-1 w-10 text-center font-bold">No</th>
-                      <th className="border border-black p-1 text-center font-bold">Purpose</th>
-                      <th className="border border-black p-1 w-16 text-center font-bold">Qty</th>
-                      <th className="border border-black p-1 w-32 text-center font-bold">Cost / Unit</th>
-                      <th className="border border-black p-1 w-32 text-center font-bold">Petty Cash</th>
-                      <th className="border border-black p-1 w-32 text-center font-bold">Value</th>
+                   <tr className="bg-gray-100 uppercase text-[11px] tracking-wide">
+                      <th className="border border-black p-1.5 w-10 text-center font-bold">No</th>
+                      <th className="border border-black p-1.5 text-center font-bold">Purpose / Item Description</th>
+                      <th className="border border-black p-1.5 w-16 text-center font-bold">Qty</th>
+                      <th className="border border-black p-1.5 w-32 text-center font-bold">Cost / Unit</th>
+                      <th className="border border-black p-1.5 w-32 text-center font-bold">Petty Cash</th>
+                      <th className="border border-black p-1.5 w-32 text-center font-bold">Total Value</th>
                    </tr>
                 </thead>
                 <tbody>
                    {printData.items && printData.items.length > 0 ? ( 
                       printData.items.map((item, idx) => ( 
                          <tr key={idx}>
-                            <td className="border border-black p-1 text-center">{idx + 1}</td>
-                            <td className="border border-black p-1 text-left">{item.purpose}</td>
-                            <td className="border border-black p-1 text-center">{item.qty}</td>
-                            <td className="border border-black p-1 text-right">{Number(item.cost_unit).toLocaleString('id-ID')}</td>
-                            <td className="border border-black p-1 text-center"></td>
-                            <td className="border border-black p-1 text-right">{Number(item.value).toLocaleString('id-ID')}</td>
+                            <td className="border border-black p-1.5 text-center font-medium">{idx + 1}</td>
+                            <td className="border border-black p-1.5 text-left font-medium">{item.purpose}</td>
+                            <td className="border border-black p-1.5 text-center font-medium">{item.qty}</td>
+                            <td className="border border-black p-1.5 text-right font-medium">{Number(item.cost_unit).toLocaleString('id-ID')}</td>
+                            <td className="border border-black p-1.5 text-center bg-gray-50"></td>
+                            <td className="border border-black p-1.5 text-right font-bold">{Number(item.value).toLocaleString('id-ID')}</td>
                          </tr> 
                       )) 
                    ) : ( 
-                      <tr><td colSpan={6} className="border border-black py-4 text-center text-gray-500">Tidak ada rincian item</td></tr> 
+                      <tr><td colSpan={6} className="border border-black py-6 text-center text-gray-500 italic">Tidak ada rincian item</td></tr> 
                    )}
-                   <tr>
+                   <tr className="border-t-2 border-black">
                       <td colSpan={3} className="border-l border-b border-black bg-white"></td>
-                      <td colSpan={2} className="border border-black p-1 text-right font-bold pr-4 bg-gray-100">Subtotal</td>
-                      <td className="border border-black p-1 text-right font-bold bg-gray-100">{Number(printData.total_cost).toLocaleString('id-ID')}</td>
+                      <td colSpan={2} className="border border-black p-1.5 text-right font-bold pr-4 bg-gray-100 uppercase text-xs">Subtotal</td>
+                      <td className="border border-black p-1.5 text-right font-extrabold bg-gray-100">{Number(printData.total_cost).toLocaleString('id-ID')}</td>
                    </tr>
                    <tr>
-                      <td colSpan={3} className="border-l border-b border-black bg-white"></td>
-                      <td colSpan={2} className="border border-black p-1 text-right font-bold pr-4 bg-gray-100">Total</td>
-                      <td className="border border-black p-1 text-right font-bold bg-gray-100">{Number(printData.total_cost).toLocaleString('id-ID')}</td>
+                      <td colSpan={3} className="border-l border-b border-transparent bg-white"></td>
+                      <td colSpan={2} className="border border-black p-1.5 text-right font-extrabold pr-4 bg-gray-200 uppercase text-xs text-black">Grand Total</td>
+                      <td className="border border-black p-1.5 text-right font-extrabold bg-gray-200 text-black text-sm">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
                    </tr>
                 </tbody>
              </table>
           </div>
 
-          <div className="font-bold text-sm mb-4">
-             <div>Budget Source: <span className="font-normal ml-2">{printData.budget_source || 'Marketing Budget'}</span></div>
-             <div className="mt-1">Attachment(s):</div>
-          </div>
+          {/* ATTACHMENT */}
           {printData.attachment_url && (
-             <div className="mt-4 flex justify-center w-full max-h-[400px] overflow-hidden border border-gray-300 p-2">
-                <img src={printData.attachment_url} alt="Lampiran Budget Approval" className="object-contain max-h-[380px]" />
+             <div className="mt-4 pt-4 border-t-2 border-dashed border-gray-400 page-break-inside-avoid">
+                <div className="font-bold text-xs uppercase tracking-wide mb-2">Lampiran (Attachment):</div>
+                <div className="flex justify-center w-full border border-gray-300 p-2 bg-gray-50">
+                   <img src={printData.attachment_url} alt="Lampiran Poster" className="object-contain max-h-[450px] w-auto drop-shadow-sm" />
+                </div>
              </div>
           )}
         </div>
