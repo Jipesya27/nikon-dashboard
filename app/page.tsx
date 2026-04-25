@@ -127,17 +127,13 @@ export default function NikonDashboard() {
     return () => { subscription.unsubscribe(); };
   }, [isLoggedIn, dateRange]);
 
-  useEffect(() => { 
-    if (printData) { 
-      setTimeout(() => { window.print(); }, 500); 
-    } 
+  useEffect(() => {
+    // Print handled manually via button in the print overlay
   }, [printData]);
 
-  useEffect(() => { 
-    const handleAfterPrint = () => setPrintData(null); 
-    window.addEventListener('afterprint', handleAfterPrint); 
-    return () => window.removeEventListener('afterprint', handleAfterPrint); 
-  }, []);
+  const handlePrintDocument = () => {
+    window.print();
+  };
 
   const scrollToBottom = () => { 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); 
@@ -1483,67 +1479,89 @@ export default function NikonDashboard() {
           PRINT AREA (FORMAT PERSIS PDF MKTG)
       ========================================================= */}
       {printData && (
-        <div className="flex flex-col absolute top-0 left-0 w-full bg-white text-black font-sans z-[100] min-h-screen pb-10 px-4 pt-6" style={{ fontSize: '13px', lineHeight: '1.4' }}>
+        <div className="flex flex-col absolute top-0 left-0 w-full bg-white text-black font-sans z-[100] min-h-screen pb-10 pt-6" style={{ fontSize: '13px', lineHeight: '1.4' }}>
           
-          {/* HEADER */}
-          <div className="flex justify-between items-start border-b-2 border-black pb-3 mb-5">
-             <div className="flex items-center gap-4">
-               <div className="w-14 h-14 bg-black text-white flex flex-col items-center justify-center font-bold text-[10px] uppercase text-center p-1 leading-none shadow-sm">
-                 <span>ALTA</span>
-                 <span>NIKINDO</span>
-               </div>
-               <div className="font-extrabold text-2xl tracking-tight leading-tight">
-                 BUDGET APPROVAL <br/>
-                 <span className="font-normal text-sm tracking-normal">(SALES / MARKETING / SERVICE)</span>
-               </div>
-             </div>
-             <div className="border-2 border-black bg-white">
-                <div className="flex border-b border-black">
-                   <div className="w-20 p-1 border-r border-black font-bold text-xs bg-gray-50">Section:</div>
-                   <div className="w-36 p-1 font-bold text-xs uppercase">{printData.budget_source || 'MARKETING'}</div>
-                </div>
-                <div className="flex">
-                   <div className="w-20 p-1 border-r border-black font-bold text-xs bg-gray-50">Page(s):</div>
-                   <div className="w-36 p-1 text-xs">1</div>
-                </div>
-             </div>
+          {/* PRINT CONTROL BAR */}
+          <div className="print:hidden fixed top-4 right-4 flex gap-3 z-50 bg-white p-3 rounded-lg shadow-xl border border-slate-200">
+             <button onClick={() => setPrintData(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md transition text-sm">Kembali</button>
+             <button onClick={handlePrintDocument} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md transition shadow-md text-sm flex items-center gap-2">🖨️ Cetak PDF</button>
           </div>
 
-          {/* SIGNATURE GRID */}
-          <div className="flex gap-2 mb-5 text-center">
-             <div className="border-2 border-black w-48 flex flex-col bg-white">
-                <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Proposed / Prepared by</div>
-                <div className="flex-1 flex items-end justify-center pb-2 font-bold text-lg min-h-[60px] pt-8">{printData.drafter_name || '-'}</div>
-                <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
-                   <div className="p-1 w-1/2 text-left">Sign</div>
-                   <div className="p-1 w-1/2 text-left">Date:</div>
-                </div>
-             </div>
-             <div className="border-2 border-black flex-1 flex flex-col relative bg-white">
-                <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Management Approval</div>
-                <div className="flex-1 flex divide-x divide-black min-h-[60px]">
-                   <div className="flex-1 flex flex-col justify-end p-2 relative"><div className="border-b border-dotted border-black w-full absolute bottom-4"></div></div>
-                   <div className="flex-1 flex flex-col justify-end p-2 relative"><div className="border-b border-dotted border-black w-full absolute bottom-4"></div></div>
-                   <div className="flex-1 flex items-end justify-center pb-2 font-bold text-lg">Larry Handra</div>
-                </div>
-                <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
-                   <div className="p-1 w-1/3 text-left border-b border-black">Comment</div>
-                   <div className="p-1 w-1/3 text-left border-b border-black">Comment</div>
-                   <div className="p-1 w-1/3 text-left border-b border-black">Consent</div>
-                </div>
-                <div className="flex text-[10px] divide-x divide-black bg-white">
-                   <div className="p-1 w-1/3 text-right">Date:</div>
-                   <div className="p-1 w-1/3 text-right">Date:</div>
-                   <div className="p-1 w-1/3 text-right">Date:</div>
-                </div>
-             </div>
-             <div className="border-2 border-black w-48 flex flex-col bg-white">
-                <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Finance & Accounting</div>
-                <div className="flex-1 flex items-end justify-center pb-2 min-h-[60px]"></div>
-                <div className="border-t border-black text-[10px] p-1 text-left font-bold border-b border-black bg-gray-50 text-black uppercase">Consent</div>
-                <div className="text-[10px] p-1 text-right bg-white uppercase font-bold">Date:</div>
-             </div>
-          </div>
+          <div className="px-4 max-w-[800px] mx-auto w-full">
+            {/* HEADER */}
+            <div className="flex justify-between items-start border-b-2 border-black pb-3 mb-5">
+               <div className="flex items-center gap-4">
+                 <div className="w-14 h-14 bg-black text-white flex flex-col items-center justify-center font-bold text-[10px] uppercase text-center p-1 leading-none shadow-sm">
+                   <span>ALTA</span>
+                   <span>NIKINDO</span>
+                 </div>
+                 <div className="font-extrabold text-2xl tracking-tight leading-tight">
+                   BUDGET APPROVAL <br/>
+                   <span className="font-normal text-sm tracking-normal">(SALES / MARKETING / SERVICE)</span>
+                 </div>
+               </div>
+               <div className="border-2 border-black bg-white">
+                  <div className="flex border-b border-black">
+                     <div className="w-20 p-1 border-r border-black font-bold text-xs bg-gray-50">Section:</div>
+                     <div className="w-36 p-1 font-bold text-xs uppercase">{printData.budget_source || 'MARKETING'}</div>
+                  </div>
+                  <div className="flex">
+                     <div className="w-20 p-1 border-r border-black font-bold text-xs bg-gray-50">Page(s):</div>
+                     <div className="w-36 p-1 text-xs">1</div>
+                  </div>
+               </div>
+            </div>
+
+            {/* SIGNATURE GRID */}
+            <div className="flex gap-2 mb-5 text-center">
+               <div className="border-2 border-black w-48 flex flex-col bg-white">
+                  <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Proposed / Prepared by</div>
+                  <div className="flex-1 flex flex-col justify-end p-2 relative pt-8">
+                     <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-lg z-10" defaultValue={printData.drafter_name || ''} placeholder="Ketik nama..." />
+                     <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
+                  </div>
+                  <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
+                     <div className="p-1 w-1/2 text-left">Sign</div>
+                     <div className="p-1 w-1/2 text-left">Date:</div>
+                  </div>
+               </div>
+               <div className="border-2 border-black flex-1 flex flex-col relative bg-white">
+                  <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Management Approval</div>
+                  <div className="flex-1 flex divide-x divide-black min-h-[60px]">
+                     <div className="flex-1 flex flex-col justify-end p-2 relative">
+                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" placeholder="Nama Comment 1..." />
+                        <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
+                     </div>
+                     <div className="flex-1 flex flex-col justify-end p-2 relative">
+                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" placeholder="Nama Comment 2..." />
+                        <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
+                     </div>
+                     <div className="flex-1 flex flex-col justify-end p-2 relative">
+                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-lg z-10" defaultValue="Larry Handra" placeholder="Nama Consent..." />
+                        <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
+                     </div>
+                  </div>
+                  <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
+                     <div className="p-1 w-1/3 text-left border-b border-black">Comment</div>
+                     <div className="p-1 w-1/3 text-left border-b border-black">Comment</div>
+                     <div className="p-1 w-1/3 text-left border-b border-black">Consent</div>
+                  </div>
+                  <div className="flex text-[10px] divide-x divide-black bg-white">
+                     <div className="p-1 w-1/3 text-right">Date:</div>
+                     <div className="p-1 w-1/3 text-right">Date:</div>
+                     <div className="p-1 w-1/3 text-right">Date:</div>
+                  </div>
+               </div>
+               <div className="border-2 border-black w-48 flex flex-col bg-white">
+                  <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Finance & Accounting</div>
+                  <div className="flex-1 flex flex-col justify-end p-2 relative pt-8 min-h-[60px]">
+                     <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-lg z-10" placeholder="Ketik nama..." />
+                     <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
+                  </div>
+                  <div className="border-t border-black text-[10px] p-1 text-left font-bold border-b border-black bg-gray-50 text-black uppercase">Consent</div>
+                  <div className="text-[10px] p-1 text-right bg-white uppercase font-bold">Date:</div>
+               </div>
+            </div>
 
           {/* MAIN DETAILS */}
           <div className="border-2 border-black mb-5 bg-white">
@@ -1611,6 +1629,7 @@ export default function NikonDashboard() {
                 </div>
              </div>
           )}
+          </div>
         </div>
       )}
 
