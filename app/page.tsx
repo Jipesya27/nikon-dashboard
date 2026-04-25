@@ -544,6 +544,7 @@ export default function NikonDashboard() {
     { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
     { id: 'services', label: '🔧 Service', count: services.length },
     { id: 'budgets', label: '💳 ProposalEvent', count: budgets.length },
+    { id: 'import', label: '📦 Import Data', count: undefined },
     { id: 'userrole', label: '🔐 User Role', count: karyawans.length }
   ];
 
@@ -554,7 +555,6 @@ export default function NikonDashboard() {
   });
 
   useEffect(() => {
-     if (activeTab === 'import' && currentUser?.role === 'Admin') return;
      if (currentUser && visibleTabs.length > 0 && !visibleTabs.find(t => t.id === activeTab)) { setActiveTab(visibleTabs[0].id); }
   }, [currentUser, activeTab, visibleTabs]);
 
@@ -628,26 +628,27 @@ export default function NikonDashboard() {
         <div className="flex flex-wrap gap-2 md:gap-8 justify-center max-w-7xl mx-auto py-2 md:py-0">
           {visibleTabs.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-2 md:py-4 font-bold whitespace-nowrap transition rounded-md md:rounded-none ${activeTab === tab.id ? 'bg-blue-50 md:bg-transparent text-blue-600 md:border-b-2 md:border-blue-600' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 md:hover:bg-transparent'}`}>
-               {tab.label} <span className="text-xs bg-slate-200 md:bg-slate-100 text-slate-800 px-2 py-1 rounded-full ml-1">{tab.count}</span>
+               {tab.label} {tab.count !== undefined && <span className="text-xs bg-slate-200 md:bg-slate-100 text-slate-800 px-2 py-1 rounded-full ml-1">{tab.count}</span>}
             </button>
           ))}
-          {currentUser?.role === 'Admin' && (
-             <button onClick={() => setActiveTab('import')} className={`px-4 py-2 md:py-4 font-bold whitespace-nowrap transition rounded-md md:rounded-none ${activeTab === 'import' ? 'bg-blue-50 md:bg-transparent text-blue-600 md:border-b-2 md:border-blue-600' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 md:hover:bg-transparent'}`}>
-                📦 Import Data
-             </button>
-          )}
         </div>
       </div>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         
-        {/* ======================= IMPORT DATA TAB (ADMIN ONLY) ======================= */}
-        {activeTab === 'import' && currentUser?.role === 'Admin' && (
+        {/* ======================= IMPORT DATA TAB ======================= */}
+        {activeTab === 'import' && (
           <div className="space-y-8 animate-fade-in text-slate-900">
             <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
                <h2 className="text-xl font-bold mb-4">Pusat Upload & Update Database</h2>
                <p className="text-slate-600 mb-6 text-sm">Pilih tabel target, unduh template untuk menyesuaikan kolom, lalu unggah file CSV Anda. Sistem akan melakukan *Upsert* (Update jika data sudah ada, Insert jika data baru).</p>
-               
+               <p>Urutan template yang diupload :</p>
+               <ul className="list-disc list-inside text-slate-600 text-sm mb-6">
+                 <li>Template 1: Tabel Konsumen (Wajib jika data konsumen belum ada, jika sudah bisa lanjut ke upload yang lainnya)</li>
+                 <li>Template 2: Tabel Claim Promo</li>
+                 <li>Template 3: Tabel Garansi</li>
+                 <li>Template 4: Tabel Status Service</li>
+               </ul>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                   <div>
                     <label className="block text-sm font-bold mb-2">1. Pilih Tabel Database</label>
@@ -1433,7 +1434,7 @@ export default function NikonDashboard() {
                              <label className="block text-sm font-bold text-slate-900 mb-2">Akses Halaman yang Diizinkan</label>
                              <p className="text-xs font-bold text-slate-500 mb-3">Pilih tab mana saja yang boleh dilihat oleh karyawan ini.</p>
                              <div className="grid grid-cols-2 gap-2">
-                                {[ { id: 'messages', label: 'Pesan' }, { id: 'konsumen', label: 'Konsumen' }, { id: 'promos', label: 'Promo' }, { id: 'claims', label: 'Claim' }, { id: 'warranties', label: 'Garansi' }, { id: 'services', label: 'Service' }, { id: 'budgets', label: 'ProposalEvent' } ].map(tab => {
+                                {[ { id: 'messages', label: 'Pesan' }, { id: 'konsumen', label: 'Konsumen' }, { id: 'promos', label: 'Promo' }, { id: 'claims', label: 'Claim' }, { id: 'warranties', label: 'Garansi' }, { id: 'services', label: 'Service' }, { id: 'budgets', label: 'ProposalEvent' }, { id: 'import', label: 'Import Data' } ].map(tab => {
                                     const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
                                     return (
                                        <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'} cursor-pointer`}>
