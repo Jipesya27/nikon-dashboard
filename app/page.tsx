@@ -17,7 +17,7 @@ interface Garansi { id_garansi?: string; nomor_seri: string; tipe_barang: string
 interface Promosi { id_promo?: string; nama_promo: string; tipe_produk: { nama_produk: string }[]; tanggal_mulai: string; tanggal_selesai: string; status_aktif: boolean; created_at?: string; }
 interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor_seri: string; status_service: string; created_at?: string; }
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
-interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_url?: string; }
+interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_urls?: (string | File | null)[]; }
 
 // --- API PENGIRIMAN AMAN VIA SUPABASE EDGE FUNCTION ---
 const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) => {
@@ -404,7 +404,7 @@ export default function NikonDashboard() {
          setEditingId(item?.id_service || null);
       }
       else if (type === 'budget') {
-         setBudgetForm(item || { proposal_no: generateProposalNo(), total_cost: 0, items: [], drafter_name: currentUser?.nama_karyawan, budget_source: 'Marketing Budget' });
+         setBudgetForm(item || { proposal_no: generateProposalNo(), total_cost: 0, items: [], drafter_name: currentUser?.nama_karyawan, budget_source: 'Marketing Budget', attachment_urls: [null, null, null] });
          setEditingId(item?.id_budget || null);
       }
       else if (type === 'karyawan') {
@@ -541,15 +541,32 @@ export default function NikonDashboard() {
       finally { setIsSubmitting(false); }
    };
 
-   const handleSaveBudget = async (e: React.FormEvent) => {
-      e.preventDefault(); setIsSubmitting(true);
-      try {
-         if (modalAction === 'create') await supabase.from('budget_approval').insert([budgetForm]);
-         else await supabase.from('budget_approval').update(budgetForm).eq('id_budget', editingId);
-         fetchBudgets(); closeModal();
-      } catch (err: any) { alert('Gagal: ' + err.message); }
-      finally { setIsSubmitting(false); }
-   };
+    const handleSaveBudget = async (e: React.FormEvent) => {
+       e.preventDefault(); setIsSubmitting(true);
+       try {
+          const { data: original } = await supabase.from('budget_approval').select('attachment_urls').eq('id_budget', editingId).single();
+          const finalUrls = [...(budgetForm.attachment_urls || [])];
+
+          for (let i = 0; i < finalUrls.length; i++) {
+             const item = finalUrls[i];
+             if (item instanceof File) {
+                const uploadedUrl = await uploadFileToStorage(item, 'BudgetApproval', budgetForm.proposal_no || 'UNKN');
+                // Hapus yang lama jika ada
+                if (original?.attachment_urls?.[i]) await deleteFileFromStorage(original.attachment_urls[i]);
+                finalUrls[i] = uploadedUrl;
+             } else if (item === null && original?.attachment_urls?.[i]) {
+                await deleteFileFromStorage(original.attachment_urls[i]);
+             }
+          }
+
+          const dataToSave = { ...budgetForm, attachment_urls: finalUrls };
+          if (modalAction === 'create') await supabase.from('budget_approval').insert([dataToSave]);
+          else await supabase.from('budget_approval').update(dataToSave).eq('id_budget', editingId);
+          
+          fetchBudgets(); closeModal();
+       } catch (err: any) { alert('Gagal: ' + err.message); }
+       finally { setIsSubmitting(false); }
+    };
 
    const handleSaveKaryawan = async (e: React.FormEvent) => {
       e.preventDefault(); setIsSubmitting(true);
@@ -1662,22 +1679,42 @@ export default function NikonDashboard() {
                               </div>
 
                               <div>
-                                 <label className="block text-sm font-bold mb-1">Lampiran Poster (Upload File Gambar)</label>                       <div className="flex gap-2 items-center">
-                                    <input type="file" accept="image/*" onChange={e => {
-                                       const file = e.target.files?.[0];
-                                       if (file) {
-                                          const reader = new FileReader();
-                                          reader.onloadend = () => setBudgetForm({ ...budgetForm, attachment_url: reader.result as string });
-                                          reader.readAsDataURL(file);
-                                       }
-                                    }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
-                                    {budgetForm.attachment_url && <button type="button" onClick={() => setBudgetForm({ ...budgetForm, attachment_url: '' })} className="bg-red-100 text-red-700 font-bold px-3 py-1.5 rounded text-sm hover:bg-red-200 transition">Hapus</button>}
+                                 <label className="block text-sm font-bold mb-2">Lampiran Poster (Maks 3 Gambar)</label>
+                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {[0, 1, 2].map((i) => (
+                                       <div key={i} className="space-y-2">
+                                          <div className="flex gap-2 items-center">
+                                             <input type="file" accept="image/*" onChange={e => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                   const newUrls = [...(budgetForm.attachment_urls || [null, null, null])];
+                                                   newUrls[i] = file;
+                                                   setBudgetForm({ ...budgetForm, attachment_urls: newUrls });
+                                                }
+                                             }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-2 py-1 text-xs" />
+                                             {budgetForm.attachment_urls?.[i] && (
+                                                <button type="button" onClick={() => {
+                                                   const newUrls = [...(budgetForm.attachment_urls || [])];
+                                                   newUrls[i] = null;
+                                                   setBudgetForm({ ...budgetForm, attachment_urls: newUrls });
+                                                }} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-200 transition">×</button>
+                                             )}
+                                          </div>
+                                          {budgetForm.attachment_urls?.[i] && (
+                                             <div className="border rounded p-1 bg-slate-50 text-center">
+                                                <img 
+                                                   src={budgetForm.attachment_urls[i] instanceof File 
+                                                      ? URL.createObjectURL(budgetForm.attachment_urls[i] as File) 
+                                                      : budgetForm.attachment_urls[i] as string} 
+                                                   alt={`Preview ${i + 1}`} 
+                                                   className="h-20 mx-auto object-contain cursor-pointer" 
+                                                   onClick={() => openImageViewer(budgetForm.attachment_urls![i] as any)}
+                                                />
+                                             </div>
+                                          )}
+                                       </div>
+                                    ))}
                                  </div>
-                                 {budgetForm.attachment_url && (
-                                    <div className="mt-2 border rounded p-1 inline-block bg-slate-50">
-                                       <img src={budgetForm.attachment_url} alt="Preview" className="h-24 object-contain" />
-                                    </div>
-                                 )}
                               </div>
                               <div className="mt-6 border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-md">
                                  <div className="flex justify-between items-center mb-2">
@@ -1806,7 +1843,7 @@ export default function NikonDashboard() {
                      <button onClick={() => setPrintData(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md transition text-sm">Kembali</button>
                      <button onClick={handlePrintDocument} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black font-bold rounded-md transition shadow-md text-sm flex items-center gap-2">🖨️ Cetak PDF</button>
                   </div>
-                  {printData.attachment_url && (
+                  {printData.attachment_urls && printData.attachment_urls.some(u => u) && (
                      <div className="flex items-center gap-2 border-t border-slate-200 pt-2 mt-1">
                         <label className="text-xs font-bold text-slate-600">Ukuran Gambar:</label>
                         <input type="range" min="100" max="800" value={printImageSize} onChange={(e) => setPrintImageSize(Number(e.target.value))} className="w-32 accent-[#FFE500]" />
@@ -1948,11 +1985,15 @@ export default function NikonDashboard() {
                   </div>
 
                   {/* ATTACHMENT */}
-                  {printData.attachment_url && (
+                  {printData.attachment_urls && printData.attachment_urls.some(u => u) && (
                      <div className="mt-4 pt-4 border-t-2 border-dashed border-gray-400 page-break-inside-avoid">
-                        <div className="font-bold text-xs uppercase tracking-wide mb-2">Lampiran (Attachment):</div>
-                        <div className="flex justify-center w-full border border-gray-300 p-2 bg-gray-50">
-                           <img src={printData.attachment_url} alt="Lampiran Poster" className="object-contain drop-shadow-sm" style={{ maxHeight: `${printImageSize}px` }} />
+                        <div className="font-bold text-xs uppercase tracking-wide mb-2">Lampiran (Attachments):</div>
+                        <div className="grid grid-cols-2 gap-4">
+                           {printData.attachment_urls.map((url, i) => url && (
+                              <div key={i} className="flex justify-center w-full border border-gray-300 p-2 bg-gray-50">
+                                 <img src={url} alt={`Lampiran ${i + 1}`} className="object-contain drop-shadow-sm" style={{ maxHeight: `${printImageSize}px` }} />
+                              </div>
+                           ))}
                         </div>
                      </div>
                   )}
