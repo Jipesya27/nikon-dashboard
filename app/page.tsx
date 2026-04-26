@@ -19,6 +19,16 @@ interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
 interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_urls?: (string | File | null)[]; }
 
+interface PeminjamanItem {
+   nama_barang: string;
+   nomor_seri: string;
+   catatan?: string;
+   catatan_pengembalian?: string; // New field for return notes
+   catatan_admin?: string; // Admin note during return
+   status_pengembalian: 'dipinjam' | 'dikembalikan';
+}
+interface PeminjamanBarang { id_peminjaman?: string; nomor_wa_peminjam: string; nama_peminjam: string; link_ktp_peminjam?: string | File | null; items_dipinjam: PeminjamanItem[]; tanggal_peminjaman?: string; tanggal_pengembalian?: string | null; status_peminjaman: 'aktif' | 'selesai'; created_at?: string; updated_at?: string; }
+
 // --- API PENGIRIMAN AMAN VIA SUPABASE EDGE FUNCTION ---
 const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) => {
    try {
@@ -50,6 +60,7 @@ export default function NikonDashboard() {
    const [budgets, setBudgets] = useState<BudgetApproval[]>([]);
    const [karyawans, setKaryawans] = useState<Karyawan[]>([]);
    const [consumers, setConsumers] = useState<Record<string, string>>({});
+   const [lendingRecords, setLendingRecords] = useState<PeminjamanBarang[]>([]);
    const [consumersList, setConsumersList] = useState<KonsumenData[]>([]);
 
    // SEARCH STATES
@@ -61,6 +72,7 @@ export default function NikonDashboard() {
    const [searchService, setSearchService] = useState('');
    const [searchBudget, setSearchBudget] = useState('');
    const [searchKaryawan, setSearchKaryawan] = useState('');
+   const [searchLending, setSearchLending] = useState('');
 
    // UI STATES
    const [readStatus, setReadStatus] = useState<Record<string, string>>({});
@@ -71,8 +83,8 @@ export default function NikonDashboard() {
    const [msgTimeFilter, setMsgTimeFilter] = useState<'day' | 'week' | 'month'>('day');
 
    // MODAL STATES
-   const [isModalOpen, setIsModalOpen] = useState(false);
-   const [modalAction, setModalAction] = useState<'create' | 'edit' | 'reset_pw'>('create');
+   const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
+   const [modalAction, setModalAction] = useState<'create' | 'edit' | 'reset_pw' | 'return'>('create'); // Type of action for the modal
    const [editingId, setEditingId] = useState<string | null>(null);
    const [selectedWa, setSelectedWa] = useState<string | null>(null);
    const [replyText, setReplyText] = useState('');
@@ -87,6 +99,7 @@ export default function NikonDashboard() {
    const [serviceForm, setServiceForm] = useState<Partial<StatusService>>({});
    const [budgetForm, setBudgetForm] = useState<Partial<BudgetApproval>>({ items: [] });
    const [karyawanForm, setKaryawanForm] = useState<Partial<Karyawan>>({ role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
+   const [lendingForm, setLendingForm] = useState<Partial<PeminjamanBarang>>({ items_dipinjam: [], status_peminjaman: 'aktif' });
 
    // IMPORT CSV STATES
    const [importTarget, setImportTarget] = useState<'claim_promo' | 'garansi' | 'konsumen' | 'status_service'>('claim_promo');
@@ -106,22 +119,34 @@ export default function NikonDashboard() {
 
    // --- DYNAMIC DATALIST OPTIONS ---
    const dynamicOptions = useMemo(() => {
+      const allTipeBarang = [
+         ...claims.map(c => c.tipe_barang),
+         ...warranties.map(w => w.tipe_barang),
+         ...(promos.flatMap(p => p.tipe_produk?.map(tp => tp.nama_produk) || [])),
+         ...lendingRecords.flatMap(l => l.items_dipinjam.map(item => item.nama_barang))
+      ].filter(Boolean);
+
+      const allNamaToko = claims.map(c => c.nama_toko).filter(Boolean);
+      const allJenisPromo = promos.map(p => p.nama_promo).filter(Boolean);
+      const allJasaKirim = claims.map(c => c.nama_jasa_pengiriman).filter(Boolean);
+      const allStatusService = services.map(s => s.status_service).filter(Boolean);
+      const allRoles = karyawans.map(k => k.role).filter(Boolean);
+      const allBudgetSource = budgets.map(b => b.budget_source).filter(Boolean);
+      const allCatatanPeminjaman = lendingRecords.flatMap(l => l.items_dipinjam.map(item => item.catatan)).filter(Boolean);
+      const allCatatanPengembalian = lendingRecords.flatMap(l => l.items_dipinjam.map(item => item.catatan_pengembalian)).filter(Boolean);
+
       return {
-         tipeBarang: Array.from(new Set([
-            ...claims.map(c => c.tipe_barang),
-            ...warranties.map(w => w.tipe_barang),
-            ...(promos.flatMap(p => p.tipe_produk?.map(tp => tp.nama_produk) || []))
-         ].filter(Boolean))),
-         namaToko: Array.from(new Set([
-            ...claims.map(c => c.nama_toko)
-         ].filter(Boolean))),
-         jenisPromo: Array.from(new Set(promos.map(p => p.nama_promo).filter(Boolean))),
-         jasaKirim: Array.from(new Set(claims.map(c => c.nama_jasa_pengiriman).filter(Boolean))),
-         statusService: Array.from(new Set(services.map(s => s.status_service).filter(Boolean))),
-         roles: Array.from(new Set(karyawans.map(k => k.role).filter(Boolean))),
-         budgetSource: Array.from(new Set(budgets.map(b => b.budget_source).filter(Boolean)))
+         tipeBarang: Array.from(new Set(allTipeBarang)),
+         namaToko: Array.from(new Set(allNamaToko)),
+         jenisPromo: Array.from(new Set(allJenisPromo)),
+         jasaKirim: Array.from(new Set(allJasaKirim)),
+         statusService: Array.from(new Set(allStatusService)),
+         roles: Array.from(new Set(allRoles)),
+         budgetSource: Array.from(new Set(allBudgetSource)),
+         catatanPeminjaman: Array.from(new Set(allCatatanPeminjaman)),
+         catatanPengembalian: Array.from(new Set(allCatatanPengembalian)),
       };
-   }, [claims, warranties, promos, services, karyawans, budgets]);
+   }, [claims, warranties, promos, services, karyawans, budgets, lendingRecords]); // Menambahkan lendingRecords ke dependensi
 
    // --- IMAGE VIEWER LOGIC ---
    const openImageViewer = (urlOrFile: string | File) => {
@@ -197,6 +222,20 @@ export default function NikonDashboard() {
    // REFS
    const fileInputRef = useRef<HTMLInputElement>(null);
    const messagesEndRef = useRef<HTMLDivElement>(null);
+   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+   useEffect(() => {
+      const el = chatContainerRef.current;
+      if (!el) return;
+      const handleWheel = (e: WheelEvent) => {
+         if (Math.abs(e.deltaY) > 20) {
+            e.preventDefault();
+            el.scrollBy({ top: e.deltaY * 2, behavior: 'smooth' });
+         }
+      };
+      el.addEventListener('wheel', handleWheel, { passive: false });
+      return () => el.removeEventListener('wheel', handleWheel);
+   }, [selectedWa]);
 
    useEffect(() => {
       const savedSession = localStorage.getItem('nikon_karyawan');
@@ -243,6 +282,7 @@ export default function NikonDashboard() {
       fetchPromos();
       fetchServices();
       fetchBudgets();
+      fetchLendingRecords();
       if (currentUser?.role === 'Admin') fetchKaryawans();
 
       // Cek koneksi Supabase
@@ -361,6 +401,7 @@ export default function NikonDashboard() {
    const fetchPromos = async () => { const { data } = await supabase.from('promosi').select('*').order('created_at', { ascending: false }); setPromos(data || []); };
    const fetchServices = async () => { const { data } = await supabase.from('status_service').select('*').order('created_at', { ascending: false }); setServices(data || []); };
    const fetchBudgets = async () => { const { data } = await supabase.from('budget_approval').select('*').order('created_at', { ascending: false }); setBudgets(data || []); setLoading(false); };
+   const fetchLendingRecords = async () => { const { data } = await supabase.from('peminjaman_barang').select('*').order('created_at', { ascending: false }); setLendingRecords(data || []); };
    const fetchKaryawans = async () => { const { data } = await supabase.from('karyawan').select('*').order('created_at', { ascending: true }); setKaryawans(data || []); };
 
 
@@ -445,7 +486,7 @@ export default function NikonDashboard() {
       return `MKTG/BA${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
    };
 
-   const openModal = (action: 'create' | 'edit' | 'reset_pw', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan', item?: any) => {
+   const openModal = (action: 'create' | 'edit' | 'reset_pw' | 'return', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending', item?: any) => {
       setModalAction(action);
       if (type === 'claim') {
          setClaimForm(item || { validasi_by_mkt: 'Dalam Proses Verifikasi', validasi_by_fa: 'Dalam Proses Verifikasi' });
@@ -466,6 +507,10 @@ export default function NikonDashboard() {
       else if (type === 'budget') {
          setBudgetForm(item || { proposal_no: generateProposalNo(), total_cost: 0, items: [], drafter_name: currentUser?.nama_karyawan, budget_source: 'Marketing Budget', attachment_urls: [null, null, null] });
          setEditingId(item?.id_budget || null);
+      }
+      else if (type === 'lending') {
+         setLendingForm(item ? { ...item, items_dipinjam: item.items_dipinjam || [] } : { items_dipinjam: [{ nama_barang: '', nomor_seri: '', catatan: '', catatan_pengembalian: '', status_pengembalian: 'dipinjam' }], status_peminjaman: 'aktif' });
+         setEditingId(item?.id_peminjaman || null);
       }
       else if (type === 'karyawan') {
          if (action === 'reset_pw') {
@@ -492,6 +537,7 @@ export default function NikonDashboard() {
       setServiceForm({});
       setBudgetForm({ items: [] });
       setKaryawanForm({});
+      setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' }); // Reset with default empty item
       setEditingId(null);
    };
 
@@ -672,13 +718,75 @@ export default function NikonDashboard() {
       finally { setIsSubmitting(false); }
    };
 
-   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan', id: string) => {
+   const handleSaveLending = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      try {
+         // 1. Pastikan konsumen ada atau buat baru
+         let { data: existingConsumer, error: consumerError } = await supabase.from('konsumen').select('nomor_wa').eq('nomor_wa', lendingForm.nomor_wa_peminjam!).single();
+         if (consumerError && consumerError.code === 'PGRST116') { // Not found
+            await supabase.from('konsumen').insert({
+               nomor_wa: lendingForm.nomor_wa_peminjam!,
+               nama_lengkap: lendingForm.nama_peminjam!,
+               status_langkah: 'START',
+               alamat_rumah: 'BELUM_DIISI', kelurahan: 'BELUM_DIISI', kecamatan: 'BELUM_DIISI',
+               kabupaten_kotamadya: 'BELUM_DIISI', provinsi: 'BELUM_DIISI', kodepos: 'BELUM_DIISI'
+            });
+         } else if (consumerError) {
+            throw consumerError;
+         }
+
+         // 2. Upload KTP file if exists
+         let ktpUrl = lendingForm.link_ktp_peminjam;
+         if (lendingForm.link_ktp_peminjam instanceof File) {
+            // Upload file baru
+            ktpUrl = await uploadFileToStorage(lendingForm.link_ktp_peminjam, 'KTP_Peminjam', lendingForm.nomor_wa_peminjam!);
+            // Hapus file lama jika ada dan ini adalah mode edit
+            if (modalAction === 'edit' && editingId) {
+               const { data: originalLending } = await supabase.from('peminjaman_barang').select('link_ktp_peminjam').eq('id_peminjaman', editingId).single();
+               if (originalLending?.link_ktp_peminjam) await deleteFileFromStorage(originalLending.link_ktp_peminjam);
+            }
+         } else if (modalAction === 'edit' && editingId && lendingForm.link_ktp_peminjam === null) {
+            // Jika link_ktp_peminjam diatur null, hapus file lama dari storage
+            const { data: originalLending } = await supabase.from('peminjaman_barang').select('link_ktp_peminjam').eq('id_peminjaman', editingId).single();
+            if (originalLending?.link_ktp_peminjam) await deleteFileFromStorage(originalLending.link_ktp_peminjam);
+         }
+
+         const dataToSave: Partial<PeminjamanBarang> = { ...lendingForm, link_ktp_peminjam: ktpUrl };
+         if (modalAction === 'create') {
+            dataToSave.tanggal_peminjaman = new Date().toISOString();
+            dataToSave.status_peminjaman = 'aktif';
+         }
+         if (modalAction === 'create') await supabase.from('peminjaman_barang').insert([dataToSave]);
+         else await supabase.from('peminjaman_barang').update(dataToSave).eq('id_peminjaman', editingId);
+
+         // 3. Send WhatsApp message
+         let message = `Halo *${lendingForm.nama_peminjam}*,\n\nAnda telah meminjam barang-barang berikut dari Nikon Indonesia:\n\n`;
+         lendingForm.items_dipinjam?.forEach((item, idx) => {
+            message += `${idx + 1}. *${item.nama_barang}* (SN: ${item.nomor_seri})\n`;
+            if (item.catatan) message += `   Catatan: ${item.catatan}\n`;
+         });
+         // The initial message for lending doesn't need return notes.
+         message += `\nMohon jaga barang-barang ini dengan baik. Terima kasih!`;
+         await sendWhatsAppMessageViaFonnte(lendingForm.nomor_wa_peminjam!, message);
+
+         fetchLendingRecords();
+         closeModal();
+      } catch (err: any) { alert('Gagal: ' + err.message); }
+      finally { setIsSubmitting(false); }
+   };
+
+   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending', id: string) => {
       if (!window.confirm('Yakin menghapus data?')) return;
       if (type === 'claim') { await supabase.from('claim_promo').delete().eq('id_claim', id); fetchClaims(); }
       else if (type === 'warranty') { await supabase.from('garansi').delete().eq('id_garansi', id); fetchWarranties(); }
       else if (type === 'promo') { await supabase.from('promosi').delete().eq('id_promo', id); fetchPromos(); }
       else if (type === 'service') { await supabase.from('status_service').delete().eq('id_service', id); fetchServices(); }
       else if (type === 'karyawan') { await supabase.from('karyawan').delete().eq('id_karyawan', id); fetchKaryawans(); }
+      else if (type === 'lending') {
+         await supabase.from('peminjaman_barang').delete().eq('id_peminjaman', id);
+         fetchLendingRecords();
+      }
       else { await supabase.from('budget_approval').delete().eq('id_budget', id); fetchBudgets(); }
    };
 
@@ -733,6 +841,37 @@ export default function NikonDashboard() {
          console.error('Gagal update CS:', error.message);
       }
    };
+
+   const handleReturnItems = async (lending: PeminjamanBarang) => {
+      if (!window.confirm('Yakin mengembalikan barang yang dipilih?')) return;
+      setIsSubmitting(true);
+      try {
+         const allItemsReturned = lending.items_dipinjam.every(item => item.status_pengembalian === 'dikembalikan');
+         const newStatusPeminjaman = allItemsReturned ? 'selesai' : 'aktif';
+
+         await supabase.from('peminjaman_barang').update({
+            items_dipinjam: lending.items_dipinjam,
+            tanggal_pengembalian: allItemsReturned ? new Date().toISOString() : null,
+            status_peminjaman: newStatusPeminjaman,
+         }).eq('id_peminjaman', lending.id_peminjaman);
+
+         // Send WhatsApp message for returned items
+         const returnedItems = lending.items_dipinjam.filter(item => item.status_pengembalian === 'dikembalikan');
+         if (returnedItems.length > 0) {
+            let message = `Halo *${lending.nama_peminjam}*,\n\nBarang-barang berikut telah Anda kembalikan ke Nikon Indonesia:\n\n`;
+            returnedItems.forEach((item, idx) => {
+               message += `${idx + 1}. *${item.nama_barang}* (SN: ${item.nomor_seri})${item.catatan_pengembalian ? ` - Catatan: ${item.catatan_pengembalian}` : ''}\n`;
+            });
+            message += `\nTerima kasih atas kerjasamanya!`;
+            await sendWhatsAppMessageViaFonnte(lending.nomor_wa_peminjam, message);
+         }
+
+         fetchLendingRecords();
+         closeModal();
+      } catch (err: any) { alert('Gagal mengembalikan barang: ' + err.message); }
+      finally { setIsSubmitting(false); }
+   };
+
 
    const calculateSisaGaransi = (tgl: string | undefined, lama: string) => {
       if (!tgl || !lama || lama === 'Tidak Garansi') return 'Tidak Garansi';
@@ -820,6 +959,10 @@ export default function NikonDashboard() {
          });
    }, [selectedWa, messages]);
 
+   useEffect(() => {
+      scrollToBottom();
+   }, [currentChatThread]);
+
    const filteredPromos = useMemo(() => promos.filter(p => {
       const name = (p.nama_promo || "").toLowerCase();
       const start = (p.tanggal_mulai || "").toLowerCase();
@@ -857,6 +1000,15 @@ export default function NikonDashboard() {
       return nama.includes(search) || user.includes(search);
    }), [karyawans, searchKaryawan]);
 
+   const filteredLendingRecords = useMemo(() => lendingRecords.filter(l => {
+      const name = (l.nama_peminjam || "").toLowerCase();
+      const wa = (l.nomor_wa_peminjam || "").toLowerCase();
+      const status = (l.status_peminjaman || "").toLowerCase();
+      const items = l.items_dipinjam.map(item => `${item.nama_barang} ${item.nomor_seri}`).join(' ').toLowerCase();
+      const search = searchLending.toLowerCase();
+      return name.includes(search) || wa.includes(search) || status.includes(search) || items.includes(search);
+   }), [lendingRecords, searchLending]);
+
    const ALL_TABS = [
       { id: 'messages', label: '💬 Pesan', count: messages.length },
       { id: 'konsumen', label: '👥 Konsumen', count: consumersList.length },
@@ -865,6 +1017,7 @@ export default function NikonDashboard() {
       { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
       { id: 'services', label: '🔧 Service', count: services.length },
       { id: 'budgets', label: '💳 ProposalEvent', count: budgets.length },
+      { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
       { id: 'import', label: '📦 Import Data', count: undefined },
       { id: 'userrole', label: '🔐 User Role', count: karyawans.length }
    ];
@@ -1020,7 +1173,7 @@ export default function NikonDashboard() {
                )}
 
                {/* ======================= OTHER TABS FILTER HEADER ======================= */}
-               {activeTab !== 'import' && (
+               {activeTab !== 'import' && activeTab !== 'lending' && activeTab !== 'messages' && (
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 flex flex-wrap gap-4 justify-between items-center text-slate-900 mb-6">
                      <div className="flex gap-4">
                         {activeTab !== 'konsumen' && activeTab !== 'budgets' && activeTab !== 'userrole' && (
@@ -1111,13 +1264,13 @@ export default function NikonDashboard() {
                                        <button onClick={() => handleSelesaiCS(selectedWa)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1 shadow-sm border border-emerald-300">✅ Tandai Selesai</button>
                                     )}
                                  </div>
-                                 <div className="flex-1 p-4 overflow-y-auto space-y-4 relative scroll-smooth" style={{ backgroundColor: '#efeae2', backgroundImage: `url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')`, backgroundSize: '400px', backgroundRepeat: 'repeat' }}>
+                                 <div ref={chatContainerRef} className="flex-1 p-4 overflow-y-auto space-y-4 relative scroll-smooth" style={{ backgroundColor: '#efeae2', backgroundImage: `url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')`, backgroundSize: '400px', backgroundRepeat: 'repeat' }}>
                                     {currentChatThread.map((msg: any) => (
                                        <div key={msg.id_pesan || Math.random().toString()} className={`flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
                                           <div className={`max-w-[75%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-slate-900 font-medium rounded-tr-none' : 'bg-white text-slate-900 font-medium rounded-tl-none'}`}>
                                              {isImageUrl(msg.isi_pesan) ? (
                                                 <div className="cursor-pointer" onClick={() => openImageViewer(msg.isi_pesan)}>
-                                                   <img src={msg.isi_pesan} alt="Media" className="max-w-full rounded-md max-h-64 object-cover mb-1 hover:opacity-90 transition" />
+                                                   <img src={msg.isi_pesan} alt="Media" className="max-w-full rounded-md max-h-64 object-cover mb-1 hover:opacity-90 transition" onLoad={scrollToBottom} />
                                                 </div>
                                              ) : (
                                                 <p className="whitespace-pre-wrap leading-relaxed">{msg.isi_pesan}</p>
@@ -1432,6 +1585,90 @@ export default function NikonDashboard() {
                      </div>
                   </div>
                )}
+
+               {/* ======================= LENDING FILTER HEADER ======================= */}
+               {activeTab === 'lending' && (
+                  <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 flex flex-wrap gap-4 justify-between items-center text-slate-900 mb-6">
+                     <div className="flex-1">
+                        <input type="text" placeholder="🔍 Cari Nama Peminjam / No WA / Nama Barang / No Seri..." value={searchLending} onChange={e => setSearchLending(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                     </div>
+                     <div>
+                        <button onClick={() => openModal('create', 'lending')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Pinjam Barang</button>
+                     </div>
+                  </div>
+               )}
+
+
+               {/* ======================= PEMINJAMAN BARANG ======================= */}
+               {activeTab === 'lending' && (
+                  <div className="space-y-4 animate-fade-in text-slate-900">
+                     <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+                        <table className="w-full text-sm">
+                           <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                              <tr>
+                                 <th className="px-4 py-3 text-left font-bold">Peminjam</th>
+                                 <th className="px-4 py-3 text-left font-bold">KTP</th>
+                                 <th className="px-4 py-3 text-left font-bold">Barang Dipinjam</th>
+                                 <th className="px-4 py-3 text-left font-bold">Tgl Pinjam</th>
+                                 <th className="px-4 py-3 text-left font-bold">Tgl Kembali</th>
+                                 <th className="px-4 py-3 text-left font-bold">Status</th>
+                                 <th className="px-4 py-3 text-left font-bold">Aksi</th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-200">
+                              {filteredLendingRecords.map(l => (
+                                 <tr key={l.id_peminjaman} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                    <td className="px-4 py-3 text-slate-800 font-bold">
+                                       {l.nama_peminjam} <br />
+                                       <span className="text-xs text-slate-500">{l.nomor_wa_peminjam}</span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                       {l.link_ktp_peminjam ? (
+                                          <button type="button" onClick={() => openImageViewer(l.link_ktp_peminjam as string)} className="hover:underline hover:text-blue-800 text-left text-xs font-bold">🔗 Lihat KTP</button>
+                                       ) : (
+                                          <span className="text-slate-500 italic text-xs">Tidak ada</span>
+                                       )}
+                                    </td>
+                                    <td className="px-4 py-3 text-xs">
+                                       <ul className="list-disc list-inside space-y-1">
+                                          {l.items_dipinjam.map((item, idx) => (
+                                             <li key={idx} className={`${item.status_pengembalian === 'dikembalikan' ? 'text-green-600 line-through' : 'text-slate-800'}`}>
+                                                {item.nama_barang} (SN: {item.nomor_seri})
+                                                {item.catatan && <span className="text-slate-500 italic"> - {item.catatan}</span>}
+                                                {item.status_pengembalian === 'dikembalikan' && <span className="ml-1 text-green-700 font-bold">(Dikembalikan)</span>}
+                                             </li>
+                                          ))}
+                                       </ul>
+                                    </td>
+                                    <td className="px-4 py-3 font-bold text-slate-700">{l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</td>
+                                    <td className="px-4 py-3 font-bold text-slate-700">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</td>
+                                    <td className="px-4 py-3">
+                                       <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                       <div className="flex gap-3 items-center">
+                                          {l.status_peminjaman === 'aktif' && (
+                                             <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-xs font-bold hover:underline">Pengembalian</button>
+                                          )}
+                                          <button onClick={() => openModal('edit', 'lending', l)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                          <button onClick={() => handleDelete('lending', l.id_peminjaman!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       </div>
+                                    </td>
+                                 </tr>
+                              ))}
+                           </tbody>
+                        </table>
+                     </div>
+                  </div>
+               )}
+
+
+
+
+
+
+
+
 
                {/* ======================= USER ROLE ======================= */}
                {activeTab === 'userrole' && currentUser?.role === 'Admin' && (
@@ -1884,6 +2121,116 @@ export default function NikonDashboard() {
                            </form>
                         )}
 
+                        {activeTab === 'lending' && (
+                           <form id="lendingForm" onSubmit={handleSaveLending} className="space-y-4">
+                              {modalAction === 'return' && (
+                                 <div className="bg-blue-50 p-4 rounded-md border border-blue-200 text-blue-800 text-sm mb-4 font-medium">
+                                    Anda sedang memproses pengembalian barang untuk: <b className="text-blue-900 text-lg ml-1">{lendingForm.nama_peminjam}</b>
+                                 </div>
+                              )}
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Nama Peminjam</label>
+                                    <input required type="text" value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                 </div>
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Nomor WhatsApp Peminjam</label>
+                                    <input required type="text" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                 </div>
+                              </div>
+
+                              {modalAction !== 'return' && (
+                                 <div className="bg-slate-50 border border-slate-200 p-3 rounded-md space-y-3">
+                                    <label className="block text-sm font-bold text-slate-900">Upload Foto KTP / ID Card</label>
+                                    <input type="file" accept="image/*,application/pdf" onChange={e => {
+                                       const file = e.target.files?.[0];
+                                       if (file) setLendingForm(prev => ({ ...prev, link_ktp_peminjam: file as any }));
+                                    }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
+                                    {lendingForm.link_ktp_peminjam && (
+                                       <div className="flex items-center gap-2 mt-2">
+                                          <span className="text-xs font-medium text-slate-600 truncate max-w-[200px]">
+                                             {lendingForm.link_ktp_peminjam instanceof File ? `File baru: ${lendingForm.link_ktp_peminjam.name}` : `URL: ${String(lendingForm.link_ktp_peminjam).substring(0, 30)}...`}
+                                          </span>
+                                          <button type="button" onClick={() => setLendingForm(prev => ({ ...prev, link_ktp_peminjam: null as any }))} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
+                                       </div>
+                                    )}
+                                    {lendingForm.link_ktp_peminjam && typeof lendingForm.link_ktp_peminjam === 'string' && (
+                                       <button type="button" onClick={() => openImageViewer(lendingForm.link_ktp_peminjam as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Lihat KTP Terunggah</button>
+                                    )}
+                                 </div>
+                              )}
+
+                              <div className="mt-4 border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-md">
+                                 <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-sm font-bold text-slate-900">Daftar Barang Dipinjam</label>
+                                    {modalAction !== 'return' && (
+                                       <button type="button" onClick={() => setLendingForm({ ...lendingForm, items_dipinjam: [...(lendingForm.items_dipinjam || []), { nama_barang: '', nomor_seri: '', catatan: '', catatan_pengembalian: '', status_pengembalian: 'dipinjam' }] })} className="bg-white border border-slate-300 px-3 py-1 rounded text-xs font-bold hover:bg-slate-100 transition text-slate-900">+ Tambah Barang</button>
+                                    )}
+                                 </div>
+                                 {lendingForm.items_dipinjam?.map((item, index) => (
+                                    <React.Fragment key={index}>
+                                       <div className="flex gap-2 mb-2 items-end p-2 border border-slate-200 rounded-md bg-white">
+                                          <div className="flex-1">
+                                             <label className="text-xs font-bold text-slate-700">Nama Barang</label>
+                                             <input type="text" list="list-nama-barang" required value={item.nama_barang} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].nama_barang = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                          </div>
+                                          <div className="flex-1">
+                                             <label className="text-xs font-bold text-slate-700">Nomor Seri</label>
+                                             <input type="text" required value={item.nomor_seri} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].nomor_seri = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                          </div>
+                                          <div className="flex-1">
+                                             <label className="text-xs font-bold text-slate-700">Catatan</label>
+                                             <input type="text" list="list-catatan-peminjaman" value={item.catatan || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return' || modalAction === 'edit'} />
+                                          </div>
+                                          {modalAction === 'return' ? (
+                                             <div className="w-32">
+                                                <label className="text-xs font-bold text-slate-700">Status</label>
+                                                <select value={item.status_pengembalian} onChange={e => {
+                                                   const newItems = [...(lendingForm.items_dipinjam || [])];
+                                                   newItems[index].status_pengembalian = e.target.value as 'dipinjam' | 'dikembalikan';
+                                                   setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                                }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]">
+                                                   <option value="dipinjam">Dipinjam</option>
+                                                   <option value="dikembalikan">Dikembalikan</option>
+                                                </select>
+                                             </div>
+                                          ) : modalAction === 'edit' ? (
+                                             <div className="w-32">
+                                                <label className="text-xs font-bold text-slate-700">Status</label>
+                                                <select value={item.status_pengembalian} onChange={e => {
+                                                   const newItems = [...(lendingForm.items_dipinjam || [])];
+                                                   newItems[index].status_pengembalian = e.target.value as 'dipinjam' | 'dikembalikan';
+                                                   setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                                }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled>
+                                                   <option value="dipinjam">Dipinjam</option>
+                                                   <option value="dikembalikan">Dikembalikan</option>
+                                                </select>
+                                             </div>
+                                          ) : (
+                                             <button type="button" onClick={() => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems.splice(index, 1); setLendingForm({ ...lendingForm, items_dipinjam: newItems }); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2 py-1.5 rounded text-sm mb-0.5 transition border border-red-200">X</button>
+                                          )}
+                                       </div>
+                                       {modalAction === 'return' && item.status_pengembalian === 'dikembalikan' && (
+                                          <div className="flex gap-2 mb-2 items-end p-2 border border-slate-200 rounded-md bg-white -mt-1">
+                                             <div className="flex-1">
+                                                <label className="text-xs font-bold text-slate-700">Catatan Pengembalian (Opsional)</label>
+                                                <input type="text" list="list-catatan-pengembalian" value={item.catatan_pengembalian || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan_pengembalian = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" placeholder="Kondisi barang, dll." />
+                                             </div>
+                                             <div className="flex-1">
+                                                <label className="text-xs font-bold text-slate-700">Catatan Admin</label>
+                                                <input type="text" value={item.catatan_admin || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan_admin = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan internal admin" />
+                                             </div>
+                                          </div>
+                                       )}
+                                    </React.Fragment>
+                                 ))}
+                                 {(!lendingForm.items_dipinjam || lendingForm.items_dipinjam.length === 0) && modalAction !== 'return' && (
+                                    <p className="text-xs font-bold text-slate-500 italic mt-2">Belum ada barang ditambahkan</p>
+                                 )}
+                              </div>
+                           </form>
+                        )}
+
                         {activeTab === 'userrole' && (
                            <form id="karyawanForm" onSubmit={modalAction === 'reset_pw' ? handleResetPwAdmin : handleSaveKaryawan} className="space-y-4">
                               {modalAction === 'reset_pw' ? (
@@ -1957,7 +2304,22 @@ export default function NikonDashboard() {
                      </div>
                      <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
                         <button onClick={closeModal} className="px-4 py-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-100 rounded-md text-sm font-bold transition">Batal</button>
-                        <button type="submit" form={activeTab === 'claims' ? 'claimForm' : activeTab === 'warranties' ? 'warrantyForm' : activeTab === 'services' ? 'serviceForm' : activeTab === 'promos' ? 'promoForm' : activeTab === 'userrole' ? 'karyawanForm' : 'budgetForm'} disabled={isSubmitting} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black rounded-md text-sm font-bold transition disabled:opacity-50">{isSubmitting ? 'Menyimpan...' : 'Simpan Data'}</button>
+                        {/* Logic for form ID */}
+                        {(() => { // This IIFE calculates and returns the submit button
+                           const formId = (() => {
+                              if (activeTab === 'claims') return 'claimForm';
+                              if (activeTab === 'warranties') return 'warrantyForm';
+                              if (activeTab === 'services') return 'serviceForm';
+                              if (activeTab === 'promos') return 'promoForm';
+                              if (activeTab === 'userrole') return 'karyawanForm';
+                              if (activeTab === 'lending') return 'lendingForm'; // Both 'return' and 'create/edit' use 'lendingForm'
+                              return 'budgetForm';
+                           })();
+                           const submitButtonText = isSubmitting ? 'Memproses...' : modalAction === 'return' ? 'Proses Pengembalian' : 'Simpan Data';
+                           const submitButtonOnClick = activeTab === 'lending' && modalAction === 'return' ? () => handleReturnItems(lendingForm as PeminjamanBarang) : undefined;
+
+                           return <button type="submit" form={formId} disabled={isSubmitting} onClick={submitButtonOnClick} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black rounded-md text-sm font-bold transition disabled:opacity-50">{submitButtonText}</button>;
+                        })()}
                      </div>
                   </div>
                </div>
@@ -2181,8 +2543,11 @@ export default function NikonDashboard() {
          <datalist id="list-jenis-promo">{dynamicOptions.jenisPromo.map(opt => <option key={opt} value={opt} />)}</datalist>
          <datalist id="list-jasa-kirim">{dynamicOptions.jasaKirim.map(opt => <option key={opt} value={opt} />)}</datalist>
          <datalist id="list-status-service">{dynamicOptions.statusService.map(opt => <option key={opt} value={opt} />)}</datalist>
+         <datalist id="list-nama-barang">{dynamicOptions.tipeBarang.map(opt => <option key={opt} value={opt} />)}</datalist>
          <datalist id="list-roles">{dynamicOptions.roles.map(opt => <option key={opt} value={opt} />)}</datalist>
          <datalist id="list-budget-source">{dynamicOptions.budgetSource.map(opt => <option key={opt} value={opt} />)}</datalist>
+         <datalist id="list-catatan-peminjaman">{dynamicOptions.catatanPeminjaman.map(opt => <option key={opt} value={opt} />)}</datalist>
+         <datalist id="list-catatan-pengembalian">{dynamicOptions.catatanPengembalian.map(opt => <option key={opt} value={opt} />)}</datalist>
 
          {/* CONNECTION INDICATOR */}
          <div className="fixed bottom-4 right-4 z-[100] flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-lg border text-[10px] font-bold transition-all">
