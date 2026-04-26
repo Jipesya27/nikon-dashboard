@@ -93,6 +93,51 @@ export default function NikonDashboard() {
   const [printData, setPrintData] = useState<BudgetApproval | null>(null);
   const [printImageSize, setPrintImageSize] = useState(400);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // IMAGE VIEWER STATES
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState('');
+  const [imageScale, setImageScale] = useState(1);
+  const [imageTranslate, setImageTranslate] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [startDragPosition, setStartDragPosition] = useState({ x: 0, y: 0 });
+
+  // --- IMAGE VIEWER LOGIC ---
+  const openImageViewer = (url: string) => {
+    setCurrentImageUrl(url);
+    setIsImageViewerOpen(true);
+    setImageScale(1); // Reset zoom
+    setImageTranslate({ x: 0, y: 0 }); // Reset position
+    // Reset dragging state to ensure fresh start
+    setIsDragging(false);
+  };
+
+  const closeImageViewer = () => {
+    setIsImageViewerOpen(false);
+    setCurrentImageUrl('');
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setStartDragPosition({ x: e.clientX - imageTranslate.x, y: e.clientY - imageTranslate.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    setImageTranslate({ x: e.clientX - startDragPosition.x, y: e.clientY - startDragPosition.y });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const scaleAmount = 0.1;
+    const newScale = e.deltaY < 0 ? imageScale * (1 + scaleAmount) : imageScale / (1 + scaleAmount);
+    setImageScale(Math.max(0.1, Math.min(5, newScale))); // Limit zoom between 0.1x and 5x
+  };
   
   // REFS
   const fileInputRef = useRef<HTMLInputElement>(null); 
@@ -334,8 +379,13 @@ export default function NikonDashboard() {
       e.preventDefault(); 
       setIsSubmitting(true); 
       try { 
-          if (modalAction === 'create') await supabase.from('claim_promo').insert([claimForm]); 
-          else await supabase.from('claim_promo').update(claimForm).eq('id_claim', editingId); 
+          const dataToSave = {
+              ...claimForm,
+              link_kartu_garansi: claimForm.link_kartu_garansi === undefined ? null : claimForm.link_kartu_garansi,
+              link_nota_pembelian: claimForm.link_nota_pembelian === undefined ? null : claimForm.link_nota_pembelian,
+          };
+          if (modalAction === 'create') await supabase.from('claim_promo').insert([dataToSave]); 
+          else await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId); 
           fetchClaims(); 
           closeModal(); 
       } catch (err: any) { alert('Gagal: ' + err.message); } 
@@ -343,10 +393,16 @@ export default function NikonDashboard() {
   };
 
   const handleSaveWarranty = async (e: React.FormEvent) => { 
-      e.preventDefault(); setIsSubmitting(true); 
-      try { 
-          if (modalAction === 'create') await supabase.from('garansi').insert([warrantyForm]); 
-          else await supabase.from('garansi').update(warrantyForm).eq('id_garansi', editingId); 
+      e.preventDefault(); 
+      setIsSubmitting(true); 
+      try {
+          const dataToSave = {
+              ...warrantyForm,
+              link_kartu_garansi: warrantyForm.link_kartu_garansi === undefined ? null : warrantyForm.link_kartu_garansi,
+              link_nota_pembelian: warrantyForm.link_nota_pembelian === undefined ? null : warrantyForm.link_nota_pembelian,
+          };
+          if (modalAction === 'create') await supabase.from('garansi').insert([dataToSave]); 
+          else await supabase.from('garansi').update(dataToSave).eq('id_garansi', editingId); 
           fetchWarranties(); closeModal(); 
       } catch (err: any) { alert('Gagal: ' + err.message); } 
       finally { setIsSubmitting(false); } 
@@ -926,9 +982,17 @@ export default function NikonDashboard() {
                            <td className="px-4 py-3 font-bold text-black">{getNamaPromo(c.tipe_barang)}</td>
                            <td className="px-4 py-3">{c.tanggal_pembelian}</td>
                            <td className="px-4 py-3">{c.nama_toko || '-'}</td>
-                           <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1">
-                              {c.link_nota_pembelian && <a href={c.link_nota_pembelian} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Nota</a>} 
-                              {c.link_kartu_garansi && <a href={c.link_kartu_garansi} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Garansi</a>}
+                           <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
+                              {c.link_nota_pembelian ? (
+                                  <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="hover:underline hover:text-blue-800 text-left">Lihat Nota</button>
+                              ) : (
+                                  <span className="text-slate-500 italic">Tidak ada Nota</span>
+                              )}
+                              {c.link_kartu_garansi ? (
+                                  <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left">Lihat Garansi</button>
+                              ) : (
+                                  <span className="text-slate-500 italic">Tidak ada Garansi</span>
+                              )}
                            </td>
                            <td className="px-4 py-3 text-xs font-bold">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
                            <td className="px-4 py-3">
@@ -973,9 +1037,17 @@ export default function NikonDashboard() {
                            <tr key={w.id_garansi} className="whitespace-nowrap hover:bg-slate-50 font-medium">
                               <td className="px-4 py-3 font-mono font-bold">{w.nomor_seri}</td>
                               <td className="px-4 py-3">{w.tipe_barang}</td>
-                              <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1">
-                                 {linkNota && <a href={linkNota} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Nota</a>} 
-                                 {linkGaransi && <a href={linkGaransi} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Garansi</a>}
+                              <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
+                                 {linkNota ? (
+                                     <button type="button" onClick={() => openImageViewer(linkNota as string)} className="hover:underline hover:text-blue-800 text-left">Lihat Nota</button>
+                                 ) : (
+                                     <span className="text-slate-500 italic">Tidak ada Nota</span>
+                                 )}
+                                 {linkGaransi ? (
+                                     <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="hover:underline hover:text-blue-800 text-left">Lihat Garansi</button>
+                                 ) : (
+                                     <span className="text-slate-500 italic">Tidak ada Garansi</span>
+                                 )}
                               </td>
                               <td className="px-4 py-3">
                                  <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{w.status_validasi}</span>
@@ -1161,11 +1233,53 @@ export default function NikonDashboard() {
                    {(modalAction === 'edit' && (claimForm.link_kartu_garansi || claimForm.link_nota_pembelian)) && (
                      <div className="bg-blue-50 p-3 rounded-md border border-blue-100 flex flex-col gap-2">
                        <span className="text-xs font-bold text-blue-800">Dokumen Lampiran (Klik untuk Buka):</span>
-                       {claimForm.link_nota_pembelian && <a href={claimForm.link_nota_pembelian} target="_blank" rel="noreferrer" className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all">🔗 Link Nota Pembelian</a>}
-                       {claimForm.link_kartu_garansi && <a href={claimForm.link_kartu_garansi} target="_blank" rel="noreferrer" className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all">🔗 Link Kartu Garansi</a>}
+                       {claimForm.link_nota_pembelian ? (
+                           <button type="button" onClick={() => openImageViewer(claimForm.link_nota_pembelian as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Link Nota Pembelian</button>
+                       ) : (
+                           <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Nota Pembelian</span>
+                       )}
+                       {claimForm.link_kartu_garansi ? (
+                           <button type="button" onClick={() => openImageViewer(claimForm.link_kartu_garansi as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Link Kartu Garansi</button>
+                       ) : (
+                           <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Kartu Garansi</span>
+                       )}
                      </div>
                    )}
 
+                   {/* New file upload section for ClaimForm */}
+                   <div className="bg-slate-50 border border-slate-200 p-3 rounded-md space-y-3">
+                       <label className="block text-sm font-bold text-slate-900">Upload Nota Pembelian</label>
+                       <input type="file" accept="image/*,application/pdf" onChange={e => {
+                           const file = e.target.files?.[0];
+                           if (file) {
+                               const reader = new FileReader();
+                               reader.onloadend = () => setClaimForm({...claimForm, link_nota_pembelian: reader.result as string});
+                               reader.readAsDataURL(file);
+                           }
+                       }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
+                       {claimForm.link_nota_pembelian && (
+                           <div className="flex items-center gap-2 mt-2">
+                               <span className="text-xs font-medium text-slate-600">File terpilih: {claimForm.link_nota_pembelian.substring(0, 50)}...</span>
+                               <button type="button" onClick={() => setClaimForm({...claimForm, link_nota_pembelian: undefined})} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
+                           </div>
+                       )}
+
+                       <label className="block text-sm font-bold text-slate-900 mt-4">Upload Kartu Garansi</label>
+                       <input type="file" accept="image/*,application/pdf" onChange={e => {
+                           const file = e.target.files?.[0];
+                           if (file) {
+                               const reader = new FileReader();
+                               reader.onloadend = () => setClaimForm({...claimForm, link_kartu_garansi: reader.result as string});
+                               reader.readAsDataURL(file);
+                           }
+                       }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
+                       {claimForm.link_kartu_garansi && (
+                           <div className="flex items-center gap-2 mt-2">
+                               <span className="text-xs font-medium text-slate-600">File terpilih: {claimForm.link_kartu_garansi.substring(0, 50)}...</span>
+                               <button type="button" onClick={() => setClaimForm({...claimForm, link_kartu_garansi: undefined})} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
+                           </div>
+                       )}
+                   </div>
                    <div className="grid grid-cols-2 gap-4">
                      <div>
                         <label className="block text-sm font-bold mb-1">Validasi MKT</label>
@@ -1226,14 +1340,48 @@ export default function NikonDashboard() {
                            const g = warrantyForm.link_kartu_garansi || linked?.link_kartu_garansi;
                            return (
                              <>
-                               {n ? <a href={n} target="_blank" rel="noreferrer" className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all">🔗 Lihat Bukti Nota</a> : <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Nota</span>}
-                               {g ? <a href={g} target="_blank" rel="noreferrer" className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all">🔗 Lihat Bukti Kartu Garansi</a> : <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Kartu Garansi</span>}
+                               {n ? <button type="button" onClick={() => openImageViewer(n as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Lihat Bukti Nota</button> : <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Nota</span>}
+                               {g ? <button type="button" onClick={() => openImageViewer(g as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Lihat Bukti Kartu Garansi</button> : <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Kartu Garansi</span>}
                              </>
                            );
                        })()}
                      </div>
                    )}
 
+                   {/* New file upload section for WarrantyForm */}
+                   <div className="bg-slate-50 border border-slate-200 p-3 rounded-md space-y-3">
+                       <label className="block text-sm font-bold text-slate-900">Upload Nota Pembelian</label>
+                       <input type="file" accept="image/*,application/pdf" onChange={e => {
+                           const file = e.target.files?.[0];
+                           if (file) {
+                               const reader = new FileReader();
+                               reader.onloadend = () => setWarrantyForm({...warrantyForm, link_nota_pembelian: reader.result as string});
+                               reader.readAsDataURL(file);
+                           }
+                       }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
+                       {warrantyForm.link_nota_pembelian && (
+                           <div className="flex items-center gap-2 mt-2">
+                               <span className="text-xs font-medium text-slate-600">File terpilih: {warrantyForm.link_nota_pembelian.substring(0, 50)}...</span>
+                               <button type="button" onClick={() => setWarrantyForm({...warrantyForm, link_nota_pembelian: undefined})} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
+                           </div>
+                       )}
+
+                       <label className="block text-sm font-bold text-slate-900 mt-4">Upload Kartu Garansi</label>
+                       <input type="file" accept="image/*,application/pdf" onChange={e => {
+                           const file = e.target.files?.[0];
+                           if (file) {
+                               const reader = new FileReader();
+                               reader.onloadend = () => setWarrantyForm({...warrantyForm, link_kartu_garansi: reader.result as string});
+                               reader.readAsDataURL(file);
+                           }
+                       }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
+                       {warrantyForm.link_kartu_garansi && (
+                           <div className="flex items-center gap-2 mt-2">
+                               <span className="text-xs font-medium text-slate-600">File terpilih: {warrantyForm.link_kartu_garansi.substring(0, 50)}...</span>
+                               <button type="button" onClick={() => setWarrantyForm({...warrantyForm, link_kartu_garansi: undefined})} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
+                           </div>
+                       )}
+                   </div>
                    <div className="grid grid-cols-3 gap-4">
                      <div>
                         <label className="block text-sm font-bold mb-1">Status Validasi</label>
@@ -1427,7 +1575,7 @@ export default function NikonDashboard() {
                        ))}
                        <div className="flex justify-end items-center mt-4 gap-4">
                           <button type="button" onClick={() => { const total = (budgetForm.items || []).reduce((acc, curr) => acc + curr.value, 0); setBudgetForm({...budgetForm, total_cost: total}); }} className="text-xs font-bold text-black hover:text-blue-800 hover:underline transition">Hitung Ulang Total</button>
-                          <div className="font-extrabold text-slate-900">Total Cost: Rp {Number(budgetForm.total_cost || 0).toLocaleString('id-ID')}</div>
+                          <div className="font-bold text-slate-900">Total Cost: Rp {Number(budgetForm.total_cost || 0).toLocaleString('id-ID')}</div>
                        </div>
                     </div>
                  </form>
@@ -1570,15 +1718,15 @@ export default function NikonDashboard() {
                   <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Management Approval</div>
                   <div className="flex-1 flex divide-x divide-black min-h-[60px]">
                      <div className="flex-1 flex flex-col justify-end p-2 relative">
-                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.mgt_comment_1 || ''} placeholder="Nama Comment 1..." />
+                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-xs z-10" defaultValue={printData.mgt_comment_1 || ''} placeholder="Nama Comment 1..." />
                         
                      </div>
                      <div className="flex-1 flex flex-col justify-end p-2 relative">
-                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.mgt_comment_2 || ''} placeholder="Nama Comment 2..." />
+                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-xs z-10" defaultValue={printData.mgt_comment_2 || ''} placeholder="Nama Comment 2..." />
                         
                      </div>
                      <div className="flex-1 flex flex-col justify-end p-2 relative">
-                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.mgt_consent || ''} placeholder="Nama Consent..." />
+                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-xs z-10" defaultValue={printData.mgt_consent || ''} placeholder="Nama Consent..." />
                         
                      </div>
                   </div>
@@ -1596,7 +1744,7 @@ export default function NikonDashboard() {
                <div className="border-2 border-black w-48 flex flex-col bg-white">
                   <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Finance & Accounting</div>
                   <div className="flex-1 flex flex-col justify-end p-2 relative pt-8 min-h-[60px]">
-                     <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.finance_consent || ''} placeholder="Ketik nama..." />
+                     <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-xs z-10" defaultValue={printData.finance_consent || ''} placeholder="Ketik nama..." />
                      
                   </div>
                   <div className="border-t border-black text-[10px] p-1 text-left font-bold border-b border-black bg-gray-50 text-black uppercase">Consent</div>
@@ -1654,8 +1802,8 @@ export default function NikonDashboard() {
                    </tr>
                    <tr>
                       <td colSpan={3} className="border-l border-b border-transparent bg-white"></td>
-                      <td colSpan={2} className="border-2 border-black p-2 text-right font-extrabold pr-4 bg-black text-white uppercase text-sm">TOTAL COST</td>
-                      <td className="border-2 border-black p-2 text-right font-extrabold bg-black text-white text-lg">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
+                      <td colSpan={2} className="border-2 border-black p-2 text-right font-bold pr-4 bg-black text-white uppercase text-sm">TOTAL COST</td>
+                      <td className="border-2 border-black p-1.5 text-right font-bold bg-black text-white text-sm">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
                    </tr>
                 </tbody>
              </table>
@@ -1670,6 +1818,42 @@ export default function NikonDashboard() {
                 </div>
              </div>
           )}
+          </div>
+        </div>
+      )}
+
+      {/* --- IMAGE VIEWER MODAL --- */}
+      {isImageViewerOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4">
+          <div className="relative bg-white rounded-lg shadow-xl max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+            <button
+              onClick={closeImageViewer}
+              className="absolute top-2 right-2 bg-red-500 text-white rounded-full h-8 w-8 flex items-center justify-center text-xl font-bold z-10 hover:bg-red-600 transition"
+            >
+              &times;
+            </button>
+            <div
+              className="w-full h-full overflow-hidden relative flex items-center justify-center"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
+              style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+            >
+              <img
+                src={currentImageUrl}
+                alt="Viewer"
+                style={{
+                  transform: `translate(${imageTranslate.x}px, ${imageTranslate.y}px) scale(${imageScale})`,
+                  transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                  transformOrigin: 'center center',
+                  position: 'absolute',
+                  maxWidth: 'unset',
+                  maxHeight: 'unset',
+                }}
+              />
+            </div>
           </div>
         </div>
       )}
