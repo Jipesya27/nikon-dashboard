@@ -4,8 +4,8 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
-const supabaseUrl = 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''; // Akan diisi via .env.local
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // --- TYPES ---
@@ -63,7 +63,9 @@ export default function NikonDashboard() {
    const [searchKaryawan, setSearchKaryawan] = useState('');
 
    // UI STATES
+   const [readStatus, setReadStatus] = useState<Record<string, string>>({});
    const [loading, setLoading] = useState(true);
+   const [dbStatus, setDbStatus] = useState<{ connected: boolean; message: string }>({ connected: false, message: 'Menghubungkan...' });
    const [activeTab, setActiveTab] = useState('messages');
    const [dateRange, setDateRange] = useState({ start: '2024-01-01', end: new Date().toISOString().split('T')[0] });
    const [msgTimeFilter, setMsgTimeFilter] = useState<'day' | 'week' | 'month'>('day');
@@ -185,6 +187,13 @@ export default function NikonDashboard() {
       }
    };
 
+   // --- MULTIMEDIA HELPERS ---
+   const isImageUrl = (text: string) => {
+      if (!text) return false;
+      const urlPattern = /https?:\/\/[^\s]+?\.(jpg|jpeg|png|gif|webp|bmp)/i;
+      return urlPattern.test(text);
+   };
+
    // REFS
    const fileInputRef = useRef<HTMLInputElement>(null);
    const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -197,7 +206,32 @@ export default function NikonDashboard() {
       } else {
          setLoading(false);
       }
+      const savedReadStatus = localStorage.getItem('nikon_chat_read_status');
+      if (savedReadStatus) {
+         setReadStatus(JSON.parse(savedReadStatus));
+      }
    }, []);
+
+   useEffect(() => {
+      if (selectedWa && messages.length > 0) {
+         const contactMessages = messages.filter(m => m.nomor_wa === selectedWa);
+         if (contactMessages.length > 0) {
+            const latestTime = contactMessages[0].waktu_pesan || contactMessages[0].created_at;
+            if (latestTime) {
+               setReadStatus(prev => {
+                  const currentSaved = prev[selectedWa];
+                  // Update only if we have a newer message
+                  if (!currentSaved || new Date(latestTime) > new Date(currentSaved)) {
+                     const updated = { ...prev, [selectedWa]: latestTime as string };
+                     localStorage.setItem('nikon_chat_read_status', JSON.stringify(updated));
+                     return updated;
+                  }
+                  return prev;
+               });
+            }
+         }
+      }
+   }, [selectedWa, messages]);
 
    useEffect(() => {
       if (!isLoggedIn) return;
@@ -210,6 +244,22 @@ export default function NikonDashboard() {
       fetchServices();
       fetchBudgets();
       if (currentUser?.role === 'Admin') fetchKaryawans();
+
+      // Cek koneksi Supabase
+      const checkConnection = async () => {
+         try {
+            if (!supabaseKey) {
+               setDbStatus({ connected: false, message: 'Kunci API (Anon Key) tidak ditemukan di .env.local' });
+               return;
+            }
+            const { error } = await supabase.from('karyawan').select('count', { count: 'exact', head: true });
+            if (error) throw error;
+            setDbStatus({ connected: true, message: 'Terhubung ke Database' });
+         } catch (err: any) {
+            setDbStatus({ connected: false, message: 'Gagal terhubung: ' + err.message });
+         }
+      };
+      checkConnection();
 
       const subscription = supabase.channel('messages-channel')
          .on('postgres_changes', { event: '*', schema: 'public', table: 'riwayat_pesan' }, (payload) => {
@@ -259,10 +309,10 @@ export default function NikonDashboard() {
          if (data) {
             const tempPw = Math.random().toString(36).substring(2, 10);
             await supabase.from('karyawan').update({ password: tempPw }).eq('id_karyawan', data.id_karyawan);
-            
+
             const msg = `Halo ${data.nama_karyawan},\n\nPermintaan reset password Anda telah diterima. Password sementara Anda adalah: *${tempPw}*\n\nSilakan login dan segera ubah password Anda di dashboard.`;
             await sendWhatsAppMessageViaFonnte(data.nomor_wa!, msg);
-            
+
             setForgotPwMessage('Password baru telah dikirim ke WhatsApp Anda!');
          } else {
             setForgotPwMessage('Nomor WhatsApp tidak terdaftar!');
@@ -282,20 +332,30 @@ export default function NikonDashboard() {
 
    // --- FETCH DATA ---
    const fetchConsumers = async () => {
+      console.log("[INDICATOR DASHBOARD 1] Memulai fetchConsumers...");
       const map: Record<string, string> = {};
       const { data: konsumenData } = await supabase.from('konsumen').select('*').order('created_at', { ascending: false });
       if (konsumenData) {
          setConsumersList(konsumenData);
          konsumenData.forEach(k => { if (k.nama_lengkap) map[k.nomor_wa] = k.nama_lengkap; });
       }
-      const { data: riwayatData } = await supabase.from('riwayat_pesan').select('nomor_wa, nama_profil_wa').neq('nama_profil_wa', 'Sistem Bot').order('created_at', { ascending: false }).limit(2000);
-      if (riwayatData) {
-         riwayatData.forEach(r => { if (!map[r.nomor_wa] && r.nama_profil_wa && r.nama_profil_wa !== r.nomor_wa) map[r.nomor_wa] = r.nama_profil_wa; });
-      }
+      const { data: riwayatData, error: rErr } = await supabase.from('riwayat_pesan').select('nomor_wa, nama_profil_wa').neq('nama_profil_wa', 'Sistem Bot').order('created_at', { ascending: false }).limit(2000);
+      if (rErr) console.error("[INDICATOR DASHBOARD 2] Error fetch riwayatData:", rErr);
+      riwayatData?.forEach(r => { if (r.nomor_wa && !map[r.nomor_wa]) map[r.nomor_wa] = r.nama_profil_wa; });
+      console.log("[INDICATOR DASHBOARD 3] Consumers map size:", Object.keys(map).length);
       setConsumers(map);
    };
 
-   const fetchMessages = async () => { const { data } = await supabase.from('riwayat_pesan').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); setMessages(data || []); };
+   const fetchMessages = async () => {
+      console.log("[INDICATOR DASHBOARD 4] Memulai fetchMessages. Range:", dateRange);
+      const { data, error } = await supabase.from('riwayat_pesan').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false });
+      if (error) {
+         console.error("[INDICATOR DASHBOARD 5] Error fetchMessages:", error);
+      } else {
+         console.log("[INDICATOR DASHBOARD 6] Messages fetched count:", data?.length || 0);
+      }
+      setMessages(data || []);
+   };
    const fetchClaims = async () => { const { data } = await supabase.from('claim_promo').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); setClaims(data || []); };
    const fetchWarranties = async () => { const { data } = await supabase.from('garansi').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); setWarranties(data || []); };
    const fetchPromos = async () => { const { data } = await supabase.from('promosi').select('*').order('created_at', { ascending: false }); setPromos(data || []); };
@@ -409,12 +469,12 @@ export default function NikonDashboard() {
       }
       else if (type === 'karyawan') {
          if (action === 'reset_pw') {
-            setKaryawanForm({ 
-               id_karyawan: item.id_karyawan, 
-               username: item.username, 
+            setKaryawanForm({
+               id_karyawan: item.id_karyawan,
+               username: item.username,
                nama_karyawan: item.nama_karyawan,
                nomor_wa: item.nomor_wa,
-               password: '' 
+               password: ''
             });
          } else {
             setKaryawanForm(item || { role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
@@ -436,89 +496,89 @@ export default function NikonDashboard() {
    };
 
    // --- CRUD HANDLERS ---
-    const handleSaveClaim = async (e: React.FormEvent) => { 
-       e.preventDefault(); 
-       setIsSubmitting(true); 
-       try { 
-           // 1. Ambil data asli sebelum diupdate untuk cek file yang perlu dihapus
-           let original: any = null;
-           if (modalAction === 'edit' && editingId) {
-              const { data } = await supabase.from('claim_promo').select('link_kartu_garansi, link_nota_pembelian').eq('id_claim', editingId).single();
-              original = data;
-           }
-           
-           let notaUrl = claimForm.link_nota_pembelian;
-           let garansiUrl = claimForm.link_kartu_garansi;
+   const handleSaveClaim = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      try {
+         // 1. Ambil data asli sebelum diupdate untuk cek file yang perlu dihapus
+         let original: any = null;
+         if (modalAction === 'edit' && editingId) {
+            const { data } = await supabase.from('claim_promo').select('link_kartu_garansi, link_nota_pembelian').eq('id_claim', editingId).single();
+            original = data;
+         }
 
-          // 2. Upload file baru jika ada (tipe File)
-          if (claimForm.link_nota_pembelian instanceof File) {
-             notaUrl = await uploadFileToStorage(claimForm.link_nota_pembelian, 'NotaDashboard', claimForm.nomor_seri || 'UNKN');
-             if (original?.link_nota_pembelian) await deleteFileFromStorage(original.link_nota_pembelian);
-          } else if (claimForm.link_nota_pembelian === null && original?.link_nota_pembelian) {
-             await deleteFileFromStorage(original.link_nota_pembelian);
-          }
+         let notaUrl = claimForm.link_nota_pembelian;
+         let garansiUrl = claimForm.link_kartu_garansi;
 
-          if (claimForm.link_kartu_garansi instanceof File) {
-             garansiUrl = await uploadFileToStorage(claimForm.link_kartu_garansi, 'GaransiDashboard', claimForm.nomor_seri || 'UNKN');
-             if (original?.link_kartu_garansi) await deleteFileFromStorage(original.link_kartu_garansi);
-          } else if (claimForm.link_kartu_garansi === null && original?.link_kartu_garansi) {
-             await deleteFileFromStorage(original.link_kartu_garansi);
-          }
+         // 2. Upload file baru jika ada (tipe File)
+         if (claimForm.link_nota_pembelian instanceof File) {
+            notaUrl = await uploadFileToStorage(claimForm.link_nota_pembelian, 'NotaDashboard', claimForm.nomor_seri || 'UNKN');
+            if (original?.link_nota_pembelian) await deleteFileFromStorage(original.link_nota_pembelian);
+         } else if (claimForm.link_nota_pembelian === null && original?.link_nota_pembelian) {
+            await deleteFileFromStorage(original.link_nota_pembelian);
+         }
 
-          const dataToSave = {
-              ...claimForm,
-              link_kartu_garansi: garansiUrl,
-              link_nota_pembelian: notaUrl,
-          };
-          
-          if (modalAction === 'create') await supabase.from('claim_promo').insert([dataToSave]); 
-          else await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId); 
-          
-          fetchClaims(); 
-          closeModal(); 
-      } catch (err: any) { alert('Gagal: ' + err.message); } 
-      finally { setIsSubmitting(false); } 
+         if (claimForm.link_kartu_garansi instanceof File) {
+            garansiUrl = await uploadFileToStorage(claimForm.link_kartu_garansi, 'GaransiDashboard', claimForm.nomor_seri || 'UNKN');
+            if (original?.link_kartu_garansi) await deleteFileFromStorage(original.link_kartu_garansi);
+         } else if (claimForm.link_kartu_garansi === null && original?.link_kartu_garansi) {
+            await deleteFileFromStorage(original.link_kartu_garansi);
+         }
+
+         const dataToSave = {
+            ...claimForm,
+            link_kartu_garansi: garansiUrl,
+            link_nota_pembelian: notaUrl,
+         };
+
+         if (modalAction === 'create') await supabase.from('claim_promo').insert([dataToSave]);
+         else await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId);
+
+         fetchClaims();
+         closeModal();
+      } catch (err: any) { alert('Gagal: ' + err.message); }
+      finally { setIsSubmitting(false); }
    };
 
-   const handleSaveWarranty = async (e: React.FormEvent) => { 
-      e.preventDefault(); 
-      setIsSubmitting(true); 
+   const handleSaveWarranty = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSubmitting(true);
       try {
-          let original: any = null;
-          if (modalAction === 'edit' && editingId) {
-             const { data } = await supabase.from('garansi').select('link_kartu_garansi, link_nota_pembelian').eq('id_garansi', editingId).single();
-             original = data;
-          }
-          
-          let notaUrl = warrantyForm.link_nota_pembelian;
-          let garansiUrl = warrantyForm.link_kartu_garansi;
+         let original: any = null;
+         if (modalAction === 'edit' && editingId) {
+            const { data } = await supabase.from('garansi').select('link_kartu_garansi, link_nota_pembelian').eq('id_garansi', editingId).single();
+            original = data;
+         }
 
-          if (warrantyForm.link_nota_pembelian instanceof File) {
-             notaUrl = await uploadFileToStorage(warrantyForm.link_nota_pembelian, 'NotaDashboard', warrantyForm.nomor_seri || 'UNKN');
-             if (original?.link_nota_pembelian) await deleteFileFromStorage(original.link_nota_pembelian);
-          } else if (warrantyForm.link_nota_pembelian === null && original?.link_nota_pembelian) {
-             await deleteFileFromStorage(original.link_nota_pembelian);
-          }
+         let notaUrl = warrantyForm.link_nota_pembelian;
+         let garansiUrl = warrantyForm.link_kartu_garansi;
 
-          if (warrantyForm.link_kartu_garansi instanceof File) {
-             garansiUrl = await uploadFileToStorage(warrantyForm.link_kartu_garansi, 'GaransiDashboard', warrantyForm.nomor_seri || 'UNKN');
-             if (original?.link_kartu_garansi) await deleteFileFromStorage(original.link_kartu_garansi);
-          } else if (warrantyForm.link_kartu_garansi === null && original?.link_kartu_garansi) {
-             await deleteFileFromStorage(original.link_kartu_garansi);
-          }
+         if (warrantyForm.link_nota_pembelian instanceof File) {
+            notaUrl = await uploadFileToStorage(warrantyForm.link_nota_pembelian, 'NotaDashboard', warrantyForm.nomor_seri || 'UNKN');
+            if (original?.link_nota_pembelian) await deleteFileFromStorage(original.link_nota_pembelian);
+         } else if (warrantyForm.link_nota_pembelian === null && original?.link_nota_pembelian) {
+            await deleteFileFromStorage(original.link_nota_pembelian);
+         }
 
-          const dataToSave = {
-              ...warrantyForm,
-              link_kartu_garansi: garansiUrl,
-              link_nota_pembelian: notaUrl,
-          };
+         if (warrantyForm.link_kartu_garansi instanceof File) {
+            garansiUrl = await uploadFileToStorage(warrantyForm.link_kartu_garansi, 'GaransiDashboard', warrantyForm.nomor_seri || 'UNKN');
+            if (original?.link_kartu_garansi) await deleteFileFromStorage(original.link_kartu_garansi);
+         } else if (warrantyForm.link_kartu_garansi === null && original?.link_kartu_garansi) {
+            await deleteFileFromStorage(original.link_kartu_garansi);
+         }
 
-          if (modalAction === 'create') await supabase.from('garansi').insert([dataToSave]); 
-          else await supabase.from('garansi').update(dataToSave).eq('id_garansi', editingId); 
-          
-          fetchWarranties(); closeModal(); 
-      } catch (err: any) { alert('Gagal: ' + err.message); } 
-      finally { setIsSubmitting(false); } 
+         const dataToSave = {
+            ...warrantyForm,
+            link_kartu_garansi: garansiUrl,
+            link_nota_pembelian: notaUrl,
+         };
+
+         if (modalAction === 'create') await supabase.from('garansi').insert([dataToSave]);
+         else await supabase.from('garansi').update(dataToSave).eq('id_garansi', editingId);
+
+         fetchWarranties(); closeModal();
+      } catch (err: any) { alert('Gagal: ' + err.message); }
+      finally { setIsSubmitting(false); }
    };
 
    const handleSavePromo = async (e: React.FormEvent) => {
@@ -541,32 +601,32 @@ export default function NikonDashboard() {
       finally { setIsSubmitting(false); }
    };
 
-    const handleSaveBudget = async (e: React.FormEvent) => {
-       e.preventDefault(); setIsSubmitting(true);
-       try {
-          const { data: original } = await supabase.from('budget_approval').select('attachment_urls').eq('id_budget', editingId).single();
-          const finalUrls = [...(budgetForm.attachment_urls || [])];
+   const handleSaveBudget = async (e: React.FormEvent) => {
+      e.preventDefault(); setIsSubmitting(true);
+      try {
+         const { data: original } = await supabase.from('budget_approval').select('attachment_urls').eq('id_budget', editingId).single();
+         const finalUrls = [...(budgetForm.attachment_urls || [])];
 
-          for (let i = 0; i < finalUrls.length; i++) {
-             const item = finalUrls[i];
-             if (item instanceof File) {
-                const uploadedUrl = await uploadFileToStorage(item, 'BudgetApproval', budgetForm.proposal_no || 'UNKN');
-                // Hapus yang lama jika ada
-                if (original?.attachment_urls?.[i]) await deleteFileFromStorage(original.attachment_urls[i]);
-                finalUrls[i] = uploadedUrl;
-             } else if (item === null && original?.attachment_urls?.[i]) {
-                await deleteFileFromStorage(original.attachment_urls[i]);
-             }
-          }
+         for (let i = 0; i < finalUrls.length; i++) {
+            const item = finalUrls[i];
+            if (item instanceof File) {
+               const uploadedUrl = await uploadFileToStorage(item, 'BudgetApproval', budgetForm.proposal_no || 'UNKN');
+               // Hapus yang lama jika ada
+               if (original?.attachment_urls?.[i]) await deleteFileFromStorage(original.attachment_urls[i]);
+               finalUrls[i] = uploadedUrl;
+            } else if (item === null && original?.attachment_urls?.[i]) {
+               await deleteFileFromStorage(original.attachment_urls[i]);
+            }
+         }
 
-          const dataToSave = { ...budgetForm, attachment_urls: finalUrls };
-          if (modalAction === 'create') await supabase.from('budget_approval').insert([dataToSave]);
-          else await supabase.from('budget_approval').update(dataToSave).eq('id_budget', editingId);
-          
-          fetchBudgets(); closeModal();
-       } catch (err: any) { alert('Gagal: ' + err.message); }
-       finally { setIsSubmitting(false); }
-    };
+         const dataToSave = { ...budgetForm, attachment_urls: finalUrls };
+         if (modalAction === 'create') await supabase.from('budget_approval').insert([dataToSave]);
+         else await supabase.from('budget_approval').update(dataToSave).eq('id_budget', editingId);
+
+         fetchBudgets(); closeModal();
+      } catch (err: any) { alert('Gagal: ' + err.message); }
+      finally { setIsSubmitting(false); }
+   };
 
    const handleSaveKaryawan = async (e: React.FormEvent) => {
       e.preventDefault(); setIsSubmitting(true);
@@ -577,14 +637,14 @@ export default function NikonDashboard() {
          if (modalAction === 'create') {
             if (!karyawanForm.nomor_wa) throw new Error("Nomor WhatsApp wajib diisi!");
             await supabase.from('karyawan').insert([{ ...karyawanForm, password: passwordToUse }]);
-            
+
             const msg = `Halo ${karyawanForm.nama_karyawan},\n\nAnda telah terdaftar sebagai karyawan di Alta Nikindo Dashboard.\n\nUsername: *${karyawanForm.username}*\nPassword: *${passwordToUse}*\n\nSilakan login dan segera ubah password Anda.`;
             await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
          } else {
             const updateData = { ...karyawanForm };
             if (!updateData.password) delete updateData.password;
             await supabase.from('karyawan').update(updateData).eq('id_karyawan', editingId);
-            
+
             if (updateData.password && karyawanForm.nomor_wa) {
                const msg = `Halo ${karyawanForm.nama_karyawan},\n\nPassword akun Anda telah diperbarui oleh Admin.\n\nPassword baru: *${updateData.password}*`;
                await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
@@ -600,12 +660,12 @@ export default function NikonDashboard() {
       try {
          if (!karyawanForm.password) throw new Error("Password baru wajib diisi!");
          await supabase.from('karyawan').update({ password: karyawanForm.password }).eq('id_karyawan', editingId);
-         
+
          if (karyawanForm.nomor_wa) {
             const msg = `Halo ${karyawanForm.nama_karyawan},\n\nPassword akun Anda telah di-reset oleh Admin.\n\nPassword baru: *${karyawanForm.password}*`;
             await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
          }
-         
+
          alert(`Password untuk ${karyawanForm.username} berhasil di-reset dan dikirim via WA!`);
          fetchKaryawans(); closeModal();
       } catch (err: any) { alert('Gagal: ' + err.message); }
@@ -684,7 +744,11 @@ export default function NikonDashboard() {
 
    const getRealProfileName = (nomorWa: string | null) => {
       if (!nomorWa) return 'Pelanggan';
-      return consumers[nomorWa] || nomorWa;
+      // Prioritas 1: Nama dari data konsumen (database)
+      if (consumers[nomorWa]) return consumers[nomorWa];
+      // Prioritas 2: Nama profil WhatsApp dari riwayat pesan terbaru (Abaikan "Sistem Bot")
+      const latestMsgWithProfile = messages.find(m => m.nomor_wa === nomorWa && m.nama_profil_wa && m.nama_profil_wa !== m.nomor_wa && m.nama_profil_wa !== "Sistem Bot");
+      return latestMsgWithProfile?.nama_profil_wa || nomorWa;
    };
 
    const getNamaPromo = (tipeBarang: string) => {
@@ -699,43 +763,99 @@ export default function NikonDashboard() {
    const uniqueJenisPromo = Array.from(new Set([...claims.map(c => c.jenis_promosi), ...promos.map(p => p.nama_promo)])).filter(Boolean);
    const uniqueRoles = Array.from(new Set(karyawans.map(k => k.role))).filter(Boolean);
 
-   const uniqueContacts = Array.from(messages.reduce((map, msg) => {
-      if (!map.has(msg.nomor_wa)) map.set(msg.nomor_wa, { ...msg });
-      else if (msg.bicara_dengan_cs) map.get(msg.nomor_wa)!.bicara_dengan_cs = true;
-      return map;
-   }, new Map()).values()) as RiwayatPesan[];
+   const uniqueContacts = useMemo(() => {
+      return Array.from(messages.reduce((map, msg) => {
+         if (msg.nomor_wa) {
+            if (!map.has(msg.nomor_wa)) map.set(msg.nomor_wa, { ...msg });
+            else if (msg.bicara_dengan_cs) map.get(msg.nomor_wa)!.bicara_dengan_cs = true;
+         }
+         return map;
+      }, new Map()).values()) as RiwayatPesan[];
+   }, [messages]);
 
-   const processMessageStats = () => {
+   const { messageStats, currentTotalConsumers } = useMemo(() => {
       const grouped = new Map<string, Set<string>>();
       messages.forEach(msg => {
-         const d = new Date(msg.created_at || msg.waktu_pesan);
-         let key = '';
-         if (msgTimeFilter === 'day') {
-            key = d.toISOString().split('T')[0];
-         } else if (msgTimeFilter === 'week') {
-            const firstDayOfYear = new Date(d.getFullYear(), 0, 1);
-            const pastDaysOfYear = (d.getTime() - firstDayOfYear.getTime()) / 86400000;
-            const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-            key = `${d.getFullYear()}-Minggu ${weekNum}`;
-         } else {
-            key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-         }
-         if (!grouped.has(key)) grouped.set(key, new Set());
-         grouped.get(key)!.add(msg.nomor_wa);
-      });
-      return Array.from(grouped.entries()).map(([k, v]) => ({ periode: k, jumlah_konsumen: v.size })).sort((a, b) => a.periode.localeCompare(b.periode));
-   };
-   const messageStats = processMessageStats();
-   const currentTotalConsumers = messageStats.reduce((sum, item) => sum + item.jumlah_konsumen, 0);
+         try {
+            const timeStr = msg.created_at || msg.waktu_pesan;
+            if (!timeStr) return;
+            const d = new Date(timeStr);
+            if (isNaN(d.getTime())) return;
 
-   const filteredContacts = uniqueContacts.filter(c => getRealProfileName(c.nomor_wa).toLowerCase().includes(searchChat.toLowerCase()) || c.nomor_wa.includes(searchChat));
-   const currentChatThread = selectedWa ? messages.filter(m => m.nomor_wa === selectedWa).sort((a, b) => new Date(a.waktu_pesan).getTime() - new Date(b.waktu_pesan).getTime()) : [];
-   const filteredPromos = promos.filter(p => p.nama_promo.toLowerCase().includes(searchPromo.toLowerCase()) || p.tanggal_mulai.includes(searchPromo) || p.tanggal_selesai.includes(searchPromo));
-   const filteredClaims = claims.filter(c => (consumers[c.nomor_wa] || c.nomor_wa).toLowerCase().includes(searchClaim.toLowerCase()) || c.nomor_seri.toLowerCase().includes(searchClaim.toLowerCase()) || getNamaPromo(c.tipe_barang).toLowerCase().includes(searchClaim.toLowerCase()) || c.validasi_by_mkt.toLowerCase().includes(searchClaim.toLowerCase()) || c.validasi_by_fa.toLowerCase().includes(searchClaim.toLowerCase()));
-   const filteredWarranties = warranties.filter(w => w.nomor_seri.toLowerCase().includes(searchGaransi.toLowerCase()));
-   const filteredServices = services.filter(s => s.nomor_tanda_terima.toLowerCase().includes(searchService.toLowerCase()) || s.nomor_seri.toLowerCase().includes(searchService.toLowerCase()) || s.status_service.toLowerCase().includes(searchService.toLowerCase()));
-   const filteredBudgets = budgets.filter(b => b.title.toLowerCase().includes(searchBudget.toLowerCase()));
-   const filteredKaryawans = karyawans.filter(k => k.nama_karyawan.toLowerCase().includes(searchKaryawan.toLowerCase()) || k.username.toLowerCase().includes(searchKaryawan.toLowerCase()));
+            let key = '';
+            if (msgTimeFilter === 'day') {
+               key = d.toISOString().split('T')[0];
+            } else if (msgTimeFilter === 'week') {
+               const firstDayOfYear = new Date(d.getFullYear(), 0, 1);
+               const pastDaysOfYear = (d.getTime() - firstDayOfYear.getTime()) / 86400000;
+               const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+               key = `${d.getFullYear()}-Minggu ${weekNum}`;
+            } else {
+               key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            }
+            if (!grouped.has(key)) grouped.set(key, new Set());
+            grouped.get(key)!.add(msg.nomor_wa);
+         } catch (e) { console.error("Error processing stats date:", e); }
+      });
+      const stats = Array.from(grouped.entries()).map(([k, v]) => ({ periode: k, jumlah_konsumen: v.size })).sort((a, b) => a.periode.localeCompare(b.periode));
+      const total = stats.reduce((sum, item) => sum + item.jumlah_konsumen, 0);
+      return { messageStats: stats, currentTotalConsumers: total };
+   }, [messages, msgTimeFilter]);
+
+   const filteredContacts = useMemo(() => uniqueContacts.filter(c => {
+      const name = getRealProfileName(c.nomor_wa).toLowerCase();
+      const num = (c.nomor_wa || "").toLowerCase();
+      const search = searchChat.toLowerCase();
+      return name.includes(search) || num.includes(search);
+   }), [uniqueContacts, searchChat, consumers, messages]);
+
+   const currentChatThread = useMemo(() => {
+      if (!selectedWa) return [];
+      return messages
+         .filter(m => m.nomor_wa === selectedWa)
+         .sort((a, b) => {
+            const dateA = new Date(a.waktu_pesan || a.created_at || 0).getTime();
+            const dateB = new Date(b.waktu_pesan || b.created_at || 0).getTime();
+            return dateA - dateB;
+         });
+   }, [selectedWa, messages]);
+
+   const filteredPromos = useMemo(() => promos.filter(p => {
+      const name = (p.nama_promo || "").toLowerCase();
+      const start = (p.tanggal_mulai || "").toLowerCase();
+      const end = (p.tanggal_selesai || "").toLowerCase();
+      const search = searchPromo.toLowerCase();
+      return name.includes(search) || start.includes(search) || end.includes(search);
+   }), [promos, searchPromo]);
+
+   const filteredClaims = useMemo(() => claims.filter(c => {
+      const name = (consumers[c.nomor_wa] || c.nomor_wa || "").toLowerCase();
+      const seri = (c.nomor_seri || "").toLowerCase();
+      const promo = getNamaPromo(c.tipe_barang).toLowerCase();
+      const mkt = (c.validasi_by_mkt || "").toLowerCase();
+      const fa = (c.validasi_by_fa || "").toLowerCase();
+      const search = searchClaim.toLowerCase();
+      return name.includes(search) || seri.includes(search) || promo.includes(search) || mkt.includes(search) || fa.includes(search);
+   }), [claims, searchClaim, consumers, promos]);
+
+   const filteredWarranties = useMemo(() => warranties.filter(w => (w.nomor_seri || "").toLowerCase().includes(searchGaransi.toLowerCase())), [warranties, searchGaransi]);
+
+   const filteredServices = useMemo(() => services.filter(s => {
+      const ttr = (s.nomor_tanda_terima || "").toLowerCase();
+      const seri = (s.nomor_seri || "").toLowerCase();
+      const status = (s.status_service || "").toLowerCase();
+      const search = searchService.toLowerCase();
+      return ttr.includes(search) || seri.includes(search) || status.includes(search);
+   }), [services, searchService]);
+
+   const filteredBudgets = useMemo(() => budgets.filter(b => (b.title || "").toLowerCase().includes(searchBudget.toLowerCase())), [budgets, searchBudget]);
+
+   const filteredKaryawans = useMemo(() => karyawans.filter(k => {
+      const nama = (k.nama_karyawan || "").toLowerCase();
+      const user = (k.username || "").toLowerCase();
+      const search = searchKaryawan.toLowerCase();
+      return nama.includes(search) || user.includes(search);
+   }), [karyawans, searchKaryawan]);
 
    const ALL_TABS = [
       { id: 'messages', label: '💬 Pesan', count: messages.length },
@@ -966,6 +1086,9 @@ export default function NikonDashboard() {
                                        <span className="font-bold truncate flex items-center gap-2">
                                           {getRealProfileName(c.nomor_wa)}
                                           {c.bicara_dengan_cs && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full shadow-sm animate-pulse">🚨 Perlu CS</span>}
+                                          {c.arah_pesan === 'IN' && (!readStatus[c.nomor_wa] || new Date(c.waktu_pesan || c.created_at) > new Date(readStatus[c.nomor_wa])) && (
+                                             <span className="bg-blue-500 text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded-full shadow-sm">Baru</span>
+                                          )}
                                        </span>
                                        <span className="text-[10px] text-slate-400 whitespace-nowrap">{new Date(c.waktu_pesan).toLocaleDateString('id-ID')}</span>
                                     </div>
@@ -992,8 +1115,19 @@ export default function NikonDashboard() {
                                     {currentChatThread.map((msg: any) => (
                                        <div key={msg.id_pesan || Math.random().toString()} className={`flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
                                           <div className={`max-w-[75%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-slate-900 font-medium rounded-tr-none' : 'bg-white text-slate-900 font-medium rounded-tl-none'}`}>
-                                             <p className="whitespace-pre-wrap leading-relaxed">{msg.isi_pesan}</p>
-                                             <div className="text-[10px] mt-1 text-right text-slate-600 font-bold">{new Date(msg.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
+                                             {isImageUrl(msg.isi_pesan) ? (
+                                                <div className="cursor-pointer" onClick={() => openImageViewer(msg.isi_pesan)}>
+                                                   <img src={msg.isi_pesan} alt="Media" className="max-w-full rounded-md max-h-64 object-cover mb-1 hover:opacity-90 transition" />
+                                                </div>
+                                             ) : (
+                                                <p className="whitespace-pre-wrap leading-relaxed">{msg.isi_pesan}</p>
+                                             )}
+                                             <div className="text-[10px] mt-1 text-right text-slate-600 font-bold">
+                                                {(() => {
+                                                   const d = new Date(msg.waktu_pesan || msg.created_at || 0);
+                                                   return isNaN(d.getTime()) ? '-' : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                                                })()}
+                                             </div>
                                           </div>
                                        </div>
                                     ))}
@@ -1702,12 +1836,12 @@ export default function NikonDashboard() {
                                           </div>
                                           {budgetForm.attachment_urls?.[i] && (
                                              <div className="border rounded p-1 bg-slate-50 text-center">
-                                                <img 
-                                                   src={budgetForm.attachment_urls[i] instanceof File 
-                                                      ? URL.createObjectURL(budgetForm.attachment_urls[i] as File) 
-                                                      : budgetForm.attachment_urls[i] as string} 
-                                                   alt={`Preview ${i + 1}`} 
-                                                   className="h-20 mx-auto object-contain cursor-pointer" 
+                                                <img
+                                                   src={budgetForm.attachment_urls[i] instanceof File
+                                                      ? URL.createObjectURL(budgetForm.attachment_urls[i] as File)
+                                                      : budgetForm.attachment_urls[i] as string}
+                                                   alt={`Preview ${i + 1}`}
+                                                   className="h-20 mx-auto object-contain cursor-pointer"
                                                    onClick={() => openImageViewer(budgetForm.attachment_urls![i] as any)}
                                                 />
                                              </div>
@@ -2003,42 +2137,42 @@ export default function NikonDashboard() {
 
          {/* --- IMAGE VIEWER MODAL --- */}
          {isImageViewerOpen && (
-            <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-[150] overflow-hidden" 
-                 onWheel={handleWheel} 
-                 onMouseUp={handleMouseUp} 
-                 onMouseLeave={handleMouseUp} 
-                 onMouseMove={handleMouseMove}>
-                 
-              <div className="absolute top-4 right-4 z-50 flex gap-3 bg-black/50 p-2 rounded-lg border border-white/10 backdrop-blur-sm shadow-xl">
-                 <div className="text-white flex items-center gap-3 px-3 text-sm font-bold">
-                    <button onClick={() => setImageScale(p => Math.max(0.1, p - 0.2))} className="hover:text-[#FFE500] text-xl leading-none w-6 h-6 flex items-center justify-center">-</button>
-                    <span className="w-10 text-center">{Math.round(imageScale * 100)}%</span>
-                    <button onClick={() => setImageScale(p => Math.min(5, p + 0.2))} className="hover:text-[#FFE500] text-xl leading-none w-6 h-6 flex items-center justify-center">+</button>
-                    <button onClick={() => {setImageScale(1); setImageTranslate({x:0,y:0})}} className="ml-2 hover:text-[#FFE500] text-xs underline text-slate-300">Reset</button>
-                 </div>
-                 <div className="w-px h-6 bg-white/20"></div>
-                 <button onClick={closeImageViewer} className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full font-bold flex items-center justify-center shadow-lg transition leading-none text-lg">×</button>
-              </div>
-              
-              <div className="flex-1 w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing relative overflow-hidden"
-                   onMouseDown={handleMouseDown}>
-                 {(currentImageUrl.toLowerCase().endsWith('.pdf') || currentImageUrl.startsWith('data:application/pdf')) ? (
-                    <iframe src={currentImageUrl} className="w-full h-full border-none bg-white" title="PDF Viewer" />
-                 ) : (
-                    <img
-                      src={currentImageUrl}
-                      alt="Viewer"
-                      draggable={false}
-                      className="max-w-none transition-transform duration-75 ease-out select-none pointer-events-none"
-                      style={{
-                        transform: `translate(${imageTranslate.x}px, ${imageTranslate.y}px) scale(${imageScale})`,
-                      }}
-                    />
-                 )}
-              </div>
-              <div className="text-white/50 text-[10px] mb-4 select-none font-medium text-center z-50 pointer-events-none drop-shadow-md">
-                 {(currentImageUrl.toLowerCase().endsWith('.pdf') || currentImageUrl.startsWith('data:application/pdf')) ? 'Scroll untuk navigasi PDF' : 'Scroll (Mouse Wheel) untuk Zoom In/Out | Klik dan Tahan (Drag) untuk Menggeser'}
-              </div>
+            <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-[150] overflow-hidden"
+               onWheel={handleWheel}
+               onMouseUp={handleMouseUp}
+               onMouseLeave={handleMouseUp}
+               onMouseMove={handleMouseMove}>
+
+               <div className="absolute top-4 right-4 z-50 flex gap-3 bg-black/50 p-2 rounded-lg border border-white/10 backdrop-blur-sm shadow-xl">
+                  <div className="text-white flex items-center gap-3 px-3 text-sm font-bold">
+                     <button onClick={() => setImageScale(p => Math.max(0.1, p - 0.2))} className="hover:text-[#FFE500] text-xl leading-none w-6 h-6 flex items-center justify-center">-</button>
+                     <span className="w-10 text-center">{Math.round(imageScale * 100)}%</span>
+                     <button onClick={() => setImageScale(p => Math.min(5, p + 0.2))} className="hover:text-[#FFE500] text-xl leading-none w-6 h-6 flex items-center justify-center">+</button>
+                     <button onClick={() => { setImageScale(1); setImageTranslate({ x: 0, y: 0 }) }} className="ml-2 hover:text-[#FFE500] text-xs underline text-slate-300">Reset</button>
+                  </div>
+                  <div className="w-px h-6 bg-white/20"></div>
+                  <button onClick={closeImageViewer} className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full font-bold flex items-center justify-center shadow-lg transition leading-none text-lg">×</button>
+               </div>
+
+               <div className="flex-1 w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing relative overflow-hidden"
+                  onMouseDown={handleMouseDown}>
+                  {(currentImageUrl.toLowerCase().endsWith('.pdf') || currentImageUrl.startsWith('data:application/pdf')) ? (
+                     <iframe src={currentImageUrl} className="w-full h-full border-none bg-white" title="PDF Viewer" />
+                  ) : (
+                     <img
+                        src={currentImageUrl}
+                        alt="Viewer"
+                        draggable={false}
+                        className="max-w-none transition-transform duration-75 ease-out select-none pointer-events-none"
+                        style={{
+                           transform: `translate(${imageTranslate.x}px, ${imageTranslate.y}px) scale(${imageScale})`,
+                        }}
+                     />
+                  )}
+               </div>
+               <div className="text-white/50 text-[10px] mb-4 select-none font-medium text-center z-50 pointer-events-none drop-shadow-md">
+                  {(currentImageUrl.toLowerCase().endsWith('.pdf') || currentImageUrl.startsWith('data:application/pdf')) ? 'Scroll untuk navigasi PDF' : 'Scroll (Mouse Wheel) untuk Zoom In/Out | Klik dan Tahan (Drag) untuk Menggeser'}
+               </div>
             </div>
          )}
 
@@ -2049,6 +2183,17 @@ export default function NikonDashboard() {
          <datalist id="list-status-service">{dynamicOptions.statusService.map(opt => <option key={opt} value={opt} />)}</datalist>
          <datalist id="list-roles">{dynamicOptions.roles.map(opt => <option key={opt} value={opt} />)}</datalist>
          <datalist id="list-budget-source">{dynamicOptions.budgetSource.map(opt => <option key={opt} value={opt} />)}</datalist>
+
+         {/* CONNECTION INDICATOR */}
+         <div className="fixed bottom-4 right-4 z-[100] flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-lg border text-[10px] font-bold transition-all">
+            <div className={`w-2 h-2 rounded-full ${dbStatus.connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+            <span className={dbStatus.connected ? 'text-slate-600' : 'text-red-600'}>
+               Supabase: {dbStatus.message}
+            </span>
+            {!dbStatus.connected && (
+               <button onClick={() => window.location.reload()} className="ml-1 text-blue-600 hover:underline">Refresh</button>
+            )}
+         </div>
 
       </>
    );
