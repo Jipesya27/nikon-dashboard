@@ -91,6 +91,7 @@ export default function NikonDashboard() {
   
   // SPECIAL STATES
   const [printData, setPrintData] = useState<BudgetApproval | null>(null);
+  const [printImageSize, setPrintImageSize] = useState(400);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // REFS
@@ -493,6 +494,7 @@ export default function NikonDashboard() {
   const uniqueToko = Array.from(new Set(claims.map(c=>c.nama_toko))).filter(Boolean);
   const uniqueJasa = Array.from(new Set(claims.map(c=>c.nama_jasa_pengiriman))).filter(Boolean);
   const uniqueJenisPromo = Array.from(new Set([...claims.map(c=>c.jenis_promosi), ...promos.map(p=>p.nama_promo)])).filter(Boolean);
+  const uniqueRoles = Array.from(new Set(karyawans.map(k=>k.role))).filter(Boolean);
 
   const uniqueContacts = Array.from(messages.reduce((map, msg) => { 
       if (!map.has(msg.nomor_wa)) map.set(msg.nomor_wa, { ...msg }); 
@@ -558,27 +560,28 @@ export default function NikonDashboard() {
 
   if (!isLoggedIn) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-900 text-slate-900">
-        <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm">
-          <div className="text-center mb-6">
-             <h1 className="text-2xl font-bold">Nikon Admin</h1>
-             <p className="text-sm text-slate-500">Masuk untuk mengelola Bot & Data</p>
+      <div className="flex items-center justify-center min-h-screen bg-black text-slate-900 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#FFE500 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
+        <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm relative z-10 border-t-4 border-[#FFE500]">
+          <div className="text-center mb-8">
+             <div className="bg-black text-[#FFE500] font-black text-3xl tracking-tighter inline-block px-4 py-1 mb-3 -skew-x-6 shadow-md">NIKON</div>
+             <p className="text-sm text-slate-500 font-medium">Masuk untuk mengelola Bot & Data</p>
           </div>
-          {loginError && <div className="bg-red-100 text-red-700 p-3 rounded text-sm mb-4 font-medium">{loginError}</div>}
+          {loginError && <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded text-sm mb-4 font-medium shadow-sm">{loginError}</div>}
           
           {!isForgotPw ? (
-            <form onSubmit={handleLogin} className="space-y-4 animate-fade-in">
+            <form onSubmit={handleLogin} className="space-y-5 animate-fade-in">
               <div>
-                 <label className="block text-sm font-bold mb-1">Username</label>
-                 <input type="text" value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white text-slate-900"/>
+                 <label className="block text-sm font-bold mb-1.5 text-slate-700">Username</label>
+                 <input type="text" value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} required className="w-full border-2 border-slate-200 rounded-lg px-4 py-2.5 outline-none focus:border-black focus:ring-4 focus:ring-black/5 bg-slate-50 text-slate-900 transition-all"/>
               </div>
               <div>
-                 <label className="block text-sm font-bold mb-1">Password</label>
-                 <input type="password" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white text-slate-900"/>
+                 <label className="block text-sm font-bold mb-1.5 text-slate-700">Password</label>
+                 <input type="password" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} required className="w-full border-2 border-slate-200 rounded-lg px-4 py-2.5 outline-none focus:border-black focus:ring-4 focus:ring-black/5 bg-slate-50 text-slate-900 transition-all"/>
               </div>
-              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold mt-2 transition">Login</button>
-              <div className="text-center mt-4">
-                 <button type="button" onClick={() => setIsForgotPw(true)} className="text-sm font-bold text-blue-600 hover:underline">Lupa Password?</button>
+              <button type="submit" className="w-full bg-[#FFE500] hover:bg-[#E5CE00] text-black py-3 rounded-lg font-extrabold mt-4 transition-all transform hover:-translate-y-0.5 shadow-lg shadow-[#FFE500]/30">MASUK</button>
+              <div className="text-center mt-5">
+                 <button type="button" onClick={() => setIsForgotPw(true)} className="text-sm font-bold text-slate-500 hover:text-black transition-colors">Lupa Password?</button>
               </div>
             </form>
           ) : (
@@ -586,9 +589,9 @@ export default function NikonDashboard() {
               {forgotPwMessage && <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded text-sm font-medium mb-4">{forgotPwMessage}</div>}
               <div>
                  <label className="block text-sm font-bold mb-1">Masukkan Username Anda</label>
-                 <input type="text" value={forgotPwUsername} onChange={e => setForgotPwUsername(e.target.value)} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white text-slate-900" placeholder="Username..."/>
+                 <input type="text" value={forgotPwUsername} onChange={e => setForgotPwUsername(e.target.value)} required className="w-full border border-slate-300 rounded px-3 py-2 outline-none focus:border-[#FFE500] bg-white text-slate-900" placeholder="Username..."/>
               </div>
-              <button type="submit" className="w-full bg-slate-800 hover:bg-slate-900 text-white py-2 rounded font-bold mt-2 transition">Cek Akun</button>
+              <button type="submit" className="w-full bg-black hover:bg-gray-800 text-white py-2 rounded font-bold mt-2 transition">Cek Akun</button>
               <div className="text-center mt-4">
                  <button type="button" onClick={() => { setIsForgotPw(false); setForgotPwMessage(''); setForgotPwUsername(''); }} className="text-sm font-bold text-slate-500 hover:text-slate-800">Kembali ke Login</button>
               </div>
@@ -609,23 +612,30 @@ export default function NikonDashboard() {
       <datalist id="list-nama-toko">{uniqueToko.map(t => <option key={t} value={t}/>)}</datalist>
       <datalist id="list-jasa-kirim">{uniqueJasa.map(t => <option key={t} value={t}/>)}</datalist>
       <datalist id="list-jenis-promo">{uniqueJenisPromo.map(t => <option key={t} value={t}/>)}</datalist>
+      <datalist id="list-roles">{uniqueRoles.map(t => <option key={t} value={t}/>)}</datalist>
 
-      <header className="bg-white shadow-sm border-b border-slate-200 px-6 py-4 flex justify-between items-center text-slate-900">
-        <div>
-           <h1 className="text-2xl font-bold">Alta Nikindo Dashboard</h1>
-           <p className="text-xs text-slate-500">Role: {currentUser?.role}</p>
+      <header className="bg-black shadow-md border-b-4 border-[#FFE500] px-6 py-4 flex justify-between items-center text-white sticky top-0 z-20">
+        <div className="flex items-center gap-4">
+           <div className="bg-[#FFE500] text-black font-black text-xl tracking-tighter px-3 py-1 -skew-x-6">NIKON</div>
+           <div>
+              <h1 className="text-lg font-bold tracking-wide">Alta Nikindo Dashboard</h1>
+              <p className="text-xs text-slate-400 font-medium">Role: <span className="text-[#FFE500]">{currentUser?.role}</span></p>
+           </div>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm font-bold">Hi, {currentUser?.nama_karyawan}</span>
-          <button onClick={handleLogout} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded text-sm font-bold transition">Logout</button>
+          <div className="hidden md:block text-right">
+             <span className="text-sm font-medium text-slate-300 block">Selamat datang kembali,</span>
+             <span className="text-sm font-bold text-[#FFE500]">{currentUser?.nama_karyawan} 🚀</span>
+          </div>
+          <button onClick={handleLogout} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">Logout</button>
         </div>
       </header>
       
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10 px-6 text-slate-900 w-full">
-        <div className="flex flex-wrap gap-2 md:gap-8 justify-center max-w-7xl mx-auto py-2 md:py-0">
+      <div className="bg-slate-50 border-b border-slate-200 sticky top-[76px] z-10 px-6 w-full shadow-sm">
+        <div className="flex flex-wrap gap-2 md:gap-3 justify-center max-w-7xl mx-auto py-3">
           {visibleTabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-2 md:py-4 font-bold whitespace-nowrap transition rounded-md md:rounded-none ${activeTab === tab.id ? 'bg-blue-50 md:bg-transparent text-blue-600 md:border-b-2 md:border-blue-600' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 md:hover:bg-transparent'}`}>
-               {tab.label} {tab.count !== undefined && <span className="text-xs bg-slate-200 md:bg-slate-100 text-slate-800 px-2 py-1 rounded-full ml-1">{tab.count}</span>}
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-5 py-2 font-bold whitespace-nowrap transition-all rounded-full border ${activeTab === tab.id ? 'bg-[#FFE500] text-black border-[#FFE500] shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100 hover:text-black'}`}>
+               {tab.label} {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-full ml-2 ${activeTab === tab.id ? 'bg-black/10 text-black' : 'bg-slate-100 text-slate-500'}`}>{tab.count}</span>}
             </button>
           ))}
         </div>
@@ -649,7 +659,7 @@ export default function NikonDashboard() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                   <div>
                     <label className="block text-sm font-bold mb-2">1. Pilih Tabel Database</label>
-                    <select value={importTarget} onChange={e => setImportTarget(e.target.value as any)} className="w-full border border-slate-300 p-3 rounded-md bg-white text-slate-900 outline-none focus:ring-2 focus:ring-blue-500">
+                    <select value={importTarget} onChange={e => setImportTarget(e.target.value as any)} className="w-full border border-slate-300 p-3 rounded-md bg-white text-slate-900 outline-none focus:ring-2 focus:ring-black">
                        <option value="claim_promo">Tabel Claim Promo</option>
                        <option value="garansi">Tabel Garansi</option>
                        <option value="konsumen">Tabel Konsumen</option>
@@ -676,7 +686,7 @@ export default function NikonDashboard() {
 
             <div className="bg-blue-50 p-6 rounded-lg border border-blue-100">
                <h4 className="font-bold text-blue-800 mb-2">💡 Tips Penting:</h4>
-               <ul className="text-sm text-blue-700 list-disc ml-5 space-y-1 font-medium">
+               <ul className="text-sm text-black list-disc ml-5 space-y-1 font-medium">
                   <li>Kolom ID adalah kunci utama. Jika Anda ingin mengupdate data lama, sertakan ID aslinya.</li>
                   <li>Jika ingin menambah data baru, kosongkan saja kolom ID tersebut.</li>
                   <li>Sistem secara otomatis akan mengisi <b>created_at</b>, <b>updated_at</b>, dan men-generate ID unik jika tidak diisi.</li>
@@ -692,18 +702,18 @@ export default function NikonDashboard() {
             <div className="flex gap-4">
               {activeTab !== 'konsumen' && activeTab !== 'budgets' && activeTab !== 'userrole' && (
                 <>
-                  <label className="text-sm font-bold">Dari: <input type="date" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} className="ml-2 border border-slate-300 bg-white text-slate-900 rounded p-1 outline-none focus:border-blue-500"/></label>
-                  <label className="text-sm font-bold">Sampai: <input type="date" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} className="ml-2 border border-slate-300 bg-white text-slate-900 rounded p-1 outline-none focus:border-blue-500"/></label>
+                  <label className="text-sm font-bold">Dari: <input type="date" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} className="ml-2 border border-slate-300 bg-white text-slate-900 rounded p-1 outline-none focus:border-[#FFE500]"/></label>
+                  <label className="text-sm font-bold">Sampai: <input type="date" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} className="ml-2 border border-slate-300 bg-white text-slate-900 rounded p-1 outline-none focus:border-[#FFE500]"/></label>
                 </>
               )}
             </div>
             <div className="flex flex-wrap gap-2 items-center">
-              {activeTab === 'claims' && <button onClick={() => openModal('create', 'claim')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Claim</button>}
-              {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}
-              {activeTab === 'services' && <button onClick={() => openModal('create', 'service')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Service</button>}
-              {activeTab === 'budgets' && <button onClick={() => openModal('create', 'budget')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Buat Proposal</button>}
-              {activeTab === 'promos' && currentUser?.role === 'Admin' && <button onClick={() => openModal('create', 'promo')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Promo</button>}
-              {activeTab === 'userrole' && currentUser?.role === 'Admin' && <button onClick={() => openModal('create', 'karyawan')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Karyawan</button>}
+              {activeTab === 'claims' && <button onClick={() => openModal('create', 'claim')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Claim</button>}
+              {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}
+              {activeTab === 'services' && <button onClick={() => openModal('create', 'service')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Service</button>}
+              {activeTab === 'budgets' && <button onClick={() => openModal('create', 'budget')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Buat Proposal</button>}
+              {activeTab === 'promos' && currentUser?.role === 'Admin' && <button onClick={() => openModal('create', 'promo')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Promo</button>}
+              {activeTab === 'userrole' && currentUser?.role === 'Admin' && <button onClick={() => openModal('create', 'karyawan')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Karyawan</button>}
             </div>
           </div>
         )}
@@ -724,7 +734,7 @@ export default function NikonDashboard() {
                   </select>
                </div>
                <div className="mb-4">
-                  <div className="text-3xl font-extrabold text-blue-600">{currentTotalConsumers} <span className="text-sm font-bold text-slate-500">Total Konsumen Unik</span></div>
+                  <div className="text-3xl font-extrabold text-black">{currentTotalConsumers} <span className="text-sm font-bold text-slate-500">Total Konsumen Unik</span></div>
                </div>
                <ResponsiveContainer width="100%" height={250}>
                  <BarChart data={messageStats}>
@@ -732,7 +742,7 @@ export default function NikonDashboard() {
                    <XAxis dataKey="periode" stroke="#64748b" tick={{fontSize: 12}} />
                    <YAxis stroke="#64748b" allowDecimals={false} />
                    <Tooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius:'8px', border:'none', boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                   <Bar dataKey="jumlah_konsumen" name="Konsumen Unik" fill="#3b82f6" radius={[4,4,0,0]} />
+                   <Bar dataKey="jumlah_konsumen" name="Konsumen Unik" fill="#FFE500" radius={[4,4,0,0]} />
                  </BarChart>
                </ResponsiveContainer>
             </div>
@@ -741,14 +751,14 @@ export default function NikonDashboard() {
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
                  <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-white z-10">
                     <span className="font-bold">Percakapan</span>
-                    <button onClick={() => setIsNewChatModalOpen(true)} className="bg-blue-100 text-blue-700 px-3 py-1 text-xs font-bold rounded hover:bg-blue-200 transition">+ Chat</button>
+                    <button onClick={() => setIsNewChatModalOpen(true)} className="bg-blue-100 text-black px-3 py-1 text-xs font-bold rounded hover:bg-blue-200 transition">+ Chat</button>
                  </div>
                  <div className="p-3 border-b border-slate-200 bg-slate-50 z-10">
-                    <input type="text" placeholder="🔍 Cari nama / no WA..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm outline-none focus:border-blue-500 shadow-sm" />
+                    <input type="text" placeholder="🔍 Cari nama / no WA..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm outline-none focus:border-[#FFE500] shadow-sm" />
                  </div>
                  <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
                    {filteredContacts.map((c: any) => (
-                     <div key={c.nomor_wa} onClick={() => setSelectedWa(c.nomor_wa)} className={`p-4 cursor-pointer hover:bg-slate-50 transition ${selectedWa === c.nomor_wa ? 'border-l-4 border-blue-500 bg-blue-50/50' : 'border-l-4 border-transparent'}`}>
+                     <div key={c.nomor_wa} onClick={() => setSelectedWa(c.nomor_wa)} className={`p-4 cursor-pointer hover:bg-slate-50 transition ${selectedWa === c.nomor_wa ? 'border-l-4 border-[#FFE500] bg-[#FFE500]/10' : 'border-l-4 border-transparent'}`}>
                        <div className="flex justify-between text-sm">
                          <span className="font-bold truncate flex items-center gap-2">
                             {getRealProfileName(c.nomor_wa)}
@@ -786,10 +796,10 @@ export default function NikonDashboard() {
                         ))}
                         <div ref={messagesEndRef} />
                       </div>
-                      <button onClick={scrollToBottom} className="absolute bottom-20 right-6 bg-white p-2.5 rounded-full shadow-lg border border-slate-200 text-blue-600 hover:bg-blue-50 transition-colors z-20">⬇️</button>
+                      <button onClick={scrollToBottom} className="absolute bottom-20 right-6 bg-white p-2.5 rounded-full shadow-lg border border-slate-200 text-black hover:bg-blue-50 transition-colors z-20">⬇️</button>
                       <form onSubmit={handleSendReply} className="p-4 border-t border-slate-200 flex gap-2 bg-slate-50 z-10 relative">
-                        <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-full px-5 py-2.5 text-sm outline-none focus:border-blue-500 shadow-sm font-medium" />
-                        <button type="submit" disabled={!replyText.trim()} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full text-sm font-bold disabled:opacity-50 transition shadow-sm">Kirim</button>
+                        <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-full px-5 py-2.5 text-sm outline-none focus:border-[#FFE500] shadow-sm font-medium" />
+                        <button type="submit" disabled={!replyText.trim()} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-6 py-2.5 rounded-full text-sm font-bold disabled:opacity-50 transition shadow-sm">Kirim</button>
                       </form>
                     </>
                  ) : (
@@ -803,18 +813,18 @@ export default function NikonDashboard() {
         {/* ======================= DATA KONSUMEN ======================= */}
         {activeTab === 'konsumen' && (
           <div className="space-y-4 animate-fade-in text-slate-900">
-            <input type="text" placeholder="🔍 Cari berdasarkan Nama / No Whatsapp / ID Konsumen" value={searchKonsumen} onChange={e => setSearchKonsumen(e.target.value)} className="w-full p-4 border border-slate-300 bg-white text-slate-900 rounded-lg shadow-sm outline-none focus:border-blue-500 text-sm font-medium" />
+            <input type="text" placeholder="🔍 Cari berdasarkan Nama / No Whatsapp / ID Konsumen" value={searchKonsumen} onChange={e => setSearchKonsumen(e.target.value)} className="w-full p-4 border border-slate-300 bg-white text-slate-900 rounded-lg shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {consumersList.filter(k => k.nama_lengkap?.toLowerCase().includes(searchKonsumen.toLowerCase()) || k.nomor_wa.includes(searchKonsumen) || k.id_konsumen?.toLowerCase().includes(searchKonsumen.toLowerCase())).map(k => {
                   const userClaims = claims.filter(c => c.nomor_wa === k.nomor_wa);
                   return (
-                    <div key={k.nomor_wa} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-blue-300 transition">
+                    <div key={k.nomor_wa} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
                       <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
                          <div>
                             <h3 className="font-bold text-lg text-slate-800">{k.nama_lengkap || k.nomor_wa}</h3>
                             <div className="text-sm font-bold text-slate-500 mt-1 flex gap-3">
                                <span>📱 {k.nomor_wa}</span>
-                               {k.id_konsumen && <span className="text-blue-600">ID: {k.id_konsumen}</span>}
+                               {k.id_konsumen && <span className="text-black">ID: {k.id_konsumen}</span>}
                             </div>
                          </div>
                       </div>
@@ -851,10 +861,10 @@ export default function NikonDashboard() {
         {/* ======================= PROMOS ======================= */}
         {activeTab === 'promos' && (
           <div className="space-y-4 animate-fade-in text-slate-900">
-            <input type="text" placeholder="🔍 Cari Nama Promo atau Periode Tanggal..." value={searchPromo} onChange={e => setSearchPromo(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-blue-500 text-sm font-medium" />
+            <input type="text" placeholder="🔍 Cari Nama Promo atau Periode Tanggal..." value={searchPromo} onChange={e => setSearchPromo(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredPromos.map(p => (
-                <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-blue-300 transition">
+                <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
                   <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
                       <div>
                          <h3 className="font-bold text-lg text-slate-800">{p.nama_promo}</h3>
@@ -878,7 +888,7 @@ export default function NikonDashboard() {
                   </div>
                   {currentUser?.role === 'Admin' && (
                       <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
-                        <button onClick={()=>openModal('edit','promo',p)} className="text-blue-600 text-xs font-bold hover:underline">Edit Promo</button>
+                        <button onClick={()=>openModal('edit','promo',p)} className="text-black text-xs font-bold hover:underline">Edit Promo</button>
                         <button onClick={()=>handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                       </div>
                   )}
@@ -891,7 +901,7 @@ export default function NikonDashboard() {
         {/* ======================= CLAIMS ======================= */}
         {activeTab === 'claims' && (
           <div className="space-y-4 animate-fade-in text-slate-900">
-             <input type="text" placeholder="🔍 Cari Nama / No Seri / Nama Promo / Status MKT / Status FA..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-blue-500 text-sm font-medium" />
+             <input type="text" placeholder="🔍 Cari Nama / No Seri / Nama Promo / Status MKT / Status FA..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
              <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
                <table className="w-full text-sm">
                   <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
@@ -913,10 +923,10 @@ export default function NikonDashboard() {
                            <td className="px-4 py-3 text-slate-800 font-bold">{consumers[c.nomor_wa]||c.nomor_wa}</td>
                            <td className="px-4 py-3 font-mono">{c.nomor_seri}</td>
                            <td className="px-4 py-3">{c.tipe_barang}</td>
-                           <td className="px-4 py-3 font-bold text-blue-700">{getNamaPromo(c.tipe_barang)}</td>
+                           <td className="px-4 py-3 font-bold text-black">{getNamaPromo(c.tipe_barang)}</td>
                            <td className="px-4 py-3">{c.tanggal_pembelian}</td>
                            <td className="px-4 py-3">{c.nama_toko || '-'}</td>
-                           <td className="px-4 py-3 text-blue-600 font-bold text-xs flex flex-col gap-1">
+                           <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1">
                               {c.link_nota_pembelian && <a href={c.link_nota_pembelian} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Nota</a>} 
                               {c.link_kartu_garansi && <a href={c.link_kartu_garansi} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Garansi</a>}
                            </td>
@@ -925,7 +935,7 @@ export default function NikonDashboard() {
                               <div className="flex gap-3 items-center">
                                  <button onClick={()=>handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
                                  <div className="w-px h-3 bg-slate-300"></div>
-                                 <button onClick={()=>openModal('edit','claim',c)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                                 <button onClick={()=>openModal('edit','claim',c)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                  <button onClick={()=>handleDelete('claim',c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                               </div>
                            </td>
@@ -940,7 +950,7 @@ export default function NikonDashboard() {
         {/* ======================= WARRANTIES ======================= */}
         {activeTab === 'warranties' && (
            <div className="space-y-4 animate-fade-in text-slate-900">
-             <input type="text" placeholder="🔍 Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-blue-500 text-sm font-medium" />
+             <input type="text" placeholder="🔍 Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
              <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
                <table className="w-full text-sm">
                   <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
@@ -963,7 +973,7 @@ export default function NikonDashboard() {
                            <tr key={w.id_garansi} className="whitespace-nowrap hover:bg-slate-50 font-medium">
                               <td className="px-4 py-3 font-mono font-bold">{w.nomor_seri}</td>
                               <td className="px-4 py-3">{w.tipe_barang}</td>
-                              <td className="px-4 py-3 text-blue-600 font-bold text-xs flex flex-col gap-1">
+                              <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1">
                                  {linkNota && <a href={linkNota} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Nota</a>} 
                                  {linkGaransi && <a href={linkGaransi} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-800">Lihat Garansi</a>}
                               </td>
@@ -976,7 +986,7 @@ export default function NikonDashboard() {
                                  <div className="flex gap-3 items-center">
                                     <button onClick={()=>handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
                                     <div className="w-px h-3 bg-slate-300"></div>
-                                    <button onClick={()=>openModal('edit','warranty',w)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                                    <button onClick={()=>openModal('edit','warranty',w)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={()=>handleDelete('warranty',w.id_garansi!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                  </div>
                               </td>
@@ -992,7 +1002,7 @@ export default function NikonDashboard() {
         {/* ======================= SERVICES ======================= */}
         {activeTab === 'services' && (
            <div className="space-y-4 animate-fade-in text-slate-900">
-             <input type="text" placeholder="🔍 Cari No Tanda Terima / No Seri / Status..." value={searchService} onChange={e => setSearchService(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-blue-500 text-sm font-medium" />
+             <input type="text" placeholder="🔍 Cari No Tanda Terima / No Seri / Status..." value={searchService} onChange={e => setSearchService(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
              <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
                <table className="w-full text-sm">
                   <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
@@ -1014,7 +1024,7 @@ export default function NikonDashboard() {
                            </td>
                            <td className="px-6 py-3 font-bold text-slate-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</td>
                            <td className="px-6 py-3 flex gap-3">
-                              <button onClick={()=>openModal('edit','service',s)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                              <button onClick={()=>openModal('edit','service',s)} className="text-black text-xs font-bold hover:underline">Edit</button>
                               <button onClick={()=>handleDelete('service',s.id_service!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                            </td>
                         </tr>
@@ -1028,7 +1038,7 @@ export default function NikonDashboard() {
         {/* ======================= PROPOSAL EVENT ======================= */}
         {activeTab === 'budgets' && (
            <div className="space-y-4 animate-fade-in text-slate-900">
-             <input type="text" placeholder="🔍 Cari Title Proposal..." value={searchBudget} onChange={e => setSearchBudget(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-blue-500 text-sm font-medium" />
+             <input type="text" placeholder="🔍 Cari Title Proposal..." value={searchBudget} onChange={e => setSearchBudget(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
              <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
                <table className="w-full text-sm">
                   <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
@@ -1049,7 +1059,7 @@ export default function NikonDashboard() {
                            <td className="px-6 py-3 font-bold text-slate-700">Rp {Number(b.total_cost).toLocaleString('id-ID')}</td>
                            <td className="px-6 py-3 flex gap-3">
                               <button onClick={() => setPrintData(b)} className="text-emerald-600 text-xs font-bold hover:underline">Print PDF</button>
-                              <button onClick={()=>openModal('edit','budget',b)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                              <button onClick={()=>openModal('edit','budget',b)} className="text-black text-xs font-bold hover:underline">Edit</button>
                               <button onClick={()=>handleDelete('budget',b.id_budget!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                            </td>
                         </tr>
@@ -1063,7 +1073,7 @@ export default function NikonDashboard() {
         {/* ======================= USER ROLE ======================= */}
         {activeTab === 'userrole' && currentUser?.role === 'Admin' && (
            <div className="space-y-4 animate-fade-in text-slate-900">
-             <input type="text" placeholder="🔍 Cari Username atau Nama Karyawan..." value={searchKaryawan} onChange={e => setSearchKaryawan(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-blue-500 text-sm font-medium" />
+             <input type="text" placeholder="🔍 Cari Username atau Nama Karyawan..." value={searchKaryawan} onChange={e => setSearchKaryawan(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
              <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
                <table className="w-full text-sm">
                   <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
@@ -1081,13 +1091,13 @@ export default function NikonDashboard() {
                         <tr key={k.id_karyawan} className="whitespace-nowrap hover:bg-slate-50 font-medium">
                            <td className="px-6 py-3 font-bold text-slate-800">{k.username}</td>
                            <td className="px-6 py-3">{k.nama_karyawan}</td>
-                           <td className="px-6 py-3 font-bold text-blue-700">{k.role}</td>
+                           <td className="px-6 py-3 font-bold text-black">{k.role}</td>
                            <td className="px-6 py-3">
                               <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
                            </td>
                            <td className="px-6 py-3 font-mono text-xs text-slate-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman||[]).join(', ')}</td>
                            <td className="px-6 py-3 flex gap-3">
-                              <button onClick={()=>openModal('edit','karyawan',k)} className="text-blue-600 text-xs font-bold hover:underline">Edit</button>
+                              <button onClick={()=>openModal('edit','karyawan',k)} className="text-black text-xs font-bold hover:underline">Edit</button>
                               <button onClick={()=>openModal('reset_pw','karyawan',k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
                               <button onClick={()=>handleDelete('karyawan',k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline" disabled={k.username === 'admin'}>Hapus</button>
                            </td>
@@ -1106,11 +1116,11 @@ export default function NikonDashboard() {
         <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 text-slate-900">
            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
              <h2 className="text-lg font-bold">Pesan Baru</h2>
-             <input type="text" value={newChatWa} onChange={e=>setNewChatWa(e.target.value)} placeholder="No WA (Contoh: 0812...)" className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
-             <textarea rows={4} value={newChatMsg} onChange={e=>setNewChatMsg(e.target.value)} placeholder="Isi pesan..." className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500"></textarea>
+             <input type="text" value={newChatWa} onChange={e=>setNewChatWa(e.target.value)} placeholder="No WA (Contoh: 0812...)" className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+             <textarea rows={4} value={newChatMsg} onChange={e=>setNewChatMsg(e.target.value)} placeholder="Isi pesan..." className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]"></textarea>
              <div className="flex justify-end gap-3">
                 <button onClick={()=>setIsNewChatModalOpen(false)} className="px-4 py-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-100 rounded-md text-sm font-bold transition">Batal</button>
-                <button onClick={handleSendNewChat} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-bold transition disabled:opacity-50" disabled={!newChatWa || !newChatMsg}>Kirim</button>
+                <button onClick={handleSendNewChat} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black rounded-md text-sm font-bold transition disabled:opacity-50" disabled={!newChatWa || !newChatMsg}>Kirim</button>
              </div>
            </div>
         </div>
@@ -1131,35 +1141,35 @@ export default function NikonDashboard() {
                  <form id="claimForm" onSubmit={handleSaveClaim} className="space-y-4">
                    <div>
                       <label className="block text-sm font-bold mb-1">Nomor WA</label>
-                      <input required type="text" value={claimForm.nomor_wa || ''} onChange={e => setClaimForm({...claimForm, nomor_wa: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                      <input required type="text" value={claimForm.nomor_wa || ''} onChange={e => setClaimForm({...claimForm, nomor_wa: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                    </div>
                    <div>
                       <label className="block text-sm font-bold mb-1">Nomor Seri</label>
-                      <input required type="text" value={claimForm.nomor_seri || ''} onChange={e => setClaimForm({...claimForm, nomor_seri: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                      <input required type="text" value={claimForm.nomor_seri || ''} onChange={e => setClaimForm({...claimForm, nomor_seri: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                    </div>
                    <div className="grid grid-cols-2 gap-4">
                      <div>
                         <label className="block text-sm font-bold mb-1">Tipe Barang</label>
-                        <input type="text" list="list-tipe-barang" value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({...claimForm, tipe_barang: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                        <input type="text" list="list-tipe-barang" value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({...claimForm, tipe_barang: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                      </div>
                      <div>
                         <label className="block text-sm font-bold mb-1">Tgl Pembelian</label>
-                        <input type="date" value={claimForm.tanggal_pembelian || ''} onChange={e => setClaimForm({...claimForm, tanggal_pembelian: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                        <input type="date" value={claimForm.tanggal_pembelian || ''} onChange={e => setClaimForm({...claimForm, tanggal_pembelian: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                      </div>
                    </div>
                    
                    {(modalAction === 'edit' && (claimForm.link_kartu_garansi || claimForm.link_nota_pembelian)) && (
                      <div className="bg-blue-50 p-3 rounded-md border border-blue-100 flex flex-col gap-2">
                        <span className="text-xs font-bold text-blue-800">Dokumen Lampiran (Klik untuk Buka):</span>
-                       {claimForm.link_nota_pembelian && <a href={claimForm.link_nota_pembelian} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline break-all">🔗 Link Nota Pembelian</a>}
-                       {claimForm.link_kartu_garansi && <a href={claimForm.link_kartu_garansi} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline break-all">🔗 Link Kartu Garansi</a>}
+                       {claimForm.link_nota_pembelian && <a href={claimForm.link_nota_pembelian} target="_blank" rel="noreferrer" className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all">🔗 Link Nota Pembelian</a>}
+                       {claimForm.link_kartu_garansi && <a href={claimForm.link_kartu_garansi} target="_blank" rel="noreferrer" className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all">🔗 Link Kartu Garansi</a>}
                      </div>
                    )}
 
                    <div className="grid grid-cols-2 gap-4">
                      <div>
                         <label className="block text-sm font-bold mb-1">Validasi MKT</label>
-                        <select value={claimForm.validasi_by_mkt || ''} onChange={e => setClaimForm({...claimForm, validasi_by_mkt: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500">
+                        <select value={claimForm.validasi_by_mkt || ''} onChange={e => setClaimForm({...claimForm, validasi_by_mkt: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
                            <option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option>
                            <option value="Valid">Valid</option>
                            <option value="Tidak Valid">Tidak Valid</option>
@@ -1167,7 +1177,7 @@ export default function NikonDashboard() {
                      </div>
                      <div>
                         <label className="block text-sm font-bold mb-1">Validasi FA</label>
-                        <select value={claimForm.validasi_by_fa || ''} onChange={e => setClaimForm({...claimForm, validasi_by_fa: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500">
+                        <select value={claimForm.validasi_by_fa || ''} onChange={e => setClaimForm({...claimForm, validasi_by_fa: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
                            <option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option>
                            <option value="Valid">Valid</option>
                            <option value="Tidak Valid">Tidak Valid</option>
@@ -1178,19 +1188,19 @@ export default function NikonDashboard() {
                    <div className="grid grid-cols-2 gap-4 bg-slate-50 border border-slate-200 p-3 rounded-md">
                      <div>
                         <label className="block text-sm font-bold mb-1">Nama Toko</label>
-                        <input type="text" list="list-nama-toko" value={claimForm.nama_toko || ''} onChange={e => setClaimForm({...claimForm, nama_toko: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Ketik nama toko..."/>
+                        <input type="text" list="list-nama-toko" value={claimForm.nama_toko || ''} onChange={e => setClaimForm({...claimForm, nama_toko: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik nama toko..."/>
                      </div>
                      <div>
                         <label className="block text-sm font-bold mb-1">Jenis Promosi</label>
-                        <input type="text" list="list-jenis-promo" value={claimForm.jenis_promosi || ''} onChange={e => setClaimForm({...claimForm, jenis_promosi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Ketik jenis promo..."/>
+                        <input type="text" list="list-jenis-promo" value={claimForm.jenis_promosi || ''} onChange={e => setClaimForm({...claimForm, jenis_promosi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik jenis promo..."/>
                      </div>
                      <div>
                         <label className="block text-sm font-bold mb-1">Jasa Pengiriman</label>
-                        <input type="text" list="list-jasa-kirim" value={claimForm.nama_jasa_pengiriman || ''} onChange={e => setClaimForm({...claimForm, nama_jasa_pengiriman: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="JNE / J&T / dll" />
+                        <input type="text" list="list-jasa-kirim" value={claimForm.nama_jasa_pengiriman || ''} onChange={e => setClaimForm({...claimForm, nama_jasa_pengiriman: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="JNE / J&T / dll" />
                      </div>
                      <div>
                         <label className="block text-sm font-bold mb-1">Nomor Resi</label>
-                        <input type="text" value={claimForm.nomor_resi || ''} onChange={e => setClaimForm({...claimForm, nomor_resi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Masukkan nomor resi..." />
+                        <input type="text" value={claimForm.nomor_resi || ''} onChange={e => setClaimForm({...claimForm, nomor_resi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Masukkan nomor resi..." />
                      </div>
                    </div>
                  </form>
@@ -1200,11 +1210,11 @@ export default function NikonDashboard() {
                  <form id="warrantyForm" onSubmit={handleSaveWarranty} className="space-y-4">
                    <div>
                       <label className="block text-sm font-bold mb-1">Nomor Seri</label>
-                      <input required type="text" value={warrantyForm.nomor_seri || ''} onChange={e => setWarrantyForm({...warrantyForm, nomor_seri: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                      <input required type="text" value={warrantyForm.nomor_seri || ''} onChange={e => setWarrantyForm({...warrantyForm, nomor_seri: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                    </div>
                    <div>
                       <label className="block text-sm font-bold mb-1">Tipe Barang</label>
-                      <input required type="text" list="list-tipe-barang" value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({...warrantyForm, tipe_barang: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                      <input required type="text" list="list-tipe-barang" value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({...warrantyForm, tipe_barang: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                    </div>
                    
                    {(modalAction === 'edit') && (
@@ -1216,8 +1226,8 @@ export default function NikonDashboard() {
                            const g = warrantyForm.link_kartu_garansi || linked?.link_kartu_garansi;
                            return (
                              <>
-                               {n ? <a href={n} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline break-all">🔗 Lihat Bukti Nota</a> : <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Nota</span>}
-                               {g ? <a href={g} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline break-all">🔗 Lihat Bukti Kartu Garansi</a> : <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Kartu Garansi</span>}
+                               {n ? <a href={n} target="_blank" rel="noreferrer" className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all">🔗 Lihat Bukti Nota</a> : <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Nota</span>}
+                               {g ? <a href={g} target="_blank" rel="noreferrer" className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all">🔗 Lihat Bukti Kartu Garansi</a> : <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Kartu Garansi</span>}
                              </>
                            );
                        })()}
@@ -1227,7 +1237,7 @@ export default function NikonDashboard() {
                    <div className="grid grid-cols-3 gap-4">
                      <div>
                         <label className="block text-sm font-bold mb-1">Status Validasi</label>
-                        <select value={warrantyForm.status_validasi || ''} onChange={e => setWarrantyForm({...warrantyForm, status_validasi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500">
+                        <select value={warrantyForm.status_validasi || ''} onChange={e => setWarrantyForm({...warrantyForm, status_validasi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
                            <option value="Menunggu">Menunggu</option>
                            <option value="Valid">Valid</option>
                            <option value="Tidak Valid">Tidak Valid</option>
@@ -1235,14 +1245,14 @@ export default function NikonDashboard() {
                      </div>
                      <div>
                         <label className="block text-sm font-bold mb-1">Jenis Garansi</label>
-                        <select value={warrantyForm.jenis_garansi || ''} onChange={e => setWarrantyForm({...warrantyForm, jenis_garansi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500">
+                        <select value={warrantyForm.jenis_garansi || ''} onChange={e => setWarrantyForm({...warrantyForm, jenis_garansi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
                            <option value="Jasa 30%">Jasa 30%</option>
                            <option value="Extended to 2 Year">Extended to 2 Year</option>
                         </select>
                      </div>
                      <div>
                         <label className="block text-sm font-bold mb-1">Lama Garansi</label>
-                        <select value={warrantyForm.lama_garansi || ''} onChange={e => setWarrantyForm({...warrantyForm, lama_garansi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500">
+                        <select value={warrantyForm.lama_garansi || ''} onChange={e => setWarrantyForm({...warrantyForm, lama_garansi: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
                            <option value="1 Tahun">1 Tahun</option>
                            <option value="2 Tahun">2 Tahun</option>
                            <option value="Tidak Garansi">Tidak Garansi</option>
@@ -1256,21 +1266,21 @@ export default function NikonDashboard() {
                  <form id="promoForm" onSubmit={handleSavePromo} className="space-y-4">
                     <div>
                        <label className="block text-sm font-bold mb-1">Nama Promo</label>
-                       <input required type="text" list="list-jenis-promo" value={promoForm.nama_promo || ''} onChange={e => setPromoForm({...promoForm, nama_promo: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                       <input required type="text" list="list-jenis-promo" value={promoForm.nama_promo || ''} onChange={e => setPromoForm({...promoForm, nama_promo: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                        <div>
                           <label className="block text-sm font-bold mb-1">Tgl Mulai</label>
-                          <input required type="date" value={promoForm.tanggal_mulai || ''} onChange={e => setPromoForm({...promoForm, tanggal_mulai: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                          <input required type="date" value={promoForm.tanggal_mulai || ''} onChange={e => setPromoForm({...promoForm, tanggal_mulai: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                        </div>
                        <div>
                           <label className="block text-sm font-bold mb-1">Tgl Selesai</label>
-                          <input required type="date" value={promoForm.tanggal_selesai || ''} onChange={e => setPromoForm({...promoForm, tanggal_selesai: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                          <input required type="date" value={promoForm.tanggal_selesai || ''} onChange={e => setPromoForm({...promoForm, tanggal_selesai: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                        </div>
                     </div>
                     <div>
                        <label className="flex items-center gap-2">
-                          <input type="checkbox" checked={promoForm.status_aktif || false} onChange={e => setPromoForm({...promoForm, status_aktif: e.target.checked})} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" /> 
+                          <input type="checkbox" checked={promoForm.status_aktif || false} onChange={e => setPromoForm({...promoForm, status_aktif: e.target.checked})} className="w-4 h-4 text-black border-gray-300 rounded focus:ring-black" /> 
                           <span className="text-sm font-bold text-slate-900">Promo Aktif</span>
                        </label>
                     </div>
@@ -1283,7 +1293,7 @@ export default function NikonDashboard() {
                        {promoForm.tipe_produk?.map((item, index) => (
                          <div key={index} className="flex gap-2 mb-2 items-center">
                             <div className="flex-1">
-                               <input type="text" list="list-tipe-barang" required value={item.nama_produk} onChange={e => { const newItems = [...(promoForm.tipe_produk||[])]; newItems[index].nama_produk = e.target.value; setPromoForm({...promoForm, tipe_produk: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Ketik nama produk..."/>
+                               <input type="text" list="list-tipe-barang" required value={item.nama_produk} onChange={e => { const newItems = [...(promoForm.tipe_produk||[])]; newItems[index].nama_produk = e.target.value; setPromoForm({...promoForm, tipe_produk: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik nama produk..."/>
                             </div>
                             <button type="button" onClick={() => { const newItems = [...(promoForm.tipe_produk||[])]; newItems.splice(index, 1); setPromoForm({...promoForm, tipe_produk: newItems}); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2 rounded text-sm transition border border-red-200">X</button>
                          </div>
@@ -1297,15 +1307,15 @@ export default function NikonDashboard() {
                  <form id="serviceForm" onSubmit={handleSaveService} className="space-y-4">
                     <div>
                        <label className="block text-sm font-bold mb-1">Nomor Tanda Terima</label>
-                       <input required type="text" value={serviceForm.nomor_tanda_terima || ''} onChange={e => setServiceForm({...serviceForm, nomor_tanda_terima: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Masukkan ID/Resi service" />
+                       <input required type="text" value={serviceForm.nomor_tanda_terima || ''} onChange={e => setServiceForm({...serviceForm, nomor_tanda_terima: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Masukkan ID/Resi service" />
                     </div>
                     <div>
                        <label className="block text-sm font-bold mb-1">Nomor Seri</label>
-                       <input required type="text" value={serviceForm.nomor_seri || ''} onChange={e => setServiceForm({...serviceForm, nomor_seri: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                       <input required type="text" value={serviceForm.nomor_seri || ''} onChange={e => setServiceForm({...serviceForm, nomor_seri: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                     </div>
                     <div>
                        <label className="block text-sm font-bold mb-1">Status Service</label>
-                       <input required type="text" value={serviceForm.status_service || ''} onChange={e => setServiceForm({...serviceForm, status_service: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Contoh: Menunggu Sparepart / Selesai" />
+                       <input required type="text" value={serviceForm.status_service || ''} onChange={e => setServiceForm({...serviceForm, status_service: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Contoh: Menunggu Sparepart / Selesai" />
                     </div>
                  </form>
                )}
@@ -1398,15 +1408,15 @@ export default function NikonDashboard() {
                          <div key={index} className="flex gap-2 mb-2 items-end">
                             <div className="flex-1">
                                <label className="text-xs font-bold text-slate-700">Purpose</label>
-                               <input type="text" value={item.purpose} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].purpose = e.target.value; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-blue-500"/>
+                               <input type="text" value={item.purpose} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].purpose = e.target.value; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]"/>
                             </div>
                             <div className="w-16">
                                <label className="text-xs font-bold text-slate-700">Qty</label>
-                               <input type="number" value={item.qty} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].qty = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-blue-500"/>
+                               <input type="number" value={item.qty} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].qty = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]"/>
                             </div>
                             <div className="w-32">
                                <label className="text-xs font-bold text-slate-700">Cost/Unit</label>
-                               <input type="number" value={item.cost_unit} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].cost_unit = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-blue-500"/>
+                               <input type="number" value={item.cost_unit} onChange={e => { const newItems = [...(budgetForm.items||[])]; newItems[index].cost_unit = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({...budgetForm, items: newItems})}} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]"/>
                             </div>
                             <div className="w-32">
                                <label className="text-xs font-bold text-slate-700">Value (Auto)</label>
@@ -1416,7 +1426,7 @@ export default function NikonDashboard() {
                          </div>
                        ))}
                        <div className="flex justify-end items-center mt-4 gap-4">
-                          <button type="button" onClick={() => { const total = (budgetForm.items || []).reduce((acc, curr) => acc + curr.value, 0); setBudgetForm({...budgetForm, total_cost: total}); }} className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition">Hitung Ulang Total</button>
+                          <button type="button" onClick={() => { const total = (budgetForm.items || []).reduce((acc, curr) => acc + curr.value, 0); setBudgetForm({...budgetForm, total_cost: total}); }} className="text-xs font-bold text-black hover:text-blue-800 hover:underline transition">Hitung Ulang Total</button>
                           <div className="font-extrabold text-slate-900">Total Cost: Rp {Number(budgetForm.total_cost || 0).toLocaleString('id-ID')}</div>
                        </div>
                     </div>
@@ -1432,36 +1442,33 @@ export default function NikonDashboard() {
                           </div>
                           <div>
                              <label className="block text-sm font-bold mb-1">Ketik Password Baru</label>
-                             <input required type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({...karyawanForm, password: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Minimal 6 karakter..." />
+                             <input required type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({...karyawanForm, password: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Minimal 6 karakter..." />
                           </div>
                        </>
                     ) : (
                        <>
                           <div>
                              <label className="block text-sm font-bold mb-1">Nama Karyawan</label>
-                             <input required type="text" value={karyawanForm.nama_karyawan || ''} onChange={e => setKaryawanForm({...karyawanForm, nama_karyawan: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                             <input required type="text" value={karyawanForm.nama_karyawan || ''} onChange={e => setKaryawanForm({...karyawanForm, nama_karyawan: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                              <div>
                                 <label className="block text-sm font-bold mb-1">Username Login</label>
-                                <input required type="text" value={karyawanForm.username || ''} onChange={e => setKaryawanForm({...karyawanForm, username: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" disabled={karyawanForm.username === 'admin'}/>
+                                <input required type="text" value={karyawanForm.username || ''} onChange={e => setKaryawanForm({...karyawanForm, username: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'}/>
                              </div>
                              <div>
                                 <label className="block text-sm font-bold mb-1">Password {modalAction === 'edit' && <span className="text-[10px] font-normal text-slate-500">(Kosongkan jika tidak diubah)</span>}</label>
-                                <input type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({...karyawanForm, password: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                                <input type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({...karyawanForm, password: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                              </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                              <div>
                                 <label className="block text-sm font-bold mb-1">Role Akun</label>
-                                <select value={karyawanForm.role || ''} onChange={e => setKaryawanForm({...karyawanForm, role: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" disabled={karyawanForm.username === 'admin'}>
-                                   <option value="Karyawan">Karyawan</option>
-                                   <option value="Admin">Admin</option>
-                                </select>
+                                <input type="text" list="list-roles" value={karyawanForm.role || ''} onChange={e => setKaryawanForm({...karyawanForm, role: e.target.value})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'} placeholder="Ketik atau pilih role..."/>
                              </div>
                              <div>
                                 <label className="block text-sm font-bold mb-1">Status Akun</label>
-                                <select value={karyawanForm.status_aktif ? 'true' : 'false'} onChange={e => setKaryawanForm({...karyawanForm, status_aktif: e.target.value === 'true'})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-blue-500" disabled={karyawanForm.username === 'admin'}>
+                                <select value={karyawanForm.status_aktif ? 'true' : 'false'} onChange={e => setKaryawanForm({...karyawanForm, status_aktif: e.target.value === 'true'})} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'}>
                                    <option value="true">Aktif</option>
                                    <option value="false">Tidak Aktif (Blokir)</option>
                                 </select>
@@ -1479,7 +1486,7 @@ export default function NikonDashboard() {
                                              const current = karyawanForm.akses_halaman || [];
                                              if (current.includes(tab.id)) setKaryawanForm({...karyawanForm, akses_halaman: current.filter(x => x !== tab.id)});
                                              else setKaryawanForm({...karyawanForm, akses_halaman: [...current, tab.id]});
-                                          }} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                                          }} className="w-4 h-4 text-black rounded focus:ring-black" />
                                           <span className="text-sm font-bold text-slate-700">{tab.label}</span>
                                        </label>
                                     )
@@ -1493,7 +1500,7 @@ export default function NikonDashboard() {
             </div>
             <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
                <button onClick={closeModal} className="px-4 py-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-100 rounded-md text-sm font-bold transition">Batal</button>
-               <button type="submit" form={activeTab === 'claims' ? 'claimForm' : activeTab === 'warranties' ? 'warrantyForm' : activeTab === 'services' ? 'serviceForm' : activeTab === 'promos' ? 'promoForm' : activeTab === 'userrole' ? 'karyawanForm' : 'budgetForm'} disabled={isSubmitting} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-bold transition disabled:opacity-50">{isSubmitting ? 'Menyimpan...' : 'Simpan Data'}</button>
+               <button type="submit" form={activeTab === 'claims' ? 'claimForm' : activeTab === 'warranties' ? 'warrantyForm' : activeTab === 'services' ? 'serviceForm' : activeTab === 'promos' ? 'promoForm' : activeTab === 'userrole' ? 'karyawanForm' : 'budgetForm'} disabled={isSubmitting} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black rounded-md text-sm font-bold transition disabled:opacity-50">{isSubmitting ? 'Menyimpan...' : 'Simpan Data'}</button>
             </div>
           </div>
         </div>
@@ -1508,9 +1515,18 @@ export default function NikonDashboard() {
         <div className="flex flex-col absolute top-0 left-0 w-full bg-white text-black font-sans z-[100] min-h-screen pb-10 pt-6" style={{ fontSize: '13px', lineHeight: '1.4' }}>
           
           {/* PRINT CONTROL BAR */}
-          <div className="print:hidden fixed top-4 right-4 flex gap-3 z-50 bg-white p-3 rounded-lg shadow-xl border border-slate-200">
-             <button onClick={() => setPrintData(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md transition text-sm">Kembali</button>
-             <button onClick={handlePrintDocument} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md transition shadow-md text-sm flex items-center gap-2">🖨️ Cetak PDF</button>
+          <div className="print:hidden fixed top-4 right-4 flex flex-col gap-3 z-50 bg-white p-3 rounded-lg shadow-xl border border-slate-200">
+             <div className="flex gap-3 justify-end">
+                <button onClick={() => setPrintData(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md transition text-sm">Kembali</button>
+                <button onClick={handlePrintDocument} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black font-bold rounded-md transition shadow-md text-sm flex items-center gap-2">🖨️ Cetak PDF</button>
+             </div>
+             {printData.attachment_url && (
+               <div className="flex items-center gap-2 border-t border-slate-200 pt-2 mt-1">
+                 <label className="text-xs font-bold text-slate-600">Ukuran Gambar:</label>
+                 <input type="range" min="100" max="800" value={printImageSize} onChange={(e) => setPrintImageSize(Number(e.target.value))} className="w-32 accent-[#FFE500]" />
+                 <span className="text-xs font-mono bg-slate-100 px-1 rounded">{printImageSize}px</span>
+               </div>
+             )}
           </div>
 
           <div className="px-4 max-w-[800px] mx-auto w-full">
@@ -1543,8 +1559,7 @@ export default function NikonDashboard() {
                <div className="border-2 border-black w-48 flex flex-col bg-white">
                   <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Proposed / Prepared by</div>
                   <div className="flex-1 flex flex-col justify-end p-2 relative pt-8">
-                     <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-lg z-10" defaultValue={printData.drafter_name || ''} placeholder="Ketik nama..." />
-                     <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
+                     <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.drafter_name || ''} placeholder="Ketik nama..." />
                   </div>
                   <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
                      <div className="p-1 w-1/2 text-left">Sign</div>
@@ -1556,15 +1571,15 @@ export default function NikonDashboard() {
                   <div className="flex-1 flex divide-x divide-black min-h-[60px]">
                      <div className="flex-1 flex flex-col justify-end p-2 relative">
                         <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.mgt_comment_1 || ''} placeholder="Nama Comment 1..." />
-                        <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
+                        
                      </div>
                      <div className="flex-1 flex flex-col justify-end p-2 relative">
                         <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.mgt_comment_2 || ''} placeholder="Nama Comment 2..." />
-                        <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
+                        
                      </div>
                      <div className="flex-1 flex flex-col justify-end p-2 relative">
-                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-lg z-10" defaultValue={printData.mgt_consent || ''} placeholder="Nama Consent..." />
-                        <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
+                        <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.mgt_consent || ''} placeholder="Nama Consent..." />
+                        
                      </div>
                   </div>
                   <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
@@ -1581,8 +1596,8 @@ export default function NikonDashboard() {
                <div className="border-2 border-black w-48 flex flex-col bg-white">
                   <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Finance & Accounting</div>
                   <div className="flex-1 flex flex-col justify-end p-2 relative pt-8 min-h-[60px]">
-                     <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-lg z-10" defaultValue={printData.finance_consent || ''} placeholder="Ketik nama..." />
-                     <div className="border-b border-dotted border-black w-full absolute bottom-4"></div>
+                     <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.finance_consent || ''} placeholder="Ketik nama..." />
+                     
                   </div>
                   <div className="border-t border-black text-[10px] p-1 text-left font-bold border-b border-black bg-gray-50 text-black uppercase">Consent</div>
                   <div className="text-[10px] p-1 text-right bg-white uppercase font-bold">Date:</div>
@@ -1651,7 +1666,7 @@ export default function NikonDashboard() {
              <div className="mt-4 pt-4 border-t-2 border-dashed border-gray-400 page-break-inside-avoid">
                 <div className="font-bold text-xs uppercase tracking-wide mb-2">Lampiran (Attachment):</div>
                 <div className="flex justify-center w-full border border-gray-300 p-2 bg-gray-50">
-                   <img src={printData.attachment_url} alt="Lampiran Poster" className="object-contain max-h-[450px] w-auto drop-shadow-sm" />
+                   <img src={printData.attachment_url} alt="Lampiran Poster" className="object-contain drop-shadow-sm" style={{ maxHeight: `${printImageSize}px` }} />
                 </div>
              </div>
           )}
