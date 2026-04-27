@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { chatbotTexts } from './chatbot/texts';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
@@ -414,7 +415,7 @@ export default function NikonDashboard() {
             const tempPw = Math.random().toString(36).substring(2, 10);
             await supabase.from('karyawan').update({ password: tempPw }).eq('id_karyawan', data.id_karyawan);
 
-            const msg = `Halo ${data.nama_karyawan},\n\nPermintaan reset password Anda telah diterima. Password sementara Anda adalah: *${tempPw}*\n\nSilakan login dan segera ubah password Anda di dashboard.`;
+            const msg = chatbotTexts.forgotPassword(data.nama_karyawan, tempPw);
             await sendWhatsAppMessageViaFonnte(data.nomor_wa!, msg);
 
             setForgotPwMessage('Password baru telah dikirim ke WhatsApp Anda!');
@@ -748,7 +749,7 @@ export default function NikonDashboard() {
             if (!karyawanForm.nomor_wa) throw new Error("Nomor WhatsApp wajib diisi!");
             await supabase.from('karyawan').insert([{ ...karyawanForm, password: passwordToUse }]);
 
-            const msg = `Halo ${karyawanForm.nama_karyawan},\n\nAnda telah terdaftar sebagai karyawan di Alta Nikindo Dashboard.\n\nUsername: *${karyawanForm.username}*\nPassword: *${passwordToUse}*\n\nSilakan login dan segera ubah password Anda.`;
+            const msg = chatbotTexts.newKaryawan(karyawanForm.nama_karyawan!, karyawanForm.username!, passwordToUse);
             await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
          } else {
             const updateData = { ...karyawanForm };
@@ -756,7 +757,7 @@ export default function NikonDashboard() {
             await supabase.from('karyawan').update(updateData).eq('id_karyawan', editingId);
 
             if (updateData.password && karyawanForm.nomor_wa) {
-               const msg = `Halo ${karyawanForm.nama_karyawan},\n\nPassword akun Anda telah diperbarui oleh Admin.\n\nPassword baru: *${updateData.password}*`;
+               const msg = chatbotTexts.updatePasswordAdmin(karyawanForm.nama_karyawan!, updateData.password);
                await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
             }
          }
@@ -772,7 +773,7 @@ export default function NikonDashboard() {
          await supabase.from('karyawan').update({ password: karyawanForm.password }).eq('id_karyawan', editingId);
 
          if (karyawanForm.nomor_wa) {
-            const msg = `Halo ${karyawanForm.nama_karyawan},\n\nPassword akun Anda telah di-reset oleh Admin.\n\nPassword baru: *${karyawanForm.password}*`;
+            const msg = chatbotTexts.resetPasswordAdmin(karyawanForm.nama_karyawan!, karyawanForm.password!);
             await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
          }
 
@@ -825,13 +826,12 @@ export default function NikonDashboard() {
          else await supabase.from('peminjaman_barang').update(dataToSave).eq('id_peminjaman', editingId);
 
          // 3. Send WhatsApp message
-         let message = `Halo *${lendingForm.nama_peminjam}*,\n\nAnda telah meminjam barang-barang berikut dari Nikon Indonesia:\n\n`;
+         let message = chatbotTexts.lendingInitHeader(lendingForm.nama_peminjam!);
          lendingForm.items_dipinjam?.forEach((item, idx) => {
-            message += `${idx + 1}. *${item.nama_barang}* (SN: ${item.nomor_seri})\n`;
-            if (item.catatan) message += `   Catatan: ${item.catatan}\n`;
+            message += chatbotTexts.lendingInitItem(idx, item.nama_barang, item.nomor_seri, item.catatan || '');
          });
          // The initial message for lending doesn't need return notes.
-         message += `\nMohon jaga barang-barang ini dengan baik. Terima kasih!`;
+         message += chatbotTexts.lendingInitFooter();
          await sendWhatsAppMessageViaFonnte(lendingForm.nomor_wa_peminjam!, message);
 
          fetchLendingRecords();
@@ -879,7 +879,7 @@ export default function NikonDashboard() {
 
    const handleKirimStatusClaim = async (c: ClaimPromo) => {
       if (!window.confirm('Kirim status claim ke WA konsumen?')) return;
-      const msg = `Status Claim Promo Anda:\n\nNo Seri: ${c.nomor_seri}\nBarang: ${c.tipe_barang}\nStatus MKT: ${c.validasi_by_mkt}\nStatus FA: ${c.validasi_by_fa}\nJasa Kirim: ${c.nama_jasa_pengiriman || '-'}\nNo Resi: ${c.nomor_resi || '-'}\n\nTerima kasih.`;
+      const msg = chatbotTexts.statusClaim(c.nomor_seri, c.tipe_barang, c.validasi_by_mkt, c.validasi_by_fa, c.nama_jasa_pengiriman || '-', c.nomor_resi || '-');
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
       await supabase.from('riwayat_pesan').insert([{ nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
       alert('Pesan status berhasil dikirim!');
@@ -890,7 +890,7 @@ export default function NikonDashboard() {
       const linked = claims.find(c => c.nomor_seri === w.nomor_seri);
       if (!linked || !linked.nomor_wa) return alert('Gagal: Tidak dapat menemukan Nomor WA (Barang ini tidak ada di tabel Claim Promo).');
       if (!window.confirm('Kirim status garansi ke WA konsumen?')) return;
-      const msg = `Status Garansi Anda:\n\nNo Seri: ${w.nomor_seri}\nTipe Barang: ${w.tipe_barang}\nJenis Garansi: ${w.jenis_garansi}\nLama Garansi: ${w.lama_garansi}\nSisa Garansi: ${calculateSisaGaransi(linked.tanggal_pembelian, w.lama_garansi)}\n\nTerima kasih.`;
+      const msg = chatbotTexts.statusGaransi(w.nomor_seri, w.tipe_barang, w.jenis_garansi, w.lama_garansi, calculateSisaGaransi(linked.tanggal_pembelian, w.lama_garansi));
       await sendWhatsAppMessageViaFonnte(linked.nomor_wa, msg);
       await supabase.from('riwayat_pesan').insert([{ nomor_wa: linked.nomor_wa, nama_profil_wa: getRealProfileName(linked.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
       alert('Pesan status berhasil dikirim!');
@@ -922,11 +922,11 @@ export default function NikonDashboard() {
          // Send WhatsApp message for returned items
          const returnedItems = lending.items_dipinjam.filter(item => item.status_pengembalian === 'dikembalikan');
          if (returnedItems.length > 0) {
-            let message = `Halo *${lending.nama_peminjam}*,\n\nBarang-barang berikut telah Anda kembalikan ke Nikon Indonesia:\n\n`;
+            let message = chatbotTexts.lendingReturnHeader(lending.nama_peminjam);
             returnedItems.forEach((item, idx) => {
-               message += `${idx + 1}. *${item.nama_barang}* (SN: ${item.nomor_seri})${item.catatan_pengembalian ? ` - Catatan: ${item.catatan_pengembalian}` : ''}\n`;
+               message += chatbotTexts.lendingReturnItem(idx, item.nama_barang, item.nomor_seri, item.catatan_pengembalian || '');
             });
-            message += `\nTerima kasih atas kerjasamanya!`;
+            message += chatbotTexts.lendingReturnFooter();
             await sendWhatsAppMessageViaFonnte(lending.nomor_wa_peminjam, message);
          }
 
@@ -1210,6 +1210,9 @@ export default function NikonDashboard() {
                      <span className="text-sm font-medium text-slate-300 block">Selamat datang kembali,</span>
                      <span className="text-sm font-bold text-[#FFE500]">{currentUser?.nama_karyawan} 🚀</span>
                   </div>
+                  <a href="/chatbot" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center gap-2">
+                     <span>🤖</span> Chatbot
+                  </a>
                   <button onClick={handleLogout} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">Logout</button>
                </div>
             </header>
