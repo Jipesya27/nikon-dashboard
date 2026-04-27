@@ -215,6 +215,12 @@ export default function NikonDashboard() {
 
    // --- IMAGE VIEWER LOGIC ---
    const openImageViewer = (urlOrFile: string | File) => {
+      // Jika url adalah link Google Drive, buka di tab baru
+      if (typeof urlOrFile === 'string' && (urlOrFile.includes('drive.google.com') || urlOrFile.includes('docs.google.com'))) {
+         window.open(urlOrFile, '_blank', 'noopener,noreferrer');
+         return;
+      }
+
       if (urlOrFile instanceof File) {
          setCurrentImageUrl(URL.createObjectURL(urlOrFile));
       } else {
