@@ -74,6 +74,19 @@ export default function NikonDashboard() {
    const [searchKaryawan, setSearchKaryawan] = useState('');
    const [searchLending, setSearchLending] = useState('');
 
+   // SORTING STATES
+   type SortDirection = 'asc' | 'desc' | null;
+   interface SortConfig { column: string; direction: SortDirection; }
+   const [sortConfigKonsumen, setSortConfigKonsumen] = useState<SortConfig>({ column: '', direction: null });
+   const [sortConfigPromos, setSortConfigPromos] = useState<SortConfig>({ column: '', direction: null });
+   const [sortConfigClaims, setSortConfigClaims] = useState<SortConfig>({ column: '', direction: null });
+   const [sortConfigWarranties, setSortConfigWarranties] = useState<SortConfig>({ column: '', direction: null });
+   const [sortConfigServices, setSortConfigServices] = useState<SortConfig>({ column: '', direction: null });
+   const [sortConfigBudgets, setSortConfigBudgets] = useState<SortConfig>({ column: '', direction: null });
+   // Note: Lending and Karyawan sorting states will be added below if needed, following the pattern.
+   // Note: Lending and Karyawan sorting states will be added below if needed, following the pattern.
+   const [sortConfigLending, setSortConfigLending] = useState<SortConfig>({ column: '', direction: null });
+   const [sortConfigKaryawans, setSortConfigKaryawans] = useState<SortConfig>({ column: '', direction: null });
    // UI STATES
    const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
    const [readStatus, setReadStatus] = useState<Record<string, string>>({});
@@ -120,6 +133,55 @@ export default function NikonDashboard() {
    const [startDragPosition, setStartDragPosition] = useState({ x: 0, y: 0 });
 
    // --- DYNAMIC DATALIST OPTIONS ---
+
+   // --- SORTING LOGIC ---
+   const handleSort = (sortConfig: SortConfig, setSortConfig: React.Dispatch<React.SetStateAction<SortConfig>>, column: string) => {
+      let direction: SortDirection = 'asc';
+      if (sortConfig.column === column && sortConfig.direction === 'asc') {
+         direction = 'desc';
+      }
+      setSortConfig({ column, direction });
+   };
+
+   const getSortFunction = (sortConfig: SortConfig, consumersMap: Record<string, string> | null = null) => {
+      return (a: any, b: any) => {
+         if (!sortConfig.column || !sortConfig.direction) {
+            const dateA = new Date(a.created_at || 0).getTime();
+            const dateB = new Date(b.created_at || 0).getTime();
+            if (!isNaN(dateA) && !isNaN(dateB)) {
+               return dateB - dateA;
+            }
+            return 0;
+         }
+
+         let aValue: any;
+         let bValue: any;
+
+         // Special handling for 'nama_konsumen' as it can come from KonsumenData or be looked up in consumersMap
+         if (sortConfig.column === 'nama_konsumen') {
+            aValue = a.nama_lengkap || (consumersMap ? consumersMap[a.nomor_wa] : a.nomor_wa);
+            bValue = b.nama_lengkap || (consumersMap ? consumersMap[b.nomor_wa] : b.nomor_wa);
+         } else {
+            aValue = a[sortConfig.column];
+            bValue = b[sortConfig.column];
+         }
+
+         if (aValue == null) return 1;
+         if (bValue == null) return -1;
+
+         if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+            return sortConfig.direction === 'asc' ? (aValue === bValue ? 0 : aValue ? -1 : 1) : (aValue === bValue ? 0 : aValue ? 1 : -1);
+         }
+
+         if (!isNaN(Number(aValue)) && !isNaN(Number(bValue)) && typeof aValue !== 'boolean' && typeof bValue !== 'boolean') {
+            return sortConfig.direction === 'asc' ? Number(aValue) - Number(bValue) : Number(bValue) - Number(aValue);
+         }
+
+         return sortConfig.direction === 'asc'
+            ? String(aValue).localeCompare(String(bValue))
+            : String(bValue).localeCompare(String(aValue));
+      };
+   };
    const dynamicOptions = useMemo(() => {
       const allTipeBarang = [
          ...claims.map(c => c.tipe_barang),
@@ -943,17 +1005,31 @@ export default function NikonDashboard() {
       return { messageStats: stats, currentTotalConsumers: total };
    }, [messages, msgTimeFilter]);
 
-   const filteredContacts = useMemo(() => uniqueContacts.filter(c => {
+   const filteredContacts = useMemo(() => uniqueContacts.filter((c: RiwayatPesan) => {
       const name = getRealProfileName(c.nomor_wa).toLowerCase();
       const num = (c.nomor_wa || "").toLowerCase();
       const search = searchChat.toLowerCase();
       return name.includes(search) || num.includes(search);
    }), [uniqueContacts, searchChat, consumers, messages]);
 
+   const filteredConsumers = useMemo(() => consumersList.filter((c: KonsumenData) => {
+      const name = (c.nama_lengkap || "").toLowerCase();
+      const num = (c.nomor_wa || "").toLowerCase();
+      const id = (c.id_konsumen || "").toLowerCase();
+      const search = searchKonsumen.toLowerCase();
+      return name.includes(search) || num.includes(search) || id.includes(search);
+   }), [consumersList, searchKonsumen]);
+
+   const sortedConsumers = useMemo(() => {
+      const sortableItems = [...filteredConsumers];
+      // Pass null as consumersMap is not needed for KonsumenData directly
+      return sortableItems.sort(getSortFunction(sortConfigKonsumen, null));
+   }, [filteredConsumers, sortConfigKonsumen]);
+
    const currentChatThread = useMemo(() => {
       if (!selectedWa) return [];
       return messages
-         .filter(m => m.nomor_wa === selectedWa)
+         .filter((m: RiwayatPesan) => m.nomor_wa === selectedWa)
          .sort((a, b) => {
             const dateA = new Date(a.waktu_pesan || a.created_at || 0).getTime();
             const dateB = new Date(b.waktu_pesan || b.created_at || 0).getTime();
@@ -965,51 +1041,68 @@ export default function NikonDashboard() {
       scrollToBottom();
    }, [currentChatThread]);
 
-   const filteredPromos = useMemo(() => promos.filter(p => {
+   const filteredPromos = useMemo(() => promos.filter((p: Promosi) => {
       const name = (p.nama_promo || "").toLowerCase();
       const start = (p.tanggal_mulai || "").toLowerCase();
       const end = (p.tanggal_selesai || "").toLowerCase();
       const search = searchPromo.toLowerCase();
       return name.includes(search) || start.includes(search) || end.includes(search);
    }), [promos, searchPromo]);
-
-   const filteredClaims = useMemo(() => claims.filter(c => {
+   const sortedPromos = useMemo(() => {
+      const sortableItems = [...filteredPromos];
+      return sortableItems.sort(getSortFunction(sortConfigPromos, consumers));
+   }, [filteredPromos, sortConfigPromos, consumers]);
+   const filteredClaims = useMemo(() => claims.filter((c: ClaimPromo) => {
       const name = (consumers[c.nomor_wa] || c.nomor_wa || "").toLowerCase();
       const seri = (c.nomor_seri || "").toLowerCase();
-      const promo = getNamaPromo(c.tipe_barang).toLowerCase();
+      const promo = (c.jenis_promosi || getNamaPromo(c.tipe_barang)).toLowerCase();
       const mkt = (c.validasi_by_mkt || "").toLowerCase();
       const fa = (c.validasi_by_fa || "").toLowerCase();
       const search = searchClaim.toLowerCase();
       return name.includes(search) || seri.includes(search) || promo.includes(search) || mkt.includes(search) || fa.includes(search);
-   }), [claims, searchClaim, consumers, promos]);
+   }), [claims, searchClaim, consumers, promos]); // Keep filteredClaims for search
 
-   const filteredWarranties = useMemo(() => warranties.filter(w => (w.nomor_seri || "").toLowerCase().includes(searchGaransi.toLowerCase())), [warranties, searchGaransi]);
+   const sortedClaims = useMemo(() => {
+      const sortableItems = [...filteredClaims];
+      return sortableItems.sort(getSortFunction(sortConfigClaims, consumers));
+   }, [filteredClaims, sortConfigClaims, consumers]);
+   const filteredWarranties = useMemo(() => warranties.filter((w: Garansi) => (w.nomor_seri || "").toLowerCase().includes(searchGaransi.toLowerCase())), [warranties, searchGaransi]);
+   const sortedWarranties = useMemo(() => {
+      const sortableItems = [...filteredWarranties];
+      return sortableItems.sort(getSortFunction(sortConfigWarranties, consumers));
+   }, [filteredWarranties, sortConfigWarranties, consumers]);
 
-   const filteredServices = useMemo(() => services.filter(s => {
+   const filteredServices = useMemo(() => services.filter((s: StatusService) => {
       const ttr = (s.nomor_tanda_terima || "").toLowerCase();
       const seri = (s.nomor_seri || "").toLowerCase();
       const status = (s.status_service || "").toLowerCase();
       const search = searchService.toLowerCase();
       return ttr.includes(search) || seri.includes(search) || status.includes(search);
-   }), [services, searchService]);
+   }), [services, searchService]); // Keep filteredServices for search
+   const sortedServices = useMemo(() => {
+      const sortableItems = [...filteredServices];
+      return sortableItems.sort(getSortFunction(sortConfigServices, consumers));
+   }, [filteredServices, sortConfigServices, consumers]);
+   const filteredBudgets = useMemo(() => budgets.filter((b: BudgetApproval) => (b.title || "").toLowerCase().includes(searchBudget.toLowerCase())), [budgets, searchBudget]); // Keep filteredBudgets for search
 
-   const filteredBudgets = useMemo(() => budgets.filter(b => (b.title || "").toLowerCase().includes(searchBudget.toLowerCase())), [budgets, searchBudget]);
+   const sortedBudgets = useMemo(() => {
+      const sortableItems = [...filteredBudgets];
+      return sortableItems.sort(getSortFunction(sortConfigBudgets, consumers));
+   }, [filteredBudgets, sortConfigBudgets, consumers]);
 
-   const filteredKaryawans = useMemo(() => karyawans.filter(k => {
+   const filteredKaryawans = useMemo(() => karyawans.filter((k: Karyawan) => { // Keep filteredKaryawans for search
       const nama = (k.nama_karyawan || "").toLowerCase();
       const user = (k.username || "").toLowerCase();
       const search = searchKaryawan.toLowerCase();
       return nama.includes(search) || user.includes(search);
-   }), [karyawans, searchKaryawan]);
+   }), [karyawans, searchKaryawan]); // Keep filteredKaryawans for search
+   const sortedKaryawans = useMemo(() => {
+      const sortableItems = [...filteredKaryawans];
+      return sortableItems.sort(getSortFunction(sortConfigKaryawans, consumers));
+   }, [filteredKaryawans, sortConfigKaryawans, consumers]);
+   // No need for filteredConsumers here, it's already defined above and sorted.
 
-   const filteredConsumers = useMemo(() => consumersList.filter(k => {
-      const search = searchKonsumen.toLowerCase();
-      return (k.nama_lengkap || "").toLowerCase().includes(search) ||
-         (k.nomor_wa || "").includes(search) ||
-         (k.id_konsumen || "").toLowerCase().includes(search);
-   }), [consumersList, searchKonsumen]);
-
-   const filteredLendingRecords = useMemo(() => lendingRecords.filter(l => {
+   const filteredLendingRecords = useMemo(() => lendingRecords.filter((l: PeminjamanBarang) => {
       const name = (l.nama_peminjam || "").toLowerCase();
       const wa = (l.nomor_wa_peminjam || "").toLowerCase();
       const status = (l.status_peminjaman || "").toLowerCase();
@@ -1017,6 +1110,11 @@ export default function NikonDashboard() {
       const search = searchLending.toLowerCase();
       return name.includes(search) || wa.includes(search) || status.includes(search) || items.includes(search);
    }), [lendingRecords, searchLending]);
+
+   const sortedLendingRecords = useMemo(() => {
+      const sortableItems = [...filteredLendingRecords];
+      return sortableItems.sort(getSortFunction(sortConfigLending, consumers));
+   }, [filteredLendingRecords, sortConfigLending, consumers]);
 
    const ALL_TABS = [
       { id: 'messages', label: '💬 Pesan', count: messages.length },
@@ -1256,13 +1354,13 @@ export default function NikonDashboard() {
                               <input type="text" placeholder="🔍 Cari nama / no WA..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm outline-none focus:border-[#FFE500] shadow-sm" />
                            </div>
                            <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
-                              {filteredContacts.map((c: any) => (
+                              {filteredContacts.map((c: RiwayatPesan) => (
                                  <div key={c.nomor_wa} onClick={() => setSelectedWa(c.nomor_wa)} className={`p-4 cursor-pointer hover:bg-slate-50 transition ${selectedWa === c.nomor_wa ? 'border-l-4 border-[#FFE500] bg-[#FFE500]/10' : 'border-l-4 border-transparent'}`}>
                                     <div className="flex justify-between text-sm">
                                        <span className="font-bold truncate flex items-center gap-2">
                                           {getRealProfileName(c.nomor_wa)}
                                           {c.bicara_dengan_cs && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full shadow-sm animate-pulse">🚨 Perlu CS</span>}
-                                          {c.arah_pesan === 'IN' && (!readStatus[c.nomor_wa] || new Date(c.waktu_pesan || c.created_at) > new Date(readStatus[c.nomor_wa])) && (
+                                          {c.arah_pesan === 'IN' && (!readStatus[c.nomor_wa] || new Date(c.waktu_pesan || c.created_at!) > new Date(readStatus[c.nomor_wa])) && (
                                              <span className="bg-blue-500 text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded-full shadow-sm">Baru</span>
                                           )}
                                        </span>
@@ -1288,7 +1386,7 @@ export default function NikonDashboard() {
                                     )}
                                  </div>
                                  <div ref={chatContainerRef} className="flex-1 p-4 overflow-y-auto space-y-4 relative scroll-smooth" style={{ backgroundColor: '#efeae2', backgroundImage: `url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')`, backgroundSize: '400px', backgroundRepeat: 'repeat' }}>
-                                    {currentChatThread.map((msg: any) => (
+                                    {currentChatThread.map((msg: RiwayatPesan) => (
                                        <div key={msg.id_pesan || Math.random().toString()} className={`flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
                                           <div className={`max-w-[75%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-slate-900 font-medium rounded-tr-none' : 'bg-white text-slate-900 font-medium rounded-tl-none'}`}>
                                              {isImageUrl(msg.isi_pesan) ? (
@@ -1335,8 +1433,8 @@ export default function NikonDashboard() {
                      </div>
                      {viewMode === 'card' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           {filteredConsumers.map(k => {
-                           const userClaims = claims.filter(c => c.nomor_wa === k.nomor_wa);
+                           {sortedConsumers.map((k: KonsumenData) => {
+                           const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
                            return (
                               <div key={k.nomor_wa} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
                                  <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
@@ -1380,23 +1478,38 @@ export default function NikonDashboard() {
                            <table className="w-full text-sm">
                               <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
                                  <tr>
-                                    <th className="px-4 py-3 text-left font-bold">Nama</th>
-                                    <th className="px-4 py-3 text-left font-bold">ID Konsumen</th>
-                                    <th className="px-4 py-3 text-left font-bold">No. WhatsApp</th>
-                                    <th className="px-4 py-3 text-left font-bold">Alamat</th>
-                                    <th className="px-4 py-3 text-left font-bold">NIK</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>Nama {sortConfigKonsumen.column === 'nama_lengkap' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'id_konsumen')}>ID Konsumen {sortConfigKonsumen.column === 'id_konsumen' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nomor_wa')}>No. WhatsApp {sortConfigKonsumen.column === 'nomor_wa' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'alamat_rumah')}>Alamat {sortConfigKonsumen.column === 'alamat_rumah' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nik')}>NIK {sortConfigKonsumen.column === 'nik' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold">Riwayat Barang</th>
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
-                                 {filteredConsumers.map(k => (
+                                 {sortedConsumers.map((k: KonsumenData) => {
+                                    const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
+                                    return (
                                     <tr key={k.nomor_wa} className="whitespace-nowrap hover:bg-slate-50 font-medium">
                                        <td className="px-4 py-3 text-slate-800 font-bold">{k.nama_lengkap || '-'}</td>
                                        <td className="px-4 py-3 font-mono">{k.id_konsumen || '-'}</td>
                                        <td className="px-4 py-3">{k.nomor_wa}</td>
                                        <td className="px-4 py-3 whitespace-normal">{[k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos].filter(Boolean).join(', ')}</td>
                                        <td className="px-4 py-3">{k.nik || '-'}</td>
+                                       <td className="px-4 py-3 text-xs">
+                                          <ul className="list-disc list-inside space-y-1">
+                                             {userClaims.length > 0 ? userClaims.map(c => (
+                                                <li key={c.id_claim}>
+                                                   {c.tipe_barang} (SN: {c.nomor_seri})
+                                                </li>
+                                             )) : (
+                                                <li className="text-slate-500 italic">Tidak ada</li>
+                                             )}
+                                          </ul>
+                                       </td>
                                     </tr>
-                                 ))}
+                                    );
+                                 })}
                               </tbody>
                            </table>
                         </div>
@@ -1408,10 +1521,11 @@ export default function NikonDashboard() {
                {activeTab === 'promos' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
                       <input type="text" placeholder="🔍 Cari Nama Promo atau Periode Tanggal..." value={searchPromo} onChange={e => setSearchPromo(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                      {viewMode === 'card' ? (
+                      {viewMode === 'card' ? ( 
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredPromos.map(p => (
-                               <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                            {sortedPromos.map((p: Promosi) => {
+                               return (
+                                  <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
                                   <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
                                      <div>
                                         <h3 className="font-bold text-lg text-slate-800">{p.nama_promo}</h3>
@@ -1439,23 +1553,24 @@ export default function NikonDashboard() {
                                         <button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                      </div>
                                   )}
-                               </div>
-                            ))}
+                                  </div>
+                               );
+                            })}
                          </div>
                       ) : (
                          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
                             <table className="w-full text-sm">
                                <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
                                   <tr>
-                                     <th className="px-4 py-3 text-left font-bold">Nama Promo</th>
-                                     <th className="px-4 py-3 text-left font-bold">Periode</th>
-                                     <th className="px-4 py-3 text-left font-bold">Status</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'status_aktif')}>Status {sortConfigPromos.column === 'status_aktif' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                      <th className="px-4 py-3 text-left font-bold">Produk Berlaku</th>
                                      {currentUser?.role === 'Admin' && <th className="px-4 py-3 text-left font-bold">Aksi</th>}
                                   </tr>
                                </thead>
                                <tbody className="divide-y divide-slate-200">
-                                  {filteredPromos.map(p => (
+                                  {sortedPromos.map((p: Promosi) => (
                                      <tr key={p.id_promo} className="hover:bg-slate-50 font-medium">
                                         <td className="px-4 py-3 font-bold">{p.nama_promo}</td>
                                         <td className="px-4 py-3">{p.tanggal_mulai} s/d {p.tanggal_selesai}</td>
@@ -1482,24 +1597,24 @@ export default function NikonDashboard() {
                             <table className="w-full text-sm">
                                <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
                                   <tr>
-                                     <th className="px-4 py-3 text-left font-bold">Nama</th>
-                                     <th className="px-4 py-3 text-left font-bold">No Seri</th>
-                                     <th className="px-4 py-3 text-left font-bold">Barang</th>
-                                     <th className="px-4 py-3 text-left font-bold">Nama Promo</th>
-                                     <th className="px-4 py-3 text-left font-bold">Tgl Beli</th>
-                                     <th className="px-4 py-3 text-left font-bold">Toko</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>Nama Promo {sortConfigClaims.column === 'jenis_promosi' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>Toko {sortConfigClaims.column === 'nama_toko' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                      <th className="px-4 py-3 text-left font-bold">Nota/Garansi</th>
-                                     <th className="px-4 py-3 text-left font-bold">MKT / FA</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'validasi_by_mkt')}>MKT / FA {sortConfigClaims.column === 'validasi_by_mkt' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                      <th className="px-4 py-3 text-left font-bold">Aksi</th>
                                   </tr>
                                </thead>
                                <tbody className="divide-y divide-slate-200">
-                                  {filteredClaims.map(c => (
+                                  {sortedClaims.map((c: ClaimPromo) => (
                                      <tr key={c.id_claim} className="whitespace-nowrap hover:bg-slate-50 font-medium">
                                         <td className="px-4 py-3 text-slate-800 font-bold">{consumers[c.nomor_wa] || c.nomor_wa}</td>
                                         <td className="px-4 py-3 font-mono">{c.nomor_seri}</td>
                                         <td className="px-4 py-3">{c.tipe_barang}</td>
-                                        <td className="px-4 py-3 font-bold text-black">{getNamaPromo(c.tipe_barang)}</td>
+                                        <td className="px-4 py-3 font-bold text-black">{c.jenis_promosi || getNamaPromo(c.tipe_barang)}</td>
                                         <td className="px-4 py-3">{c.tanggal_pembelian}</td>
                                         <td className="px-4 py-3">{c.nama_toko || '-'}</td>
                                         <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
@@ -1530,7 +1645,7 @@ export default function NikonDashboard() {
                          </div>
                       ) : (
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredClaims.map(c => (
+                            {sortedClaims.map((c: ClaimPromo) => (
                                <div key={c.id_claim} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
                                   <div className="border-b border-slate-100 pb-3 mb-3">
                                      <h3 className="font-bold text-base text-slate-800">{consumers[c.nomor_wa] || c.nomor_wa}</h3>
@@ -1538,7 +1653,7 @@ export default function NikonDashboard() {
                                   </div>
                                   <div className="space-y-2 text-xs flex-1">
                                      <p><span className="font-bold w-20 inline-block">Barang:</span> {c.tipe_barang}</p>
-                                     <p><span className="font-bold w-20 inline-block">Promo:</span> {getNamaPromo(c.tipe_barang)}</p>
+                                     <p><span className="font-bold w-20 inline-block">Promo:</span> {c.jenis_promosi || getNamaPromo(c.tipe_barang)}</p>
                                      <p><span className="font-bold w-20 inline-block">Tgl Beli:</span> {c.tanggal_pembelian}</p>
                                      <p><span className="font-bold w-20 inline-block">Toko:</span> {c.nama_toko || '-'}</p>
                                      <p><span className="font-bold w-20 inline-block">MKT/FA:</span> {c.validasi_by_mkt} / {c.validasi_by_fa}</p>
@@ -1568,18 +1683,18 @@ export default function NikonDashboard() {
                             <table className="w-full text-sm">
                                <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
                                   <tr>
-                                     <th className="px-4 py-3 text-left font-bold">No Seri</th>
-                                     <th className="px-4 py-3 text-left font-bold">Barang</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'nomor_seri')}>No Seri {sortConfigWarranties.column === 'nomor_seri' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'tipe_barang')}>Barang {sortConfigWarranties.column === 'tipe_barang' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                      <th className="px-4 py-3 text-left font-bold">Nota/Garansi</th>
-                                     <th className="px-4 py-3 text-left font-bold">Status</th>
-                                     <th className="px-4 py-3 text-left font-bold">Jenis</th>
-                                     <th className="px-4 py-3 text-left font-bold">Sisa Garansi</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'status_validasi')}>Status {sortConfigWarranties.column === 'status_validasi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'jenis_garansi')}>Jenis {sortConfigWarranties.column === 'jenis_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'lama_garansi')}>Sisa Garansi {sortConfigWarranties.column === 'lama_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                      <th className="px-4 py-3 text-left font-bold">Aksi</th>
                                   </tr>
                                </thead>
                                <tbody className="divide-y divide-slate-200">
-                                  {filteredWarranties.map(w => {
-                                     const linked = claims.find(c => c.nomor_seri === w.nomor_seri);
+                                  {sortedWarranties.map((w: Garansi) => {
+                                     const linked = claims.find((c: ClaimPromo) => c.nomor_seri === w.nomor_seri);
                                      const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
                                      const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
                                      return (
@@ -1629,8 +1744,8 @@ export default function NikonDashboard() {
                          </div>
                       ) : (
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {filteredWarranties.map(w => {
-                               const linked = claims.find(c => c.nomor_seri === w.nomor_seri);
+                            {sortedWarranties.map((w: Garansi) => {
+                               const linked = claims.find((c: ClaimPromo) => c.nomor_seri === w.nomor_seri);
                                const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
                                const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
                                return (
@@ -1670,15 +1785,15 @@ export default function NikonDashboard() {
                             <table className="w-full text-sm">
                                <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
                                   <tr>
-                                     <th className="px-6 py-3 text-left font-bold">No Tanda Terima</th>
-                                     <th className="px-6 py-3 text-left font-bold">No Seri Barang</th>
-                                     <th className="px-6 py-3 text-left font-bold">Status Service</th>
-                                     <th className="px-6 py-3 text-left font-bold">Tgl Update</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_tanda_terima')}>No Tanda Terima {sortConfigServices.column === 'nomor_tanda_terima' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_seri')}>No Seri Barang {sortConfigServices.column === 'nomor_seri' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'status_service')}>Status Service {sortConfigServices.column === 'status_service' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'created_at')}>Tgl Update {sortConfigServices.column === 'created_at' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                      <th className="px-6 py-3 text-left font-bold">Aksi</th>
                                   </tr>
                                </thead>
                                <tbody className="divide-y divide-slate-200">
-                                  {filteredServices.map(s => (
+                                  {sortedServices.map((s: StatusService) => (
                                      <tr key={s.id_service} className="whitespace-nowrap hover:bg-slate-50 font-medium">
                                         <td className="px-6 py-3 font-mono font-bold text-slate-800">{s.nomor_tanda_terima}</td>
                                         <td className="px-6 py-3">{s.nomor_seri}</td>
@@ -1697,7 +1812,7 @@ export default function NikonDashboard() {
                          </div>
                       ) : (
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {filteredServices.map(s => (
+                            {sortedServices.map((s: StatusService) => (
                                <div key={s.id_service} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
                                   <div className="border-b border-slate-100 pb-3 mb-3">
                                      <h3 className="font-bold text-base text-slate-800 font-mono">{s.nomor_tanda_terima}</h3>
@@ -1727,15 +1842,15 @@ export default function NikonDashboard() {
                             <table className="w-full text-sm">
                                <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
                                   <tr>
-                                     <th className="px-6 py-3 text-left font-bold">Proposal No</th>
-                                     <th className="px-6 py-3 text-left font-bold">Title</th>
-                                     <th className="px-6 py-3 text-left font-bold">Period</th>
-                                     <th className="px-6 py-3 text-left font-bold">Total Cost</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'proposal_no')}>Proposal No {sortConfigBudgets.column === 'proposal_no' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'title')}>Title {sortConfigBudgets.column === 'title' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'period')}>Period {sortConfigBudgets.column === 'period' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'total_cost')}>Total Cost {sortConfigBudgets.column === 'total_cost' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                      <th className="px-6 py-3 text-left font-bold">Aksi</th>
                                   </tr>
                                </thead>
                                <tbody className="divide-y divide-slate-200">
-                                  {filteredBudgets.map(b => (
+                                  {sortedBudgets.map((b: BudgetApproval) => (
                                      <tr key={b.id_budget} className="whitespace-nowrap hover:bg-slate-50 font-medium">
                                         <td className="px-6 py-3 font-mono font-bold text-slate-800">{b.proposal_no}</td>
                                         <td className="px-6 py-3">{b.title}</td>
@@ -1753,7 +1868,7 @@ export default function NikonDashboard() {
                          </div>
                       ) : (
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredBudgets.map(b => (
+                            {sortedBudgets.map((b: BudgetApproval) => (
                                <div key={b.id_budget} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
                                   <div className="border-b border-slate-100 pb-3 mb-3">
                                      <h3 className="font-bold text-base text-slate-800">{b.title}</h3>
@@ -1791,17 +1906,17 @@ export default function NikonDashboard() {
                             <table className="w-full text-sm">
                                <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
                                   <tr>
-                                     <th className="px-4 py-3 text-left font-bold">Peminjam</th>
-                                     <th className="px-4 py-3 text-left font-bold">KTP</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold">KTP</th> {/* Not sortable as it's a button */}
                                      <th className="px-4 py-3 text-left font-bold">Barang Dipinjam</th>
-                                     <th className="px-4 py-3 text-left font-bold">Tgl Pinjam</th>
-                                     <th className="px-4 py-3 text-left font-bold">Tgl Kembali</th>
-                                     <th className="px-4 py-3 text-left font-bold">Status</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_peminjaman')}>Tgl Pinjam {sortConfigLending.column === 'tanggal_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_pengembalian')}>Tgl Kembali {sortConfigLending.column === 'tanggal_pengembalian' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'status_peminjaman')}>Status {sortConfigLending.column === 'status_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                      <th className="px-4 py-3 text-left font-bold">Aksi</th>
                                   </tr>
                                </thead>
                                <tbody className="divide-y divide-slate-200">
-                                  {filteredLendingRecords.map(l => (
+                                  {sortedLendingRecords.map((l: PeminjamanBarang) => (
                                      <tr key={l.id_peminjaman} className="whitespace-nowrap hover:bg-slate-50 font-medium">
                                         <td className="px-4 py-3 text-slate-800 font-bold">
                                            {l.nama_peminjam} <br />
@@ -1846,7 +1961,7 @@ export default function NikonDashboard() {
                          </div>
                       ) : (
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredLendingRecords.map(l => (
+                            {sortedLendingRecords.map((l: PeminjamanBarang) => (
                                <div key={l.id_peminjaman} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
                                   <div className="border-b border-slate-100 pb-3 mb-3">
                                      <h3 className="font-bold text-base text-slate-800">{l.nama_peminjam}</h3>
@@ -1892,16 +2007,16 @@ export default function NikonDashboard() {
                             <table className="w-full text-sm">
                                <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
                                   <tr>
-                                     <th className="px-6 py-3 text-left font-bold">Username</th>
-                                     <th className="px-6 py-3 text-left font-bold">Nama Karyawan</th>
-                                     <th className="px-6 py-3 text-left font-bold">Role</th>
-                                     <th className="px-6 py-3 text-left font-bold">Status</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'username')}>Username {sortConfigKaryawans.column === 'username' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'nama_karyawan')}>Nama Karyawan {sortConfigKaryawans.column === 'nama_karyawan' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'role')}>Role {sortConfigKaryawans.column === 'role' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'status_aktif')}>Status {sortConfigKaryawans.column === 'status_aktif' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                      <th className="px-6 py-3 text-left font-bold">Akses Halaman</th>
                                      <th className="px-6 py-3 text-left font-bold">Aksi</th>
                                   </tr>
                                </thead>
                                <tbody className="divide-y divide-slate-200">
-                                  {filteredKaryawans.map(k => (
+                                  {sortedKaryawans.map((k: Karyawan) => (
                                      <tr key={k.id_karyawan} className="whitespace-nowrap hover:bg-slate-50 font-medium">
                                         <td className="px-6 py-3 font-bold text-slate-800">{k.username}</td>
                                         <td className="px-6 py-3">{k.nama_karyawan}</td>
@@ -1922,7 +2037,7 @@ export default function NikonDashboard() {
                          </div>
                       ) : (
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredKaryawans.map(k => (
+                            {sortedKaryawans.map((k: Karyawan) => (
                                <div key={k.id_karyawan} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
                                   <div className="border-b border-slate-100 pb-3 mb-3">
                                      <div className="flex justify-between items-start">
