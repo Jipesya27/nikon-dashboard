@@ -75,10 +75,12 @@ export default function NikonDashboard() {
    const [searchLending, setSearchLending] = useState('');
 
    // UI STATES
+   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
    const [readStatus, setReadStatus] = useState<Record<string, string>>({});
    const [loading, setLoading] = useState(true);
    const [dbStatus, setDbStatus] = useState<{ connected: boolean; message: string }>({ connected: false, message: 'Menghubungkan...' });
    const [activeTab, setActiveTab] = useState('messages');
+   const [isNavOpen, setIsNavOpen] = useState(false);
    const [dateRange, setDateRange] = useState({ start: '2024-01-01', end: new Date().toISOString().split('T')[0] });
    const [msgTimeFilter, setMsgTimeFilter] = useState<'day' | 'week' | 'month'>('day');
 
@@ -1108,15 +1110,23 @@ export default function NikonDashboard() {
             </header>
 
             <div className="bg-slate-50 border-b border-slate-200 sticky top-[76px] z-10 px-6 w-full shadow-sm">
-               <div className="flex flex-wrap gap-2 md:gap-3 justify-center max-w-7xl mx-auto py-3">
-                  {visibleTabs.map(tab => (
-                     <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-5 py-2 font-bold whitespace-nowrap transition-all rounded-full border ${activeTab === tab.id ? 'bg-[#FFE500] text-black border-[#FFE500] shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100 hover:text-black'}`}>
-                        {tab.label} {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-full ml-2 ${activeTab === tab.id ? 'bg-black/10 text-black' : 'bg-slate-100 text-slate-500'}`}>{tab.count}</span>}
-                     </button>
-                  ))}
+               <div className="flex flex-col items-center max-w-7xl mx-auto py-3">
+                  <button onClick={() => setIsNavOpen(!isNavOpen)} className="bg-white border border-slate-300 hover:border-[#FFE500] hover:text-black text-slate-700 px-6 py-2 rounded-full text-sm font-bold shadow-sm transition-all flex items-center gap-2 group">
+                     <span className={`transition-transform duration-300 ${isNavOpen ? 'rotate-90' : ''}`}>{isNavOpen ? '✖' : '☰'}</span>
+                     {isNavOpen ? 'Tutup Navigasi Menu' : 'Tampilkan Navigasi Menu'}
+                  </button>
+
+                  {isNavOpen && (
+                     <div className="flex flex-wrap gap-2 md:gap-3 justify-center mt-4 animate-fade-in w-full border-t border-slate-200 pt-4">
+                        {visibleTabs.map(tab => (
+                           <button key={tab.id} onClick={() => { setActiveTab(tab.id); setIsNavOpen(false); }} className={`px-5 py-2 font-bold whitespace-nowrap transition-all rounded-full border ${activeTab === tab.id ? 'bg-[#FFE500] text-black border-[#FFE500] shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100 hover:text-black'}`}>
+                              {tab.label} {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-full ml-2 ${activeTab === tab.id ? 'bg-black/10 text-black' : 'bg-slate-100 text-slate-500'}`}>{tab.count}</span>}
+                           </button>
+                        ))}
+                     </div>
+                  )}
                </div>
             </div>
-
             <main className="max-w-7xl mx-auto px-6 py-8">
 
                {/* ======================= IMPORT DATA TAB ======================= */}
@@ -1175,13 +1185,29 @@ export default function NikonDashboard() {
                {/* ======================= OTHER TABS FILTER HEADER ======================= */}
                {activeTab !== 'import' && activeTab !== 'lending' && activeTab !== 'messages' && (
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 flex flex-wrap gap-4 justify-between items-center text-slate-900 mb-6">
-                     <div className="flex gap-4">
+                     <div className="flex flex-wrap gap-4 items-center">
                         {activeTab !== 'konsumen' && activeTab !== 'budgets' && activeTab !== 'userrole' && (
                            <>
                               <label className="text-sm font-bold">Dari: <input type="date" value={dateRange.start} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} className="ml-2 border border-slate-300 bg-white text-slate-900 rounded p-1 outline-none focus:border-[#FFE500]" /></label>
                               <label className="text-sm font-bold">Sampai: <input type="date" value={dateRange.end} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} className="ml-2 border border-slate-300 bg-white text-slate-900 rounded p-1 outline-none focus:border-[#FFE500]" /></label>
                            </>
                         )}
+                        
+                        {/* VIEW TOGGLE */}
+                        <div className="flex bg-slate-100 p-1 rounded-lg shadow-inner ml-2">
+                           <button 
+                              onClick={() => setViewMode('table')}
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${viewMode === 'table' ? 'bg-white text-black shadow-sm' : 'text-slate-500 hover:text-black'}`}
+                           >
+                              <span>📑</span> Baris
+                           </button>
+                           <button 
+                              onClick={() => setViewMode('card')}
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${viewMode === 'card' ? 'bg-white text-black shadow-sm' : 'text-slate-500 hover:text-black'}`}
+                           >
+                              <span>🎴</span> Card
+                           </button>
+                        </div>
                      </div>
                      <div className="flex flex-wrap gap-2 items-center">
                         {activeTab === 'claims' && <button onClick={() => openModal('create', 'claim')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Claim</button>}
@@ -1304,47 +1330,84 @@ export default function NikonDashboard() {
                {activeTab === 'konsumen' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
                      <input type="text" placeholder="🔍 Cari berdasarkan Nama / No Whatsapp / ID Konsumen" value={searchKonsumen} onChange={e => setSearchKonsumen(e.target.value)} className="w-full p-4 border border-slate-300 bg-white text-slate-900 rounded-lg shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {consumersList.filter(k => k.nama_lengkap?.toLowerCase().includes(searchKonsumen.toLowerCase()) || k.nomor_wa.includes(searchKonsumen) || k.id_konsumen?.toLowerCase().includes(searchKonsumen.toLowerCase())).map(k => {
-                           const userClaims = claims.filter(c => c.nomor_wa === k.nomor_wa);
-                           return (
-                              <div key={k.nomor_wa} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
-                                    <div>
-                                       <h3 className="font-bold text-lg text-slate-800">{k.nama_lengkap || k.nomor_wa}</h3>
-                                       <div className="text-sm font-bold text-slate-500 mt-1 flex gap-3">
-                                          <span>📱 {k.nomor_wa}</span>
-                                          {k.id_konsumen && <span className="text-black">ID: {k.id_konsumen}</span>}
+                     
+                     {viewMode === 'table' ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+                           <table className="w-full text-sm">
+                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                                 <tr>
+                                    <th className="px-6 py-3 text-left font-bold">Nama Lengkap</th>
+                                    <th className="px-6 py-3 text-left font-bold">Nomor WA</th>
+                                    <th className="px-6 py-3 text-left font-bold">ID Konsumen</th>
+                                    <th className="px-6 py-3 text-left font-bold">Riwayat Barang</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {consumersList.filter(k => k.nama_lengkap?.toLowerCase().includes(searchKonsumen.toLowerCase()) || k.nomor_wa.includes(searchKonsumen) || k.id_konsumen?.toLowerCase().includes(searchKonsumen.toLowerCase())).map(k => {
+                                    const userClaims = claims.filter(c => c.nomor_wa === k.nomor_wa);
+                                    return (
+                                       <tr key={k.nomor_wa} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                          <td className="px-6 py-3 font-bold text-slate-800">{k.nama_lengkap || '-'}</td>
+                                          <td className="px-6 py-3">{k.nomor_wa}</td>
+                                          <td className="px-6 py-3 font-mono text-xs">{k.id_konsumen || '-'}</td>
+                                          <td className="px-6 py-3 text-xs">
+                                             {userClaims.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1">
+                                                   {userClaims.map((c, i) => (
+                                                      <span key={i} className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">{c.tipe_barang}</span>
+                                                   ))}
+                                                </div>
+                                             ) : <span className="text-slate-400 italic">Tidak ada</span>}
+                                          </td>
+                                       </tr>
+                                    );
+                                 })}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           {consumersList.filter(k => k.nama_lengkap?.toLowerCase().includes(searchKonsumen.toLowerCase()) || k.nomor_wa.includes(searchKonsumen) || k.id_konsumen?.toLowerCase().includes(searchKonsumen.toLowerCase())).map(k => {
+                              const userClaims = claims.filter(c => c.nomor_wa === k.nomor_wa);
+                              return (
+                                 <div key={k.nomor_wa} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                                    <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
+                                       <div>
+                                          <h3 className="font-bold text-lg text-slate-800">{k.nama_lengkap || k.nomor_wa}</h3>
+                                          <div className="text-sm font-bold text-slate-500 mt-1 flex gap-3">
+                                             <span>📱 {k.nomor_wa}</span>
+                                             {k.id_konsumen && <span className="text-black">ID: {k.id_konsumen}</span>}
+                                          </div>
                                        </div>
                                     </div>
-                                 </div>
-                                 <div className="flex-1">
-                                    <h4 className="font-bold text-slate-700 text-sm mb-2">Riwayat Barang ({userClaims.length})</h4>
-                                    {userClaims.length === 0 ? (
-                                       <p className="text-xs font-bold text-slate-400 italic">Belum ada riwayat</p>
-                                    ) : (
-                                       <div className="space-y-3">
-                                          {userClaims.map(c => {
-                                             const w = warranties.find(wa => wa.nomor_seri === c.nomor_seri);
-                                             const s = services.filter(se => se.nomor_seri === c.nomor_seri);
-                                             return (
-                                                <div key={c.id_claim} className="text-xs p-3 bg-slate-50 border border-slate-100 rounded-md">
-                                                   <div className="font-extrabold text-slate-800 mb-1">{c.tipe_barang} <span className="text-slate-500 font-bold ml-1">(Seri: {c.nomor_seri})</span></div>
-                                                   <div className="grid grid-cols-1 gap-1 font-medium text-slate-600 mt-2">
-                                                      <div><span className="font-bold text-slate-700">🎫 Claim:</span> {c.validasi_by_mkt} / {c.validasi_by_fa}</div>
-                                                      <div><span className="font-bold text-slate-700">🛡️ Garansi:</span> {w ? w.status_validasi : 'Belum Terdaftar'}</div>
-                                                      <div><span className="font-bold text-slate-700">🔧 Service:</span> {s.length > 0 ? s.map(se => `[${se.nomor_tanda_terima}] ${se.status_service}`).join(', ') : 'Tidak ada riwayat'}</div>
+                                    <div className="flex-1">
+                                       <h4 className="font-bold text-slate-700 text-sm mb-2">Riwayat Barang ({userClaims.length})</h4>
+                                       {userClaims.length === 0 ? (
+                                          <p className="text-xs font-bold text-slate-400 italic">Belum ada riwayat</p>
+                                       ) : (
+                                          <div className="space-y-3">
+                                             {userClaims.map(c => {
+                                                const w = warranties.find(wa => wa.nomor_seri === c.nomor_seri);
+                                                const s = services.filter(se => se.nomor_seri === c.nomor_seri);
+                                                return (
+                                                   <div key={c.id_claim} className="text-xs p-3 bg-slate-50 border border-slate-100 rounded-md">
+                                                      <div className="font-extrabold text-slate-800 mb-1">{c.tipe_barang} <span className="text-slate-500 font-bold ml-1">(Seri: {c.nomor_seri})</span></div>
+                                                      <div className="grid grid-cols-1 gap-1 font-medium text-slate-600 mt-2">
+                                                         <div><span className="font-bold text-slate-700">🎫 Claim:</span> {c.validasi_by_mkt} / {c.validasi_by_fa}</div>
+                                                         <div><span className="font-bold text-slate-700">🛡️ Garansi:</span> {w ? w.status_validasi : 'Belum Terdaftar'}</div>
+                                                         <div><span className="font-bold text-slate-700">🔧 Service:</span> {s.length > 0 ? s.map(se => `[${se.nomor_tanda_terima}] ${se.status_service}`).join(', ') : 'Tidak ada riwayat'}</div>
+                                                      </div>
                                                    </div>
-                                                </div>
-                                             )
-                                          })}
-                                       </div>
-                                    )}
+                                                )
+                                             })}
+                                          </div>
+                                       )}
+                                    </div>
                                  </div>
-                              </div>
-                           )
-                        })}
-                     </div>
+                              )
+                           })}
+                        </div>
+                     )}
                   </div>
                )}
 
@@ -1352,39 +1415,78 @@ export default function NikonDashboard() {
                {activeTab === 'promos' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
                      <input type="text" placeholder="🔍 Cari Nama Promo atau Periode Tanggal..." value={searchPromo} onChange={e => setSearchPromo(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredPromos.map(p => (
-                           <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                              <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
-                                 <div>
-                                    <h3 className="font-bold text-lg text-slate-800">{p.nama_promo}</h3>
-                                    <div className="text-sm font-bold text-slate-500 mt-1">📅 {p.tanggal_mulai} s/d {p.tanggal_selesai}</div>
+                     
+                     {viewMode === 'table' ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+                           <table className="w-full text-sm">
+                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                                 <tr>
+                                    <th className="px-6 py-3 text-left font-bold">Nama Promo</th>
+                                    <th className="px-6 py-3 text-left font-bold">Periode</th>
+                                    <th className="px-6 py-3 text-left font-bold">Status</th>
+                                    <th className="px-6 py-3 text-left font-bold">Produk</th>
+                                    <th className="px-6 py-3 text-left font-bold">Aksi</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {filteredPromos.map(p => (
+                                    <tr key={p.id_promo} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                       <td className="px-6 py-3 font-bold text-slate-800">{p.nama_promo}</td>
+                                       <td className="px-6 py-3">{p.tanggal_mulai} s/d {p.tanggal_selesai}</td>
+                                       <td className="px-6 py-3">
+                                          <span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
+                                       </td>
+                                       <td className="px-6 py-3 text-xs">
+                                          {p.tipe_produk?.length || 0} Produk
+                                       </td>
+                                       <td className="px-6 py-3">
+                                          {currentUser?.role === 'Admin' && (
+                                             <div className="flex gap-3">
+                                                <button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                                <button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                             </div>
+                                          )}
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                           {filteredPromos.map(p => (
+                              <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                                 <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
+                                    <div>
+                                       <h3 className="font-bold text-lg text-slate-800">{p.nama_promo}</h3>
+                                       <div className="text-sm font-bold text-slate-500 mt-1">📅 {p.tanggal_mulai} s/d {p.tanggal_selesai}</div>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
                                  </div>
-                                 <span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
-                              </div>
-                              <div className="flex-1">
-                                 <h4 className="font-bold text-slate-700 text-sm mb-2">Tipe Produk Berlaku ({p.tipe_produk?.length || 0})</h4>
-                                 {(!p.tipe_produk || p.tipe_produk.length === 0) ? (
-                                    <p className="text-xs font-bold text-slate-400 italic">Belum ada produk</p>
-                                 ) : (
-                                    <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2">
-                                       {p.tipe_produk.map((prod, idx) => (
-                                          <div key={idx} className="text-xs p-2 bg-slate-50 border border-slate-100 rounded-md font-bold text-slate-700 flex items-center gap-2">
-                                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 block"></span>{prod.nama_produk}
-                                          </div>
-                                       ))}
+                                 <div className="flex-1">
+                                    <h4 className="font-bold text-slate-700 text-sm mb-2">Tipe Produk Berlaku ({p.tipe_produk?.length || 0})</h4>
+                                    {(!p.tipe_produk || p.tipe_produk.length === 0) ? (
+                                       <p className="text-xs font-bold text-slate-400 italic">Belum ada produk</p>
+                                    ) : (
+                                       <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2">
+                                          {p.tipe_produk.map((prod, idx) => (
+                                             <div key={idx} className="text-xs p-2 bg-slate-50 border border-slate-100 rounded-md font-bold text-slate-700 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 block"></span>{prod.nama_produk}
+                                             </div>
+                                          ))}
+                                       </div>
+                                    )}
+                                 </div>
+                                 {currentUser?.role === 'Admin' && (
+                                    <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                       <button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit Promo</button>
+                                       <button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                     </div>
                                  )}
                               </div>
-                              {currentUser?.role === 'Admin' && (
-                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
-                                    <button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit Promo</button>
-                                    <button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                 </div>
-                              )}
-                           </div>
-                        ))}
-                     </div>
+                           ))}
+                        </div>
+                     )}
                   </div>
                )}
 
@@ -1589,8 +1691,24 @@ export default function NikonDashboard() {
                {/* ======================= LENDING FILTER HEADER ======================= */}
                {activeTab === 'lending' && (
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 flex flex-wrap gap-4 justify-between items-center text-slate-900 mb-6">
-                     <div className="flex-1">
+                     <div className="flex-1 flex items-center gap-4">
                         <input type="text" placeholder="🔍 Cari Nama Peminjam / No WA / Nama Barang / No Seri..." value={searchLending} onChange={e => setSearchLending(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                        
+                        {/* VIEW TOGGLE */}
+                        <div className="flex bg-slate-100 p-1 rounded-lg shadow-inner shrink-0">
+                           <button 
+                              onClick={() => setViewMode('table')}
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${viewMode === 'table' ? 'bg-white text-black shadow-sm' : 'text-slate-500 hover:text-black'}`}
+                           >
+                              <span>📑</span> Baris
+                           </button>
+                           <button 
+                              onClick={() => setViewMode('card')}
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${viewMode === 'card' ? 'bg-white text-black shadow-sm' : 'text-slate-500 hover:text-black'}`}
+                           >
+                              <span>🎴</span> Card
+                           </button>
+                        </div>
                      </div>
                      <div>
                         <button onClick={() => openModal('create', 'lending')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Pinjam Barang</button>
@@ -2282,7 +2400,7 @@ export default function NikonDashboard() {
                                        <label className="block text-sm font-bold text-slate-900 mb-2">Akses Halaman yang Diizinkan</label>
                                        <p className="text-xs font-bold text-slate-500 mb-3">Pilih tab mana saja yang boleh dilihat oleh karyawan ini.</p>
                                        <div className="grid grid-cols-2 gap-2">
-                                          {[{ id: 'messages', label: 'Pesan' }, { id: 'konsumen', label: 'Konsumen' }, { id: 'promos', label: 'Promo' }, { id: 'claims', label: 'Claim' }, { id: 'warranties', label: 'Garansi' }, { id: 'services', label: 'Service' }, { id: 'budgets', label: 'ProposalEvent' }, { id: 'import', label: 'Import Data' }].map(tab => {
+                                          {[{ id: 'messages', label: 'Pesan' }, { id: 'konsumen', label: 'Konsumen' }, { id: 'promos', label: 'Promo' }, { id: 'claims', label: 'Claim' }, { id: 'warranties', label: 'Garansi' }, { id: 'services', label: 'Service' }, { id: 'budgets', label: 'ProposalEvent' }, { id: 'import', label: 'Import Data' }, { id: 'lending', label: 'Peminjaman' }].map(tab => {
                                              const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
                                              return (
                                                 <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'} cursor-pointer`}>
