@@ -359,7 +359,7 @@ export default function NikonDashboard() {
             }
             const { error } = await supabase.from('karyawan').select('count', { count: 'exact', head: true });
             if (error) throw error;
-            setDbStatus({ connected: true, message: 'Terhubung ke Database' });
+            setDbStatus({ connected: true, message: 'Online' });
          } catch (err: any) {
             setDbStatus({ connected: false, message: 'Gagal terhubung: ' + err.message });
          }
@@ -1302,8 +1302,8 @@ export default function NikonDashboard() {
                         )}
                         {activeTab !== 'konsumen' && (
                            <div className="flex items-center gap-2">
-                              <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>Baris</button>
-                              <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>Kartu</button>
+                              <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>📋Baris</button>
+                              <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🪪Kartu</button>
                            </div>
                         )}
                      </div>
@@ -1430,52 +1430,52 @@ export default function NikonDashboard() {
                      <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 flex flex-wrap gap-4 justify-between items-center text-slate-900">
                         <input type="text" placeholder="🔍 Cari berdasarkan Nama / No Whatsapp / ID Konsumen" value={searchKonsumen} onChange={e => setSearchKonsumen(e.target.value)} className="w-full md:w-1/2 p-3 border border-slate-300 bg-white text-slate-900 rounded-lg shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                         <div className="flex items-center gap-2">
-                           <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>Baris</button>
-                           <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>Kartu</button>
+                           <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>📋Baris</button>
+                           <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🪪Kartu</button>
                         </div>
                      </div>
                      {viewMode === 'card' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                            {sortedConsumers.map((k: KonsumenData) => {
-                           const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
-                           return (
-                              <div key={k.nomor_wa} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
-                                    <div>
-                                       <h3 className="font-bold text-lg text-slate-800">{k.nama_lengkap || k.nomor_wa}</h3>
-                                       <div className="text-sm font-bold text-slate-500 mt-1 flex gap-3">
-                                          <span>📱 {k.nomor_wa}</span>
-                                          {k.id_konsumen && <span className="text-black">ID: {k.id_konsumen}</span>}
+                              const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
+                              return (
+                                 <div key={k.nomor_wa} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                                    <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
+                                       <div>
+                                          <h3 className="font-bold text-lg text-slate-800">{k.nama_lengkap || k.nomor_wa}</h3>
+                                          <div className="text-sm font-bold text-slate-500 mt-1 flex gap-3">
+                                             <span>📱 {k.nomor_wa}</span>
+                                             {k.id_konsumen && <span className="text-black">ID: {k.id_konsumen}</span>}
+                                          </div>
                                        </div>
                                     </div>
-                                 </div>
-                                 <div className="flex-1">
-                                    <h4 className="font-bold text-slate-700 text-sm mb-2">Riwayat Barang ({userClaims.length})</h4>
-                                    {userClaims.length === 0 ? (
-                                       <p className="text-xs font-bold text-slate-400 italic">Belum ada riwayat</p>
-                                    ) : (
-                                       <div className="space-y-3">
-                                          {userClaims.map(c => {
-                                             const w = warranties.find(wa => wa.nomor_seri === c.nomor_seri);
-                                             const s = services.filter(se => se.nomor_seri === c.nomor_seri);
-                                             return (
-                                                <div key={c.id_claim} className="text-xs p-3 bg-slate-50 border border-slate-100 rounded-md">
-                                                   <div className="font-extrabold text-slate-800 mb-1">{c.tipe_barang} <span className="text-slate-500 font-bold ml-1">(Seri: {c.nomor_seri})</span></div>
-                                                   <div className="grid grid-cols-1 gap-1 font-medium text-slate-600 mt-2">
-                                                      <div><span className="font-bold text-slate-700">🎫 Claim:</span> {c.validasi_by_mkt} / {c.validasi_by_fa}</div>
-                                                      <div><span className="font-bold text-slate-700">🛡️ Garansi:</span> {w ? w.status_validasi : 'Belum Terdaftar'}</div>
-                                                      <div><span className="font-bold text-slate-700">🔧 Service:</span> {s.length > 0 ? s.map(se => `[${se.nomor_tanda_terima}] ${se.status_service}`).join(', ') : 'Tidak ada riwayat'}</div>
+                                    <div className="flex-1">
+                                       <h4 className="font-bold text-slate-700 text-sm mb-2">Riwayat Barang ({userClaims.length})</h4>
+                                       {userClaims.length === 0 ? (
+                                          <p className="text-xs font-bold text-slate-400 italic">Belum ada riwayat</p>
+                                       ) : (
+                                          <div className="space-y-3">
+                                             {userClaims.map(c => {
+                                                const w = warranties.find(wa => wa.nomor_seri === c.nomor_seri);
+                                                const s = services.filter(se => se.nomor_seri === c.nomor_seri);
+                                                return (
+                                                   <div key={c.id_claim} className="text-xs p-3 bg-slate-50 border border-slate-100 rounded-md">
+                                                      <div className="font-extrabold text-slate-800 mb-1">{c.tipe_barang} <span className="text-slate-500 font-bold ml-1">(Seri: {c.nomor_seri})</span></div>
+                                                      <div className="grid grid-cols-1 gap-1 font-medium text-slate-600 mt-2">
+                                                         <div><span className="font-bold text-slate-700">🎫 Claim:</span> {c.validasi_by_mkt} / {c.validasi_by_fa}</div>
+                                                         <div><span className="font-bold text-slate-700">🛡️ Garansi:</span> {w ? w.status_validasi : 'Belum Terdaftar'}</div>
+                                                         <div><span className="font-bold text-slate-700">🔧 Service:</span> {s.length > 0 ? s.map(se => `[${se.nomor_tanda_terima}] ${se.status_service}`).join(', ') : 'Tidak ada riwayat'}</div>
+                                                      </div>
                                                    </div>
-                                                </div>
-                                             )
-                                          })}
-                                       </div>
-                                    )}
+                                                )
+                                             })}
+                                          </div>
+                                       )}
+                                    </div>
                                  </div>
-                              </div>
-                           )
-                        })}
-                     </div>
+                              )
+                           })}
+                        </div>
                      ) : (
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
                            <table className="w-full text-sm">
@@ -1493,24 +1493,24 @@ export default function NikonDashboard() {
                                  {sortedConsumers.map((k: KonsumenData) => {
                                     const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
                                     return (
-                                    <tr key={k.nomor_wa} className="whitespace-nowrap hover:bg-slate-50 font-medium">
-                                       <td className="px-4 py-3 text-slate-800 font-bold">{k.nama_lengkap || '-'}</td>
-                                       <td className="px-4 py-3 font-mono">{k.id_konsumen || '-'}</td>
-                                       <td className="px-4 py-3">{k.nomor_wa}</td>
-                                       <td className="px-4 py-3 whitespace-normal">{[k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos].filter(Boolean).join(', ')}</td>
-                                       <td className="px-4 py-3">{k.nik || '-'}</td>
-                                       <td className="px-4 py-3 text-xs">
-                                          <ul className="list-disc list-inside space-y-1">
-                                             {userClaims.length > 0 ? userClaims.map(c => (
-                                                <li key={c.id_claim}>
-                                                   {c.tipe_barang} (SN: {c.nomor_seri})
-                                                </li>
-                                             )) : (
-                                                <li className="text-slate-500 italic">Tidak ada</li>
-                                             )}
-                                          </ul>
-                                       </td>
-                                    </tr>
+                                       <tr key={k.nomor_wa} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                          <td className="px-4 py-3 text-slate-800 font-bold">{k.nama_lengkap || '-'}</td>
+                                          <td className="px-4 py-3 font-mono">{k.id_konsumen || '-'}</td>
+                                          <td className="px-4 py-3">{k.nomor_wa}</td>
+                                          <td className="px-4 py-3 whitespace-normal">{[k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos].filter(Boolean).join(', ')}</td>
+                                          <td className="px-4 py-3">{k.nik || '-'}</td>
+                                          <td className="px-4 py-3 text-xs">
+                                             <ul className="list-disc list-inside space-y-1">
+                                                {userClaims.length > 0 ? userClaims.map(c => (
+                                                   <li key={c.id_claim}>
+                                                      {c.tipe_barang} (SN: {c.nomor_seri})
+                                                   </li>
+                                                )) : (
+                                                   <li className="text-slate-500 italic">Tidak ada</li>
+                                                )}
+                                             </ul>
+                                          </td>
+                                       </tr>
                                     );
                                  })}
                               </tbody>
@@ -1523,373 +1523,373 @@ export default function NikonDashboard() {
                {/* ======================= PROMOS ======================= */}
                {activeTab === 'promos' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
-                      <input type="text" placeholder="🔍 Cari Nama Promo atau Periode Tanggal..." value={searchPromo} onChange={e => setSearchPromo(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                      {viewMode === 'card' ? ( 
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {sortedPromos.map((p: Promosi) => {
-                               return (
-                                  <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                  <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
-                                     <div>
-                                        <h3 className="font-bold text-lg text-slate-800">{p.nama_promo}</h3>
-                                        <div className="text-sm font-bold text-slate-500 mt-1">📅 {p.tanggal_mulai} s/d {p.tanggal_selesai}</div>
-                                     </div>
-                                     <span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
-                                  </div>
-                                  <div className="flex-1">
-                                     <h4 className="font-bold text-slate-700 text-sm mb-2">Tipe Produk Berlaku ({p.tipe_produk?.length || 0})</h4>
-                                     {(!p.tipe_produk || p.tipe_produk.length === 0) ? (
-                                        <p className="text-xs font-bold text-slate-400 italic">Belum ada produk</p>
-                                     ) : (
-                                        <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2">
-                                           {p.tipe_produk.map((prod, idx) => (
-                                              <div key={idx} className="text-xs p-2 bg-slate-50 border border-slate-100 rounded-md font-bold text-slate-700 flex items-center gap-2">
-                                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 block"></span>{prod.nama_produk}
-                                              </div>
-                                           ))}
-                                        </div>
-                                     )}
-                                  </div>
-                                  {currentUser?.role === 'Admin' && (
-                                     <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
-                                        <button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit Promo</button>
-                                        <button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                     </div>
-                                  )}
-                                  </div>
-                               );
-                            })}
-                         </div>
-                      ) : (
-                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                            <table className="w-full text-sm">
-                               <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
-                                  <tr>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'status_aktif')}>Status {sortConfigPromos.column === 'status_aktif' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold">Produk Berlaku</th>
-                                     {currentUser?.role === 'Admin' && <th className="px-4 py-3 text-left font-bold">Aksi</th>}
-                                  </tr>
-                               </thead>
-                               <tbody className="divide-y divide-slate-200">
-                                  {sortedPromos.map((p: Promosi) => (
-                                     <tr key={p.id_promo} className="hover:bg-slate-50 font-medium">
-                                        <td className="px-4 py-3 font-bold">{p.nama_promo}</td>
-                                        <td className="px-4 py-3">{p.tanggal_mulai} s/d {p.tanggal_selesai}</td>
-                                        <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span></td>
-                                        <td className="px-4 py-3 text-xs whitespace-normal">{(p.tipe_produk || []).map(tp => tp.nama_produk).join(', ')}</td>
-                                        {currentUser?.role === 'Admin' && (
-                                           <td className="px-4 py-3"><div className="flex gap-3 items-center"><button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit</button><button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button></div></td>
-                                        )}
-                                     </tr>
-                                  ))}
-                               </tbody>
-                            </table>
-                         </div>
-                      )}
+                     <input type="text" placeholder="🔍 Cari Nama Promo atau Periode Tanggal..." value={searchPromo} onChange={e => setSearchPromo(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                     {viewMode === 'card' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                           {sortedPromos.map((p: Promosi) => {
+                              return (
+                                 <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                                    <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
+                                       <div>
+                                          <h3 className="font-bold text-lg text-slate-800">{p.nama_promo}</h3>
+                                          <div className="text-sm font-bold text-slate-500 mt-1">📅 {p.tanggal_mulai} s/d {p.tanggal_selesai}</div>
+                                       </div>
+                                       <span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
+                                    </div>
+                                    <div className="flex-1">
+                                       <h4 className="font-bold text-slate-700 text-sm mb-2">Tipe Produk Berlaku ({p.tipe_produk?.length || 0})</h4>
+                                       {(!p.tipe_produk || p.tipe_produk.length === 0) ? (
+                                          <p className="text-xs font-bold text-slate-400 italic">Belum ada produk</p>
+                                       ) : (
+                                          <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2">
+                                             {p.tipe_produk.map((prod, idx) => (
+                                                <div key={idx} className="text-xs p-2 bg-slate-50 border border-slate-100 rounded-md font-bold text-slate-700 flex items-center gap-2">
+                                                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 block"></span>{prod.nama_produk}
+                                                </div>
+                                             ))}
+                                          </div>
+                                       )}
+                                    </div>
+                                    {currentUser?.role === 'Admin' && (
+                                       <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                          <button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit Promo</button>
+                                          <button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       </div>
+                                    )}
+                                 </div>
+                              );
+                           })}
+                        </div>
+                     ) : (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+                           <table className="w-full text-sm">
+                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                                 <tr>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'status_aktif')}>Status {sortConfigPromos.column === 'status_aktif' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold">Produk Berlaku</th>
+                                    {currentUser?.role === 'Admin' && <th className="px-4 py-3 text-left font-bold">Aksi</th>}
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {sortedPromos.map((p: Promosi) => (
+                                    <tr key={p.id_promo} className="hover:bg-slate-50 font-medium">
+                                       <td className="px-4 py-3 font-bold">{p.nama_promo}</td>
+                                       <td className="px-4 py-3">{p.tanggal_mulai} s/d {p.tanggal_selesai}</td>
+                                       <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span></td>
+                                       <td className="px-4 py-3 text-xs whitespace-normal">{(p.tipe_produk || []).map(tp => tp.nama_produk).join(', ')}</td>
+                                       {currentUser?.role === 'Admin' && (
+                                          <td className="px-4 py-3"><div className="flex gap-3 items-center"><button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit</button><button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button></div></td>
+                                       )}
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     )}
                   </div>
                )}
 
                {/* ======================= CLAIMS ======================= */}
                {activeTab === 'claims' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
-                      <input type="text" placeholder="🔍 Cari Nama / No Seri / Nama Promo / Status MKT / Status FA..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                      {viewMode === 'table' ? (
-                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                            <table className="w-full text-sm">
-                               <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
-                                  <tr>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>Nama Promo {sortConfigClaims.column === 'jenis_promosi' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>Toko {sortConfigClaims.column === 'nama_toko' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold">Nota/Garansi</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'validasi_by_mkt')}>MKT / FA {sortConfigClaims.column === 'validasi_by_mkt' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold">Aksi</th>
-                                  </tr>
-                               </thead>
-                               <tbody className="divide-y divide-slate-200">
-                                  {sortedClaims.map((c: ClaimPromo) => (
-                                     <tr key={c.id_claim} className="whitespace-nowrap hover:bg-slate-50 font-medium">
-                                        <td className="px-4 py-3 text-slate-800 font-bold">{consumers[c.nomor_wa] || c.nomor_wa}</td>
-                                        <td className="px-4 py-3 font-mono">{c.nomor_seri}</td>
-                                        <td className="px-4 py-3">{c.tipe_barang}</td>
-                                        <td className="px-4 py-3 font-bold text-black">{c.jenis_promosi || getNamaPromo(c.tipe_barang)}</td>
-                                        <td className="px-4 py-3">{c.tanggal_pembelian}</td>
-                                        <td className="px-4 py-3">{c.nama_toko || '-'}</td>
-                                        <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
-                                           {c.link_nota_pembelian ? (
-                                              <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Nota</button>
-                                           ) : (
-                                              <span className="text-slate-500 italic">Tidak ada Nota</span>
-                                           )}
-                                           {c.link_kartu_garansi ? (
-                                              <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Garansi</button>
-                                           ) : (
-                                              <span className="text-slate-500 italic">Tidak ada Garansi</span>
-                                           )}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs font-bold">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
-                                        <td className="px-4 py-3">
-                                           <div className="flex gap-3 items-center">
-                                              <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
-                                              <div className="w-px h-3 bg-slate-300"></div>
-                                              <button onClick={() => openModal('edit', 'claim', c)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                              <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                           </div>
-                                        </td>
-                                     </tr>
-                                  ))}
-                               </tbody>
-                            </table>
-                         </div>
-                      ) : (
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {sortedClaims.map((c: ClaimPromo) => (
-                               <div key={c.id_claim} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                  <div className="border-b border-slate-100 pb-3 mb-3">
-                                     <h3 className="font-bold text-base text-slate-800">{consumers[c.nomor_wa] || c.nomor_wa}</h3>
-                                     <p className="text-xs text-slate-500 font-mono">{c.nomor_seri}</p>
-                                  </div>
-                                  <div className="space-y-2 text-xs flex-1">
-                                     <p><span className="font-bold w-20 inline-block">Barang:</span> {c.tipe_barang}</p>
-                                     <p><span className="font-bold w-20 inline-block">Promo:</span> {c.jenis_promosi || getNamaPromo(c.tipe_barang)}</p>
-                                     <p><span className="font-bold w-20 inline-block">Tgl Beli:</span> {c.tanggal_pembelian}</p>
-                                     <p><span className="font-bold w-20 inline-block">Toko:</span> {c.nama_toko || '-'}</p>
-                                     <p><span className="font-bold w-20 inline-block">MKT/FA:</span> {c.validasi_by_mkt} / {c.validasi_by_fa}</p>
-                                     <div className="flex flex-col gap-1 pt-1">
-                                        {c.link_nota_pembelian && <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Nota</button>}
-                                        {c.link_kartu_garansi && <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Garansi</button>}
-                                     </div>
-                                  </div>
-                                  <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
-                                     <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
-                                     <button onClick={() => openModal('edit', 'claim', c)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                     <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                  </div>
-                               </div>
-                            ))}
-                         </div>
-                      )}
+                     <input type="text" placeholder="🔍 Cari Nama / No Seri / Nama Promo / Status MKT / Status FA..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                     {viewMode === 'table' ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+                           <table className="w-full text-sm">
+                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                                 <tr>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>Nama Promo {sortConfigClaims.column === 'jenis_promosi' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>Toko {sortConfigClaims.column === 'nama_toko' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold">Nota/Garansi</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'validasi_by_mkt')}>MKT / FA {sortConfigClaims.column === 'validasi_by_mkt' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold">Aksi</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {sortedClaims.map((c: ClaimPromo) => (
+                                    <tr key={c.id_claim} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                       <td className="px-4 py-3 text-slate-800 font-bold">{consumers[c.nomor_wa] || c.nomor_wa}</td>
+                                       <td className="px-4 py-3 font-mono">{c.nomor_seri}</td>
+                                       <td className="px-4 py-3">{c.tipe_barang}</td>
+                                       <td className="px-4 py-3 font-bold text-black">{c.jenis_promosi || getNamaPromo(c.tipe_barang)}</td>
+                                       <td className="px-4 py-3">{c.tanggal_pembelian}</td>
+                                       <td className="px-4 py-3">{c.nama_toko || '-'}</td>
+                                       <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
+                                          {c.link_nota_pembelian ? (
+                                             <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Nota</button>
+                                          ) : (
+                                             <span className="text-slate-500 italic">Tidak ada Nota</span>
+                                          )}
+                                          {c.link_kartu_garansi ? (
+                                             <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Garansi</button>
+                                          ) : (
+                                             <span className="text-slate-500 italic">Tidak ada Garansi</span>
+                                          )}
+                                       </td>
+                                       <td className="px-4 py-3 text-xs font-bold">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
+                                       <td className="px-4 py-3">
+                                          <div className="flex gap-3 items-center">
+                                             <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
+                                             <div className="w-px h-3 bg-slate-300"></div>
+                                             <button onClick={() => openModal('edit', 'claim', c)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                             <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                          </div>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                           {sortedClaims.map((c: ClaimPromo) => (
+                              <div key={c.id_claim} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                                 <div className="border-b border-slate-100 pb-3 mb-3">
+                                    <h3 className="font-bold text-base text-slate-800">{consumers[c.nomor_wa] || c.nomor_wa}</h3>
+                                    <p className="text-xs text-slate-500 font-mono">{c.nomor_seri}</p>
+                                 </div>
+                                 <div className="space-y-2 text-xs flex-1">
+                                    <p><span className="font-bold w-20 inline-block">Barang:</span> {c.tipe_barang}</p>
+                                    <p><span className="font-bold w-20 inline-block">Promo:</span> {c.jenis_promosi || getNamaPromo(c.tipe_barang)}</p>
+                                    <p><span className="font-bold w-20 inline-block">Tgl Beli:</span> {c.tanggal_pembelian}</p>
+                                    <p><span className="font-bold w-20 inline-block">Toko:</span> {c.nama_toko || '-'}</p>
+                                    <p><span className="font-bold w-20 inline-block">MKT/FA:</span> {c.validasi_by_mkt} / {c.validasi_by_fa}</p>
+                                    <div className="flex flex-col gap-1 pt-1">
+                                       {c.link_nota_pembelian && <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Nota</button>}
+                                       {c.link_kartu_garansi && <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Garansi</button>}
+                                    </div>
+                                 </div>
+                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                    <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
+                                    <button onClick={() => openModal('edit', 'claim', c)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                    <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     )}
                   </div>
                )}
 
                {/* ======================= WARRANTIES ======================= */}
                {activeTab === 'warranties' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
-                      <input type="text" placeholder="🔍 Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                      {viewMode === 'table' ? (
-                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                            <table className="w-full text-sm">
-                               <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
-                                  <tr>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'nomor_seri')}>No Seri {sortConfigWarranties.column === 'nomor_seri' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'tipe_barang')}>Barang {sortConfigWarranties.column === 'tipe_barang' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold">Nota/Garansi</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'status_validasi')}>Status {sortConfigWarranties.column === 'status_validasi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'jenis_garansi')}>Jenis {sortConfigWarranties.column === 'jenis_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'lama_garansi')}>Sisa Garansi {sortConfigWarranties.column === 'lama_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold">Aksi</th>
-                                  </tr>
-                               </thead>
-                               <tbody className="divide-y divide-slate-200">
-                                  {sortedWarranties.map((w: Garansi) => {
-                                     const linked = claims.find((c: ClaimPromo) => c.nomor_seri === w.nomor_seri);
-                                     const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
-                                     const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
-                                     return (
-                                        <tr key={w.id_garansi} className="whitespace-nowrap hover:bg-slate-50 font-medium">
-                                           <td className="px-4 py-3 font-mono font-bold">{w.nomor_seri}</td>
-                                           <td className="px-4 py-3">{w.tipe_barang}</td>
-                                           <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
-                                              {linkNota ? (
-                                                 <div className="flex items-center gap-1">
-                                                    <button type="button" onClick={() => openImageViewer(linkNota as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Nota</button>
-                                                    {!w.link_nota_pembelian && linked?.link_nota_pembelian && (
-                                                       <span className="bg-blue-100 text-blue-700 px-1 rounded-[2px] text-[9px] font-black uppercase">Claim</span>
-                                                    )}
-                                                 </div>
-                                              ) : (
-                                                 <span className="text-slate-500 italic">Tidak ada Nota</span>
-                                              )}
-                                              {linkGaransi ? (
-                                                 <div className="flex items-center gap-1">
-                                                    <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Garansi</button>
-                                                    {!w.link_kartu_garansi && linked?.link_kartu_garansi && (
-                                                       <span className="bg-blue-100 text-blue-700 px-1 rounded-[2px] text-[9px] font-black uppercase">Claim</span>
-                                                    )}
-                                                 </div>
-                                              ) : (
-                                                 <span className="text-slate-500 italic">Tidak ada Garansi</span>
-                                              )}
-                                           </td>
-                                           <td className="px-4 py-3">
-                                              <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{w.status_validasi}</span>
-                                           </td>
-                                           <td className="px-4 py-3">{w.jenis_garansi}</td>
-                                           <td className="px-4 py-3 font-bold text-slate-700">{calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</td>
-                                           <td className="px-4 py-3">
-                                              <div className="flex gap-3 items-center">
-                                                 <button onClick={() => handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
-                                                 <div className="w-px h-3 bg-slate-300"></div>
-                                                 <button onClick={() => openModal('edit', 'warranty', w)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                                 <button onClick={() => handleDelete('warranty', w.id_garansi!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                              </div>
-                                           </td>
-                                        </tr>
-                                     )
-                                  })}
-                               </tbody>
-                            </table>
-                         </div>
-                      ) : (
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {sortedWarranties.map((w: Garansi) => {
-                               const linked = claims.find((c: ClaimPromo) => c.nomor_seri === w.nomor_seri);
-                               const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
-                               const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
-                               return (
-                                  <div key={w.id_garansi} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                     <div className="border-b border-slate-100 pb-3 mb-3">
-                                        <h3 className="font-bold text-base text-slate-800 font-mono">{w.nomor_seri}</h3>
-                                        <p className="text-xs text-slate-500">{w.tipe_barang}</p>
-                                     </div>
-                                     <div className="space-y-2 text-xs flex-1">
-                                        <p><span className="font-bold w-24 inline-block">Status:</span> <span className={`px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{w.status_validasi}</span></p>
-                                        <p><span className="font-bold w-24 inline-block">Jenis:</span> {w.jenis_garansi}</p>
-                                        <p><span className="font-bold w-24 inline-block">Sisa:</span> {calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</p>
-                                        <div className="flex flex-col gap-1 pt-1">
-                                           {linkNota && <button type="button" onClick={() => openImageViewer(linkNota as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Nota</button>}
-                                           {linkGaransi && <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Garansi</button>}
-                                        </div>
-                                     </div>
-                                     <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
-                                        <button onClick={() => handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim</button>
-                                        <button onClick={() => openModal('edit', 'warranty', w)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                        <button onClick={() => handleDelete('warranty', w.id_garansi!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                     </div>
-                                  </div>
-                               )
-                            })}
-                         </div>
-                      )}
+                     <input type="text" placeholder="🔍 Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                     {viewMode === 'table' ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+                           <table className="w-full text-sm">
+                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                                 <tr>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'nomor_seri')}>No Seri {sortConfigWarranties.column === 'nomor_seri' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'tipe_barang')}>Barang {sortConfigWarranties.column === 'tipe_barang' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold">Nota/Garansi</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'status_validasi')}>Status {sortConfigWarranties.column === 'status_validasi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'jenis_garansi')}>Jenis {sortConfigWarranties.column === 'jenis_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'lama_garansi')}>Sisa Garansi {sortConfigWarranties.column === 'lama_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold">Aksi</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {sortedWarranties.map((w: Garansi) => {
+                                    const linked = claims.find((c: ClaimPromo) => c.nomor_seri === w.nomor_seri);
+                                    const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
+                                    const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
+                                    return (
+                                       <tr key={w.id_garansi} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                          <td className="px-4 py-3 font-mono font-bold">{w.nomor_seri}</td>
+                                          <td className="px-4 py-3">{w.tipe_barang}</td>
+                                          <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
+                                             {linkNota ? (
+                                                <div className="flex items-center gap-1">
+                                                   <button type="button" onClick={() => openImageViewer(linkNota as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Nota</button>
+                                                   {!w.link_nota_pembelian && linked?.link_nota_pembelian && (
+                                                      <span className="bg-blue-100 text-blue-700 px-1 rounded-[2px] text-[9px] font-black uppercase">Claim</span>
+                                                   )}
+                                                </div>
+                                             ) : (
+                                                <span className="text-slate-500 italic">Tidak ada Nota</span>
+                                             )}
+                                             {linkGaransi ? (
+                                                <div className="flex items-center gap-1">
+                                                   <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Garansi</button>
+                                                   {!w.link_kartu_garansi && linked?.link_kartu_garansi && (
+                                                      <span className="bg-blue-100 text-blue-700 px-1 rounded-[2px] text-[9px] font-black uppercase">Claim</span>
+                                                   )}
+                                                </div>
+                                             ) : (
+                                                <span className="text-slate-500 italic">Tidak ada Garansi</span>
+                                             )}
+                                          </td>
+                                          <td className="px-4 py-3">
+                                             <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{w.status_validasi}</span>
+                                          </td>
+                                          <td className="px-4 py-3">{w.jenis_garansi}</td>
+                                          <td className="px-4 py-3 font-bold text-slate-700">{calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</td>
+                                          <td className="px-4 py-3">
+                                             <div className="flex gap-3 items-center">
+                                                <button onClick={() => handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
+                                                <div className="w-px h-3 bg-slate-300"></div>
+                                                <button onClick={() => openModal('edit', 'warranty', w)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                                <button onClick={() => handleDelete('warranty', w.id_garansi!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                             </div>
+                                          </td>
+                                       </tr>
+                                    )
+                                 })}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                           {sortedWarranties.map((w: Garansi) => {
+                              const linked = claims.find((c: ClaimPromo) => c.nomor_seri === w.nomor_seri);
+                              const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
+                              const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
+                              return (
+                                 <div key={w.id_garansi} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                                    <div className="border-b border-slate-100 pb-3 mb-3">
+                                       <h3 className="font-bold text-base text-slate-800 font-mono">{w.nomor_seri}</h3>
+                                       <p className="text-xs text-slate-500">{w.tipe_barang}</p>
+                                    </div>
+                                    <div className="space-y-2 text-xs flex-1">
+                                       <p><span className="font-bold w-24 inline-block">Status:</span> <span className={`px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{w.status_validasi}</span></p>
+                                       <p><span className="font-bold w-24 inline-block">Jenis:</span> {w.jenis_garansi}</p>
+                                       <p><span className="font-bold w-24 inline-block">Sisa:</span> {calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</p>
+                                       <div className="flex flex-col gap-1 pt-1">
+                                          {linkNota && <button type="button" onClick={() => openImageViewer(linkNota as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Nota</button>}
+                                          {linkGaransi && <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Garansi</button>}
+                                       </div>
+                                    </div>
+                                    <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                       <button onClick={() => handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim</button>
+                                       <button onClick={() => openModal('edit', 'warranty', w)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                       <button onClick={() => handleDelete('warranty', w.id_garansi!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                    </div>
+                                 </div>
+                              )
+                           })}
+                        </div>
+                     )}
                   </div>
                )}
 
                {/* ======================= SERVICES ======================= */}
                {activeTab === 'services' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
-                      <input type="text" placeholder="🔍 Cari No Tanda Terima / No Seri / Status..." value={searchService} onChange={e => setSearchService(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                      {viewMode === 'table' ? (
-                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                            <table className="w-full text-sm">
-                               <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
-                                  <tr>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_tanda_terima')}>No Tanda Terima {sortConfigServices.column === 'nomor_tanda_terima' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_seri')}>No Seri Barang {sortConfigServices.column === 'nomor_seri' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'status_service')}>Status Service {sortConfigServices.column === 'status_service' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'created_at')}>Tgl Update {sortConfigServices.column === 'created_at' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold">Aksi</th>
-                                  </tr>
-                               </thead>
-                               <tbody className="divide-y divide-slate-200">
-                                  {sortedServices.map((s: StatusService) => (
-                                     <tr key={s.id_service} className="whitespace-nowrap hover:bg-slate-50 font-medium">
-                                        <td className="px-6 py-3 font-mono font-bold text-slate-800">{s.nomor_tanda_terima}</td>
-                                        <td className="px-6 py-3">{s.nomor_seri}</td>
-                                        <td className="px-6 py-3">
-                                           <span className="px-2 py-1 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span>
-                                        </td>
-                                        <td className="px-6 py-3 font-bold text-slate-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</td>
-                                        <td className="px-6 py-3 flex gap-3">
-                                           <button onClick={() => openModal('edit', 'service', s)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                           <button onClick={() => handleDelete('service', s.id_service!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                        </td>
-                                     </tr>
-                                  ))}
-                               </tbody>
-                            </table>
-                         </div>
-                      ) : (
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {sortedServices.map((s: StatusService) => (
-                               <div key={s.id_service} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                  <div className="border-b border-slate-100 pb-3 mb-3">
-                                     <h3 className="font-bold text-base text-slate-800 font-mono">{s.nomor_tanda_terima}</h3>
-                                     <p className="text-xs text-slate-500">{s.nomor_seri}</p>
-                                  </div>
-                                  <div className="space-y-2 text-xs flex-1">
-                                     <p><span className="font-bold w-20 inline-block">Status:</span> <span className="px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span></p>
-                                     <p><span className="font-bold w-20 inline-block">Update:</span> {s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</p>
-                                  </div>
-                                  <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
-                                     <button onClick={() => openModal('edit', 'service', s)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                     <button onClick={() => handleDelete('service', s.id_service!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                  </div>
-                               </div>
-                            ))}
-                         </div>
-                      )}
+                     <input type="text" placeholder="🔍 Cari No Tanda Terima / No Seri / Status..." value={searchService} onChange={e => setSearchService(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                     {viewMode === 'table' ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+                           <table className="w-full text-sm">
+                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                                 <tr>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_tanda_terima')}>No Tanda Terima {sortConfigServices.column === 'nomor_tanda_terima' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_seri')}>No Seri Barang {sortConfigServices.column === 'nomor_seri' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'status_service')}>Status Service {sortConfigServices.column === 'status_service' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'created_at')}>Tgl Update {sortConfigServices.column === 'created_at' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold">Aksi</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {sortedServices.map((s: StatusService) => (
+                                    <tr key={s.id_service} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                       <td className="px-6 py-3 font-mono font-bold text-slate-800">{s.nomor_tanda_terima}</td>
+                                       <td className="px-6 py-3">{s.nomor_seri}</td>
+                                       <td className="px-6 py-3">
+                                          <span className="px-2 py-1 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span>
+                                       </td>
+                                       <td className="px-6 py-3 font-bold text-slate-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</td>
+                                       <td className="px-6 py-3 flex gap-3">
+                                          <button onClick={() => openModal('edit', 'service', s)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                          <button onClick={() => handleDelete('service', s.id_service!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                           {sortedServices.map((s: StatusService) => (
+                              <div key={s.id_service} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                                 <div className="border-b border-slate-100 pb-3 mb-3">
+                                    <h3 className="font-bold text-base text-slate-800 font-mono">{s.nomor_tanda_terima}</h3>
+                                    <p className="text-xs text-slate-500">{s.nomor_seri}</p>
+                                 </div>
+                                 <div className="space-y-2 text-xs flex-1">
+                                    <p><span className="font-bold w-20 inline-block">Status:</span> <span className="px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span></p>
+                                    <p><span className="font-bold w-20 inline-block">Update:</span> {s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</p>
+                                 </div>
+                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                    <button onClick={() => openModal('edit', 'service', s)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                    <button onClick={() => handleDelete('service', s.id_service!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     )}
                   </div>
                )}
 
                {/* ======================= PROPOSAL EVENT ======================= */}
                {activeTab === 'budgets' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
-                      <input type="text" placeholder="🔍 Cari Title Proposal..." value={searchBudget} onChange={e => setSearchBudget(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                      {viewMode === 'table' ? (
-                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                            <table className="w-full text-sm">
-                               <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
-                                  <tr>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'proposal_no')}>Proposal No {sortConfigBudgets.column === 'proposal_no' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'title')}>Title {sortConfigBudgets.column === 'title' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'period')}>Period {sortConfigBudgets.column === 'period' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'total_cost')}>Total Cost {sortConfigBudgets.column === 'total_cost' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold">Aksi</th>
-                                  </tr>
-                               </thead>
-                               <tbody className="divide-y divide-slate-200">
-                                  {sortedBudgets.map((b: BudgetApproval) => (
-                                     <tr key={b.id_budget} className="whitespace-nowrap hover:bg-slate-50 font-medium">
-                                        <td className="px-6 py-3 font-mono font-bold text-slate-800">{b.proposal_no}</td>
-                                        <td className="px-6 py-3">{b.title}</td>
-                                        <td className="px-6 py-3">{b.period}</td>
-                                        <td className="px-6 py-3 font-bold text-slate-700">Rp {Number(b.total_cost).toLocaleString('id-ID')}</td>
-                                        <td className="px-6 py-3 flex gap-3">
-                                           <button onClick={() => setPrintData(b)} className="text-emerald-600 text-xs font-bold hover:underline">Print PDF</button>
-                                           <button onClick={() => openModal('edit', 'budget', b)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                           <button onClick={() => handleDelete('budget', b.id_budget!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                        </td>
-                                     </tr>
-                                  ))}
-                               </tbody>
-                            </table>
-                         </div>
-                      ) : (
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {sortedBudgets.map((b: BudgetApproval) => (
-                               <div key={b.id_budget} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                  <div className="border-b border-slate-100 pb-3 mb-3">
-                                     <h3 className="font-bold text-base text-slate-800">{b.title}</h3>
-                                     <p className="text-xs text-slate-500 font-mono">{b.proposal_no}</p>
-                                  </div>
-                                  <div className="space-y-2 text-xs flex-1">
-                                     <p><span className="font-bold w-20 inline-block">Periode:</span> {b.period}</p>
-                                     <p><span className="font-bold w-20 inline-block">Total Biaya:</span> Rp {Number(b.total_cost).toLocaleString('id-ID')}</p>
-                                  </div>
-                                  <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
-                                     <button onClick={() => setPrintData(b)} className="text-emerald-600 text-xs font-bold hover:underline">Print PDF</button>
-                                     <button onClick={() => openModal('edit', 'budget', b)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                     <button onClick={() => handleDelete('budget', b.id_budget!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                  </div>
-                               </div>
-                            ))}
-                         </div>
-                      )}
+                     <input type="text" placeholder="🔍 Cari Title Proposal..." value={searchBudget} onChange={e => setSearchBudget(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                     {viewMode === 'table' ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+                           <table className="w-full text-sm">
+                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                                 <tr>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'proposal_no')}>Proposal No {sortConfigBudgets.column === 'proposal_no' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'title')}>Title {sortConfigBudgets.column === 'title' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'period')}>Period {sortConfigBudgets.column === 'period' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'total_cost')}>Total Cost {sortConfigBudgets.column === 'total_cost' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold">Aksi</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {sortedBudgets.map((b: BudgetApproval) => (
+                                    <tr key={b.id_budget} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                       <td className="px-6 py-3 font-mono font-bold text-slate-800">{b.proposal_no}</td>
+                                       <td className="px-6 py-3">{b.title}</td>
+                                       <td className="px-6 py-3">{b.period}</td>
+                                       <td className="px-6 py-3 font-bold text-slate-700">Rp {Number(b.total_cost).toLocaleString('id-ID')}</td>
+                                       <td className="px-6 py-3 flex gap-3">
+                                          <button onClick={() => setPrintData(b)} className="text-emerald-600 text-xs font-bold hover:underline">Print PDF</button>
+                                          <button onClick={() => openModal('edit', 'budget', b)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                          <button onClick={() => handleDelete('budget', b.id_budget!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                           {sortedBudgets.map((b: BudgetApproval) => (
+                              <div key={b.id_budget} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                                 <div className="border-b border-slate-100 pb-3 mb-3">
+                                    <h3 className="font-bold text-base text-slate-800">{b.title}</h3>
+                                    <p className="text-xs text-slate-500 font-mono">{b.proposal_no}</p>
+                                 </div>
+                                 <div className="space-y-2 text-xs flex-1">
+                                    <p><span className="font-bold w-20 inline-block">Periode:</span> {b.period}</p>
+                                    <p><span className="font-bold w-20 inline-block">Total Biaya:</span> Rp {Number(b.total_cost).toLocaleString('id-ID')}</p>
+                                 </div>
+                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                    <button onClick={() => setPrintData(b)} className="text-emerald-600 text-xs font-bold hover:underline">Print PDF</button>
+                                    <button onClick={() => openModal('edit', 'budget', b)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                    <button onClick={() => handleDelete('budget', b.id_budget!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     )}
                   </div>
                )}
 
@@ -1899,97 +1899,97 @@ export default function NikonDashboard() {
                      <div className="flex-1 flex flex-wrap gap-4 items-center">
                         <input type="text" placeholder="🔍 Cari Nama Peminjam / No WA / Nama Barang / No Seri..." value={searchLending} onChange={e => setSearchLending(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                         <div className="flex items-center gap-2">
-                           <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>Baris</button>
-                           <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>Kartu</button>
+                           <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>📋Baris</button>
+                           <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🪪Kartu</button>
                         </div>
                      </div>
-                      <button onClick={() => openModal('create', 'lending')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Pinjam Barang</button>
-                      {viewMode === 'table' ? (
-                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                            <table className="w-full text-sm">
-                               <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
-                                  <tr>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold">KTP</th> {/* Not sortable as it's a button */}
-                                     <th className="px-4 py-3 text-left font-bold">Barang Dipinjam</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_peminjaman')}>Tgl Pinjam {sortConfigLending.column === 'tanggal_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_pengembalian')}>Tgl Kembali {sortConfigLending.column === 'tanggal_pengembalian' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'status_peminjaman')}>Status {sortConfigLending.column === 'status_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-4 py-3 text-left font-bold">Aksi</th>
-                                  </tr>
-                               </thead>
-                               <tbody className="divide-y divide-slate-200">
-                                  {sortedLendingRecords.map((l: PeminjamanBarang) => (
-                                     <tr key={l.id_peminjaman} className="whitespace-nowrap hover:bg-slate-50 font-medium">
-                                        <td className="px-4 py-3 text-slate-800 font-bold">
-                                           {l.nama_peminjam} <br />
-                                           <span className="text-xs text-slate-500">{l.nomor_wa_peminjam}</span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                           {l.link_ktp_peminjam ? (
-                                              <button type="button" onClick={() => openImageViewer(l.link_ktp_peminjam as string)} className="hover:underline hover:text-blue-800 text-left text-xs font-bold">🔗 Lihat KTP</button>
-                                           ) : (
-                                              <span className="text-slate-500 italic text-xs">Tidak ada</span>
-                                           )}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs">
-                                           <ul className="list-disc list-inside space-y-1">
-                                              {l.items_dipinjam.map((item, idx) => (
-                                                 <li key={idx} className={`${item.status_pengembalian === 'dikembalikan' ? 'text-green-600 line-through' : 'text-slate-800'}`}>
-                                                    {item.nama_barang} (SN: {item.nomor_seri})
-                                                    {item.catatan && <span className="text-slate-500 italic"> - {item.catatan}</span>}
-                                                    {item.status_pengembalian === 'dikembalikan' && <span className="ml-1 text-green-700 font-bold">(Dikembalikan)</span>}
-                                                 </li>
-                                              ))}
-                                           </ul>
-                                        </td>
-                                        <td className="px-4 py-3 font-bold text-slate-700">{l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</td>
-                                        <td className="px-4 py-3 font-bold text-slate-700">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</td>
-                                        <td className="px-4 py-3">
-                                           <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                           <div className="flex gap-3 items-center">
-                                              {l.status_peminjaman === 'aktif' && (
-                                                 <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-xs font-bold hover:underline">Pengembalian</button>
-                                              )}
-                                              <button onClick={() => openModal('edit', 'lending', l)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                              <button onClick={() => handleDelete('lending', l.id_peminjaman!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                           </div>
-                                        </td>
-                                     </tr>
-                                  ))}
-                               </tbody>
-                            </table>
-                         </div>
-                      ) : (
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {sortedLendingRecords.map((l: PeminjamanBarang) => (
-                               <div key={l.id_peminjaman} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                  <div className="border-b border-slate-100 pb-3 mb-3">
-                                     <h3 className="font-bold text-base text-slate-800">{l.nama_peminjam}</h3>
-                                     <p className="text-xs text-slate-500">{l.nomor_wa_peminjam}</p>
-                                     <span className={`mt-2 inline-block px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
-                                  </div>
-                                  <div className="space-y-2 text-xs flex-1">
-                                     <p><span className="font-bold w-24 inline-block">Tgl Pinjam:</span> {l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</p>
-                                     <p><span className="font-bold w-24 inline-block">Tgl Kembali:</span> {l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</p>
-                                     <div className="font-bold mt-2">Barang:</div>
-                                     <ul className="list-disc list-inside pl-2 space-y-1">
-                                        {l.items_dipinjam.map((item, idx) => (
-                                           <li key={idx} className={`${item.status_pengembalian === 'dikembalikan' ? 'text-green-600 line-through' : 'text-slate-800'}`}>{item.nama_barang} (SN: {item.nomor_seri})</li>
-                                        ))}
-                                     </ul>
-                                  </div>
-                                  <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
-                                     {l.status_peminjaman === 'aktif' && <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-xs font-bold hover:underline">Pengembalian</button>}
-                                     <button onClick={() => openModal('edit', 'lending', l)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                     <button onClick={() => handleDelete('lending', l.id_peminjaman!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                  </div>
-                               </div>
-                            ))}
-                         </div>
-                      )}
+                     <button onClick={() => openModal('create', 'lending')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Pinjam Barang</button>
+                     {viewMode === 'table' ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+                           <table className="w-full text-sm">
+                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                                 <tr>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold">KTP</th> {/* Not sortable as it's a button */}
+                                    <th className="px-4 py-3 text-left font-bold">Barang Dipinjam</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_peminjaman')}>Tgl Pinjam {sortConfigLending.column === 'tanggal_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_pengembalian')}>Tgl Kembali {sortConfigLending.column === 'tanggal_pengembalian' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'status_peminjaman')}>Status {sortConfigLending.column === 'status_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold">Aksi</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {sortedLendingRecords.map((l: PeminjamanBarang) => (
+                                    <tr key={l.id_peminjaman} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                       <td className="px-4 py-3 text-slate-800 font-bold">
+                                          {l.nama_peminjam} <br />
+                                          <span className="text-xs text-slate-500">{l.nomor_wa_peminjam}</span>
+                                       </td>
+                                       <td className="px-4 py-3">
+                                          {l.link_ktp_peminjam ? (
+                                             <button type="button" onClick={() => openImageViewer(l.link_ktp_peminjam as string)} className="hover:underline hover:text-blue-800 text-left text-xs font-bold">🔗 Lihat KTP</button>
+                                          ) : (
+                                             <span className="text-slate-500 italic text-xs">Tidak ada</span>
+                                          )}
+                                       </td>
+                                       <td className="px-4 py-3 text-xs">
+                                          <ul className="list-disc list-inside space-y-1">
+                                             {l.items_dipinjam.map((item, idx) => (
+                                                <li key={idx} className={`${item.status_pengembalian === 'dikembalikan' ? 'text-green-600 line-through' : 'text-slate-800'}`}>
+                                                   {item.nama_barang} (SN: {item.nomor_seri})
+                                                   {item.catatan && <span className="text-slate-500 italic"> - {item.catatan}</span>}
+                                                   {item.status_pengembalian === 'dikembalikan' && <span className="ml-1 text-green-700 font-bold">(Dikembalikan)</span>}
+                                                </li>
+                                             ))}
+                                          </ul>
+                                       </td>
+                                       <td className="px-4 py-3 font-bold text-slate-700">{l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</td>
+                                       <td className="px-4 py-3 font-bold text-slate-700">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</td>
+                                       <td className="px-4 py-3">
+                                          <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
+                                       </td>
+                                       <td className="px-4 py-3">
+                                          <div className="flex gap-3 items-center">
+                                             {l.status_peminjaman === 'aktif' && (
+                                                <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-xs font-bold hover:underline">Pengembalian</button>
+                                             )}
+                                             <button onClick={() => openModal('edit', 'lending', l)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                             <button onClick={() => handleDelete('lending', l.id_peminjaman!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                          </div>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                           {sortedLendingRecords.map((l: PeminjamanBarang) => (
+                              <div key={l.id_peminjaman} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                                 <div className="border-b border-slate-100 pb-3 mb-3">
+                                    <h3 className="font-bold text-base text-slate-800">{l.nama_peminjam}</h3>
+                                    <p className="text-xs text-slate-500">{l.nomor_wa_peminjam}</p>
+                                    <span className={`mt-2 inline-block px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
+                                 </div>
+                                 <div className="space-y-2 text-xs flex-1">
+                                    <p><span className="font-bold w-24 inline-block">Tgl Pinjam:</span> {l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</p>
+                                    <p><span className="font-bold w-24 inline-block">Tgl Kembali:</span> {l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</p>
+                                    <div className="font-bold mt-2">Barang:</div>
+                                    <ul className="list-disc list-inside pl-2 space-y-1">
+                                       {l.items_dipinjam.map((item, idx) => (
+                                          <li key={idx} className={`${item.status_pengembalian === 'dikembalikan' ? 'text-green-600 line-through' : 'text-slate-800'}`}>{item.nama_barang} (SN: {item.nomor_seri})</li>
+                                       ))}
+                                    </ul>
+                                 </div>
+                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                    {l.status_peminjaman === 'aktif' && <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-xs font-bold hover:underline">Pengembalian</button>}
+                                    <button onClick={() => openModal('edit', 'lending', l)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                    <button onClick={() => handleDelete('lending', l.id_peminjaman!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     )}
                   </div>
                )}
 
@@ -2004,67 +2004,67 @@ export default function NikonDashboard() {
                {/* ======================= USER ROLE ======================= */}
                {activeTab === 'userrole' && currentUser?.role === 'Admin' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
-                      <input type="text" placeholder="🔍 Cari Username atau Nama Karyawan..." value={searchKaryawan} onChange={e => setSearchKaryawan(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                      {viewMode === 'table' ? (
-                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                            <table className="w-full text-sm">
-                               <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
-                                  <tr>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'username')}>Username {sortConfigKaryawans.column === 'username' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'nama_karyawan')}>Nama Karyawan {sortConfigKaryawans.column === 'nama_karyawan' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'role')}>Role {sortConfigKaryawans.column === 'role' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'status_aktif')}>Status {sortConfigKaryawans.column === 'status_aktif' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                     <th className="px-6 py-3 text-left font-bold">Akses Halaman</th>
-                                     <th className="px-6 py-3 text-left font-bold">Aksi</th>
-                                  </tr>
-                               </thead>
-                               <tbody className="divide-y divide-slate-200">
-                                  {sortedKaryawans.map((k: Karyawan) => (
-                                     <tr key={k.id_karyawan} className="whitespace-nowrap hover:bg-slate-50 font-medium">
-                                        <td className="px-6 py-3 font-bold text-slate-800">{k.username}</td>
-                                        <td className="px-6 py-3">{k.nama_karyawan}</td>
-                                        <td className="px-6 py-3 font-bold text-black">{k.role}</td>
-                                        <td className="px-6 py-3">
-                                           <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
-                                        </td>
-                                        <td className="px-6 py-3 font-mono text-xs text-slate-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</td>
-                                        <td className="px-6 py-3 flex gap-3">
-                                           <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                           <button onClick={() => openModal('reset_pw', 'karyawan', k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
-                                           <button onClick={() => handleDelete('karyawan', k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline" disabled={k.username === 'admin'}>Hapus</button>
-                                        </td>
-                                     </tr>
-                                  ))}
-                               </tbody>
-                            </table>
-                         </div>
-                      ) : (
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {sortedKaryawans.map((k: Karyawan) => (
-                               <div key={k.id_karyawan} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                  <div className="border-b border-slate-100 pb-3 mb-3">
-                                     <div className="flex justify-between items-start">
-                                        <div>
-                                           <h3 className="font-bold text-base text-slate-800">{k.nama_karyawan}</h3>
-                                           <p className="text-xs text-slate-500">{k.username}</p>
-                                        </div>
-                                        <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
-                                     </div>
-                                     <p className="text-sm font-bold text-black mt-2">{k.role}</p>
-                                  </div>
-                                  <div className="space-y-1 text-xs flex-1">
-                                     <p className="font-bold">Akses:</p>
-                                     <p className="font-mono text-slate-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</p>
-                                  </div>
-                                  <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
-                                     <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                     <button onClick={() => openModal('reset_pw', 'karyawan', k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
-                                     <button onClick={() => handleDelete('karyawan', k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline" disabled={k.username === 'admin'}>Hapus</button>
-                                  </div>
-                               </div>
-                            ))}
-                         </div>
-                      )}
+                     <input type="text" placeholder="🔍 Cari Username atau Nama Karyawan..." value={searchKaryawan} onChange={e => setSearchKaryawan(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                     {viewMode === 'table' ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+                           <table className="w-full text-sm">
+                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                                 <tr>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'username')}>Username {sortConfigKaryawans.column === 'username' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'nama_karyawan')}>Nama Karyawan {sortConfigKaryawans.column === 'nama_karyawan' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'role')}>Role {sortConfigKaryawans.column === 'role' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'status_aktif')}>Status {sortConfigKaryawans.column === 'status_aktif' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-6 py-3 text-left font-bold">Akses Halaman</th>
+                                    <th className="px-6 py-3 text-left font-bold">Aksi</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {sortedKaryawans.map((k: Karyawan) => (
+                                    <tr key={k.id_karyawan} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                       <td className="px-6 py-3 font-bold text-slate-800">{k.username}</td>
+                                       <td className="px-6 py-3">{k.nama_karyawan}</td>
+                                       <td className="px-6 py-3 font-bold text-black">{k.role}</td>
+                                       <td className="px-6 py-3">
+                                          <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
+                                       </td>
+                                       <td className="px-6 py-3 font-mono text-xs text-slate-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</td>
+                                       <td className="px-6 py-3 flex gap-3">
+                                          <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                          <button onClick={() => openModal('reset_pw', 'karyawan', k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
+                                          <button onClick={() => handleDelete('karyawan', k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline" disabled={k.username === 'admin'}>Hapus</button>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                           {sortedKaryawans.map((k: Karyawan) => (
+                              <div key={k.id_karyawan} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                                 <div className="border-b border-slate-100 pb-3 mb-3">
+                                    <div className="flex justify-between items-start">
+                                       <div>
+                                          <h3 className="font-bold text-base text-slate-800">{k.nama_karyawan}</h3>
+                                          <p className="text-xs text-slate-500">{k.username}</p>
+                                       </div>
+                                       <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
+                                    </div>
+                                    <p className="text-sm font-bold text-black mt-2">{k.role}</p>
+                                 </div>
+                                 <div className="space-y-1 text-xs flex-1">
+                                    <p className="font-bold">Akses:</p>
+                                    <p className="font-mono text-slate-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</p>
+                                 </div>
+                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                    <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                    <button onClick={() => openModal('reset_pw', 'karyawan', k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
+                                    <button onClick={() => handleDelete('karyawan', k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline" disabled={k.username === 'admin'}>Hapus</button>
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     )}
                   </div>
                )}
 
@@ -2912,7 +2912,7 @@ export default function NikonDashboard() {
          <div className="fixed bottom-4 right-4 z-[100] flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-lg border text-[10px] font-bold transition-all">
             <div className={`w-2 h-2 rounded-full ${dbStatus.connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
             <span className={dbStatus.connected ? 'text-slate-600' : 'text-red-600'}>
-               Supabase: {dbStatus.message}
+               Database: {dbStatus.message}
             </span>
             {!dbStatus.connected && (
                <button onClick={() => window.location.reload()} className="ml-1 text-blue-600 hover:underline">Refresh</button>
