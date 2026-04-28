@@ -1095,6 +1095,16 @@ export default function NikonDashboard() {
       const sortableItems = [...filteredPromos];
       return sortableItems.sort(getSortFunction(sortConfigPromos, consumers));
    }, [filteredPromos, sortConfigPromos, consumers]);
+   
+   const claimStatusCounts = useMemo(() => {
+      const counts: Record<string, number> = { Putih: 0, Merah: 0, Orange: 0, Biru: 0, Pink: 0, Hijau: 0 };
+      claims.forEach(c => {
+         const color = getClaimStatusColor(c);
+         if (counts[color] !== undefined) counts[color]++;
+      });
+      return counts;
+   }, [claims]);
+
    const filteredClaims = useMemo(() => claims.filter((c: ClaimPromo) => {
       const name = (consumers[c.nomor_wa] || c.nomor_wa || "").toLowerCase();
       const seri = (c.nomor_seri || "").toLowerCase();
@@ -1656,6 +1666,32 @@ export default function NikonDashboard() {
                            <option value="Pink">Tunggu Resi (Pink)</option>
                            <option value="Hijau">Selesai (Hijau)</option>
                         </select>
+                     </div>
+                     <div className="flex flex-wrap gap-2">
+                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                           <span className="w-3 h-3 rounded-full bg-white border border-slate-300"></span>
+                           Belum Di Cek: {claimStatusCounts.Putih}
+                        </div>
+                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                           <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                           Tidak Valid: {claimStatusCounts.Merah}
+                        </div>
+                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                           <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+                           Hold: {claimStatusCounts.Orange}
+                        </div>
+                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                           <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                           Tunggu FA Cek: {claimStatusCounts.Biru}
+                        </div>
+                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                           <span className="w-3 h-3 rounded-full bg-pink-500"></span>
+                           Tunggu Resi: {claimStatusCounts.Pink}
+                        </div>
+                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                           <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                           Selesai: {claimStatusCounts.Hijau}
+                        </div>
                      </div>
                      {viewMode === 'table' ? (
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
