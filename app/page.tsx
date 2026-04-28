@@ -1127,6 +1127,27 @@ export default function NikonDashboard() {
       const sortableItems = [...filteredClaims];
       return sortableItems.sort(getSortFunction(sortConfigClaims, consumers));
    }, [filteredClaims, sortConfigClaims, consumers]);
+
+   const duplicateClaimIds = useMemo(() => {
+      const duplicatesToMark = new Set<string>();
+      const snToIds: Record<string, string[]> = {};
+      claims.forEach(c => {
+         const sn = (c.nomor_seri || "").trim().toUpperCase();
+         if (sn && sn !== '-' && sn !== 'TBA' && c.id_claim) {
+            if (!snToIds[sn]) snToIds[sn] = [];
+            snToIds[sn].push(c.id_claim);
+         }
+      });
+      Object.values(snToIds).forEach(list => {
+         if (list.length > 1) {
+            for (let i = 0; i < list.length - 1; i++) {
+               duplicatesToMark.add(list[i]);
+            }
+         }
+      });
+      return duplicatesToMark;
+   }, [claims]);
+
    const filteredWarranties = useMemo(() => warranties.filter((w: Garansi) => (w.nomor_seri || "").toLowerCase().includes(searchGaransi.toLowerCase())), [warranties, searchGaransi]);
    const sortedWarranties = useMemo(() => {
       const sortableItems = [...filteredWarranties];
@@ -1711,15 +1732,22 @@ export default function NikonDashboard() {
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
-                                 {sortedClaims.map((c: ClaimPromo) => (
-                                    <tr key={c.id_claim} className="hover:bg-slate-50 font-medium">
+                                 {sortedClaims.map((c: ClaimPromo) => {
+                                    const isDuplicate = c.id_claim ? duplicateClaimIds.has(c.id_claim) : false;
+                                    return (
+                                    <tr key={c.id_claim} className={`hover:bg-slate-50 font-medium ${isDuplicate ? 'bg-red-50' : ''}`}>
                                        <td className="px-4 py-3 text-center">
                                           <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold shadow-sm inline-block ${getBadgeStyle(getClaimStatusColor(c))}`}>
                                              {getBadgeLabel(getClaimStatusColor(c))}
                                           </span>
                                        </td>
                                        <td className="px-4 py-3 text-slate-800 font-bold">{consumers[c.nomor_wa] || c.nomor_wa}</td>
-                                       <td className="px-4 py-3 font-mono">{c.nomor_seri}</td>
+                                       <td className="px-4 py-3 font-mono">
+                                          <div className="flex items-center gap-2">
+                                             {c.nomor_seri}
+                                             {isDuplicate && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap animate-pulse" title="Nomor seri ini sudah pernah diklaim sebelumnya">⚠️ DUPLIKAT</span>}
+                                          </div>
+                                       </td>
                                        <td className="px-4 py-3">{c.tipe_barang}</td>
                                        <td className="px-4 py-3 font-bold text-black">{c.jenis_promosi || getNamaPromo(c.tipe_barang)}</td>
                                        <td className="px-4 py-3">{c.tanggal_pembelian}</td>
@@ -1745,20 +1773,25 @@ export default function NikonDashboard() {
                                              <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                           </div>
                                        </td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
+                                       </tr>
+                                       );
+                                       })}
+                                       </tbody>                           </table>
                         </div>
                      ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {sortedClaims.map((c: ClaimPromo) => (
-                              <div key={c.id_claim} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
+                           {sortedClaims.map((c: ClaimPromo) => {
+                              const isDuplicate = c.id_claim ? duplicateClaimIds.has(c.id_claim) : false;
+                              return (
+                              <div key={c.id_claim} className={`bg-white p-4 rounded-lg shadow-sm border flex flex-col hover:border-[#FFE500] transition ${isDuplicate ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}>
                                  <div className="border-b border-slate-100 pb-3 mb-3">
                                     <div className="flex justify-between items-start gap-2">
                                        <div>
                                           <h3 className="font-bold text-base text-slate-800">{consumers[c.nomor_wa] || c.nomor_wa}</h3>
-                                          <p className="text-xs text-slate-500 font-mono">{c.nomor_seri}</p>
+                                          <p className="text-xs text-slate-500 font-mono flex items-center gap-2">
+                                             {c.nomor_seri}
+                                             {isDuplicate && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap animate-pulse">⚠️ DUPLIKAT</span>}
+                                          </p>
                                        </div>
                                        <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold shadow-sm ${getBadgeStyle(getClaimStatusColor(c))}`}>
                                           {getBadgeLabel(getClaimStatusColor(c))}
@@ -1782,7 +1815,8 @@ export default function NikonDashboard() {
                                     <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                  </div>
                               </div>
-                           ))}
+                              );
+                           })}
                         </div>
                      )}
                   </div>
