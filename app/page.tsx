@@ -13,7 +13,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 interface Karyawan { id_karyawan?: string; username: string; password?: string; nama_karyawan: string; role: string; status_aktif: boolean; akses_halaman: string[]; created_at?: string; nomor_wa?: string; }
 interface KonsumenData { nomor_wa: string; id_konsumen: string; nama_lengkap: string; status_langkah: string; alamat_rumah: string; created_at: string; nik?: string; kelurahan?: string; kecamatan?: string; kabupaten_kotamadya?: string; provinsi?: string; kodepos?: string; }
 interface RiwayatPesan { id_pesan?: string; nomor_wa: string; nama_profil_wa: string; arah_pesan: 'IN' | 'OUT'; isi_pesan: string; waktu_pesan: string; bicara_dengan_cs?: boolean; created_at?: string; }
-interface ClaimPromo { id_claim?: string; nomor_wa: string; nomor_seri: string; tipe_barang: string; tanggal_pembelian: string; nama_toko?: string; jenis_promosi?: string; validasi_by_mkt: string; validasi_by_fa: string; nama_jasa_pengiriman?: string; nomor_resi?: string; link_kartu_garansi?: string | File | null; link_nota_pembelian?: string | File | null; }
+interface ClaimPromo { id_claim?: string; nomor_wa: string; nomor_seri: string; tipe_barang: string; tanggal_pembelian: string; nama_toko?: string; jenis_promosi?: string; validasi_by_mkt: string; validasi_by_fa: string; catatan_mkt?: string; catatan_fa?: string; nama_jasa_pengiriman?: string; nomor_resi?: string; link_kartu_garansi?: string | File | null; link_nota_pembelian?: string | File | null; }
 interface Garansi { id_garansi?: string; nomor_seri: string; tipe_barang: string; status_validasi: string; jenis_garansi: string; lama_garansi: string; link_kartu_garansi?: string | File | null; link_nota_pembelian?: string | File | null; }
 interface Promosi { id_promo?: string; nama_promo: string; tipe_produk: { nama_produk: string }[]; tanggal_mulai: string; tanggal_selesai: string; status_aktif: boolean; created_at?: string; }
 interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor_seri: string; status_service: string; created_at?: string; }
@@ -69,6 +69,43 @@ export default function NikonDashboard() {
    const [searchChat, setSearchChat] = useState('');
    const [searchPromo, setSearchPromo] = useState('');
    const [searchClaim, setSearchClaim] = useState('');
+   const [filterStatusWarna, setFilterStatusWarna] = useState<string>('Semua');
+
+   const getClaimStatusColor = (c: ClaimPromo) => {
+      if (c.nomor_resi && c.nomor_resi.trim() !== '') return 'Hijau';
+      const mkt = (c.validasi_by_mkt || '').trim().toLowerCase();
+      const fa = (c.validasi_by_fa || '').trim().toLowerCase();
+      
+      if (mkt === 'valid' && fa === 'valid') return 'Pink';
+      if (mkt === 'valid' && (fa === 'dalam proses verifikasi' || fa === 'dalam proses validasi' || fa === '')) return 'Biru';
+      if (mkt === 'hold' && fa !== 'valid') return 'Orange';
+      if (mkt === 'tidak valid' && (fa === 'dalam proses verifikasi' || fa === 'dalam proses validasi' || fa === '')) return 'Merah';
+      if ((mkt === 'dalam proses verifikasi' || mkt === 'dalam proses validasi' || mkt === '') && (fa === 'dalam proses verifikasi' || fa === 'dalam proses validasi' || fa === '')) return 'Putih';
+      return 'Putih'; // default fallback
+   };
+
+   const getBadgeStyle = (color: string) => {
+      switch(color) {
+         case 'Hijau': return 'bg-green-100 text-green-800 border border-green-200';
+         case 'Pink': return 'bg-pink-100 text-pink-800 border border-pink-200';
+         case 'Biru': return 'bg-blue-100 text-blue-800 border border-blue-200';
+         case 'Orange': return 'bg-orange-100 text-orange-800 border border-orange-200';
+         case 'Merah': return 'bg-red-100 text-red-800 border border-red-200';
+         case 'Putih': default: return 'bg-white text-slate-800 border border-slate-300';
+      }
+   };
+
+   const getBadgeLabel = (color: string) => {
+      switch(color) {
+         case 'Hijau': return 'Selesai';
+         case 'Pink': return 'Tunggu Resi';
+         case 'Biru': return 'Tunggu FA Cek';
+         case 'Orange': return 'Hold';
+         case 'Merah': return 'Tidak Valid';
+         case 'Putih': default: return 'Belum Di Cek';
+      }
+   };
+
    const [searchGaransi, setSearchGaransi] = useState('');
    const [searchService, setSearchService] = useState('');
    const [searchBudget, setSearchBudget] = useState('');
@@ -1065,8 +1102,16 @@ export default function NikonDashboard() {
       const mkt = (c.validasi_by_mkt || "").toLowerCase();
       const fa = (c.validasi_by_fa || "").toLowerCase();
       const search = searchClaim.toLowerCase();
-      return name.includes(search) || seri.includes(search) || promo.includes(search) || mkt.includes(search) || fa.includes(search);
-   }), [claims, searchClaim, consumers, promos]); // Keep filteredClaims for search
+      
+      const matchesSearch = name.includes(search) || seri.includes(search) || promo.includes(search) || mkt.includes(search) || fa.includes(search);
+      if (!matchesSearch) return false;
+      
+      if (filterStatusWarna !== 'Semua') {
+         const color = getClaimStatusColor(c);
+         if (color !== filterStatusWarna) return false;
+      }
+      return true;
+   }), [claims, searchClaim, filterStatusWarna, consumers, promos]); // Keep filteredClaims for search
 
    const sortedClaims = useMemo(() => {
       const sortableItems = [...filteredClaims];
@@ -1483,9 +1528,9 @@ export default function NikonDashboard() {
                            })}
                         </div>
                      ) : (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                           <table className="w-full text-sm">
-                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal break-words">
+                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                                  <tr>
                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>Nama {sortConfigKonsumen.column === 'nama_lengkap' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'id_konsumen')}>ID Konsumen {sortConfigKonsumen.column === 'id_konsumen' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
@@ -1499,7 +1544,7 @@ export default function NikonDashboard() {
                                  {sortedConsumers.map((k: KonsumenData) => {
                                     const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
                                     return (
-                                       <tr key={k.nomor_wa} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                       <tr key={k.nomor_wa} className="hover:bg-slate-50 font-medium">
                                           <td className="px-4 py-3 text-slate-800 font-bold">{k.nama_lengkap || '-'}</td>
                                           <td className="px-4 py-3 font-mono">{k.id_konsumen || '-'}</td>
                                           <td className="px-4 py-3">{k.nomor_wa}</td>
@@ -1567,9 +1612,9 @@ export default function NikonDashboard() {
                            })}
                         </div>
                      ) : (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                           <table className="w-full text-sm">
-                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal break-words">
+                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                                  <tr>
                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
@@ -1600,12 +1645,24 @@ export default function NikonDashboard() {
                {/* ======================= CLAIMS ======================= */}
                {activeTab === 'claims' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
-                     <input type="text" placeholder="🔍 Cari Nama / No Seri / Nama Promo / Status MKT / Status FA..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                     <div className="flex flex-col md:flex-row gap-2">
+                        <input type="text" placeholder="🔍 Cari Nama / No Seri / Nama Promo / Status MKT / Status FA..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="flex-1 p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                        <select value={filterStatusWarna} onChange={e => setFilterStatusWarna(e.target.value)} className="p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium md:w-48">
+                           <option value="Semua">Semua Status Warna</option>
+                           <option value="Putih">Belum Di Cek (Putih)</option>
+                           <option value="Merah">Tidak Valid (Merah)</option>
+                           <option value="Orange">Hold (Orange)</option>
+                           <option value="Biru">Tunggu FA Cek (Biru)</option>
+                           <option value="Pink">Tunggu Resi (Pink)</option>
+                           <option value="Hijau">Selesai (Hijau)</option>
+                        </select>
+                     </div>
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                           <table className="w-full text-sm">
-                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal break-words">
+                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                                  <tr>
+                                    <th className="px-4 py-3 text-center font-bold">Status Sistem</th>
                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
@@ -1619,7 +1676,12 @@ export default function NikonDashboard() {
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedClaims.map((c: ClaimPromo) => (
-                                    <tr key={c.id_claim} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                    <tr key={c.id_claim} className="hover:bg-slate-50 font-medium">
+                                       <td className="px-4 py-3 text-center">
+                                          <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold shadow-sm inline-block ${getBadgeStyle(getClaimStatusColor(c))}`}>
+                                             {getBadgeLabel(getClaimStatusColor(c))}
+                                          </span>
+                                       </td>
                                        <td className="px-4 py-3 text-slate-800 font-bold">{consumers[c.nomor_wa] || c.nomor_wa}</td>
                                        <td className="px-4 py-3 font-mono">{c.nomor_seri}</td>
                                        <td className="px-4 py-3">{c.tipe_barang}</td>
@@ -1638,7 +1700,7 @@ export default function NikonDashboard() {
                                              <span className="text-slate-500 italic">Tidak ada Garansi</span>
                                           )}
                                        </td>
-                                       <td className="px-4 py-3 text-xs font-bold">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
+                                       <td className="px-4 py-3 text-xs font-bold whitespace-normal max-w-[150px]">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
                                        <td className="px-4 py-3">
                                           <div className="flex gap-3 items-center">
                                              <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
@@ -1657,8 +1719,15 @@ export default function NikonDashboard() {
                            {sortedClaims.map((c: ClaimPromo) => (
                               <div key={c.id_claim} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
                                  <div className="border-b border-slate-100 pb-3 mb-3">
-                                    <h3 className="font-bold text-base text-slate-800">{consumers[c.nomor_wa] || c.nomor_wa}</h3>
-                                    <p className="text-xs text-slate-500 font-mono">{c.nomor_seri}</p>
+                                    <div className="flex justify-between items-start gap-2">
+                                       <div>
+                                          <h3 className="font-bold text-base text-slate-800">{consumers[c.nomor_wa] || c.nomor_wa}</h3>
+                                          <p className="text-xs text-slate-500 font-mono">{c.nomor_seri}</p>
+                                       </div>
+                                       <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold shadow-sm ${getBadgeStyle(getClaimStatusColor(c))}`}>
+                                          {getBadgeLabel(getClaimStatusColor(c))}
+                                       </span>
+                                    </div>
                                  </div>
                                  <div className="space-y-2 text-xs flex-1">
                                     <p><span className="font-bold w-20 inline-block">Barang:</span> {c.tipe_barang}</p>
@@ -1688,9 +1757,9 @@ export default function NikonDashboard() {
                   <div className="space-y-4 animate-fade-in text-slate-900">
                      <input type="text" placeholder="🔍 Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                           <table className="w-full text-sm">
-                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal break-words">
+                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                                  <tr>
                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'nomor_seri')}>No Seri {sortConfigWarranties.column === 'nomor_seri' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'tipe_barang')}>Barang {sortConfigWarranties.column === 'tipe_barang' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
@@ -1707,7 +1776,7 @@ export default function NikonDashboard() {
                                     const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
                                     const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
                                     return (
-                                       <tr key={w.id_garansi} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                       <tr key={w.id_garansi} className="hover:bg-slate-50 font-medium">
                                           <td className="px-4 py-3 font-mono font-bold">{w.nomor_seri}</td>
                                           <td className="px-4 py-3">{w.tipe_barang}</td>
                                           <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
@@ -1790,9 +1859,9 @@ export default function NikonDashboard() {
                   <div className="space-y-4 animate-fade-in text-slate-900">
                      <input type="text" placeholder="🔍 Cari No Tanda Terima / No Seri / Status..." value={searchService} onChange={e => setSearchService(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                           <table className="w-full text-sm">
-                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal break-words">
+                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                                  <tr>
                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_tanda_terima')}>No Tanda Terima {sortConfigServices.column === 'nomor_tanda_terima' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_seri')}>No Seri Barang {sortConfigServices.column === 'nomor_seri' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
@@ -1803,7 +1872,7 @@ export default function NikonDashboard() {
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedServices.map((s: StatusService) => (
-                                    <tr key={s.id_service} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                    <tr key={s.id_service} className="hover:bg-slate-50 font-medium">
                                        <td className="px-6 py-3 font-mono font-bold text-slate-800">{s.nomor_tanda_terima}</td>
                                        <td className="px-6 py-3">{s.nomor_seri}</td>
                                        <td className="px-6 py-3">
@@ -1847,9 +1916,9 @@ export default function NikonDashboard() {
                   <div className="space-y-4 animate-fade-in text-slate-900">
                      <input type="text" placeholder="🔍 Cari Title Proposal..." value={searchBudget} onChange={e => setSearchBudget(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                           <table className="w-full text-sm">
-                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal break-words">
+                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                                  <tr>
                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'proposal_no')}>Proposal No {sortConfigBudgets.column === 'proposal_no' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'title')}>Title {sortConfigBudgets.column === 'title' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
@@ -1860,7 +1929,7 @@ export default function NikonDashboard() {
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedBudgets.map((b: BudgetApproval) => (
-                                    <tr key={b.id_budget} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                    <tr key={b.id_budget} className="hover:bg-slate-50 font-medium">
                                        <td className="px-6 py-3 font-mono font-bold text-slate-800">{b.proposal_no}</td>
                                        <td className="px-6 py-3">{b.title}</td>
                                        <td className="px-6 py-3">{b.period}</td>
@@ -1911,9 +1980,9 @@ export default function NikonDashboard() {
                      </div>
                      <button onClick={() => openModal('create', 'lending')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Pinjam Barang</button>
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                           <table className="w-full text-sm">
-                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal break-words">
+                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                                  <tr>
                                     <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                     <th className="px-4 py-3 text-left font-bold">KTP</th> {/* Not sortable as it's a button */}
@@ -1926,7 +1995,7 @@ export default function NikonDashboard() {
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedLendingRecords.map((l: PeminjamanBarang) => (
-                                    <tr key={l.id_peminjaman} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                    <tr key={l.id_peminjaman} className="hover:bg-slate-50 font-medium">
                                        <td className="px-4 py-3 text-slate-800 font-bold">
                                           {l.nama_peminjam} <br />
                                           <span className="text-xs text-slate-500">{l.nomor_wa_peminjam}</span>
@@ -2012,9 +2081,9 @@ export default function NikonDashboard() {
                   <div className="space-y-4 animate-fade-in text-slate-900">
                      <input type="text" placeholder="🔍 Cari Username atau Nama Karyawan..." value={searchKaryawan} onChange={e => setSearchKaryawan(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
-                           <table className="w-full text-sm">
-                              <thead className="bg-slate-50 border-b border-slate-200 whitespace-nowrap">
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal break-words">
+                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                                  <tr>
                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'username')}>Username {sortConfigKaryawans.column === 'username' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
                                     <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'nama_karyawan')}>Nama Karyawan {sortConfigKaryawans.column === 'nama_karyawan' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
@@ -2026,7 +2095,7 @@ export default function NikonDashboard() {
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedKaryawans.map((k: Karyawan) => (
-                                    <tr key={k.id_karyawan} className="whitespace-nowrap hover:bg-slate-50 font-medium">
+                                    <tr key={k.id_karyawan} className="hover:bg-slate-50 font-medium">
                                        <td className="px-6 py-3 font-bold text-slate-800">{k.username}</td>
                                        <td className="px-6 py-3">{k.nama_karyawan}</td>
                                        <td className="px-6 py-3 font-bold text-black">{k.role}</td>
@@ -2176,7 +2245,10 @@ export default function NikonDashboard() {
                                        <option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option>
                                        <option value="Valid">Valid</option>
                                        <option value="Tidak Valid">Tidak Valid</option>
+                                       <option value="HOLD">HOLD</option>
                                     </select>
+                                    <label className="block text-sm font-bold mt-3 mb-1">Catatan MKT</label>
+                                    <textarea rows={2} value={claimForm.catatan_mkt || ''} onChange={e => setClaimForm({ ...claimForm, catatan_mkt: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan tambahan MKT..."></textarea>
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Validasi FA</label>
@@ -2185,6 +2257,8 @@ export default function NikonDashboard() {
                                        <option value="Valid">Valid</option>
                                        <option value="Tidak Valid">Tidak Valid</option>
                                     </select>
+                                    <label className="block text-sm font-bold mt-3 mb-1">Catatan FA</label>
+                                    <textarea rows={2} value={claimForm.catatan_fa || ''} onChange={e => setClaimForm({ ...claimForm, catatan_fa: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan tambahan FA..."></textarea>
                                  </div>
                               </div>
 
