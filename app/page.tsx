@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { chatbotTexts } from './chatbot/texts';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { chatbotTexts } from './chatbotTexts';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''; // Akan diisi via .env.local
@@ -72,9 +71,12 @@ export default function NikonDashboard() {
    const [filterStatusWarna, setFilterStatusWarna] = useState<string>('Semua');
 
    const getClaimStatusColor = (c: ClaimPromo) => {
-      if (c.nomor_resi && c.nomor_resi.trim() !== '') return 'Hijau';
       const mkt = (c.validasi_by_mkt || '').trim().toLowerCase();
       const fa = (c.validasi_by_fa || '').trim().toLowerCase();
+      
+      if (mkt === 'dalam proses verifikasi' || mkt === 'dalam proses validasi') return 'Putih';
+      
+      if (c.nomor_resi && c.nomor_resi.trim() !== '') return 'Hijau';
       
       if (mkt === 'valid' && fa === 'valid') return 'Pink';
       if (mkt === 'valid' && (fa === 'dalam proses verifikasi' || fa === 'dalam proses validasi' || fa === '')) return 'Biru';
@@ -512,6 +514,55 @@ export default function NikonDashboard() {
    const fetchLendingRecords = async () => { const { data } = await supabase.from('peminjaman_barang').select('*').order('created_at', { ascending: false }); setLendingRecords(data || []); };
    const fetchKaryawans = async () => { const { data } = await supabase.from('karyawan').select('*').order('created_at', { ascending: true }); setKaryawans(data || []); };
 
+
+   // --- EXPORT CSV LOGIC ---
+   const handleExportCSVClaim = () => {
+      const headers = ['Nama Konsumen', 'No. WA', 'No. Seri', 'Tipe Barang', 'Nama Promo', 'Tanggal Pembelian', 'Nama Toko', 'Validasi MKT', 'Catatan MKT' , 'Validasi FA', 'Catatan FA' , 'Nama Jasa Pengiriman', 'Nomor Resi'];
+      const csvRows = [headers.join(',')];
+      
+      sortedClaims.forEach(c => {
+         const namaKonsumen = (consumers[c.nomor_wa] || c.nomor_wa || '').replace(/"/g, '""');
+         const noWa = (c.nomor_wa || '').replace(/"/g, '""');
+         const noSeri = (c.nomor_seri || '').replace(/"/g, '""');
+         const tipeBarang = (c.tipe_barang || '').replace(/"/g, '""');
+         const namaPromo = (c.jenis_promosi || getNamaPromo(c.tipe_barang) || '-').replace(/"/g, '""');
+         const tglBeli = (c.tanggal_pembelian || '').replace(/"/g, '""');
+         const namaToko = (c.nama_toko || '-').replace(/"/g, '""');
+         const valMkt = (c.validasi_by_mkt || '').replace(/"/g, '""');
+         const cttnMkt = (c.catatan_mkt || '').replace(/"/g, '""');
+         const valFa = (c.validasi_by_fa || '').replace(/"/g, '""');
+         const cttnFa = (c.catatan_fa || '').replace(/"/g, '""');
+         const jasaKirim = (c.nama_jasa_pengiriman || '-').replace(/"/g, '""');
+         const noResi = (c.nomor_resi || '-').replace(/"/g, '""');
+
+         const row = [
+            `"${namaKonsumen}"`,
+            `"${noWa}"`,
+            `"${noSeri}"`,
+            `"${tipeBarang}"`,
+            `"${namaPromo}"`,
+            `"${tglBeli}"`,
+            `"${namaToko}"`,
+            `"${valMkt}"`,
+            `"${cttnMkt}"`,
+            `"${valFa}"`,
+            `"${cttnFa}"`,
+            `"${jasaKirim}"`,
+            `"${noResi}"`
+         ];
+         csvRows.push(row.join(','));
+      });
+      
+      const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', `Export_Claim_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+   };
 
    // --- CSV CENTRAL TEMPLATE & IMPORT LOGIC ---
    const downloadTemplate = () => {
@@ -1390,7 +1441,12 @@ export default function NikonDashboard() {
                         )}
                      </div>
                      <div className="flex flex-wrap gap-2 items-center">
-                        {activeTab === 'claims' && <button onClick={() => openModal('create', 'claim')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Claim</button>}
+                        {activeTab === 'claims' && (
+                           <>
+                              <button onClick={handleExportCSVClaim} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📥 Export CSV</button>
+                              <button onClick={() => openModal('create', 'claim')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Claim</button>
+                           </>
+                        )}
                         {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}
                         {activeTab === 'services' && <button onClick={() => openModal('create', 'service')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Service</button>}
                         {activeTab === 'budgets' && <button onClick={() => openModal('create', 'budget')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Buat Proposal</button>}
@@ -1402,163 +1458,111 @@ export default function NikonDashboard() {
 
                {/* ======================= PESAN ======================= */}
                {activeTab === 'messages' && (
-                  <div className="space-y-6 animate-fade-in text-slate-900">
-                     <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200">
-                        <div className="flex justify-between items-center mb-6">
-                           <div>
-                              <h3 className="text-lg font-bold">Interaksi Konsumen</h3>
-                              <p className="text-sm text-slate-500">Jumlah konsumen unik yang melakukan chat berdasarkan periode</p>
-                           </div>
-                           <select value={msgTimeFilter} onChange={e => setMsgTimeFilter(e.target.value as any)} className="border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm font-bold outline-none">
-                              <option value="day">Harian</option>
-                              <option value="week">Mingguan</option>
-                              <option value="month">Bulanan</option>
-                           </select>
+                  <div className="animate-fade-in text-slate-900 h-[calc(100vh-220px)] bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden flex">
+                     {/* SIDEBAR: DAFTAR CHAT */}
+                     <div className="w-full md:w-[350px] lg:w-[400px] border-r border-slate-200 flex flex-col bg-white shrink-0">
+                        <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
+                           <h3 className="font-bold text-lg">Pesan</h3>
+                           <button onClick={() => setIsNewChatModalOpen(true)} className="w-9 h-9 flex items-center justify-center bg-[#FFE500] text-black rounded-full shadow-sm hover:bg-[#E5CE00] transition">
+                              <span className="text-xl">+</span>
+                           </button>
                         </div>
-                        <div className="mb-4">
-                           <div className="text-3xl font-extrabold text-black">{currentTotalConsumers} <span className="text-sm font-bold text-slate-500">Total Konsumen Unik</span></div>
+                        <div className="p-3 bg-white shrink-0">
+                           <div className="relative">
+                              <input type="text" placeholder="Cari chat..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border-none bg-slate-100 rounded-lg px-10 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FFE500]" />
+                              <span className="absolute left-3 top-2.5 text-slate-400">🔍</span>
+                           </div>
                         </div>
-                        <ResponsiveContainer width="100%" height={250}>
-                           <BarChart data={messageStats}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                              <XAxis dataKey="periode" stroke="#64748b" tick={{ fontSize: 12 }} />
-                              <YAxis stroke="#64748b" allowDecimals={false} />
-                              <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                              <Bar dataKey="jumlah_konsumen" name="Konsumen Unik" fill="#FFE500" radius={[4, 4, 0, 0]} />
-                           </BarChart>
-                        </ResponsiveContainer>
-                     </div>
-
-                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                           <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-white z-10">
-                              <span className="font-bold">Percakapan</span>
-                              <button onClick={() => setIsNewChatModalOpen(true)} className="bg-blue-100 text-black px-3 py-1 text-xs font-bold rounded hover:bg-blue-200 transition">+ Chat</button>
-                           </div>
-                           <div className="p-3 border-b border-slate-200 bg-slate-50 z-10">
-                              <input type="text" placeholder="🔍 Cari nama / no WA..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm outline-none focus:border-[#FFE500] shadow-sm" />
-                           </div>
-                           <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
-                              {filteredContacts.map((c: RiwayatPesan) => (
-                                 <div key={c.nomor_wa} onClick={() => setSelectedWa(c.nomor_wa)} className={`p-4 cursor-pointer hover:bg-slate-50 transition ${selectedWa === c.nomor_wa ? 'border-l-4 border-[#FFE500] bg-[#FFE500]/10' : 'border-l-4 border-transparent'}`}>
-                                    <div className="flex justify-between text-sm">
-                                       <span className="font-bold truncate flex items-center gap-2">
-                                          {getRealProfileName(c.nomor_wa)}
-                                          {c.bicara_dengan_cs && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full shadow-sm animate-pulse">🚨 Perlu CS</span>}
-                                          {c.arah_pesan === 'IN' && (!readStatus[c.nomor_wa] || new Date(c.waktu_pesan || c.created_at!) > new Date(readStatus[c.nomor_wa])) && (
-                                             <span className="bg-blue-500 text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded-full shadow-sm">Baru</span>
-                                          )}
-                                       </span>
-                                       <span className="text-[10px] text-slate-400 whitespace-nowrap">{new Date(c.waktu_pesan).toLocaleDateString('id-ID')}</span>
+                        <div className="overflow-y-auto flex-1 divide-y divide-slate-50">
+                           {filteredContacts.map((c: RiwayatPesan) => {
+                              const isNew = c.arah_pesan === 'IN' && (!readStatus[c.nomor_wa] || new Date(c.waktu_pesan || c.created_at!) > new Date(readStatus[c.nomor_wa]));
+                              const profileName = getRealProfileName(c.nomor_wa);
+                              return (
+                                 <div key={c.nomor_wa} onClick={() => setSelectedWa(c.nomor_wa)} className={`flex items-center gap-3 p-4 cursor-pointer transition-all hover:bg-slate-50 ${selectedWa === c.nomor_wa ? 'bg-slate-100' : ''}`}>
+                                    <div className="w-12 h-12 rounded-full bg-slate-200 flex-shrink-0 flex items-center justify-center font-bold text-slate-500 text-lg border border-slate-100 uppercase">
+                                       {profileName.substring(0, 1)}
                                     </div>
-                                    <div className="text-xs text-slate-500 truncate mt-1">{c.isi_pesan}</div>
-                                 </div>
-                              ))}
-                              {filteredContacts.length === 0 && <div className="p-8 text-center text-slate-400 text-sm font-medium">Tidak ada percakapan</div>}
-                           </div>
-                        </div>
-
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 lg:col-span-2 flex flex-col h-full overflow-hidden relative">
-                           {selectedWa ? (
-                              <>
-                                 <div className="p-4 border-b border-slate-200 bg-slate-50 z-10 flex justify-between items-center">
-                                    <div>
-                                       <h3 className="font-bold">{getRealProfileName(selectedWa)}</h3>
-                                       <p className="text-xs font-bold text-slate-500">{selectedWa}</p>
-                                    </div>
-                                    {uniqueContacts.find(c => c.nomor_wa === selectedWa)?.bicara_dengan_cs && (
-                                       <button onClick={() => handleSelesaiCS(selectedWa)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1 shadow-sm border border-emerald-300">✅ Tandai Selesai</button>
-                                    )}
-                                 </div>
-                                 <div ref={chatContainerRef} className="flex-1 p-4 overflow-y-auto space-y-4 relative scroll-smooth" style={{ backgroundColor: '#efeae2', backgroundImage: `url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')`, backgroundSize: '400px', backgroundRepeat: 'repeat' }}>
-                                    {currentChatThread.map((msg: RiwayatPesan) => (
-                                       <div key={msg.id_pesan || Math.random().toString()} className={`flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
-                                          <div className={`max-w-[75%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-slate-900 font-medium rounded-tr-none' : 'bg-white text-slate-900 font-medium rounded-tl-none'}`}>
-                                             {isImageUrl(msg.isi_pesan) ? (
-                                                <div className="cursor-pointer" onClick={() => openImageViewer(msg.isi_pesan)}>
-                                                   <img src={msg.isi_pesan} alt="Media" className="max-w-full rounded-md max-h-64 object-cover mb-1 hover:opacity-90 transition" onLoad={scrollToBottom} />
-                                                </div>
-                                             ) : (
-                                                <p className="whitespace-pre-wrap leading-relaxed">{msg.isi_pesan}</p>
-                                             )}
-                                             <div className="text-[10px] mt-1 text-right text-slate-600 font-bold">
-                                                {(() => {
-                                                   const d = new Date(msg.waktu_pesan || msg.created_at || 0);
-                                                   return isNaN(d.getTime()) ? '-' : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                                                })()}
-                                             </div>
+                                    <div className="flex-1 min-w-0">
+                                       <div className="flex justify-between items-baseline mb-0.5">
+                                          <h4 className={`text-sm truncate ${isNew ? 'font-bold text-black' : 'font-semibold text-slate-700'}`}>{profileName}</h4>
+                                          <span className="text-[10px] text-slate-400 font-medium">{new Date(c.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                       </div>
+                                       <div className="flex justify-between items-center gap-2">
+                                          <p className={`text-xs truncate flex-1 ${isNew ? 'font-bold text-slate-900' : 'text-slate-500'}`}>{c.isi_pesan}</p>
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                             {c.bicara_dengan_cs && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-sm shadow-red-200"></span>}
+                                             {isNew && <span className="bg-[#FFE500] text-black text-[9px] font-black px-1.5 py-0.5 rounded-full">BARU</span>}
                                           </div>
                                        </div>
-                                    ))}
-                                    <div ref={messagesEndRef} />
+                                    </div>
                                  </div>
-                                 <button onClick={scrollToBottom} className="absolute bottom-20 right-6 bg-white p-2.5 rounded-full shadow-lg border border-slate-200 text-black hover:bg-blue-50 transition-colors z-20">⬇️</button>
-                                 <form onSubmit={handleSendReply} className="p-4 border-t border-slate-200 flex gap-2 bg-slate-50 z-10 relative">
-                                    <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-full px-5 py-2.5 text-sm outline-none focus:border-[#FFE500] shadow-sm font-medium" />
-                                    <button type="submit" disabled={!replyText.trim()} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-6 py-2.5 rounded-full text-sm font-bold disabled:opacity-50 transition shadow-sm">Kirim</button>
-                                 </form>
-                              </>
-                           ) : (
-                              <div className="flex-1 flex justify-center items-center text-slate-500 font-bold bg-slate-100">Pilih chat di samping</div>
-                           )}
+                              );
+                           })}
                         </div>
+                     </div>
+
+                     {/* MAIN CHAT AREA */}
+                     <div className="flex-1 flex flex-col bg-[#efeae2] relative min-w-0">
+                        {selectedWa ? (
+                           <>
+                              <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0 shadow-sm z-10">
+                                 <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 uppercase">
+                                       {getRealProfileName(selectedWa).substring(0, 1)}
+                                    </div>
+                                    <div>
+                                       <h3 className="font-bold text-slate-900 leading-tight">{getRealProfileName(selectedWa)}</h3>
+                                       <p className="text-[10px] font-bold text-slate-500">{selectedWa}</p>
+                                    </div>
+                                 </div>
+                                 {uniqueContacts.find(c => c.nomor_wa === selectedWa)?.bicara_dengan_cs && (
+                                    <button onClick={() => handleSelesaiCS(selectedWa)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-md">Tandai Selesai</button>
+                                 )}
+                              </div>
+                              <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto space-y-3 relative scroll-smooth" style={{ backgroundImage: `url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')`, backgroundSize: '400px', backgroundRepeat: 'repeat' }}>
+                                 {currentChatThread.map((msg: RiwayatPesan) => (
+                                    <div key={msg.id_pesan || Math.random().toString()} className={`flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
+                                       <div className={`max-w-[85%] md:max-w-[70%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-slate-900 rounded-tr-none' : 'bg-white text-slate-900 rounded-tl-none'}`}>
+                                          {isImageUrl(msg.isi_pesan) ? (
+                                             <div className="cursor-pointer" onClick={() => openImageViewer(msg.isi_pesan)}>
+                                                <img src={msg.isi_pesan} alt="Media" className="max-w-full rounded-md max-h-64 object-cover mb-1" onLoad={scrollToBottom} />
+                                             </div>
+                                          ) : (
+                                             <p className="whitespace-pre-wrap leading-relaxed font-medium">{msg.isi_pesan}</p>
+                                          )}
+                                          <div className="text-[9px] mt-1 text-right text-slate-500 font-bold">
+                                             {(() => {
+                                                const d = new Date(msg.waktu_pesan || msg.created_at || 0);
+                                                return isNaN(d.getTime()) ? '-' : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                                             })()}
+                                          </div>
+                                       </div>
+                                    </div>
+                                 ))}
+                                 <div ref={messagesEndRef} />
+                              </div>
+                              <form onSubmit={handleSendReply} className="p-4 bg-slate-50 border-t border-slate-200 flex gap-3 items-center shrink-0">
+                                 <div className="flex-1 relative">
+                                    <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="w-full border-none bg-white text-slate-900 rounded-full px-5 py-2.5 text-sm outline-none shadow-inner focus:ring-2 focus:ring-[#FFE500]" />
+                                 </div>
+                                 <button type="submit" disabled={!replyText.trim()} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 transition shadow-md">
+                                    <span className="text-xl">✈️</span>
+                                 </button>
+                              </form>
+                           </>
+                        ) : (
+                           <div className="flex-1 flex flex-col justify-center items-center text-slate-500 bg-slate-50 p-10 text-center">
+                              <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center text-4xl mb-4">💬</div>
+                              <h3 className="text-xl font-bold text-slate-700">Pilih Percakapan</h3>
+                              <p className="text-sm max-w-xs mt-2">Pilih salah satu konsumen di sebelah kiri untuk mulai membalas pesan secara real-time.</p>
+                           </div>
+                        )}
                      </div>
                   </div>
                )}
 
                {/* ======================= DATA KONSUMEN ======================= */}
                {activeTab === 'konsumen' && (
-                  <div className="space-y-4 animate-fade-in text-slate-900">
-                     <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 flex flex-wrap gap-4 justify-between items-center text-slate-900">
-                        <input type="text" placeholder="🔍 Cari berdasarkan Nama / No Whatsapp / ID Konsumen" value={searchKonsumen} onChange={e => setSearchKonsumen(e.target.value)} className="w-full md:w-1/2 p-3 border border-slate-300 bg-white text-slate-900 rounded-lg shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                        <div className="flex items-center gap-2">
-                           <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>📋Baris</button>
-                           <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🪪Kartu</button>
-                        </div>
-                     </div>
-                     {viewMode === 'card' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           {sortedConsumers.map((k: KonsumenData) => {
-                              const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
-                              return (
-                                 <div key={k.nomor_wa} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                    <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
-                                       <div>
-                                          <h3 className="font-bold text-lg text-slate-800">{k.nama_lengkap || k.nomor_wa}</h3>
-                                          <div className="text-sm font-bold text-slate-500 mt-1 flex gap-3">
-                                             <span>📱 {k.nomor_wa}</span>
-                                             {k.id_konsumen && <span className="text-black">ID: {k.id_konsumen}</span>}
-                                          </div>
-                                       </div>
-                                    </div>
-                                    <div className="flex-1">
-                                       <h4 className="font-bold text-slate-700 text-sm mb-2">Riwayat Barang ({userClaims.length})</h4>
-                                       {userClaims.length === 0 ? (
-                                          <p className="text-xs font-bold text-slate-400 italic">Belum ada riwayat</p>
-                                       ) : (
-                                          <div className="space-y-3">
-                                             {userClaims.map(c => {
-                                                const w = warranties.find(wa => wa.nomor_seri === c.nomor_seri);
-                                                const s = services.filter(se => se.nomor_seri === c.nomor_seri);
-                                                return (
-                                                   <div key={c.id_claim} className="text-xs p-3 bg-slate-50 border border-slate-100 rounded-md">
-                                                      <div className="font-extrabold text-slate-800 mb-1">{c.tipe_barang} <span className="text-slate-500 font-bold ml-1">(Seri: {c.nomor_seri})</span></div>
-                                                      <div className="grid grid-cols-1 gap-1 font-medium text-slate-600 mt-2">
-                                                         <div><span className="font-bold text-slate-700">🎫 Claim:</span> {c.validasi_by_mkt} / {c.validasi_by_fa}</div>
-                                                         <div><span className="font-bold text-slate-700">🛡️ Garansi:</span> {w ? w.status_validasi : 'Belum Terdaftar'}</div>
-                                                         <div><span className="font-bold text-slate-700">🔧 Service:</span> {s.length > 0 ? s.map(se => `[${se.nomor_tanda_terima}] ${se.status_service}`).join(', ') : 'Tidak ada riwayat'}</div>
-                                                      </div>
-                                                   </div>
-                                                )
-                                             })}
-                                          </div>
-                                       )}
-                                    </div>
-                                 </div>
-                              )
-                           })}
-                        </div>
-                     ) : (
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
@@ -1599,9 +1603,6 @@ export default function NikonDashboard() {
                            </table>
                         </div>
                      )}
-                  </div>
-               )}
-
                {/* ======================= PROMOS ======================= */}
                {activeTab === 'promos' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
@@ -1694,6 +1695,10 @@ export default function NikonDashboard() {
                            Belum Di Cek: {claimStatusCounts.Putih}
                         </div>
                         <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                           <span className="w-3 h-3 rounded-full bg-white border border-slate-300"></span>
+                           Dalam Proses Verifikasi: {claimStatusCounts.Putih}
+                        </div>
+                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
                            <span className="w-3 h-3 rounded-full bg-red-500"></span>
                            Tidak Valid: {claimStatusCounts.Merah}
                         </div>
@@ -1776,7 +1781,8 @@ export default function NikonDashboard() {
                                        </tr>
                                        );
                                        })}
-                                       </tbody>                           </table>
+                                 </tbody>
+                              </table>
                         </div>
                      ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -2212,8 +2218,8 @@ export default function NikonDashboard() {
                      )}
                   </div>
                )}
-
             </main>
+         </div>
 
             {/* --- MODALS NEW CHAT --- */}
             {isNewChatModalOpen && (
@@ -2833,9 +2839,6 @@ export default function NikonDashboard() {
                   </div>
                </div>
             )}
-
-         </div>
-
          {/* =========================================================
           PRINT AREA (FORMAT PERSIS PDF MKTG)
       ========================================================= */}
