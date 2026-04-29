@@ -1461,7 +1461,7 @@ export default function NikonDashboard() {
                {activeTab === 'messages' && (
                   <div className="animate-fade-in text-slate-900 h-[calc(100vh-220px)] bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden flex">
                      {/* SIDEBAR: DAFTAR CHAT */}
-                     <div className="w-full md:w-[350px] lg:w-[400px] border-r border-slate-200 flex flex-col bg-white shrink-0">
+                     <div className={`w-full md:w-[350px] lg:w-[400px] border-r border-slate-200 flex flex-col bg-white shrink-0 ${selectedWa ? 'hidden md:flex' : 'flex'}`}>
                         <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
                            <h3 className="font-bold text-lg">Pesan</h3>
                            <button onClick={() => setIsNewChatModalOpen(true)} className="w-9 h-9 flex items-center justify-center bg-[#FFE500] text-black rounded-full shadow-sm hover:bg-[#E5CE00] transition">
@@ -1503,11 +1503,14 @@ export default function NikonDashboard() {
                      </div>
 
                      {/* MAIN CHAT AREA */}
-                     <div className="flex-1 flex flex-col bg-[#efeae2] relative min-w-0">
+                     <div className={`flex-1 flex flex-col bg-[#efeae2] relative min-w-0 ${selectedWa ? 'flex' : 'hidden md:flex'}`}>
                         {selectedWa ? (
                            <>
                               <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0 shadow-sm z-10">
                                  <div className="flex items-center gap-3">
+                                    <button onClick={() => setSelectedWa(null)} className="md:hidden p-1 -ml-2 text-slate-600 hover:bg-slate-200 rounded-full transition">
+                                       <span className="text-xl">←</span>
+                                    </button>
                                     <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 uppercase">
                                        {getRealProfileName(selectedWa).substring(0, 1)}
                                     </div>
