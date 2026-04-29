@@ -227,7 +227,7 @@ export default function NikonDashboard() {
          ...claims.map(c => c.tipe_barang),
          ...warranties.map(w => w.tipe_barang),
          ...(promos.flatMap(p => p.tipe_produk?.map(tp => tp.nama_produk) || [])),
-         ...lendingRecords.flatMap(l => l.items_dipinjam.map(item => item.nama_barang))
+         ...lendingRecords.flatMap(l => (l.items_dipinjam || []).map(item => item.nama_barang))
       ].filter(Boolean);
 
       const allNamaToko = claims.map(c => c.nama_toko).filter(Boolean);
@@ -236,8 +236,8 @@ export default function NikonDashboard() {
       const allStatusService = services.map(s => s.status_service).filter(Boolean);
       const allRoles = karyawans.map(k => k.role).filter(Boolean);
       const allBudgetSource = budgets.map(b => b.budget_source).filter(Boolean);
-      const allCatatanPeminjaman = lendingRecords.flatMap(l => l.items_dipinjam.map(item => item.catatan)).filter(Boolean);
-      const allCatatanPengembalian = lendingRecords.flatMap(l => l.items_dipinjam.map(item => item.catatan_pengembalian)).filter(Boolean);
+      const allCatatanPeminjaman = lendingRecords.flatMap(l => (l.items_dipinjam || []).map(item => item.catatan)).filter(Boolean);
+      const allCatatanPengembalian = lendingRecords.flatMap(l => (l.items_dipinjam || []).map(item => item.catatan_pengembalian)).filter(Boolean);
 
       return {
          tipeBarang: Array.from(new Set(allTipeBarang)),
@@ -1031,6 +1031,24 @@ export default function NikonDashboard() {
       finally { setIsSubmitting(false); }
    };
 
+   const handleRunCleanup = async () => {
+      if (!window.confirm('Yakin ingin membersihkan sesi chat inaktif?')) return;
+      setIsSubmitting(true);
+      try {
+         const yesterday = new Date();
+         yesterday.setDate(yesterday.getDate() - 1);
+         const { error } = await supabase
+            .from('riwayat_pesan')
+            .update({ bicara_dengan_cs: false })
+            .eq('bicara_dengan_cs', true)
+            .lt('waktu_pesan', yesterday.toISOString());
+            
+         if (error) throw error;
+         alert('Sesi inaktif berhasil dibersihkan.');
+         fetchMessages();
+      } catch (err: any) { alert('Gagal membersihkan sesi: ' + err.message); }
+      finally { setIsSubmitting(false); }
+   };
 
    const calculateSisaGaransi = (tgl: string | undefined, lama: string) => {
       if (!tgl || !lama || lama === 'Tidak Garansi') return 'Tidak Garansi';
@@ -1446,7 +1464,7 @@ export default function NikonDashboard() {
                            <>
                               <button onClick={handleExportCSVClaim} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📥 Export CSV</button>
                               <button onClick={() => openModal('create', 'claim')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Claim</button>
-                           </>
+                              </>
                         )}
                         {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}
                         {activeTab === 'services' && <button onClick={() => openModal('create', 'service')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Service</button>}
@@ -1464,6 +1482,9 @@ export default function NikonDashboard() {
                      <div className={`w-full md:w-[350px] lg:w-[400px] border-r border-slate-200 flex flex-col bg-white shrink-0 ${selectedWa ? 'hidden md:flex' : 'flex'}`}>
                         <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
                            <h3 className="font-bold text-lg">Pesan</h3>
+                           <button onClick={handleRunCleanup} disabled={isSubmitting} className="ml-auto mr-2 p-2 text-slate-500 hover:text-red-600 transition" title="Bersihkan Sesi Inaktif">
+                              {isSubmitting ? '⏳' : '🧹'}
+                           </button>
                            <button onClick={() => setIsNewChatModalOpen(true)} className="w-9 h-9 flex items-center justify-center bg-[#FFE500] text-black rounded-full shadow-sm hover:bg-[#E5CE00] transition">
                               <span className="text-xl">+</span>
                            </button>
@@ -1550,7 +1571,7 @@ export default function NikonDashboard() {
                                     <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="w-full border-none bg-white text-slate-900 rounded-full px-5 py-2.5 text-sm outline-none shadow-inner focus:ring-2 focus:ring-[#FFE500]" />
                                  </div>
                                  <button type="submit" disabled={!replyText.trim()} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 transition shadow-md">
-                                    <span className="text-xl">✈️</span>
+                                    <span className="text-xl">▶️</span>
                                  </button>
                               </form>
                            </>
@@ -1570,14 +1591,7 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                                 <tr>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>Nama {sortConfigKonsumen.column === 'nama_lengkap' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'id_konsumen')}>ID Konsumen {sortConfigKonsumen.column === 'id_konsumen' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nomor_wa')}>No. WhatsApp {sortConfigKonsumen.column === 'nomor_wa' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'alamat_rumah')}>Alamat {sortConfigKonsumen.column === 'alamat_rumah' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nik')}>NIK {sortConfigKonsumen.column === 'nik' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold">Riwayat Barang</th>
-                                 </tr>
+                                 <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>Nama {sortConfigKonsumen.column === 'nama_lengkap' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'id_konsumen')}>ID Konsumen {sortConfigKonsumen.column === 'id_konsumen' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nomor_wa')}>No. WhatsApp {sortConfigKonsumen.column === 'nomor_wa' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'alamat_rumah')}>Alamat {sortConfigKonsumen.column === 'alamat_rumah' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nik')}>NIK {sortConfigKonsumen.column === 'nik' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Riwayat Barang</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedConsumers.map((k: KonsumenData) => {
@@ -1651,13 +1665,7 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                                 <tr>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'status_aktif')}>Status {sortConfigPromos.column === 'status_aktif' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold">Produk Berlaku</th>
-                                    {currentUser?.role === 'Admin' && <th className="px-4 py-3 text-left font-bold">Aksi</th>}
-                                 </tr>
+                                 <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'status_aktif')}>Status {sortConfigPromos.column === 'status_aktif' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Produk Berlaku</th>{currentUser?.role === 'Admin' && <th className="px-4 py-3 text-left font-bold">Aksi</th>}</tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedPromos.map((p: Promosi) => (
@@ -1727,18 +1735,7 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                                 <tr>
-                                    <th className="px-4 py-3 text-center font-bold">Status Sistem</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>Nama Promo {sortConfigClaims.column === 'jenis_promosi' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>Toko {sortConfigClaims.column === 'nama_toko' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold">Nota/Garansi</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'validasi_by_mkt')}>MKT / FA {sortConfigClaims.column === 'validasi_by_mkt' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold">Aksi</th>
-                                 </tr>
+                                 <tr><th className="px-4 py-3 text-center font-bold">Status Sistem</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>Nama Promo {sortConfigClaims.column === 'jenis_promosi' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>Toko {sortConfigClaims.column === 'nama_toko' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Nota/Garansi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'validasi_by_mkt')}>MKT / FA {sortConfigClaims.column === 'validasi_by_mkt' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedClaims.map((c: ClaimPromo) => {
@@ -1840,15 +1837,7 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                                 <tr>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'nomor_seri')}>No Seri {sortConfigWarranties.column === 'nomor_seri' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'tipe_barang')}>Barang {sortConfigWarranties.column === 'tipe_barang' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold">Nota/Garansi</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'status_validasi')}>Status {sortConfigWarranties.column === 'status_validasi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'jenis_garansi')}>Jenis {sortConfigWarranties.column === 'jenis_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'lama_garansi')}>Sisa Garansi {sortConfigWarranties.column === 'lama_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold">Aksi</th>
-                                 </tr>
+                                 <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'nomor_seri')}>No Seri {sortConfigWarranties.column === 'nomor_seri' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'tipe_barang')}>Barang {sortConfigWarranties.column === 'tipe_barang' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Nota/Garansi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'status_validasi')}>Status {sortConfigWarranties.column === 'status_validasi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'jenis_garansi')}>Jenis {sortConfigWarranties.column === 'jenis_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'lama_garansi')}>Sisa Garansi {sortConfigWarranties.column === 'lama_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedWarranties.map((w: Garansi) => {
@@ -1942,13 +1931,7 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                                 <tr>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_tanda_terima')}>No Tanda Terima {sortConfigServices.column === 'nomor_tanda_terima' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_seri')}>No Seri Barang {sortConfigServices.column === 'nomor_seri' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'status_service')}>Status Service {sortConfigServices.column === 'status_service' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'created_at')}>Tgl Update {sortConfigServices.column === 'created_at' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold">Aksi</th>
-                                 </tr>
+                                 <tr><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_tanda_terima')}>No Tanda Terima {sortConfigServices.column === 'nomor_tanda_terima' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_seri')}>No Seri Barang {sortConfigServices.column === 'nomor_seri' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'status_service')}>Status Service {sortConfigServices.column === 'status_service' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'created_at')}>Tgl Update {sortConfigServices.column === 'created_at' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedServices.map((s: StatusService) => (
@@ -1999,13 +1982,7 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                                 <tr>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'proposal_no')}>Proposal No {sortConfigBudgets.column === 'proposal_no' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'title')}>Title {sortConfigBudgets.column === 'title' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'period')}>Period {sortConfigBudgets.column === 'period' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'total_cost')}>Total Cost {sortConfigBudgets.column === 'total_cost' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold">Aksi</th>
-                                 </tr>
+                                 <tr><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'proposal_no')}>Proposal No {sortConfigBudgets.column === 'proposal_no' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'title')}>Title {sortConfigBudgets.column === 'title' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'period')}>Period {sortConfigBudgets.column === 'period' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'total_cost')}>Total Cost {sortConfigBudgets.column === 'total_cost' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedBudgets.map((b: BudgetApproval) => (
@@ -2063,15 +2040,7 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                                 <tr>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold">KTP</th> {/* Not sortable as it's a button */}
-                                    <th className="px-4 py-3 text-left font-bold">Barang Dipinjam</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_peminjaman')}>Tgl Pinjam {sortConfigLending.column === 'tanggal_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_pengembalian')}>Tgl Kembali {sortConfigLending.column === 'tanggal_pengembalian' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'status_peminjaman')}>Status {sortConfigLending.column === 'status_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-4 py-3 text-left font-bold">Aksi</th>
-                                 </tr>
+                                 <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">KTP</th>{/* Not sortable as it's a button */}<th className="px-4 py-3 text-left font-bold">Barang Dipinjam</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_peminjaman')}>Tgl Pinjam {sortConfigLending.column === 'tanggal_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_pengembalian')}>Tgl Kembali {sortConfigLending.column === 'tanggal_pengembalian' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'status_peminjaman')}>Status {sortConfigLending.column === 'status_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedLendingRecords.map((l: PeminjamanBarang) => (
@@ -2164,14 +2133,7 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                                 <tr>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'username')}>Username {sortConfigKaryawans.column === 'username' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'nama_karyawan')}>Nama Karyawan {sortConfigKaryawans.column === 'nama_karyawan' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'role')}>Role {sortConfigKaryawans.column === 'role' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'status_aktif')}>Status {sortConfigKaryawans.column === 'status_aktif' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-6 py-3 text-left font-bold">Akses Halaman</th>
-                                    <th className="px-6 py-3 text-left font-bold">Aksi</th>
-                                 </tr>
+                                 <tr><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'username')}>Username {sortConfigKaryawans.column === 'username' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'nama_karyawan')}>Nama Karyawan {sortConfigKaryawans.column === 'nama_karyawan' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'role')}>Role {sortConfigKaryawans.column === 'role' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'status_aktif')}>Status {sortConfigKaryawans.column === 'status_aktif' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold">Akses Halaman</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedKaryawans.map((k: Karyawan) => (
@@ -2982,13 +2944,11 @@ export default function NikonDashboard() {
                               <td colSpan={2} className="border border-black p-1.5 text-right font-bold pr-4 bg-gray-100 uppercase text-xs">Subtotal</td>
                               <td className="border border-black p-1.5 text-right font-extrabold bg-gray-100">{Number(printData.total_cost).toLocaleString('id-ID')}</td>
                            </tr>
-                           <tr>
-                              <td colSpan={3} className="border-l border-b border-transparent bg-white"></td>
+                           <tr><td colSpan={3} className="border-l border-b border-transparent bg-white"></td>
                               <td colSpan={2} className="border border-black p-1.5 text-right font-extrabold pr-4 bg-gray-200 uppercase text-xs text-black">Grand Total</td>
                               <td className="border border-black p-1.5 text-right font-extrabold bg-gray-200 text-black text-sm">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
                            </tr>
-                           <tr>
-                              <td colSpan={3} className="border-l border-b border-transparent bg-white"></td>
+                           <tr><td colSpan={3} className="border-l border-b border-transparent bg-white"></td>
                               <td colSpan={2} className="border-2 border-black p-2 text-right font-bold pr-4 bg-black text-white uppercase text-sm">TOTAL COST</td>
                               <td className="border-2 border-black p-1.5 text-right font-bold bg-black text-white text-sm">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
                            </tr>
