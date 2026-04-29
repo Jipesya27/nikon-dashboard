@@ -994,6 +994,7 @@ export default function NikonDashboard() {
    const handleSelesaiCS = async (nomor_wa: string) => {
       try {
          await supabase.from('riwayat_pesan').update({ bicara_dengan_cs: false }).eq('nomor_wa', nomor_wa);
+         await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomor_wa);
          fetchMessages();
       } catch (error: any) {
          console.error('Gagal update CS:', error.message);
