@@ -88,6 +88,7 @@ export default function NikonDashboard() {
    const getClaimStatusColor = (c: ClaimPromo) => {
       const mkt = (c.validasi_by_mkt || '').trim().toLowerCase();
       const fa = (c.validasi_by_fa || '').trim().toLowerCase();
+      if (mkt === 'double input') return 'Hijau';
       if (mkt === 'dalam proses verifikasi' || mkt === 'dalam proses validasi') return 'Putih';      
       if (c.nomor_resi && c.nomor_resi.trim() !== '' && c.nomor_resi.trim().toUpperCase() !== 'BELUM_DIISI') return 'Hijau';      
       if (mkt === 'valid' && fa === 'valid') return 'Pink';
@@ -536,8 +537,11 @@ export default function NikonDashboard() {
 
    // --- EXPORT CSV LOGIC ---
    const handleExportCSVClaim = () => {
-      // Hanya keluarkan data yang statusnya belum selesai (bukan Hijau)
-      const unfinishedClaims = claims.filter(c => getClaimStatusColor(c) !== 'Hijau');
+      // Hanya keluarkan data yang statusnya belum selesai (bukan Hijau) dan bukan Tidak Valid (Merah)
+      const unfinishedClaims = claims.filter(c => {
+         const color = getClaimStatusColor(c);
+         return color !== 'Hijau' && color !== 'Merah';
+      });
 
       const headers = ['id_claim', 'nomor_wa', 'nomor_seri', 'tipe_barang', 'tanggal_pembelian', 'link_nota_pembelian', 'link_kartu_garansi', 'validasi_by_mkt', 'validasi_by_fa', 'catatan_by_mkt', 'catatan_by_fa', 'nama_toko', 'nama_jasa_pengiriman', 'nomor_resi'];
       const csvRows = [headers.join(',')];
@@ -780,6 +784,11 @@ export default function NikonDashboard() {
 
          if (modalAction === 'create') await supabase.from('claim_promo').insert([dataToSave]);
          else await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId);
+
+         if (dataToSave.validasi_by_mkt === 'Valid' && dataToSave.nomor_seri) {
+            await supabase.from('garansi').update({ status_validasi: 'Valid' }).eq('nomor_seri', dataToSave.nomor_seri);
+            fetchWarranties();
+         }
 
          fetchClaims();
          closeModal();
@@ -1794,10 +1803,6 @@ export default function NikonDashboard() {
                            Belum Di Cek: {claimStatusCounts.Putih}
                         </div>
                         <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-white border border-slate-300"></span>
-                           Dalam Proses Verifikasi: {claimStatusCounts.Putih}
-                        </div>
-                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
                            <span className="w-3 h-3 rounded-full bg-red-500"></span>
                            Tidak Valid: {claimStatusCounts.Merah}
                         </div>
@@ -2428,6 +2433,7 @@ export default function NikonDashboard() {
                                        <option value="Valid">Valid</option>
                                        <option value="Tidak Valid">Tidak Valid</option>
                                        <option value="HOLD">HOLD</option>
+                                       <option value="Double Input">Double Input</option>
                                     </select>
                                     <label className="block text-sm font-bold mt-3 mb-1">Catatan MKT</label>
                                     <textarea rows={2} value={claimForm.catatan_mkt || ''} onChange={e => setClaimForm({ ...claimForm, catatan_mkt: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan tambahan MKT..."></textarea>
@@ -3213,7 +3219,7 @@ export default function NikonDashboard() {
                         src={currentImageUrl}
                         alt="Viewer"
                         draggable={false}
-                        className="max-w-none transition-transform duration-75 ease-out select-none pointer-events-none"
+                        className="max-w-full max-h-full object-contain transition-transform duration-75 ease-out select-none pointer-events-none"
                         style={{
                            transform: `translate(${imageTranslate.x}px, ${imageTranslate.y}px) scale(${imageScale})`,
                         }}
