@@ -15,6 +15,7 @@ interface RiwayatPesan { id_pesan?: string; nomor_wa: string; nama_profil_wa: st
 interface ClaimPromo { id_claim?: string; nomor_wa: string; nomor_seri: string; tipe_barang: string; tanggal_pembelian: string; nama_toko?: string; jenis_promosi?: string; validasi_by_mkt: string; validasi_by_fa: string; catatan_mkt?: string; catatan_fa?: string; nama_jasa_pengiriman?: string; nomor_resi?: string; link_kartu_garansi?: string | File | null; link_nota_pembelian?: string | File | null; }
 interface Garansi { id_garansi?: string; nomor_seri: string; tipe_barang: string; status_validasi: string; jenis_garansi: string; lama_garansi: string; link_kartu_garansi?: string | File | null; link_nota_pembelian?: string | File | null; }
 interface Promosi { id_promo?: string; nama_promo: string; tipe_produk: { nama_produk: string }[]; tanggal_mulai: string; tanggal_selesai: string; status_aktif: boolean; created_at?: string; }
+interface PengaturanBot { id?: number; nama_pengaturan: string; url_file?: string; description?: string; created_at?: string; updated_at?: string; }
 interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor_seri: string; status_service: string; created_at?: string; }
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
 interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_urls?: (string | File | null)[]; }
@@ -74,6 +75,7 @@ export default function NikonDashboard() {
    const [budgets, setBudgets] = useState<BudgetApproval[]>([]);
    const [karyawans, setKaryawans] = useState<Karyawan[]>([]);
    const [consumers, setConsumers] = useState<Record<string, string>>({});
+   const [botSettings, setBotSettings] = useState<PengaturanBot[]>([]);
    const [logs, setLogs] = useState<DataLog[]>([]);
    const [lendingRecords, setLendingRecords] = useState<PeminjamanBarang[]>([]);
    const [consumersList, setConsumersList] = useState<KonsumenData[]>([]);
@@ -168,6 +170,7 @@ export default function NikonDashboard() {
    const [konsumenForm, setKonsumenForm] = useState<Partial<KonsumenData>>({});
    const [karyawanForm, setKaryawanForm] = useState<Partial<Karyawan>>({ role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
    const [lendingForm, setLendingForm] = useState<Partial<PeminjamanBarang>>({ items_dipinjam: [], status_peminjaman: 'aktif' });
+   const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
 
    // IMPORT CSV STATES
    const [importTarget, setImportTarget] = useState<'claim_promo' | 'garansi' | 'konsumen' | 'status_service'>('claim_promo');
@@ -413,6 +416,7 @@ export default function NikonDashboard() {
       fetchServices();
       fetchBudgets();
       fetchLendingRecords();
+      fetchBotSettings();
       if (currentUser?.role === 'Admin') fetchKaryawans();
 
       // Cek koneksi Supabase
@@ -532,6 +536,7 @@ export default function NikonDashboard() {
    const fetchServices = async () => { const { data } = await supabase.from('status_service').select('*').order('created_at', { ascending: false }); setServices(data || []); };
    const fetchBudgets = async () => { const { data } = await supabase.from('budget_approval').select('*').order('created_at', { ascending: false }); setBudgets(data || []); setLoading(false); };
    const fetchLendingRecords = async () => { const { data } = await supabase.from('peminjaman_barang').select('*').order('created_at', { ascending: false }); setLendingRecords(data || []); };
+   const fetchBotSettings = async () => { const { data } = await supabase.from('pengaturan_bot').select('*'); setBotSettings(data || []); };
    const fetchKaryawans = async () => { const { data } = await supabase.from('karyawan').select('*').order('created_at', { ascending: true }); setKaryawans(data || []); };
 
 
@@ -664,7 +669,7 @@ export default function NikonDashboard() {
       return `MKTG/BA${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
    };
 
-   const openModal = (action: 'create' | 'edit' | 'reset_pw' | 'return', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen', item?: any) => {
+   const openModal = (action: 'create' | 'edit' | 'reset_pw' | 'return', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings', item?: any) => {
       setModalAction(action);
       if (type === 'claim') {
          setClaimForm(item || { validasi_by_mkt: 'Dalam Proses Verifikasi', validasi_by_fa: 'Dalam Proses Verifikasi' });
@@ -689,6 +694,10 @@ export default function NikonDashboard() {
       else if (type === 'lending') {
          setLendingForm(item ? { ...item, items_dipinjam: item.items_dipinjam || [] } : { items_dipinjam: [{ nama_barang: '', nomor_seri: '', catatan: '', catatan_pengembalian: '', status_pengembalian: 'dipinjam' }], status_peminjaman: 'aktif' });
          setEditingId(item?.id_peminjaman || null);
+      }
+      else if (type === 'botsettings') {
+         setBotSettingsForm(item || {});
+         setEditingId(item?.id || null);
       }
       else if (type === 'konsumen') {
          setKonsumenForm(item || { status_langkah: 'START', nik: 'BELUM_DIISI', alamat_rumah: 'BELUM_DIISI', kelurahan: 'BELUM_DIISI', kecamatan: 'BELUM_DIISI', kabupaten_kotamadya: 'BELUM_DIISI', provinsi: 'BELUM_DIISI', kodepos: 'BELUM_DIISI' });
@@ -721,6 +730,7 @@ export default function NikonDashboard() {
       setKonsumenForm({});
       setKaryawanForm({});
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' }); // Reset with default empty item
+      setBotSettingsForm({});
       setEditingId(null);
       if (returnTab) {
          setActiveTab(returnTab);
@@ -985,7 +995,22 @@ export default function NikonDashboard() {
       finally { setIsSubmitting(false); }
    };
 
-   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen', id: string) => {
+   const handleSaveBotSettings = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      try {
+         if (modalAction === 'create') {
+            await supabase.from('pengaturan_bot').insert([botSettingsForm]);
+         } else {
+            await supabase.from('pengaturan_bot').update(botSettingsForm).eq('id', editingId);
+         }
+         fetchBotSettings();
+         closeModal();
+      } catch (err: any) { alert('Gagal menyimpan pengaturan bot: ' + err.message); }
+      finally { setIsSubmitting(false); }
+   };
+
+   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings', id: string) => {
       if (!window.confirm('Yakin menghapus data?')) return;
       if (type === 'claim') { await supabase.from('claim_promo').delete().eq('id_claim', id); fetchClaims(); }
       else if (type === 'warranty') { await supabase.from('garansi').delete().eq('id_garansi', id); fetchWarranties(); }
@@ -993,8 +1018,10 @@ export default function NikonDashboard() {
       else if (type === 'promo') { await supabase.from('promosi').delete().eq('id_promo', id); fetchPromos(); }
       else if (type === 'service') { await supabase.from('status_service').delete().eq('id_service', id); fetchServices(); }
       else if (type === 'karyawan') { await supabase.from('karyawan').delete().eq('id_karyawan', id); fetchKaryawans(); }
+      else if (type === 'botsettings') { await supabase.from('pengaturan_bot').delete().eq('id', id); fetchBotSettings(); }
       else if (type === 'lending') {
          await supabase.from('peminjaman_barang').delete().eq('id_peminjaman', id);
+         // TODO: Delete KTP file from storage if it exists
          fetchLendingRecords();
       }
       else { await supabase.from('budget_approval').delete().eq('id_budget', id); fetchBudgets(); }
@@ -1379,7 +1406,8 @@ export default function NikonDashboard() {
       { id: 'budgets', label: '💳 ProposalEvent', count: budgets.length },
       { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
       { id: 'import', label: '📦 Import Data', count: undefined },
-      { id: 'userrole', label: '🔐 User Role', count: karyawans.length }
+      { id: 'userrole', label: '🔐 User Role', count: karyawans.length },
+      { id: 'botsettings', label: '⚙️ Bot Settings', count: botSettings.length },
    ];
 
    const visibleTabs = ALL_TABS.filter(tab => {
@@ -1555,6 +1583,7 @@ export default function NikonDashboard() {
                               <button onClick={() => openModal('create', 'claim')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Claim</button>
                               </>
                         )}
+                        {activeTab === 'botsettings' && <button onClick={() => openModal('create', 'botsettings')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Pengaturan</button>}
                         {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}
                         {activeTab === 'services' && <button onClick={() => openModal('create', 'service')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Service</button>}
                         {activeTab === 'budgets' && <button onClick={() => openModal('create', 'budget')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Buat Proposal</button>}
@@ -2248,6 +2277,43 @@ export default function NikonDashboard() {
                   </div>
                )}
 
+               {/* ======================= BOT SETTINGS ======================= */}
+               {activeTab === 'botsettings' && (
+                  <div className="space-y-4 animate-fade-in text-slate-900">
+                     <p className="text-sm text-slate-600">Kelola pengaturan dan tautan yang digunakan oleh Chatbot.</p>
+                     <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <table className="w-full text-sm whitespace-normal break-words">
+                           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                              <tr>
+                                 <th className="px-4 py-3 text-left font-bold">Nama Pengaturan</th>
+                                 <th className="px-4 py-3 text-left font-bold">URL / Value</th>
+                                 <th className="px-4 py-3 text-left font-bold">Deskripsi</th>
+                                 <th className="px-4 py-3 text-left font-bold">Aksi</th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-200">
+                              {botSettings.map((setting: PengaturanBot) => (
+                                 <tr key={setting.id} className="hover:bg-slate-50 font-medium">
+                                    <td className="px-4 py-3 font-bold text-slate-800">{setting.nama_pengaturan}</td>
+                                    <td className="px-4 py-3">
+                                       {setting.url_file ? (
+                                          <a href={setting.url_file} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{setting.url_file}</a>
+                                       ) : (
+                                          <span className="text-slate-500 italic">-</span>
+                                       )}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-600">{setting.description || '-'}</td>
+                                    <td className="px-4 py-3 flex gap-3">
+                                       <button onClick={() => openModal('edit', 'botsettings', setting)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                       <button onClick={() => handleDelete('botsettings', setting.id!.toString())} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                    </td>
+                                 </tr>
+                              ))}
+                           </tbody>
+                        </table>
+                     </div>
+                  </div>
+               )}
 
 
 
@@ -2999,6 +3065,23 @@ export default function NikonDashboard() {
                               )}
                            </form>
                         )}
+
+                        {activeTab === 'botsettings' && (
+                           <form id="botSettingsForm" onSubmit={handleSaveBotSettings} className="space-y-4">
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">Nama Pengaturan</label>
+                                 <input required type="text" value={botSettingsForm.nama_pengaturan || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, nama_pengaturan: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Contoh: LINK_SYARAT_KETENTUAN" />
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">URL / Value</label>
+                                 <input type="text" value={botSettingsForm.url_file || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, url_file: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="https://..." />
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">Deskripsi</label>
+                                 <textarea value={botSettingsForm.description || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, description: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500] h-24" placeholder="Deskripsi atau kegunaan dari pengaturan ini..." />
+                              </div>
+                           </form>
+                        )}
                      </div>
                      <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
                         <button onClick={closeModal} className="px-4 py-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-100 rounded-md text-sm font-bold transition">Batal</button>
@@ -3011,6 +3094,7 @@ export default function NikonDashboard() {
                               if (activeTab === 'promos') return 'promoForm';
                               if (activeTab === 'konsumen') return 'konsumenForm';
                               if (activeTab === 'userrole') return 'karyawanForm';
+                              if (activeTab === 'botsettings') return 'botSettingsForm';
                               if (activeTab === 'lending') return 'lendingForm'; // Both 'return' and 'create/edit' use 'lendingForm'
                               return 'budgetForm';
                            })();
