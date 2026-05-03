@@ -1587,7 +1587,7 @@ export default function NikonDashboard() {
                                     <div className="flex-1 min-w-0">
                                        <div className="flex justify-between items-baseline mb-0.5">
                                           <h4 className={`text-sm truncate ${isNew ? 'font-bold text-black' : 'font-semibold text-slate-700'}`}>{profileName}</h4>
-                                          <span className="text-[10px] text-slate-400 font-medium">{new Date(c.waktu_pesan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                          <span className="text-[10px] text-slate-400 font-medium">{new Date(c.waktu_pesan || c.created_at || 0).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} {new Date(c.waktu_pesan || c.created_at || 0).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                                        </div>
                                        <div className="flex justify-between items-center gap-2">
                                           <p className={`text-xs truncate flex-1 ${isNew ? 'font-bold text-slate-900' : 'text-slate-500'}`}>{c.isi_pesan}</p>
@@ -1638,7 +1638,7 @@ export default function NikonDashboard() {
                                           <div className="text-[9px] mt-1 text-right text-slate-500 font-bold">
                                              {(() => {
                                                 const d = new Date(msg.waktu_pesan || msg.created_at || 0);
-                                                return isNaN(d.getTime()) ? '-' : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                                                return isNaN(d.getTime()) ? '-' : `${d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
                                              })()}
                                           </div>
                                        </div>
