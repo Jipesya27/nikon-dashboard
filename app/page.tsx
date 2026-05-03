@@ -28,6 +28,19 @@ interface PeminjamanItem {
    status_pengembalian: 'dipinjam' | 'dikembalikan';
 }
 interface PeminjamanBarang { id_peminjaman?: string; nomor_wa_peminjam: string; nama_peminjam: string; link_ktp_peminjam?: string | File | null; items_dipinjam: PeminjamanItem[]; tanggal_peminjaman?: string; tanggal_pengembalian?: string | null; status_peminjaman: 'aktif' | 'selesai'; created_at?: string; updated_at?: string; }
+interface PeminjamanBarang {
+   id_peminjaman?: string;
+   nomor_wa_peminjam: string;
+   nama_peminjam: string;
+   link_ktp_peminjam?: string | File | null;
+   items_dipinjam: PeminjamanItem[];
+   tanggal_peminjaman?: string;
+   tanggal_pengembalian?: string | null;
+   status_peminjaman: 'aktif' | 'selesai';
+   status_wa?: string;
+   created_at?: string;
+   updated_at?: string;
+}
 
 // --- API PENGIRIMAN AMAN VIA SUPABASE EDGE FUNCTION ---
 const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) => {
@@ -73,11 +86,8 @@ export default function NikonDashboard() {
    const getClaimStatusColor = (c: ClaimPromo) => {
       const mkt = (c.validasi_by_mkt || '').trim().toLowerCase();
       const fa = (c.validasi_by_fa || '').trim().toLowerCase();
-      
-      if (mkt === 'dalam proses verifikasi' || mkt === 'dalam proses validasi') return 'Putih';
-      
-      if (c.nomor_resi && c.nomor_resi.trim() !== '') return 'Hijau';
-      
+      if (mkt === 'dalam proses verifikasi' || mkt === 'dalam proses validasi') return 'Putih';      
+      if (c.nomor_resi && c.nomor_resi.trim() !== '' && c.nomor_resi.trim().toUpperCase() !== 'BELUM_DIISI') return 'Hijau';      
       if (mkt === 'valid' && fa === 'valid') return 'Pink';
       if (mkt === 'valid' && (fa === 'dalam proses verifikasi' || fa === 'dalam proses validasi' || fa === '')) return 'Biru';
       if (mkt === 'hold' && fa !== 'valid') return 'Orange';
@@ -123,8 +133,7 @@ export default function NikonDashboard() {
    const [sortConfigWarranties, setSortConfigWarranties] = useState<SortConfig>({ column: '', direction: null });
    const [sortConfigServices, setSortConfigServices] = useState<SortConfig>({ column: '', direction: null });
    const [sortConfigBudgets, setSortConfigBudgets] = useState<SortConfig>({ column: '', direction: null });
-   // Note: Lending and Karyawan sorting states will be added below if needed, following the pattern.
-   // Note: Lending and Karyawan sorting states will be added below if needed, following the pattern.
+
    const [sortConfigLending, setSortConfigLending] = useState<SortConfig>({ column: '', direction: null });
    const [sortConfigKaryawans, setSortConfigKaryawans] = useState<SortConfig>({ column: '', direction: null });
    // UI STATES
@@ -133,7 +142,6 @@ export default function NikonDashboard() {
    const [loading, setLoading] = useState(true);
    const [dbStatus, setDbStatus] = useState<{ connected: boolean; message: string }>({ connected: false, message: 'Menghubungkan...' });
    const [activeTab, setActiveTab] = useState('messages');
-   const [isNavOpen, setIsNavOpen] = useState(false);
    const [dateRange, setDateRange] = useState({ start: '2024-01-01', end: new Date().toISOString().split('T')[0] });
    const [msgTimeFilter, setMsgTimeFilter] = useState<'day' | 'week' | 'month'>('day');
 
@@ -153,6 +161,7 @@ export default function NikonDashboard() {
    const [promoForm, setPromoForm] = useState<Partial<Promosi>>({ tipe_produk: [] });
    const [serviceForm, setServiceForm] = useState<Partial<StatusService>>({});
    const [budgetForm, setBudgetForm] = useState<Partial<BudgetApproval>>({ items: [] });
+   const [konsumenForm, setKonsumenForm] = useState<Partial<KonsumenData>>({});
    const [karyawanForm, setKaryawanForm] = useState<Partial<Karyawan>>({ role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
    const [lendingForm, setLendingForm] = useState<Partial<PeminjamanBarang>>({ items_dipinjam: [], status_peminjaman: 'aktif' });
 
@@ -165,6 +174,7 @@ export default function NikonDashboard() {
    const [isSubmitting, setIsSubmitting] = useState(false);
 
    // IMAGE VIEWER STATES
+
    const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
    const [currentImageUrl, setCurrentImageUrl] = useState('');
    const [imageScale, setImageScale] = useState(1);
@@ -253,9 +263,15 @@ export default function NikonDashboard() {
    }, [claims, warranties, promos, services, karyawans, budgets, lendingRecords]); // Menambahkan lendingRecords ke dependensi
 
    // --- IMAGE VIEWER LOGIC ---
+   // Helper function untuk mendeteksi apakah URL adalah Google Drive atau layanan Google lainnya
+   const isGoogleDriveLink = (url: string): boolean => {
+      if (typeof url !== 'string') return false;
+      return /(?:drive\.google\.com|docs\.google\.com|sheets\.google\.com|slides\.google\.com|forms\.google\.com)/.test(url);
+   };
+
    const openImageViewer = (urlOrFile: string | File) => {
       // Jika url adalah link Google Drive, buka di tab baru
-      if (typeof urlOrFile === 'string' && (urlOrFile.includes('drive.google.com') || urlOrFile.includes('docs.google.com'))) {
+      if (typeof urlOrFile === 'string' && isGoogleDriveLink(urlOrFile)) {
          window.open(urlOrFile, '_blank', 'noopener,noreferrer');
          return;
       }
@@ -517,38 +533,28 @@ export default function NikonDashboard() {
 
    // --- EXPORT CSV LOGIC ---
    const handleExportCSVClaim = () => {
-      const headers = ['Nama Konsumen', 'No. WA', 'No. Seri', 'Tipe Barang', 'Nama Promo', 'Tanggal Pembelian', 'Nama Toko', 'Validasi MKT', 'Catatan MKT' , 'Validasi FA', 'Catatan FA' , 'Nama Jasa Pengiriman', 'Nomor Resi'];
+      // Hanya keluarkan data yang statusnya belum selesai (bukan Hijau)
+      const unfinishedClaims = claims.filter(c => getClaimStatusColor(c) !== 'Hijau');
+
+      const headers = ['id_claim', 'nomor_wa', 'nomor_seri', 'tipe_barang', 'tanggal_pembelian', 'link_nota_pembelian', 'link_kartu_garansi', 'validasi_by_mkt', 'validasi_by_fa', 'catatan_by_mkt', 'catatan_by_fa', 'nama_toko', 'nama_jasa_pengiriman', 'nomor_resi'];
       const csvRows = [headers.join(',')];
       
-      sortedClaims.forEach(c => {
-         const namaKonsumen = (consumers[c.nomor_wa] || c.nomor_wa || '').replace(/"/g, '""');
-         const noWa = (c.nomor_wa || '').replace(/"/g, '""');
-         const noSeri = (c.nomor_seri || '').replace(/"/g, '""');
-         const tipeBarang = (c.tipe_barang || '').replace(/"/g, '""');
-         const namaPromo = (c.jenis_promosi || getNamaPromo(c.tipe_barang) || '-').replace(/"/g, '""');
-         const tglBeli = (c.tanggal_pembelian || '').replace(/"/g, '""');
-         const namaToko = (c.nama_toko || '-').replace(/"/g, '""');
-         const valMkt = (c.validasi_by_mkt || '').replace(/"/g, '""');
-         const cttnMkt = (c.catatan_mkt || '').replace(/"/g, '""');
-         const valFa = (c.validasi_by_fa || '').replace(/"/g, '""');
-         const cttnFa = (c.catatan_fa || '').replace(/"/g, '""');
-         const jasaKirim = (c.nama_jasa_pengiriman || '-').replace(/"/g, '""');
-         const noResi = (c.nomor_resi || '-').replace(/"/g, '""');
-
+      unfinishedClaims.forEach(c => {
          const row = [
-            `"${namaKonsumen}"`,
-            `"${noWa}"`,
-            `"${noSeri}"`,
-            `"${tipeBarang}"`,
-            `"${namaPromo}"`,
-            `"${tglBeli}"`,
-            `"${namaToko}"`,
-            `"${valMkt}"`,
-            `"${cttnMkt}"`,
-            `"${valFa}"`,
-            `"${cttnFa}"`,
-            `"${jasaKirim}"`,
-            `"${noResi}"`
+            `"${(c.id_claim || '').replace(/"/g, '""')}"`,
+            `"${(c.nomor_wa || '').replace(/"/g, '""')}"`,
+            `"${(c.nomor_seri || '').replace(/"/g, '""')}"`,
+            `"${(c.tipe_barang || '').replace(/"/g, '""')}"`,
+            `"${(c.tanggal_pembelian || '').replace(/"/g, '""')}"`,
+            `"${(typeof c.link_nota_pembelian === 'string' ? c.link_nota_pembelian : '').replace(/"/g, '""')}"`,
+            `"${(typeof c.link_kartu_garansi === 'string' ? c.link_kartu_garansi : '').replace(/"/g, '""')}"`,
+            `"${(c.validasi_by_mkt || '').replace(/"/g, '""')}"`,
+            `"${(c.validasi_by_fa || '').replace(/"/g, '""')}"`,
+            `"${(c.catatan_mkt || '').replace(/"/g, '""')}"`,
+            `"${(c.catatan_fa || '').replace(/"/g, '""')}"`,
+            `"${(c.nama_toko || '').replace(/"/g, '""')}"`,
+            `"${(c.nama_jasa_pengiriman || '').replace(/"/g, '""')}"`,
+            `"${(c.nomor_resi || '').replace(/"/g, '""')}"`
          ];
          csvRows.push(row.join(','));
       });
@@ -567,7 +573,7 @@ export default function NikonDashboard() {
    // --- CSV CENTRAL TEMPLATE & IMPORT LOGIC ---
    const downloadTemplate = () => {
       const templates = {
-         claim_promo: ['id_claim', 'nomor_wa', 'nomor_seri', 'tipe_barang', 'tanggal_pembelian', 'nama_toko', 'jenis_promosi', 'validasi_by_mkt', 'validasi_by_fa', 'nama_jasa_pengiriman', 'nomor_resi', 'link_kartu_garansi', 'link_nota_pembelian'],
+         claim_promo: ['id_claim', 'nomor_wa', 'nomor_seri', 'tipe_barang', 'tanggal_pembelian', 'link_nota_pembelian', 'link_kartu_garansi', 'validasi_by_mkt', 'validasi_by_fa', 'catatan_by_mkt', 'catatan_by_fa', 'nama_toko', 'nama_jasa_pengiriman', 'nomor_resi'],
          garansi: ['id_garansi', 'nomor_seri', 'tipe_barang', 'status_validasi', 'jenis_garansi', 'lama_garansi', 'link_kartu_garansi', 'link_nota_pembelian'],
          konsumen: ['nomor_wa', 'nama_lengkap', 'nik', 'alamat_rumah', 'kelurahan', 'kecamatan', 'kabupaten_kotamadya', 'provinsi', 'kodepos'],
          status_service: ['id_service', 'nomor_tanda_terima', 'nomor_seri', 'status_service']
@@ -609,7 +615,13 @@ export default function NikonDashboard() {
                   let val: any = currentline[j] ? currentline[j].trim().replace(/^"|"$/g, '') : null;
                   if (typeof val === 'string') val = val.replace(/""/g, '"');
                   if (val === "") val = null;
-                  obj[header] = val;
+
+                  // Mapping header kustom ke field database
+                  let dbField = header;
+                  if (header === 'catatan_by_mkt') dbField = 'catatan_mkt';
+                  if (header === 'catatan_by_fa') dbField = 'catatan_fa';
+                  
+                  obj[dbField] = val;
                });
 
                // Hapus ID jika null agar Supabase generate UUID baru
@@ -645,7 +657,7 @@ export default function NikonDashboard() {
       return `MKTG/BA${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
    };
 
-   const openModal = (action: 'create' | 'edit' | 'reset_pw' | 'return', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending', item?: any) => {
+   const openModal = (action: 'create' | 'edit' | 'reset_pw' | 'return', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen', item?: any) => {
       setModalAction(action);
       if (type === 'claim') {
          setClaimForm(item || { validasi_by_mkt: 'Dalam Proses Verifikasi', validasi_by_fa: 'Dalam Proses Verifikasi' });
@@ -671,6 +683,10 @@ export default function NikonDashboard() {
          setLendingForm(item ? { ...item, items_dipinjam: item.items_dipinjam || [] } : { items_dipinjam: [{ nama_barang: '', nomor_seri: '', catatan: '', catatan_pengembalian: '', status_pengembalian: 'dipinjam' }], status_peminjaman: 'aktif' });
          setEditingId(item?.id_peminjaman || null);
       }
+      else if (type === 'konsumen') {
+         setKonsumenForm(item || { status_langkah: 'START', nik: 'BELUM_DIISI', alamat_rumah: 'BELUM_DIISI', kelurahan: 'BELUM_DIISI', kecamatan: 'BELUM_DIISI', kabupaten_kotamadya: 'BELUM_DIISI', provinsi: 'BELUM_DIISI', kodepos: 'BELUM_DIISI' });
+         setEditingId(item?.nomor_wa || null);
+      }
       else if (type === 'karyawan') {
          if (action === 'reset_pw') {
             setKaryawanForm({
@@ -695,12 +711,31 @@ export default function NikonDashboard() {
       setPromoForm({ tipe_produk: [] });
       setServiceForm({});
       setBudgetForm({ items: [] });
+      setKonsumenForm({});
       setKaryawanForm({});
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' }); // Reset with default empty item
       setEditingId(null);
    };
 
    // --- CRUD HANDLERS ---
+   const handleSaveKonsumen = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      try {
+         if (modalAction === 'create') {
+            await supabase.from('konsumen').insert([konsumenForm]);
+         } else {
+            await supabase.from('konsumen').update(konsumenForm).eq('nomor_wa', editingId);
+         }
+         fetchConsumers();
+         closeModal();
+      } catch (err: any) {
+         alert('Gagal simpan konsumen: ' + err.message);
+      } finally {
+         setIsSubmitting(false);
+      }
+   };
+
    const handleSaveClaim = async (e: React.FormEvent) => {
       e.preventDefault();
       setIsSubmitting(true);
@@ -934,10 +969,11 @@ export default function NikonDashboard() {
       finally { setIsSubmitting(false); }
    };
 
-   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending', id: string) => {
+   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen', id: string) => {
       if (!window.confirm('Yakin menghapus data?')) return;
       if (type === 'claim') { await supabase.from('claim_promo').delete().eq('id_claim', id); fetchClaims(); }
       else if (type === 'warranty') { await supabase.from('garansi').delete().eq('id_garansi', id); fetchWarranties(); }
+      else if (type === 'konsumen') { await supabase.from('konsumen').delete().eq('nomor_wa', id); fetchConsumers(); }
       else if (type === 'promo') { await supabase.from('promosi').delete().eq('id_promo', id); fetchPromos(); }
       else if (type === 'service') { await supabase.from('status_service').delete().eq('id_service', id); fetchServices(); }
       else if (type === 'karyawan') { await supabase.from('karyawan').delete().eq('id_karyawan', id); fetchKaryawans(); }
@@ -972,6 +1008,7 @@ export default function NikonDashboard() {
    };
 
    const handleKirimStatusClaim = async (c: ClaimPromo) => {
+
       if (!window.confirm('Kirim status claim ke WA konsumen?')) return;
       const msg = chatbotTexts.statusClaim(c.nomor_seri, c.tipe_barang, c.validasi_by_mkt, c.validasi_by_fa, c.nama_jasa_pengiriman || '-', c.nomor_resi || '-');
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
@@ -1150,10 +1187,6 @@ export default function NikonDashboard() {
          });
    }, [selectedWa, messages]);
 
-   useEffect(() => {
-      scrollToBottom();
-   }, [currentChatThread]);
-
    const filteredPromos = useMemo(() => promos.filter((p: Promosi) => {
       const name = (p.nama_promo || "").toLowerCase();
       const start = (p.tanggal_mulai || "").toLowerCase();
@@ -1269,8 +1302,9 @@ export default function NikonDashboard() {
    }, [filteredLendingRecords, sortConfigLending, consumers]);
 
    const ALL_TABS = [
-      { id: 'messages', label: '💬 Pesan', count: messages.length },
+            { id: 'messages', label: '💬 Pesan', count: messages.length },
       { id: 'konsumen', label: '👥 Konsumen', count: consumersList.length },
+
       { id: 'promos', label: '📢 Promo', count: promos.length },
       { id: 'claims', label: '🎫 Claim', count: claims.length },
       { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
@@ -1343,12 +1377,6 @@ export default function NikonDashboard() {
       <>
          <div className={`min-h-screen bg-slate-50 pb-12 relative text-slate-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
 
-            <datalist id="list-tipe-barang">{uniqueTipeBarang.map(t => <option key={t} value={t} />)}</datalist>
-            <datalist id="list-nama-toko">{uniqueToko.map(t => <option key={t} value={t} />)}</datalist>
-            <datalist id="list-jasa-kirim">{uniqueJasa.map(t => <option key={t} value={t} />)}</datalist>
-            <datalist id="list-jenis-promo">{uniqueJenisPromo.map(t => <option key={t} value={t} />)}</datalist>
-            <datalist id="list-roles">{uniqueRoles.map(t => <option key={t} value={t} />)}</datalist>
-
             <header className="bg-black shadow-md border-b-4 border-[#FFE500] px-6 py-4 flex justify-between items-center text-white sticky top-0 z-20">
                <div className="flex items-center gap-4">
                   <div className="bg-[#FFE500] text-black font-black text-xl tracking-tighter px-3 py-1 -skew-x-6">NIKON</div>
@@ -1371,20 +1399,13 @@ export default function NikonDashboard() {
 
             <div className="bg-slate-50 border-b border-slate-200 sticky top-[76px] z-10 px-6 w-full shadow-sm">
                <div className="flex flex-col items-center max-w-7xl mx-auto py-3">
-                  <button onClick={() => setIsNavOpen(!isNavOpen)} className="bg-white border border-slate-300 hover:border-[#FFE500] hover:text-black text-slate-700 px-6 py-2 rounded-full text-sm font-bold shadow-sm transition-all flex items-center gap-2 group">
-                     <span className={`transition-transform duration-300 ${isNavOpen ? 'rotate-90' : ''}`}>{isNavOpen ? '✖' : '☰'}</span>
-                     {isNavOpen ? 'Tutup Navigasi Menu' : 'Tampilkan Navigasi Menu'}
-                  </button>
-
-                  {isNavOpen && (
-                     <div className="flex flex-wrap gap-2 md:gap-3 justify-center mt-4 animate-fade-in w-full border-t border-slate-200 pt-4">
-                        {visibleTabs.map(tab => (
-                           <button key={tab.id} onClick={() => { setActiveTab(tab.id); setIsNavOpen(false); }} className={`px-5 py-2 font-bold whitespace-nowrap transition-all rounded-full border ${activeTab === tab.id ? 'bg-[#FFE500] text-black border-[#FFE500] shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100 hover:text-black'}`}>
-                              {tab.label} {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-full ml-2 ${activeTab === tab.id ? 'bg-black/10 text-black' : 'bg-slate-100 text-slate-500'}`}>{tab.count}</span>}
-                           </button>
-                        ))}
-                     </div>
-                  )}
+                  <div className="flex flex-wrap gap-2 md:gap-3 justify-center animate-fade-in w-full">
+                     {visibleTabs.map(tab => (
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-5 py-2 font-bold whitespace-nowrap transition-all rounded-full border ${activeTab === tab.id ? 'bg-[#FFE500] text-black border-[#FFE500] shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100 hover:text-black'}`}>
+                           {tab.label} {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-full ml-2 ${activeTab === tab.id ? 'bg-black/10 text-black' : 'bg-slate-100 text-slate-500'}`}>{tab.count}</span>}
+                        </button>
+                     ))}
+                  </div>
                </div>
             </div>
             <main className="max-w-7xl mx-auto px-6 py-8">
@@ -1458,6 +1479,7 @@ export default function NikonDashboard() {
                               <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🪪Kartu</button>
                            </div>
                         )}
+                        {activeTab === 'konsumen' && <button onClick={() => openModal('create', 'konsumen')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Konsumen</button>}
                      </div>
                      <div className="flex flex-wrap gap-2 items-center">
                         {activeTab === 'claims' && (
@@ -1586,7 +1608,8 @@ export default function NikonDashboard() {
                   </div>
                )}
 
-               {/* ======================= DATA KONSUMEN ======================= */}
+
+
                {activeTab === 'konsumen' && (
                         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
@@ -1613,6 +1636,12 @@ export default function NikonDashboard() {
                                                    <li className="text-slate-500 italic">Tidak ada</li>
                                                 )}
                                              </ul>
+                                          </td>
+                                          <td className="px-4 py-3">
+                                             <div className="flex gap-3 items-center">
+                                                <button onClick={() => openModal('edit', 'konsumen', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                                <button onClick={() => handleDelete('konsumen', k.nomor_wa)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                             </div>
                                           </td>
                                        </tr>
                                     );
@@ -1760,12 +1789,16 @@ export default function NikonDashboard() {
                                        <td className="px-4 py-3">{c.nama_toko || '-'}</td>
                                        <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
                                           {c.link_nota_pembelian ? (
-                                             <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Nota</button>
+                                             <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="hover:underline hover:text-blue-800 text-left flex items-center gap-1">
+                                                {typeof c.link_nota_pembelian === 'string' && isGoogleDriveLink(c.link_nota_pembelian) ? '🔗📂' : '🔗'} Lihat Nota {typeof c.link_nota_pembelian === 'string' && isGoogleDriveLink(c.link_nota_pembelian) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">(Google Drive)</span>}
+                                             </button>
                                           ) : (
                                              <span className="text-slate-500 italic">Tidak ada Nota</span>
                                           )}
                                           {c.link_kartu_garansi ? (
-                                             <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Garansi</button>
+                                             <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left flex items-center gap-1">
+                                                {typeof c.link_kartu_garansi === 'string' && isGoogleDriveLink(c.link_kartu_garansi) ? '🔗📂' : '🔗'} Lihat Garansi {typeof c.link_kartu_garansi === 'string' && isGoogleDriveLink(c.link_kartu_garansi) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">(Google Drive)</span>}
+                                             </button>
                                           ) : (
                                              <span className="text-slate-500 italic">Tidak ada Garansi</span>
                                           )}
@@ -1812,8 +1845,12 @@ export default function NikonDashboard() {
                                     <p><span className="font-bold w-20 inline-block">Toko:</span> {c.nama_toko || '-'}</p>
                                     <p><span className="font-bold w-20 inline-block">MKT/FA:</span> {c.validasi_by_mkt} / {c.validasi_by_fa}</p>
                                     <div className="flex flex-col gap-1 pt-1">
-                                       {c.link_nota_pembelian && <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Nota</button>}
-                                       {c.link_kartu_garansi && <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Garansi</button>}
+                                       {c.link_nota_pembelian && <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="hover:underline hover:text-blue-800 text-left font-bold flex items-center gap-1">
+                                          {typeof c.link_nota_pembelian === 'string' && isGoogleDriveLink(c.link_nota_pembelian) ? '🔗📂' : '🔗'} Lihat Nota {typeof c.link_nota_pembelian === 'string' && isGoogleDriveLink(c.link_nota_pembelian) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded whitespace-nowrap">(Drive)</span>}
+                                       </button>}
+                                       {c.link_kartu_garansi && <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left font-bold flex items-center gap-1">
+                                          {typeof c.link_kartu_garansi === 'string' && isGoogleDriveLink(c.link_kartu_garansi) ? '🔗📂' : '🔗'} Lihat Garansi {typeof c.link_kartu_garansi === 'string' && isGoogleDriveLink(c.link_kartu_garansi) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded whitespace-nowrap">(Drive)</span>}
+                                       </button>}
                                     </div>
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
@@ -1850,8 +1887,10 @@ export default function NikonDashboard() {
                                           <td className="px-4 py-3">{w.tipe_barang}</td>
                                           <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
                                              {linkNota ? (
-                                                <div className="flex items-center gap-1">
-                                                   <button type="button" onClick={() => openImageViewer(linkNota as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Nota</button>
+                                                <div className="flex items-center gap-1 flex-wrap">
+                                                   <button type="button" onClick={() => openImageViewer(linkNota as string)} className="hover:underline hover:text-blue-800 text-left flex items-center gap-1">
+                                                      {typeof linkNota === 'string' && isGoogleDriveLink(linkNota) ? '🔗📂' : '🔗'} Lihat Nota {typeof linkNota === 'string' && isGoogleDriveLink(linkNota) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">(Drive)</span>}
+                                                   </button>
                                                    {!w.link_nota_pembelian && linked?.link_nota_pembelian && (
                                                       <span className="bg-blue-100 text-blue-700 px-1 rounded-[2px] text-[9px] font-black uppercase">Claim</span>
                                                    )}
@@ -1860,8 +1899,10 @@ export default function NikonDashboard() {
                                                 <span className="text-slate-500 italic">Tidak ada Nota</span>
                                              )}
                                              {linkGaransi ? (
-                                                <div className="flex items-center gap-1">
-                                                   <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="hover:underline hover:text-blue-800 text-left">🔗 Lihat Garansi</button>
+                                                <div className="flex items-center gap-1 flex-wrap">
+                                                   <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="hover:underline hover:text-blue-800 text-left flex items-center gap-1">
+                                                      {typeof linkGaransi === 'string' && isGoogleDriveLink(linkGaransi) ? '🔗📂' : '🔗'} Lihat Garansi {typeof linkGaransi === 'string' && isGoogleDriveLink(linkGaransi) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">(Drive)</span>}
+                                                   </button>
                                                    {!w.link_kartu_garansi && linked?.link_kartu_garansi && (
                                                       <span className="bg-blue-100 text-blue-700 px-1 rounded-[2px] text-[9px] font-black uppercase">Claim</span>
                                                    )}
@@ -1906,8 +1947,12 @@ export default function NikonDashboard() {
                                        <p><span className="font-bold w-24 inline-block">Jenis:</span> {w.jenis_garansi}</p>
                                        <p><span className="font-bold w-24 inline-block">Sisa:</span> {calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</p>
                                        <div className="flex flex-col gap-1 pt-1">
-                                          {linkNota && <button type="button" onClick={() => openImageViewer(linkNota as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Nota</button>}
-                                          {linkGaransi && <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="hover:underline hover:text-blue-800 text-left font-bold">🔗 Lihat Garansi</button>}
+                                          {linkNota && <button type="button" onClick={() => openImageViewer(linkNota as string)} className="hover:underline hover:text-blue-800 text-left font-bold flex items-center gap-1">
+                                             {typeof linkNota === 'string' && isGoogleDriveLink(linkNota) ? '🔗📂' : '🔗'} Lihat Nota {typeof linkNota === 'string' && isGoogleDriveLink(linkNota) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded whitespace-nowrap">(Drive)</span>}
+                                          </button>}
+                                          {linkGaransi && <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="hover:underline hover:text-blue-800 text-left font-bold flex items-center gap-1">
+                                             {typeof linkGaransi === 'string' && isGoogleDriveLink(linkGaransi) ? '🔗📂' : '🔗'} Lihat Garansi {typeof linkGaransi === 'string' && isGoogleDriveLink(linkGaransi) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded whitespace-nowrap">(Drive)</span>}
+                                          </button>}
                                        </div>
                                     </div>
                                     <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
@@ -2252,31 +2297,45 @@ export default function NikonDashboard() {
 
                               {/* New file upload section for ClaimForm */}
                               <div className="bg-slate-50 border border-slate-200 p-3 rounded-md space-y-3">
-                                 <label className="block text-sm font-bold text-slate-900">Upload Nota Pembelian</label>
-                                 <input type="file" accept="image/*,application/pdf" onChange={e => {
-                                    const file = e.target.files?.[0];
-                                    if (file) setClaimForm(prev => ({ ...prev, link_nota_pembelian: file as any }));
-                                 }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
+                                 <div className="space-y-1">
+                                    <label className="block text-sm font-bold text-slate-900">Nota Pembelian (Upload atau Link)</label>
+                                    <input type="text" value={typeof claimForm.link_nota_pembelian === 'string' ? claimForm.link_nota_pembelian : ''} onChange={e => setClaimForm({ ...claimForm, link_nota_pembelian: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
+                                    <div className="flex items-center gap-2">
+                                       <span className="text-[10px] font-bold text-slate-500">ATAU UPLOAD:</span>
+                                       <input type="file" accept="image/*,application/pdf" onChange={e => {
+                                          const file = e.target.files?.[0];
+                                          if (file) setClaimForm(prev => ({ ...prev, link_nota_pembelian: file as any }));
+                                       }} className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1 text-[10px]" />
+                                    </div>
+                                 </div>
+
                                  {claimForm.link_nota_pembelian && (
-                                    <div className="flex items-center gap-2 mt-2">
-                                       <span className="text-xs font-medium text-slate-600 truncate max-w-[200px]">
-                                          {claimForm.link_nota_pembelian instanceof File ? `File baru: ${claimForm.link_nota_pembelian.name}` : `URL: ${String(claimForm.link_nota_pembelian).substring(0, 30)}...`}
+                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-slate-100">
+                                       <span className="text-xs font-medium text-slate-600 truncate flex-1">
+                                          {claimForm.link_nota_pembelian instanceof File ? `📄 File: ${claimForm.link_nota_pembelian.name}` : `${isGoogleDriveLink(claimForm.link_nota_pembelian) ? '🔗📂' : '🔗'} URL: ${String(claimForm.link_nota_pembelian).substring(0, 40)}...`}
                                        </span>
-                                       <button type="button" onClick={() => setClaimForm(prev => ({ ...prev, link_nota_pembelian: null as any }))} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
+                                       <button type="button" onClick={() => setClaimForm(prev => ({ ...prev, link_nota_pembelian: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
                                     </div>
                                  )}
 
-                                 <label className="block text-sm font-bold text-slate-900 mt-4">Upload Kartu Garansi</label>
-                                 <input type="file" accept="image/*,application/pdf" onChange={e => {
-                                    const file = e.target.files?.[0];
-                                    if (file) setClaimForm(prev => ({ ...prev, link_kartu_garansi: file as any }));
-                                 }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
+                                 <div className="space-y-1 mt-4">
+                                    <label className="block text-sm font-bold text-slate-900">Kartu Garansi (Upload atau Link)</label>
+                                    <input type="text" value={typeof claimForm.link_kartu_garansi === 'string' ? claimForm.link_kartu_garansi : ''} onChange={e => setClaimForm({ ...claimForm, link_kartu_garansi: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
+                                    <div className="flex items-center gap-2">
+                                       <span className="text-[10px] font-bold text-slate-500">ATAU UPLOAD:</span>
+                                       <input type="file" accept="image/*,application/pdf" onChange={e => {
+                                          const file = e.target.files?.[0];
+                                          if (file) setClaimForm(prev => ({ ...prev, link_kartu_garansi: file as any }));
+                                       }} className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1 text-[10px]" />
+                                    </div>
+                                 </div>
+
                                  {claimForm.link_kartu_garansi && (
-                                    <div className="flex items-center gap-2 mt-2">
-                                       <span className="text-xs font-medium text-slate-600 truncate max-w-[200px]">
-                                          {claimForm.link_kartu_garansi instanceof File ? `File baru: ${claimForm.link_kartu_garansi.name}` : `URL: ${String(claimForm.link_kartu_garansi).substring(0, 30)}...`}
+                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-slate-100">
+                                       <span className="text-xs font-medium text-slate-600 truncate flex-1">
+                                          {claimForm.link_kartu_garansi instanceof File ? `📄 File: ${claimForm.link_kartu_garansi.name}` : `${isGoogleDriveLink(claimForm.link_kartu_garansi) ? '🔗📂' : '🔗'} URL: ${String(claimForm.link_kartu_garansi).substring(0, 40)}...`}
                                        </span>
-                                       <button type="button" onClick={() => setClaimForm(prev => ({ ...prev, link_kartu_garansi: null as any }))} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
+                                       <button type="button" onClick={() => setClaimForm(prev => ({ ...prev, link_kartu_garansi: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
                                     </div>
                                  )}
                               </div>
@@ -2325,6 +2384,55 @@ export default function NikonDashboard() {
                            </form>
                         )}
 
+                        {activeTab === 'konsumen' && (
+                           <form id="konsumenForm" onSubmit={handleSaveKonsumen} className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Nama Lengkap</label>
+                                    <input required type="text" value={konsumenForm.nama_lengkap || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nama_lengkap: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Nomor WhatsApp</label>
+                                    <input required type="text" value={konsumenForm.nomor_wa || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nomor_wa: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'edit'} />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">NIK</label>
+                                    <input type="text" value={konsumenForm.nik || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nik: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Kode Pos</label>
+                                    <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">Alamat Rumah</label>
+                                 <textarea rows={2} value={konsumenForm.alamat_rumah || ''} onChange={e => setKonsumenForm({ ...konsumenForm, alamat_rumah: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]"></textarea>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Kelurahan</label>
+                                    <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Kecamatan</label>
+                                    <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Kabupaten / Kotamadya</label>
+                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Provinsi</label>
+                                    <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 </div>
+                              </div>
+                           </form>
+                        )}
+
                         {activeTab === 'warranties' && (
                            <form id="warrantyForm" onSubmit={handleSaveWarranty} className="space-y-4">
                               <div>
@@ -2355,31 +2463,45 @@ export default function NikonDashboard() {
 
                               {/* New file upload section for WarrantyForm */}
                               <div className="bg-slate-50 border border-slate-200 p-3 rounded-md space-y-3">
-                                 <label className="block text-sm font-bold text-slate-900">Upload Nota Pembelian</label>
-                                 <input type="file" accept="image/*,application/pdf" onChange={e => {
-                                    const file = e.target.files?.[0];
-                                    if (file) setWarrantyForm(prev => ({ ...prev, link_nota_pembelian: file as any }));
-                                 }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
+                                 <div className="space-y-1">
+                                    <label className="block text-sm font-bold text-slate-900">Nota Pembelian (Upload atau Link)</label>
+                                    <input type="text" value={typeof warrantyForm.link_nota_pembelian === 'string' ? warrantyForm.link_nota_pembelian : ''} onChange={e => setWarrantyForm({ ...warrantyForm, link_nota_pembelian: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
+                                    <div className="flex items-center gap-2">
+                                       <span className="text-[10px] font-bold text-slate-500">ATAU UPLOAD:</span>
+                                       <input type="file" accept="image/*,application/pdf" onChange={e => {
+                                          const file = e.target.files?.[0];
+                                          if (file) setWarrantyForm(prev => ({ ...prev, link_nota_pembelian: file as any }));
+                                       }} className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1 text-[10px]" />
+                                    </div>
+                                 </div>
+
                                  {warrantyForm.link_nota_pembelian && (
-                                    <div className="flex items-center gap-2 mt-2">
-                                       <span className="text-xs font-medium text-slate-600 truncate max-w-[200px]">
-                                          {warrantyForm.link_nota_pembelian instanceof File ? `File baru: ${warrantyForm.link_nota_pembelian.name}` : `URL: ${String(warrantyForm.link_nota_pembelian).substring(0, 30)}...`}
+                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-slate-100">
+                                       <span className="text-xs font-medium text-slate-600 truncate flex-1">
+                                          {warrantyForm.link_nota_pembelian instanceof File ? `📄 File: ${warrantyForm.link_nota_pembelian.name}` : `${isGoogleDriveLink(warrantyForm.link_nota_pembelian) ? '🔗📂' : '🔗'} URL: ${String(warrantyForm.link_nota_pembelian).substring(0, 40)}...`}
                                        </span>
-                                       <button type="button" onClick={() => setWarrantyForm(prev => ({ ...prev, link_nota_pembelian: null as any }))} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
+                                       <button type="button" onClick={() => setWarrantyForm(prev => ({ ...prev, link_nota_pembelian: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
                                     </div>
                                  )}
 
-                                 <label className="block text-sm font-bold text-slate-900 mt-4">Upload Kartu Garansi</label>
-                                 <input type="file" accept="image/*,application/pdf" onChange={e => {
-                                    const file = e.target.files?.[0];
-                                    if (file) setWarrantyForm(prev => ({ ...prev, link_kartu_garansi: file as any }));
-                                 }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
+                                 <div className="space-y-1 mt-4">
+                                    <label className="block text-sm font-bold text-slate-900">Kartu Garansi (Upload atau Link)</label>
+                                    <input type="text" value={typeof warrantyForm.link_kartu_garansi === 'string' ? warrantyForm.link_kartu_garansi : ''} onChange={e => setWarrantyForm({ ...warrantyForm, link_kartu_garansi: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
+                                    <div className="flex items-center gap-2">
+                                       <span className="text-[10px] font-bold text-slate-500">ATAU UPLOAD:</span>
+                                       <input type="file" accept="image/*,application/pdf" onChange={e => {
+                                          const file = e.target.files?.[0];
+                                          if (file) setWarrantyForm(prev => ({ ...prev, link_kartu_garansi: file as any }));
+                                       }} className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1 text-[10px]" />
+                                    </div>
+                                 </div>
+
                                  {warrantyForm.link_kartu_garansi && (
-                                    <div className="flex items-center gap-2 mt-2">
-                                       <span className="text-xs font-medium text-slate-600 truncate max-w-[200px]">
-                                          {warrantyForm.link_kartu_garansi instanceof File ? `File baru: ${warrantyForm.link_kartu_garansi.name}` : `URL: ${String(warrantyForm.link_kartu_garansi).substring(0, 30)}...`}
+                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-slate-100">
+                                       <span className="text-xs font-medium text-slate-600 truncate flex-1">
+                                          {warrantyForm.link_kartu_garansi instanceof File ? `📄 File: ${warrantyForm.link_kartu_garansi.name}` : `${isGoogleDriveLink(warrantyForm.link_kartu_garansi) ? '🔗📂' : '🔗'} URL: ${String(warrantyForm.link_kartu_garansi).substring(0, 40)}...`}
                                        </span>
-                                       <button type="button" onClick={() => setWarrantyForm(prev => ({ ...prev, link_kartu_garansi: null as any }))} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
+                                       <button type="button" onClick={() => setWarrantyForm(prev => ({ ...prev, link_kartu_garansi: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
                                     </div>
                                  )}
                               </div>
@@ -2603,6 +2725,7 @@ export default function NikonDashboard() {
                         )}
 
                         {activeTab === 'lending' && (
+                           <>
                            <form id="lendingForm" onSubmit={handleSaveLending} className="space-y-4">
                               {modalAction === 'return' && (
                                  <div className="bg-blue-50 p-4 rounded-md border border-blue-200 text-blue-800 text-sm mb-4 font-medium">
@@ -2710,6 +2833,13 @@ export default function NikonDashboard() {
                                  )}
                               </div>
                            </form>
+                           <div className="flex justify-end gap-2 mt-4">
+                              <button type="button" onClick={() => setLendingForm({ ...lendingForm, status_wa: 'Dikirim' })} className="bg-green-500 hover:bg-green-600 text-white font-bold px-4 py-2 rounded-md text-sm transition flex items-center gap-2">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M.057 20l.667-6.017c.108-.178.84-.667 1.109-.834.269-.166.585-.166.854 0 .269.166.533.516.641.716l2.345 4.169c.173.31.433.56.729.716.296.156.633.166.942.033.309-.133.55-.416.7-.733l1.693-4.817c.1-.283.4-.516.733-.566.333-.05.683.066.933.316l3.483 3.367c.15.15.283.333.383.533.1.2.15.433.133.666-.017.233-.117.45-.283.616-.166.166-.383.283-.616.333-.233.05-.466.033-.683-.05l-4.417-2.483c-.133-.08-.266-.166-.4-.25-.133-.083-.283-.15-.433-.183-.15-.033-.316-.033-.466 0-.15.033-.283.1-.417.183l-4.416 2.483c-.217.1-.45.117-.683.05-.233-.05-.45-.166-.616-.333-.166-.166-.266-.383-.283-.616-.017-.233.033-.466.133-.666.1-.2.233-.383.383-.533l3.483-3.367c.25-.25.6-.366.933-.316.333.05.633.283.733.566l1.693 4.817c.15.316.393.599.7.733.309.133.65.123.942-.033.296-.156.556-.406.729-.716l2.345-4.169c.108-.199.372-.55.641-.716.269-.166.585-.166.854 0 .269.167.991.656 1.109.834l.667 6.017c.047.414-.296.777-.69.777h-11.834c-.394 0-.737-.363-.69-.777z"/></svg>
+                                 Kirim Status WA
+                              </button>
+                           </div>
+                           </>
                         )}
 
                         {activeTab === 'userrole' && (
@@ -2792,6 +2922,7 @@ export default function NikonDashboard() {
                               if (activeTab === 'warranties') return 'warrantyForm';
                               if (activeTab === 'services') return 'serviceForm';
                               if (activeTab === 'promos') return 'promoForm';
+                              if (activeTab === 'konsumen') return 'konsumenForm';
                               if (activeTab === 'userrole') return 'karyawanForm';
                               if (activeTab === 'lending') return 'lendingForm'; // Both 'return' and 'create/edit' use 'lendingForm'
                               return 'budgetForm';
