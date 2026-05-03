@@ -18,6 +18,7 @@ interface Promosi { id_promo?: string; nama_promo: string; tipe_produk: { nama_p
 interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor_seri: string; status_service: string; created_at?: string; }
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
 interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_urls?: (string | File | null)[]; }
+interface DataLog { id?: string; created_at?: string; user_name: string; action: string; table_name: string; record_id: string; old_values: any; new_values: any; }
 
 interface PeminjamanItem {
    nama_barang: string;
@@ -73,6 +74,7 @@ export default function NikonDashboard() {
    const [budgets, setBudgets] = useState<BudgetApproval[]>([]);
    const [karyawans, setKaryawans] = useState<Karyawan[]>([]);
    const [consumers, setConsumers] = useState<Record<string, string>>({});
+   const [logs, setLogs] = useState<DataLog[]>([]);
    const [lendingRecords, setLendingRecords] = useState<PeminjamanBarang[]>([]);
    const [consumersList, setConsumersList] = useState<KonsumenData[]>([]);
 
@@ -142,6 +144,7 @@ export default function NikonDashboard() {
    const [loading, setLoading] = useState(true);
    const [dbStatus, setDbStatus] = useState<{ connected: boolean; message: string }>({ connected: false, message: 'Menghubungkan...' });
    const [activeTab, setActiveTab] = useState('messages');
+   const [returnTab, setReturnTab] = useState<string | null>(null);
    const [dateRange, setDateRange] = useState({ start: '2024-01-01', end: new Date().toISOString().split('T')[0] });
    const [msgTimeFilter, setMsgTimeFilter] = useState<'day' | 'week' | 'month'>('day');
 
@@ -715,6 +718,10 @@ export default function NikonDashboard() {
       setKaryawanForm({});
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' }); // Reset with default empty item
       setEditingId(null);
+      if (returnTab) {
+         setActiveTab(returnTab);
+         setReturnTab(null);
+      }
    };
 
    // --- CRUD HANDLERS ---
@@ -1108,6 +1115,57 @@ export default function NikonDashboard() {
       if (!tipeBarang) return '-';
       const matchedPromo = promos.find(p => p.tipe_produk && p.tipe_produk.some(prod => tipeBarang.toLowerCase().includes(prod.nama_produk.toLowerCase()) || prod.nama_produk.toLowerCase().includes(tipeBarang.toLowerCase())));
       return matchedPromo ? matchedPromo.nama_promo : '-';
+   };
+
+   // --- PRINT LABEL PENGIRIMAN (HTML5 CANVAS) ---
+   const handlePrintLabelPengiriman = (c: ClaimPromo) => {
+      const consumer = consumersList.find(k => k.nomor_wa === c.nomor_wa);
+      const canvas = document.createElement('canvas');
+      canvas.width = 850;
+      canvas.height = 320;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(15, 15, canvas.width - 30, canvas.height - 30);
+      ctx.fillStyle = '#000000';
+      ctx.font = '14px Arial';
+      ctx.textAlign = 'right';
+      const dateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
+      ctx.fillText(dateStr, canvas.width - 30, 45);
+      ctx.textAlign = 'left';
+      ctx.font = '16px Arial';
+      ctx.fillText('Kepada :', 40, 80);
+      const nama = (consumer?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa).toUpperCase();
+      ctx.fillText(`${nama} (${c.nomor_wa})`, 160, 80);
+      const alamat = consumer?.alamat_rumah !== 'BELUM_DIISI' ? consumer?.alamat_rumah : '-';
+      ctx.fillText((alamat || '-').toUpperCase(), 160, 110);
+      const areaArr = [];
+      if (consumer?.kelurahan && consumer.kelurahan !== 'BELUM_DIISI') areaArr.push(`KEL. ${consumer.kelurahan}`);
+      if (consumer?.kecamatan && consumer.kecamatan !== 'BELUM_DIISI') areaArr.push(`KEC. ${consumer.kecamatan}`);
+      if (consumer?.kabupaten_kotamadya && consumer.kabupaten_kotamadya !== 'BELUM_DIISI') areaArr.push(`KAB/KOTA. ${consumer.kabupaten_kotamadya}`);
+      ctx.fillText(areaArr.length > 0 ? areaArr.join(', ').toUpperCase() : '-', 160, 140);
+      const provArr = [];
+      if (consumer?.provinsi && consumer.provinsi !== 'BELUM_DIISI') provArr.push(`PROV. ${consumer.provinsi}`);
+      if (consumer?.kodepos && consumer.kodepos !== 'BELUM_DIISI') provArr.push(`- ${consumer.kodepos}`);
+      ctx.fillText(provArr.length > 0 ? provArr.join(' ').toUpperCase() : '-', 160, 170);
+      ctx.fillText('From :', 40, 230);
+      ctx.fillText('Alta Nikindo', 160, 230);
+      ctx.fillText('Komp. Mangga Dua Square Blok H No.1-2, Jakarta - 14430', 160, 260);
+      ctx.fillText('Whatsapp : 08111877781', 160, 290);
+      ctx.textAlign = 'right';
+      const sn = c.nomor_seri || '-';
+      const promoName = c.jenis_promosi || getNamaPromo(c.tipe_barang);
+      ctx.fillText(`${sn} - ${promoName}`, canvas.width - 30, 290);
+      const imgURL = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = imgURL;
+      a.download = `${c.nomor_seri}_Label.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
    };
 
    const uniqueTipeBarang = Array.from(new Set([...claims.map(c => c.tipe_barang), ...warranties.map(w => w.tipe_barang)])).filter(Boolean);
@@ -1805,8 +1863,20 @@ export default function NikonDashboard() {
                                        </td>
                                        <td className="px-4 py-3 text-xs font-bold whitespace-normal max-w-[150px]">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
                                        <td className="px-4 py-3">
-                                          <div className="flex gap-3 items-center">
-                                             <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
+                                          <div className="flex gap-3 items-center flex-wrap min-w-[200px]">
+                                             <button onClick={() => handlePrintLabelPengiriman(c)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
+                                             <button onClick={() => {
+                                                const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
+                                                if (consumerObj) {
+                                                   setReturnTab('claims');
+                                                   setActiveTab('konsumen');
+                                                   openModal('edit', 'konsumen', consumerObj);
+                                                } else {
+                                                   alert('Data konsumen tidak ditemukan di database.');
+                                                }
+                                             }} className="text-orange-600 text-xs font-bold hover:underline">Edit Alamat</button>
+                                             <div className="w-px h-3 bg-slate-300"></div>
+                                             <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline">Kirim Status</button>
                                              <div className="w-px h-3 bg-slate-300"></div>
                                              <button onClick={() => openModal('edit', 'claim', c)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                              <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
@@ -1854,7 +1924,18 @@ export default function NikonDashboard() {
                                     </div>
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
-                                    <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
+                                    <button onClick={() => handlePrintLabelPengiriman(c)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
+                                    <button onClick={() => {
+                                       const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
+                                       if (consumerObj) {
+                                          setReturnTab('claims');
+                                          setActiveTab('konsumen');
+                                          openModal('edit', 'konsumen', consumerObj);
+                                       } else {
+                                          alert('Data konsumen tidak ditemukan di database.');
+                                       }
+                                    }} className="text-orange-600 text-xs font-bold hover:underline">Edit Alamat</button>
+                                    <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline">Kirim Status</button>
                                     <button onClick={() => openModal('edit', 'claim', c)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                  </div>
@@ -2784,7 +2865,7 @@ export default function NikonDashboard() {
                                           </div>
                                           <div className="flex-1">
                                              <label className="text-xs font-bold text-slate-700">Catatan</label>
-                                             <input type="text" list="list-catatan-peminjaman" value={item.catatan || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return' || modalAction === 'edit'} />
+                                             <input type="text" list="list-catatan-peminjaman" value={item.catatan || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
                                           </div>
                                           {modalAction === 'return' ? (
                                              <div className="w-32">
