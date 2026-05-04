@@ -1034,7 +1034,7 @@ export default function NikonDashboard() {
       finally { setIsSubmitting(false); }
    };
 
-   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings', id: string) => {
+   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings' | 'events', id: string) => {
       if (!window.confirm('Yakin menghapus data?')) return;
       if (type === 'claim') { await supabase.from('claim_promo').delete().eq('id_claim', id); fetchClaims(); }
       else if (type === 'warranty') { await supabase.from('garansi').delete().eq('id_garansi', id); fetchWarranties(); }
@@ -1042,7 +1042,7 @@ export default function NikonDashboard() {
       else if (type === 'promo') { await supabase.from('promosi').delete().eq('id_promo', id); fetchPromos(); }
       else if (type === 'service') { await supabase.from('status_service').delete().eq('id_service', id); fetchServices(); }
       else if (type === 'karyawan') { await supabase.from('karyawan').delete().eq('id_karyawan', id); fetchKaryawans(); }
-      else if (type === 'botsettings') { await supabase.from('pengaturan_bot').delete().eq('id', id); fetchBotSettings(); }
+      else if (type === 'botsettings') { await supabase.from('pengaturan_bot').delete().eq('id', id); fetchBotSettings(); } else if (type === 'events') { await supabase.from('events').delete().eq('id', id); fetchEvents(); }
       else if (type === 'lending') {
          await supabase.from('peminjaman_barang').delete().eq('id_peminjaman', id);
          // TODO: Delete KTP file from storage if it exists
@@ -1432,6 +1432,7 @@ export default function NikonDashboard() {
       { id: 'import', label: '📦 Import Data', count: undefined },
       { id: 'userrole', label: '🔐 User Role', count: karyawans.length },
       { id: 'botsettings', label: '⚙️ Bot Settings', count: botSettings.length },
+      { id: 'events', label: '📅 Master Event', count: events.length },
    ];
 
    const visibleTabs = ALL_TABS.filter(tab => {
@@ -2299,6 +2300,40 @@ export default function NikonDashboard() {
                            ))}
                         </div>
                      )}
+                  </div>
+               )}
+
+               {/* ======================= MASTER EVENT ======================= */}
+               {activeTab === 'events' && (
+                  <div className="space-y-4 animate-fade-in text-slate-900">
+                     <input type="text" placeholder="🔍 Cari Judul Event..." value={searchEvent} onChange={e => setSearchEvent(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                     {viewMode === 'table' ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal break-words">
+                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                                 <tr><th className="px-6 py-3 text-left font-bold">Gambar</th><th className="px-6 py-3 text-left font-bold cursor-pointer">Judul Event</th><th className="px-6 py-3 text-left font-bold">Tanggal</th><th className="px-6 py-3 text-left font-bold">Harga</th><th className="px-6 py-3 text-left font-bold">Kuota/Status</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {events.filter(e => e.title.toLowerCase().includes(searchEvent.toLowerCase())).map((evt: EventData) => (
+                                    <tr key={evt.id} className="hover:bg-slate-50 font-medium">
+                                       <td className="px-6 py-3"><img src={evt.image} alt="poster" className="w-12 h-16 object-cover rounded" /></td>
+                                       <td className="px-6 py-3 font-bold text-slate-800">{evt.title}</td>
+                                       <td className="px-6 py-3">{evt.date}</td>
+                                       <td className="px-6 py-3">{evt.price}</td>
+                                       <td className="px-6 py-3">
+                                          <span className="font-bold text-slate-700">{evt.stock} slot</span>
+                                          <br/><span className={`text-[10px] uppercase font-bold px-1 rounded ${evt.status === 'Sold out' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.status}</span>
+                                       </td>
+                                       <td className="px-6 py-3 flex gap-3">
+                                          <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                          <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (<div></div>)}
                   </div>
                )}
 
