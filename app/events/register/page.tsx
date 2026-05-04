@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { QRCodeSVG } from 'qrcode.react';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error';
@@ -51,12 +52,26 @@ export default function EventCatalog() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [registeredId, setRegisteredId] = useState<string>('');
+  const [registrationCounts, setRegistrationCounts] = useState<Record<string, number>>({});
 
   // Fetch events on mount
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         const { data, error } = await supabase.from('events').select('*').order('created_at', { ascending: false });
+        
+        try {
+          const { data: regData } = await supabase.from('event_registrations').select('event_name');
+          if (regData) {
+             const counts: Record<string, number> = {};
+             regData.forEach((r: any) => {
+                counts[r.event_name] = (counts[r.event_name] || 0) + 1;
+             });
+             setRegistrationCounts(counts);
+          }
+        } catch (e) {}
+
         if (error) {
           throw error;
         }
@@ -225,6 +240,9 @@ export default function EventCatalog() {
                       <span className={`w-2 h-2 rounded-full ${evt.stock > 0 ? 'bg-[#FFE800] animate-pulse' : 'bg-zinc-600'}`}></span>
                       <span className={evt.stock > 0 ? 'text-[#FFE800]' : 'text-zinc-500'}>
                         {evt.status || (evt.stock > 0 ? 'In stock' : 'Sold out')} {evt.stock > 0 && `, ${evt.stock} slot`}
+                               {((registrationCounts[evt.title] || 0) >= (evt.stock * 0.7) && evt.stock > 0) && (
+                                   <span className="ml-2 text-red-500 font-bold bg-red-500/10 px-2 py-0.5 rounded-full text-[10px]">Sisa {evt.stock - (registrationCounts[evt.title] || 0)} slot!</span>
+                               )}
                       </span>
                     </div>
                   </div>
