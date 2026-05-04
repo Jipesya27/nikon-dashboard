@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { chatbotTexts } from './chatbotTexts';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''; // Akan diisi via .env.local
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error'; // Akan diisi via .env.local
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // --- TYPES ---
@@ -20,6 +20,7 @@ interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
 interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_urls?: (string | File | null)[]; }
 interface DataLog { id?: string; created_at?: string; user_name: string; action: string; table_name: string; record_id: string; old_values: any; new_values: any; }
+interface EventData { id?: string; title: string; date: string; price: string; image: string; stock: number; status: string; detail_acara: string; created_at?: string; }
 
 interface PeminjamanItem {
    nama_barang: string;
@@ -79,6 +80,9 @@ export default function NikonDashboard() {
    const [logs, setLogs] = useState<DataLog[]>([]);
    const [lendingRecords, setLendingRecords] = useState<PeminjamanBarang[]>([]);
    const [consumersList, setConsumersList] = useState<KonsumenData[]>([]);
+   const [events, setEvents] = useState<EventData[]>([]);
+   const [searchEvent, setSearchEvent] = useState('');
+   const [sortConfigEvents, setSortConfigEvents] = useState<{ column: string; direction: 'asc' | 'desc' | null }>({ column: '', direction: null });
 
    // SEARCH STATES
    const [searchKonsumen, setSearchKonsumen] = useState('');
@@ -171,6 +175,7 @@ export default function NikonDashboard() {
    const [karyawanForm, setKaryawanForm] = useState<Partial<Karyawan>>({ role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
    const [lendingForm, setLendingForm] = useState<Partial<PeminjamanBarang>>({ items_dipinjam: [], status_peminjaman: 'aktif' });
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
+   const [eventForm, setEventForm] = useState<Partial<EventData>>({});
 
    // IMPORT CSV STATES
    const [importTarget, setImportTarget] = useState<'claim_promo' | 'garansi' | 'konsumen' | 'status_service'>('claim_promo');
@@ -418,6 +423,7 @@ export default function NikonDashboard() {
       fetchLendingRecords();
       fetchBotSettings();
       if (currentUser?.role === 'Admin') fetchKaryawans();
+      fetchEvents();
 
       // Cek koneksi Supabase
       const checkConnection = async () => {
@@ -538,6 +544,7 @@ export default function NikonDashboard() {
    const fetchLendingRecords = async () => { const { data } = await supabase.from('peminjaman_barang').select('*').order('created_at', { ascending: false }); setLendingRecords(data || []); };
    const fetchBotSettings = async () => { const { data } = await supabase.from('pengaturan_bot').select('*'); setBotSettings(data || []); };
    const fetchKaryawans = async () => { const { data } = await supabase.from('karyawan').select('*').order('created_at', { ascending: true }); setKaryawans(data || []); };
+   const fetchEvents = async () => { const { data } = await supabase.from('events').select('*').order('created_at', { ascending: false }); setEvents(data || []); };
 
 
    // --- EXPORT CSV LOGIC ---
@@ -669,7 +676,7 @@ export default function NikonDashboard() {
       return `MKTG/BA${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
    };
 
-   const openModal = (action: 'create' | 'edit' | 'reset_pw' | 'return', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings', item?: any) => {
+   const openModal = (action: 'create' | 'edit' | 'reset_pw' | 'return', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings' | 'event', item?: any) => {
       setModalAction(action);
       if (type === 'claim') {
          setClaimForm(item || { validasi_by_mkt: 'Dalam Proses Verifikasi', validasi_by_fa: 'Dalam Proses Verifikasi' });
@@ -993,6 +1000,23 @@ export default function NikonDashboard() {
          closeModal();
       } catch (err: any) { alert('Gagal: ' + err.message); }
       finally { setIsSubmitting(false); }
+   };
+
+   
+   const handleSaveEvent = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsModalOpen(false);
+      try {
+         const payload = { ...eventForm };
+         if (modalAction === 'create') {
+            const { error } = await supabase.from('events').insert([payload]);
+            if (error) throw error;
+         } else {
+            const { error } = await supabase.from('events').update(payload).eq('id', editingId);
+            if (error) throw error;
+         }
+         fetchEvents();
+      } catch (err: any) { alert(err.message); }
    };
 
    const handleSaveBotSettings = async (e: React.FormEvent) => {
@@ -1584,6 +1608,7 @@ export default function NikonDashboard() {
                               </>
                         )}
                         {activeTab === 'botsettings' && <button onClick={() => openModal('create', 'botsettings')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Pengaturan</button>}
+                       {activeTab === 'events' && <button onClick={() => openModal('create', 'event')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Event</button>}
                         {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}
                         {activeTab === 'services' && <button onClick={() => openModal('create', 'service')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Service</button>}
                         {activeTab === 'budgets' && <button onClick={() => openModal('create', 'budget')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Buat Proposal</button>}
@@ -2278,7 +2303,48 @@ export default function NikonDashboard() {
                )}
 
                {/* ======================= BOT SETTINGS ======================= */}
-               {activeTab === 'botsettings' && (
+               
+                        {activeTab === 'events' && (
+                           <form id="eventForm" onSubmit={handleSaveEvent} className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Judul Event</label>
+                                    <input type="text" value={eventForm.title || ''} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Tanggal & Waktu</label>
+                                    <input type="text" value={eventForm.date || ''} onChange={e => setEventForm({ ...eventForm, date: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Harga</label>
+                                    <input type="text" value={eventForm.price || ''} onChange={e => setEventForm({ ...eventForm, price: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Kuota Slot (Stock)</label>
+                                    <input type="number" value={eventForm.stock || 0} onChange={e => setEventForm({ ...eventForm, stock: Number(e.target.value) })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Ketersediaan</label>
+                                    <select value={eventForm.status || 'In stock'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="In stock">In stock</option>
+                                       <option value="Sold out">Sold out</option>
+                                    </select>
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Gambar Poster</label>
+                                 <input type="url" value={eventForm.image || ''} onChange={e => setEventForm({ ...eventForm, image: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="https://..." />
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>
+                                 <textarea rows={6} value={eventForm.detail_acara || ''} onChange={e => setEventForm({ ...eventForm, detail_acara: e.target.value })} className="w-full p-3 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan detail acara lengkap..."></textarea>
+                              </div>
+                           </form>
+                        )}
+
+                        {activeTab === 'botsettings' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
                      <p className="text-sm text-slate-600">Kelola pengaturan dan tautan yang digunakan oleh Chatbot.</p>
                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
@@ -3066,6 +3132,47 @@ export default function NikonDashboard() {
                            </form>
                         )}
 
+                        
+                        {activeTab === 'events' && (
+                           <form id="eventForm" onSubmit={handleSaveEvent} className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Judul Event</label>
+                                    <input type="text" value={eventForm.title || ''} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Tanggal & Waktu</label>
+                                    <input type="text" value={eventForm.date || ''} onChange={e => setEventForm({ ...eventForm, date: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Harga</label>
+                                    <input type="text" value={eventForm.price || ''} onChange={e => setEventForm({ ...eventForm, price: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Kuota Slot (Stock)</label>
+                                    <input type="number" value={eventForm.stock || 0} onChange={e => setEventForm({ ...eventForm, stock: Number(e.target.value) })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Ketersediaan</label>
+                                    <select value={eventForm.status || 'In stock'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="In stock">In stock</option>
+                                       <option value="Sold out">Sold out</option>
+                                    </select>
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Gambar Poster</label>
+                                 <input type="url" value={eventForm.image || ''} onChange={e => setEventForm({ ...eventForm, image: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="https://..." />
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>
+                                 <textarea rows={6} value={eventForm.detail_acara || ''} onChange={e => setEventForm({ ...eventForm, detail_acara: e.target.value })} className="w-full p-3 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan detail acara lengkap..."></textarea>
+                              </div>
+                           </form>
+                        )}
+
                         {activeTab === 'botsettings' && (
                            <form id="botSettingsForm" onSubmit={handleSaveBotSettings} className="space-y-4">
                               <div>
@@ -3095,6 +3202,7 @@ export default function NikonDashboard() {
                               if (activeTab === 'konsumen') return 'konsumenForm';
                               if (activeTab === 'userrole') return 'karyawanForm';
                               if (activeTab === 'botsettings') return 'botSettingsForm';
+                             if (activeTab === 'events') return 'eventForm';
                               if (activeTab === 'lending') return 'lendingForm'; // Both 'return' and 'create/edit' use 'lendingForm'
                               return 'budgetForm';
                            })();
