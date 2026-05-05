@@ -92,13 +92,25 @@ export default function EventCatalog() {
     fetchEvents();
   }, []);
 
-  // --- STORAGE HELPER ---
+  // --- GOOGLE DRIVE UPLOAD HELPER ---
   const uploadFileToStorage = async (file: File, prefix: string, serial: string) => {
-     const ext = file.name.split('.').pop();
-     const fileName = `${serial}_${prefix}_${Date.now()}.${ext}`;
-     const { error } = await supabase.storage.from('whatsapp-uploads').upload(fileName, file, { upsert: true });
-     if (error) throw error;
-     return supabase.storage.from('whatsapp-uploads').getPublicUrl(fileName).data.publicUrl;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('prefix', prefix);
+    formData.append('serial', serial);
+
+    const response = await fetch('/api/upload-google-drive', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Upload failed');
+    }
+
+    const data = await response.json();
+    return data.url;
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

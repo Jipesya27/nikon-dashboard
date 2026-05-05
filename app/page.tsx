@@ -336,24 +336,40 @@ export default function NikonDashboard() {
       setImageScale(Math.max(0.1, Math.min(5, newScale))); // Limit zoom between 0.1x and 5x
    };
 
-   // --- STORAGE HELPERS ---
+   // --- GOOGLE DRIVE UPLOAD HELPER ---
    const uploadFileToStorage = async (file: File, prefix: string, serial: string) => {
-      const ext = file.name.split('.').pop();
-      const fileName = `${serial}_${prefix}_${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('whatsapp-uploads').upload(fileName, file, { upsert: true });
-      if (error) throw error;
-      return supabase.storage.from('whatsapp-uploads').getPublicUrl(fileName).data.publicUrl;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('prefix', prefix);
+      formData.append('serial', serial);
+
+      const response = await fetch('/api/upload-google-drive', {
+         method: 'POST',
+         body: formData,
+      });
+
+      if (!response.ok) {
+         const error = await response.json();
+         throw new Error(error.error || 'Upload failed');
+      }
+
+      const data = await response.json();
+      return data.url;
    };
 
    const deleteFileFromStorage = async (url: string) => {
       try {
-         if (!url || !url.includes('/storage/v1/object/public/whatsapp-uploads/')) return;
-         const fileName = url.split('/').pop();
-         if (fileName) {
-            await supabase.storage.from('whatsapp-uploads').remove([fileName]);
+         if (!url || !url.includes('drive.google.com')) return;
+         const match = url.match(/id=([^&]+)/);
+         if (match) {
+            await fetch('/api/upload-google-drive', {
+               method: 'DELETE',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ fileId: match[1] }),
+            });
          }
       } catch (err) {
-         console.error("Gagal hapus file dari storage:", err);
+         console.error("Gagal hapus file dari Google Drive:", err);
       }
    };
 
