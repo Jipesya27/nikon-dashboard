@@ -1164,6 +1164,28 @@ export default function NikonDashboard() {
       fetchMessages();
    };
 
+   const handleSendEventSuccessWA = async (reg: EventRegistration) => {
+      if (!window.confirm(`Kirim notifikasi konfirmasi pembayaran ke ${reg.full_name}?`)) return;
+      
+      const message = `Halo *${reg.full_name}*,\n\nPembayaran Anda untuk event *${reg.event_name}* telah kami validasi. ✅\n\nSilakan simpan pesan ini sebagai bukti pendaftaran resmi. Sampai jumpa di lokasi acara!\n\nSalam,\nNikon Indonesia`;
+
+      try {
+         await sendWhatsAppMessageViaFonnte(reg.wa_number, message);
+         await supabase.from('riwayat_pesan').insert([{ 
+            nomor_wa: reg.wa_number, 
+            nama_profil_wa: reg.full_name, 
+            arah_pesan: 'OUT', 
+            isi_pesan: message, 
+            waktu_pesan: new Date().toISOString(), 
+            bicara_dengan_cs: false 
+         }]);
+         alert('Notifikasi berhasil dikirim!');
+         fetchMessages();
+      } catch (err: any) {
+         alert('Gagal mengirim pesan: ' + err.message);
+      }
+   };
+
    const handleSelesaiCS = async (nomor_wa: string) => {
       try {
          await supabase.from('riwayat_pesan').update({ bicara_dengan_cs: false }).eq('nomor_wa', nomor_wa);
@@ -2402,6 +2424,15 @@ export default function NikonDashboard() {
                                           {reg.bukti_transfer_url ? <a href={reg.bukti_transfer_url} target="_blank" className="text-blue-500 hover:underline font-bold">Lihat Bukti</a> : <span className="text-slate-400">Belum Ada</span>}
                                        </td>
                                        <td className="px-6 py-3 flex gap-3">
+                                          {reg.status === 'Confirmed' && (
+                                             <button 
+                                                onClick={() => handleSendEventSuccessWA(reg)} 
+                                                className="text-green-600 text-xs font-bold hover:underline"
+                                                title="Kirim Konfirmasi WA"
+                                             >
+                                                Kirim WA
+                                             </button>
+                                          )}
                                           <button onClick={() => openModal('edit', 'eventregistration', reg)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                           <button onClick={() => handleDelete('eventregistration', reg.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                        </td>
@@ -3623,8 +3654,8 @@ export default function NikonDashboard() {
                               <td className="border border-black p-1.5 text-right font-extrabold bg-gray-200 text-black text-sm">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
                            </tr>
                            <tr><td colSpan={3} className="border-l border-b border-transparent bg-white"></td>
-                              <td colSpan={2} className="border-2 border-black p-2 text-right font-bold pr-4 bg-black text-white uppercase text-sm">TOTAL COST</td>
-                              <td className="border-2 border-black p-1.5 text-right font-bold bg-black text-white text-sm">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
+                              <td colSpan={2} className="border-2 border-black p-2 text-right font-bold pr-4 bg-black text-white uppercase text-sm" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>TOTAL COST</td>
+                              <td className="border-2 border-black p-1.5 text-right font-bold bg-black text-white text-sm" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
                            </tr>
                         </tbody>
                      </table>
@@ -3700,7 +3731,7 @@ export default function NikonDashboard() {
          <datalist id="list-catatan-pengembalian">{dynamicOptions.catatanPengembalian.map(opt => <option key={opt} value={opt} />)}</datalist>
 
          {/* CONNECTION INDICATOR */}
-         <div className="fixed bottom-4 right-4 z-[100] flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-lg border text-[10px] font-bold transition-all">
+         <div className="fixed bottom-4 right-4 z-[100] flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-lg border text-[10px] font-bold transition-all print:hidden">
             <div className={`w-2 h-2 rounded-full ${dbStatus.connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
             <span className={dbStatus.connected ? 'text-slate-600' : 'text-red-600'}>
                Database: {dbStatus.message}

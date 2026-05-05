@@ -11,8 +11,18 @@ export const chatbotTexts = {
   resetPasswordAdmin: (nama: string, passwordBaru: string) =>
     `Halo ${nama},\n\nPassword akun Anda telah di-reset oleh Admin.\n\nPassword baru: *${passwordBaru}*`,
 
-  statusClaim: (nomor_seri: string, tipe_barang: string, status_mkt: string, status_fa: string, jasa_kirim: string, nomor_resi: string) =>
-    `Status Claim Promo Anda:\n\nNo Seri: ${nomor_seri}\nBarang: ${tipe_barang}\nStatus MKT: ${status_mkt}\nStatus FA: ${status_fa}\nJasa Kirim: ${jasa_kirim}\nNo Resi: ${nomor_resi}\n\nTerima kasih.`,
+  statusClaim: (nomor_seri: string, tipe_barang: string, status_mkt: string, status_fa: string, jasa_kirim: string, nomor_resi: string, catatan_mkt?: string) => {
+    let msg = `Status Claim Promo Anda:\n\n`;
+    if (nomor_seri && nomor_seri !== 'BELUM_DIISI') msg += `No Seri: ${nomor_seri}\n`;
+    if (tipe_barang && tipe_barang !== 'BELUM_DIISI') msg += `Barang: ${tipe_barang}\n`;
+    if (status_mkt && status_mkt !== 'BELUM_DIISI') msg += `Status MKT: ${status_mkt}\n`;
+    if (status_fa && status_fa !== 'BELUM_DIISI') msg += `Status FA: ${status_fa}\n`;
+    if (jasa_kirim && jasa_kirim !== 'BELUM_DIISI' && jasa_kirim !== '-') msg += `Jasa Kirim: ${jasa_kirim}\n`;
+    if (nomor_resi && nomor_resi !== 'BELUM_DIISI' && nomor_resi !== '-') msg += `No Resi: ${nomor_resi}\n`;
+    if (catatan_mkt && catatan_mkt !== 'BELUM_DIISI' && catatan_mkt !== '-') msg += `Catatan MKT: ${catatan_mkt}\n`;
+    msg += `\nTerima kasih.`;
+    return msg;
+  },
 
   statusGaransi: (nomor_seri: string, tipe_barang: string, jenis_garansi: string, lama_garansi: string, sisa_garansi: string) =>
     `Status Garansi Anda:\n\nNo Seri: ${nomor_seri}\nTipe Barang: ${tipe_barang}\nJenis Garansi: ${jenis_garansi}\nLama Garansi: ${lama_garansi}\nSisa Garansi: ${sisa_garansi}\n\nTerima kasih.`,
