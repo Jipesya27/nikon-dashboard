@@ -19,7 +19,8 @@ const EVENTS_DUMMY = [
     rating: 5,
     stock: 20,
     status: 'In stock',
-    detail_acara: 'Ini adalah contoh teks panjang detail acara. Bergabunglah dengan lingkaran elit fotografer. Tingkatkan keahlian Anda dan rasakan pengalaman menggunakan gear terbaru dari Nikon dalam sesi eksklusif yang dipandu oleh profesional.'
+    detail_acara: 'Ini adalah contoh teks panjang detail acara. Bergabunglah dengan lingkaran elit fotografer. Tingkatkan keahlian Anda dan rasakan pengalaman menggunakan gear terbaru dari Nikon dalam sesi eksklusif yang dipandu oleh profesional.',
+    bank_info: 'BCA 1234567890\na.n Nikon Event Indonesia'
   },
   {
     id: 'wildlife-expedition',
@@ -30,7 +31,8 @@ const EVENTS_DUMMY = [
     rating: 5,
     stock: 15,
     status: 'In stock',
-    detail_acara: 'Eksplorasi alam liar. Abadikan keindahan alam liar yang tak tertandingi dalam ekspedisi eksklusif bersama pemandu profesional. Acara ini mencakup transportasi, akomodasi, dan sesi review foto di malam hari.'
+    detail_acara: 'Eksplorasi alam liar. Abadikan keindahan alam liar yang tak tertandingi dalam ekspedisi eksklusif bersama pemandu profesional. Acara ini mencakup transportasi, akomodasi, dan sesi review foto di malam hari.',
+    bank_info: 'BCA 1234567890\na.n Nikon Event Indonesia'
   }
 ];
 
@@ -383,8 +385,7 @@ export default function EventCatalog() {
                           </div>
                           <div className="text-right">
                             <span className="text-zinc-500 text-xs block">Transfer ke Rekening</span>
-                            <span className="font-bold text-white text-sm">BCA 1234567890</span><br/>
-                            <span className="text-xs text-zinc-400">a.n Nikon Event Indonesia</span>
+                            <span className="font-bold text-white text-sm whitespace-pre-wrap">{selectedEvent.bank_info || 'BCA 1234567890\na.n Nikon Event Indonesia'}</span>
                           </div>
                         </div>
                         

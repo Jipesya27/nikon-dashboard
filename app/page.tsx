@@ -21,7 +21,7 @@ interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
 interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_urls?: (string | File | null)[]; }
 interface DataLog { id?: string; created_at?: string; user_name: string; action: string; table_name: string; record_id: string; old_values: any; new_values: any; }
-interface EventData { id?: string; title: string; date: string; price: string; image: string; stock: number; status: string; detail_acara: string; created_at?: string; }
+interface EventData { id?: string; title: string; date: string; price: string; image: string; stock: number; status: string; detail_acara: string; created_at?: string; bank_info?: string; }
 interface EventRegistration { id?: string; full_name: string; wa_number: string; email: string; camera_model: string; event_name: string; bukti_transfer_url: string; status: string; created_at?: string; is_attended?: boolean; }
 
 interface PeminjamanItem {
@@ -462,7 +462,14 @@ export default function NikonDashboard() {
    }, [printData]);
 
    const handlePrintDocument = () => {
-      window.print();
+      if (printData) {
+         const originalTitle = document.title;
+         document.title = `${printData.proposal_no}-${printData.title}`;
+         window.print();
+         document.title = originalTitle;
+      } else {
+         window.print();
+      }
    };
 
    const scrollToBottom = () => {
@@ -2588,6 +2595,10 @@ export default function NikonDashboard() {
                                        <option value="Sold out">Sold out</option>
                                     </select>
                                  </div>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Informasi Rekening Pembayaran</label>
+                                 <textarea rows={2} value={eventForm.bank_info || ''} onChange={e => setEventForm({ ...eventForm, bank_info: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" placeholder="Contoh: BCA 1234567890 a.n Nikon Event Indonesia" />
                               </div>
                               <div>
                                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Gambar Poster</label>
