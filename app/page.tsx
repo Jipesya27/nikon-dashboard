@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import { chatbotTexts } from './chatbotTexts';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''; // Akan diisi via .env.local
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error'; // Akan diisi via .env.local
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // --- TYPES ---
@@ -20,6 +21,8 @@ interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
 interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_urls?: (string | File | null)[]; }
 interface DataLog { id?: string; created_at?: string; user_name: string; action: string; table_name: string; record_id: string; old_values: any; new_values: any; }
+interface EventData { id?: string; title: string; date: string; price: string; image: string; stock: number; status: string; detail_acara: string; created_at?: string; }
+interface EventRegistration { id?: string; full_name: string; wa_number: string; email: string; camera_model: string; event_name: string; bukti_transfer_url: string; status: string; created_at?: string; is_attended?: boolean; }
 
 interface PeminjamanItem {
    nama_barang: string;
@@ -79,6 +82,12 @@ export default function NikonDashboard() {
    const [logs, setLogs] = useState<DataLog[]>([]);
    const [lendingRecords, setLendingRecords] = useState<PeminjamanBarang[]>([]);
    const [consumersList, setConsumersList] = useState<KonsumenData[]>([]);
+   const [events, setEvents] = useState<EventData[]>([]);
+   const [searchEvent, setSearchEvent] = useState('');
+   const [sortConfigEvents, setSortConfigEvents] = useState<{ column: string; direction: 'asc' | 'desc' | null }>({ column: '', direction: null });
+   const [eventRegistrationsCount, setEventRegistrationsCount] = useState<Record<string, number>>({});
+   const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]);
+   const [searchRegistration, setSearchRegistration] = useState('');
 
    // SEARCH STATES
    const [searchKonsumen, setSearchKonsumen] = useState('');
@@ -158,6 +167,7 @@ export default function NikonDashboard() {
    const [selectedWa, setSelectedWa] = useState<string | null>(null);
    const [replyText, setReplyText] = useState('');
    const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+   const [isScannerOpen, setIsScannerOpen] = useState(false);
    const [newChatWa, setNewChatWa] = useState('');
    const [newChatMsg, setNewChatMsg] = useState('');
 
@@ -171,6 +181,8 @@ export default function NikonDashboard() {
    const [karyawanForm, setKaryawanForm] = useState<Partial<Karyawan>>({ role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
    const [lendingForm, setLendingForm] = useState<Partial<PeminjamanBarang>>({ items_dipinjam: [], status_peminjaman: 'aktif' });
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
+   const [eventForm, setEventForm] = useState<Partial<EventData>>({});
+   const [registrationForm, setRegistrationForm] = useState<Partial<EventRegistration>>({});
 
    // IMPORT CSV STATES
    const [importTarget, setImportTarget] = useState<'claim_promo' | 'garansi' | 'konsumen' | 'status_service'>('claim_promo');
@@ -418,6 +430,8 @@ export default function NikonDashboard() {
       fetchLendingRecords();
       fetchBotSettings();
       if (currentUser?.role === 'Admin') fetchKaryawans();
+      fetchEvents();
+      fetchEventRegistrations();
 
       // Cek koneksi Supabase
       const checkConnection = async () => {
@@ -536,8 +550,51 @@ export default function NikonDashboard() {
    const fetchServices = async () => { const { data } = await supabase.from('status_service').select('*').order('created_at', { ascending: false }); setServices(data || []); };
    const fetchBudgets = async () => { const { data } = await supabase.from('budget_approval').select('*').order('created_at', { ascending: false }); setBudgets(data || []); setLoading(false); };
    const fetchLendingRecords = async () => { const { data } = await supabase.from('peminjaman_barang').select('*').order('created_at', { ascending: false }); setLendingRecords(data || []); };
+   
+   useEffect(() => {
+      if (isScannerOpen) {
+         const scanner = new Html5QrcodeScanner('reader', { qrbox: { width: 250, height: 250 }, fps: 5 }, false);
+         scanner.render(
+            async (decodedText) => {
+               scanner.clear();
+               setIsScannerOpen(false);
+               await handleMarkAttendance(decodedText);
+            },
+            (error) => { /* ignore */ }
+         );
+         return () => { scanner.clear(); };
+      }
+   }, [isScannerOpen]);
+
+   const handleMarkAttendance = async (id: string) => {
+      try {
+         const { error } = await supabase.from('event_registrations').update({ is_attended: true }).eq('id', id);
+         if (error) throw error;
+         alert('✅ Kehadiran Berhasil Dikonfirmasi!');
+         fetchEventRegistrations();
+      } catch (err: any) {
+         alert('Gagal konfirmasi kehadiran: ' + err.message);
+      }
+   };
+
    const fetchBotSettings = async () => { const { data } = await supabase.from('pengaturan_bot').select('*'); setBotSettings(data || []); };
    const fetchKaryawans = async () => { const { data } = await supabase.from('karyawan').select('*').order('created_at', { ascending: true }); setKaryawans(data || []); };
+   
+   const fetchEventRegistrations = async () => { const { data } = await supabase.from('event_registrations').select('*').order('created_at', { ascending: false }); setEventRegistrations(data || []); };
+   const fetchEvents = async () => { 
+      const { data } = await supabase.from('events').select('*').order('created_at', { ascending: false }); 
+      setEvents(data || []); 
+      try {
+         const { data: regData } = await supabase.from('event_registrations').select('event_name');
+         if (regData) {
+            const counts: Record<string, number> = {};
+            regData.forEach((r: any) => {
+               counts[r.event_name] = (counts[r.event_name] || 0) + 1;
+            });
+            setEventRegistrationsCount(counts);
+         }
+      } catch (e) {}
+   };
 
 
    // --- EXPORT CSV LOGIC ---
@@ -669,7 +726,7 @@ export default function NikonDashboard() {
       return `MKTG/BA${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
    };
 
-   const openModal = (action: 'create' | 'edit' | 'reset_pw' | 'return', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings', item?: any) => {
+   const openModal = (action: 'create' | 'edit' | 'reset_pw' | 'return', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings' | 'event' | 'eventregistration', item?: any) => {
       setModalAction(action);
       if (type === 'claim') {
          setClaimForm(item || { validasi_by_mkt: 'Dalam Proses Verifikasi', validasi_by_fa: 'Dalam Proses Verifikasi' });
@@ -995,6 +1052,41 @@ export default function NikonDashboard() {
       finally { setIsSubmitting(false); }
    };
 
+   
+   
+   const handleSaveRegistration = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsModalOpen(false);
+      try {
+         const payload = { ...registrationForm };
+         if (modalAction === 'create') {
+            const { error } = await supabase.from('event_registrations').insert([payload]);
+            if (error) throw error;
+         } else {
+            const { error } = await supabase.from('event_registrations').update(payload).eq('id', editingId);
+            if (error) throw error;
+         }
+         fetchEventRegistrations();
+         fetchEvents();
+      } catch (err: any) { alert(err.message); }
+   };
+
+   const handleSaveEvent = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsModalOpen(false);
+      try {
+         const payload = { ...eventForm };
+         if (modalAction === 'create') {
+            const { error } = await supabase.from('events').insert([payload]);
+            if (error) throw error;
+         } else {
+            const { error } = await supabase.from('events').update(payload).eq('id', editingId);
+            if (error) throw error;
+         }
+         fetchEvents();
+      } catch (err: any) { alert(err.message); }
+   };
+
    const handleSaveBotSettings = async (e: React.FormEvent) => {
       e.preventDefault();
       setIsSubmitting(true);
@@ -1010,7 +1102,7 @@ export default function NikonDashboard() {
       finally { setIsSubmitting(false); }
    };
 
-   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings', id: string) => {
+   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings' | 'events' | 'eventregistration', id: string) => {
       if (!window.confirm('Yakin menghapus data?')) return;
       if (type === 'claim') { await supabase.from('claim_promo').delete().eq('id_claim', id); fetchClaims(); }
       else if (type === 'warranty') { await supabase.from('garansi').delete().eq('id_garansi', id); fetchWarranties(); }
@@ -1018,7 +1110,8 @@ export default function NikonDashboard() {
       else if (type === 'promo') { await supabase.from('promosi').delete().eq('id_promo', id); fetchPromos(); }
       else if (type === 'service') { await supabase.from('status_service').delete().eq('id_service', id); fetchServices(); }
       else if (type === 'karyawan') { await supabase.from('karyawan').delete().eq('id_karyawan', id); fetchKaryawans(); }
-      else if (type === 'botsettings') { await supabase.from('pengaturan_bot').delete().eq('id', id); fetchBotSettings(); }
+      else if (type === 'botsettings') { await supabase.from('pengaturan_bot').delete().eq('id', id); fetchBotSettings(); } else if (type === 'events') { await supabase.from('events').delete().eq('id', id); fetchEvents(); }
+      else if (type === 'eventregistration') { await supabase.from('event_registrations').delete().eq('id', id); fetchEventRegistrations(); fetchEvents(); }
       else if (type === 'lending') {
          await supabase.from('peminjaman_barang').delete().eq('id_peminjaman', id);
          // TODO: Delete KTP file from storage if it exists
@@ -1408,6 +1501,8 @@ export default function NikonDashboard() {
       { id: 'import', label: '📦 Import Data', count: undefined },
       { id: 'userrole', label: '🔐 User Role', count: karyawans.length },
       { id: 'botsettings', label: '⚙️ Bot Settings', count: botSettings.length },
+      { id: 'events', label: '📅 Master Event', count: events.length },
+      { id: 'eventregistrations', label: '👥 Data Peserta', count: eventRegistrations.length },
    ];
 
    const visibleTabs = ALL_TABS.filter(tab => {
@@ -1584,6 +1679,9 @@ export default function NikonDashboard() {
                               </>
                         )}
                         {activeTab === 'botsettings' && <button onClick={() => openModal('create', 'botsettings')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Pengaturan</button>}
+                       {activeTab === 'events' && <button onClick={() => openModal('create', 'event')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Event</button>}
+                       {activeTab === 'eventregistrations' && <button onClick={() => setIsScannerOpen(true)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📷 Scan QR Kehadiran</button>}
+                        {activeTab === 'eventregistrations' && <button onClick={() => openModal('create', 'eventregistration')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Peserta</button>}
                         {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}
                         {activeTab === 'services' && <button onClick={() => openModal('create', 'service')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Service</button>}
                         {activeTab === 'budgets' && <button onClick={() => openModal('create', 'budget')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Buat Proposal</button>}
@@ -2277,8 +2375,201 @@ export default function NikonDashboard() {
                   </div>
                )}
 
+               
+               {/* ======================= EVENT REGISTRATIONS ======================= */}
+               {activeTab === 'eventregistrations' && (
+                  <div className="space-y-4 animate-fade-in text-slate-900">
+                     <input type="text" placeholder="🔍 Cari Nama Peserta atau Event..." value={searchRegistration} onChange={e => setSearchRegistration(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                     {viewMode === 'table' ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal break-words">
+                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                                 <tr><th className="px-6 py-3 text-left font-bold">Nama Lengkap</th><th className="px-6 py-3 text-left font-bold">Kontak (WA/Email)</th><th className="px-6 py-3 text-left font-bold">Event</th><th className="px-6 py-3 text-left font-bold">Status</th><th className="px-6 py-3 text-left font-bold">Kehadiran</th><th className="px-6 py-3 text-left font-bold">Bukti TF</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {eventRegistrations.filter(r => r.full_name.toLowerCase().includes(searchRegistration.toLowerCase()) || r.event_name.toLowerCase().includes(searchRegistration.toLowerCase())).map((reg: EventRegistration) => (
+                                    <tr key={reg.id} className="hover:bg-slate-50 font-medium">
+                                       <td className="px-6 py-3 font-bold text-slate-800">{reg.full_name}<br/><span className="text-[10px] text-slate-500">{reg.camera_model || '-'}</span></td>
+                                       <td className="px-6 py-3">{reg.wa_number}<br/><span className="text-xs text-slate-500">{reg.email}</span></td>
+                                       <td className="px-6 py-3 text-amber-600 font-bold">{reg.event_name}</td>
+                                       <td className="px-6 py-3">
+                                          <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${reg.status === 'Confirmed' ? 'bg-green-100 text-green-700' : reg.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{reg.status}</span>
+                                       </td>
+                                       <td className="px-6 py-3">
+                                          {reg.is_attended ? <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-1 rounded">HADIR ✅</span> : <button onClick={() => handleMarkAttendance(reg.id!)} className="text-[10px] bg-slate-200 text-slate-700 hover:bg-slate-300 font-bold px-2 py-1 rounded border border-slate-300">Set Hadir</button>}
+                                       </td>
+                                       <td className="px-6 py-3">
+                                          {reg.bukti_transfer_url ? <a href={reg.bukti_transfer_url} target="_blank" className="text-blue-500 hover:underline font-bold">Lihat Bukti</a> : <span className="text-slate-400">Belum Ada</span>}
+                                       </td>
+                                       <td className="px-6 py-3 flex gap-3">
+                                          <button onClick={() => openModal('edit', 'eventregistration', reg)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                          <button onClick={() => handleDelete('eventregistration', reg.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (<div></div>)}
+                  </div>
+               )}
+
+               {/* ======================= MASTER EVENT ======================= */}
+               
+                        {activeTab === 'eventregistrations' && (
+                           <form id="registrationForm" onSubmit={handleSaveRegistration} className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Lengkap</label>
+                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Event</label>
+                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nomor WhatsApp</label>
+                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Email</label>
+                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Pendaftaran</label>
+                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                    <option value="Pending Payment">Pending Payment</option>
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                 </select>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Bukti Transfer</label>
+                                 <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" placeholder="Opsional" />
+                              </div>
+                           </form>
+                        )}
+
+                        {activeTab === 'events' && (
+                  <div className="space-y-4 animate-fade-in text-slate-900">
+                     <input type="text" placeholder="🔍 Cari Judul Event..." value={searchEvent} onChange={e => setSearchEvent(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                     {viewMode === 'table' ? (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal break-words">
+                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                                 <tr><th className="px-6 py-3 text-left font-bold">Gambar</th><th className="px-6 py-3 text-left font-bold cursor-pointer">Judul Event</th><th className="px-6 py-3 text-left font-bold">Tanggal</th><th className="px-6 py-3 text-left font-bold">Harga</th><th className="px-6 py-3 text-left font-bold">Kuota/Status</th><th className="px-6 py-3 text-left font-bold">Peserta</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {events.filter(e => e.title.toLowerCase().includes(searchEvent.toLowerCase())).map((evt: EventData) => (
+                                    <tr key={evt.id} className="hover:bg-slate-50 font-medium">
+                                       <td className="px-6 py-3"><img src={evt.image} alt="poster" className="w-12 h-16 object-cover rounded" /></td>
+                                       <td className="px-6 py-3 font-bold text-slate-800">{evt.title}</td>
+                                       <td className="px-6 py-3">{evt.date}</td>
+                                       <td className="px-6 py-3">{evt.price}</td>
+                                       <td className="px-6 py-3">
+                                          <span className="font-bold text-slate-700">{evt.stock} slot</span>
+                                          <br/><span className={`text-[10px] uppercase font-bold px-1 rounded ${evt.status === 'Sold out' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.status}</span>
+                                       </td>
+                                       <td className="px-6 py-3 font-bold text-blue-600">
+                                          {eventRegistrationsCount[evt.title] || 0} orang
+                                       </td>
+                                       <td className="px-6 py-3 flex gap-3">
+                                          <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                          <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     ) : (<div></div>)}
+                  </div>
+               )}
+
                {/* ======================= BOT SETTINGS ======================= */}
-               {activeTab === 'botsettings' && (
+               
+                        
+                        {activeTab === 'eventregistrations' && (
+                           <form id="registrationForm" onSubmit={handleSaveRegistration} className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Lengkap</label>
+                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Event</label>
+                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nomor WhatsApp</label>
+                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Email</label>
+                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Pendaftaran</label>
+                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                    <option value="Pending Payment">Pending Payment</option>
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                 </select>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Bukti Transfer</label>
+                                 <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" placeholder="Opsional" />
+                              </div>
+                           </form>
+                        )}
+
+                        {activeTab === 'events' && (
+                           <form id="eventForm" onSubmit={handleSaveEvent} className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Judul Event</label>
+                                    <input type="text" value={eventForm.title || ''} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Tanggal & Waktu</label>
+                                    <input type="text" value={eventForm.date || ''} onChange={e => setEventForm({ ...eventForm, date: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Harga</label>
+                                    <input type="text" value={eventForm.price || ''} onChange={e => setEventForm({ ...eventForm, price: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Kuota Slot (Stock)</label>
+                                    <input type="number" value={eventForm.stock || 0} onChange={e => setEventForm({ ...eventForm, stock: Number(e.target.value) })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Ketersediaan</label>
+                                    <select value={eventForm.status || 'In stock'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="In stock">In stock</option>
+                                       <option value="Sold out">Sold out</option>
+                                    </select>
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Gambar Poster</label>
+                                 <input type="url" value={eventForm.image || ''} onChange={e => setEventForm({ ...eventForm, image: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="https://..." />
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>
+                                 <textarea rows={6} value={eventForm.detail_acara || ''} onChange={e => setEventForm({ ...eventForm, detail_acara: e.target.value })} className="w-full p-3 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan detail acara lengkap..."></textarea>
+                              </div>
+                           </form>
+                        )}
+
+                        {activeTab === 'botsettings' && (
                   <div className="space-y-4 animate-fade-in text-slate-900">
                      <p className="text-sm text-slate-600">Kelola pengaturan dan tautan yang digunakan oleh Chatbot.</p>
                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
@@ -3066,6 +3357,85 @@ export default function NikonDashboard() {
                            </form>
                         )}
 
+                        
+                        
+                        {activeTab === 'eventregistrations' && (
+                           <form id="registrationForm" onSubmit={handleSaveRegistration} className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Lengkap</label>
+                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Event</label>
+                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nomor WhatsApp</label>
+                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Email</label>
+                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Pendaftaran</label>
+                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                    <option value="Pending Payment">Pending Payment</option>
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                 </select>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Bukti Transfer</label>
+                                 <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" placeholder="Opsional" />
+                              </div>
+                           </form>
+                        )}
+
+                        {activeTab === 'events' && (
+                           <form id="eventForm" onSubmit={handleSaveEvent} className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Judul Event</label>
+                                    <input type="text" value={eventForm.title || ''} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Tanggal & Waktu</label>
+                                    <input type="text" value={eventForm.date || ''} onChange={e => setEventForm({ ...eventForm, date: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Harga</label>
+                                    <input type="text" value={eventForm.price || ''} onChange={e => setEventForm({ ...eventForm, price: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Kuota Slot (Stock)</label>
+                                    <input type="number" value={eventForm.stock || 0} onChange={e => setEventForm({ ...eventForm, stock: Number(e.target.value) })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Ketersediaan</label>
+                                    <select value={eventForm.status || 'In stock'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="In stock">In stock</option>
+                                       <option value="Sold out">Sold out</option>
+                                    </select>
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Gambar Poster</label>
+                                 <input type="url" value={eventForm.image || ''} onChange={e => setEventForm({ ...eventForm, image: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="https://..." />
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>
+                                 <textarea rows={6} value={eventForm.detail_acara || ''} onChange={e => setEventForm({ ...eventForm, detail_acara: e.target.value })} className="w-full p-3 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan detail acara lengkap..."></textarea>
+                              </div>
+                           </form>
+                        )}
+
                         {activeTab === 'botsettings' && (
                            <form id="botSettingsForm" onSubmit={handleSaveBotSettings} className="space-y-4">
                               <div>
@@ -3095,6 +3465,8 @@ export default function NikonDashboard() {
                               if (activeTab === 'konsumen') return 'konsumenForm';
                               if (activeTab === 'userrole') return 'karyawanForm';
                               if (activeTab === 'botsettings') return 'botSettingsForm';
+                             if (activeTab === 'events') return 'eventForm';
+                             if (activeTab === 'eventregistrations') return 'registrationForm';
                               if (activeTab === 'lending') return 'lendingForm'; // Both 'return' and 'create/edit' use 'lendingForm'
                               return 'budgetForm';
                            })();
