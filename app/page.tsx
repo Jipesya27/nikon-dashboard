@@ -1053,7 +1053,7 @@ export default function NikonDashboard() {
    const handleKirimStatusClaim = async (c: ClaimPromo) => {
 
       if (!window.confirm('Kirim status claim ke WA konsumen?')) return;
-      const msg = chatbotTexts.statusClaim(c.nomor_seri, c.tipe_barang, c.validasi_by_mkt, c.validasi_by_fa, c.nama_jasa_pengiriman || '-', c.nomor_resi || '-');
+      const msg = chatbotTexts.statusClaim(c.nomor_seri, c.tipe_barang, c.validasi_by_mkt, c.validasi_by_fa, c.nama_jasa_pengiriman || '-', c.nomor_resi || '-', c.catatan_mkt || '');
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
       await supabase.from('riwayat_pesan').insert([{ nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
       alert('Pesan status berhasil dikirim!');
