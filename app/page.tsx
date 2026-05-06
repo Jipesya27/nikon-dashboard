@@ -9,6 +9,26 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrq
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error'; // Akan diisi via .env.local
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+const ID_MONTHS: Record<string, number> = {
+   januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
+   juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
+};
+function parseIdDate(str: string): Date | null {
+   if (!str) return null;
+   const p = str.trim().toLowerCase().split(/\s+/);
+   if (p.length < 3) return null;
+   const d = parseInt(p[0]), m = ID_MONTHS[p[1]], y = parseInt(p[2]);
+   if (isNaN(d) || m === undefined || isNaN(y)) return null;
+   return new Date(y, m, d + 1);
+}
+function getEventClosedStatus(evt: { status: string; stock: number; date: string }, regCount: number): { closed: boolean; reason: string } {
+   if (evt.status === 'close') return { closed: true, reason: 'Ditutup Admin' };
+   if (evt.stock > 0 && regCount >= evt.stock) return { closed: true, reason: 'Kuota Penuh' };
+   const evtDate = parseIdDate(evt.date);
+   if (evtDate && evtDate < new Date()) return { closed: true, reason: 'Acara Selesai' };
+   return { closed: false, reason: 'Aktif' };
+}
+
 // --- TYPES ---
 interface Karyawan { id_karyawan?: string; username: string; password?: string; nama_karyawan: string; role: string; status_aktif: boolean; akses_halaman: string[]; created_at?: string; nomor_wa?: string; }
 interface KonsumenData { nomor_wa: string; id_konsumen: string; nama_lengkap: string; status_langkah: string; alamat_rumah: string; created_at: string; nik?: string; kelurahan?: string; kecamatan?: string; kabupaten_kotamadya?: string; provinsi?: string; kodepos?: string; }
@@ -182,6 +202,7 @@ export default function NikonDashboard() {
    const [lendingForm, setLendingForm] = useState<Partial<PeminjamanBarang>>({ items_dipinjam: [], status_peminjaman: 'aktif' });
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
    const [eventForm, setEventForm] = useState<Partial<EventData>>({});
+   const [eventImageFile, setEventImageFile] = useState<File | null>(null);
    const [registrationForm, setRegistrationForm] = useState<Partial<EventRegistration>>({});
 
    // IMPORT CSV STATES
@@ -1099,6 +1120,11 @@ export default function NikonDashboard() {
       setIsModalOpen(false);
       try {
          const payload = { ...eventForm };
+         if (eventImageFile) {
+            const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', eventForm.title?.replace(/\s+/g, '_') || 'poster');
+            payload.image = imageUrl;
+            setEventImageFile(null);
+         }
          if (modalAction === 'create') {
             const { error } = await supabase.from('events').insert([payload]);
             if (error) throw error;
@@ -2524,8 +2550,8 @@ export default function NikonDashboard() {
                                        <td className="px-6 py-3">{evt.date}</td>
                                        <td className="px-6 py-3">{evt.price}</td>
                                        <td className="px-6 py-3">
-                                          <span className="font-bold text-slate-700">{evt.stock} slot</span>
-                                          <br/><span className={`text-[10px] uppercase font-bold px-1 rounded ${evt.status === 'Sold out' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.status}</span>
+                                          <span className="font-bold text-slate-700">{eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</span>
+                                          <br/>{(() => { const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.title] || 0); return <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>; })()}
                                        </td>
                                        <td className="px-6 py-3 font-bold text-blue-600">
                                           {eventRegistrationsCount[evt.title] || 0} orang
@@ -2606,9 +2632,9 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Ketersediaan</label>
-                                    <select value={eventForm.status || 'In stock'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
-                                       <option value="In stock">In stock</option>
-                                       <option value="Sold out">Sold out</option>
+                                    <select value={eventForm.status || 'aktif'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="aktif">Aktif</option>
+                                       <option value="close">Close</option>
                                     </select>
                                  </div>
                               </div>
@@ -2617,8 +2643,15 @@ export default function NikonDashboard() {
                                  <textarea rows={2} value={eventForm.bank_info || ''} onChange={e => setEventForm({ ...eventForm, bank_info: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" placeholder="Contoh: BCA 1234567890 a.n Nikon Event Indonesia" />
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Gambar Poster</label>
-                                 <input type="url" value={eventForm.image || ''} onChange={e => setEventForm({ ...eventForm, image: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="https://..." />
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Foto / Poster Acara</label>
+                                 {(eventImageFile || eventForm.image) && (
+                                    <div className="mb-2 relative w-24 h-32 rounded overflow-hidden border border-slate-200">
+                                       <img src={eventImageFile ? URL.createObjectURL(eventImageFile) : eventForm.image} alt="preview" className="w-full h-full object-cover" />
+                                       <button type="button" onClick={() => { setEventImageFile(null); setEventForm({ ...eventForm, image: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
+                                    </div>
+                                 )}
+                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventImageFile(e.target.files[0]); }} className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-all cursor-pointer" />
+                                 <p className="text-xs text-slate-400 mt-1">Format: JPG, PNG, WEBP. Tampil sebagai poster (rasio 3:4 disarankan).</p>
                               </div>
                               <div>
                                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>
@@ -3477,15 +3510,22 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Ketersediaan</label>
-                                    <select value={eventForm.status || 'In stock'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
-                                       <option value="In stock">In stock</option>
-                                       <option value="Sold out">Sold out</option>
+                                    <select value={eventForm.status || 'aktif'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="aktif">Aktif</option>
+                                       <option value="close">Close</option>
                                     </select>
                                  </div>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Gambar Poster</label>
-                                 <input type="url" value={eventForm.image || ''} onChange={e => setEventForm({ ...eventForm, image: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="https://..." />
+                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Foto / Poster Acara</label>
+                                 {(eventImageFile || eventForm.image) && (
+                                    <div className="mb-2 relative w-24 h-32 rounded overflow-hidden border border-slate-200">
+                                       <img src={eventImageFile ? URL.createObjectURL(eventImageFile) : eventForm.image} alt="preview" className="w-full h-full object-cover" />
+                                       <button type="button" onClick={() => { setEventImageFile(null); setEventForm({ ...eventForm, image: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
+                                    </div>
+                                 )}
+                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventImageFile(e.target.files[0]); }} className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-all cursor-pointer" />
+                                 <p className="text-xs text-slate-400 mt-1">Format: JPG, PNG, WEBP. Tampil sebagai poster (rasio 3:4 disarankan).</p>
                               </div>
                               <div>
                                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>

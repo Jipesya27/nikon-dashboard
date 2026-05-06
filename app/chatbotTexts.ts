@@ -46,5 +46,18 @@ export const chatbotTexts = {
     `${idx + 1}. *${nama_barang}* (SN: ${nomor_seri})${catatan_pengembalian ? ` - Catatan: ${catatan_pengembalian}` : ''}\n`,
 
   lendingReturnFooter: () =>
-    `\nTerima kasih atas kerjasamanya!`
+    `\nTerima kasih atas kerjasamanya!`,
+
+  eventRegistrationApproved: (nama: string, eventTitle: string, ticketLink: string) =>
+    `Halo *${nama}*,\n\nSelamat! Pendaftaran Anda untuk acara *${eventTitle}* telah *dikonfirmasi* ✅\n\nSilakan download tiket Anda di link berikut:\n${ticketLink}\n\nTunjukkan tiket (atau QR code) ini saat registrasi ulang di lokasi acara.\n\nSampai jumpa di acara! 📸`,
+
+  eventRegistrationRejected: (nama: string, eventTitle: string, reason?: string) => {
+    let msg = `Halo *${nama}*,\n\nMaaf, kami tidak dapat mengonfirmasi pendaftaran Anda untuk acara *${eventTitle}*.`;
+    if (reason) msg += `\n\nAlasan: ${reason}`;
+    msg += `\n\nJika ada pertanyaan, silakan hubungi kami. Terima kasih.`;
+    return msg;
+  },
+
+  depositRefundReady: (nama: string, eventTitle: string, refundLink: string) =>
+    `Halo *${nama}*,\n\nDeposit Anda untuk acara *${eventTitle}* telah diproses dan siap dikembalikan 🎉\n\nLihat bukti pengembalian deposit di link berikut:\n${refundLink}\n\nTerima kasih telah berpartisipasi!`,
 };
