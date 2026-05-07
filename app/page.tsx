@@ -995,8 +995,14 @@ export default function NikonDashboard() {
 
          const dataToSave = {
             ...claimForm,
-            link_kartu_garansi: garansiUrl,
-            link_nota_pembelian: notaUrl,
+            nama_toko: claimForm.nama_toko || '',
+            jenis_promosi: claimForm.jenis_promosi || '',
+            nama_jasa_pengiriman: claimForm.nama_jasa_pengiriman || '',
+            nomor_resi: claimForm.nomor_resi || '',
+            catatan_mkt: claimForm.catatan_mkt || '',
+            catatan_fa: claimForm.catatan_fa || '',
+            link_kartu_garansi: garansiUrl ?? '',
+            link_nota_pembelian: notaUrl ?? '',
          };
 
          if (modalAction === 'create') {
