@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { whatsappMessages } from './whatsappMessages';
+import { Card, Stat, StatGrid, Badge, Button, PageHeader, Section } from '@/app/components/ui';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error'; // Akan diisi via .env.local
@@ -2170,111 +2171,162 @@ export default function NikonDashboard() {
                <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
 
                {/* ======================= DASHBOARD OVERVIEW ======================= */}
-               {activeTab === 'dashboard' && (
+               {activeTab === 'dashboard' && (() => {
+                  // Hitung metrik penting yg jadi insight untuk admin
+                  const pendingClaims = claims.filter(c => {
+                     const color = getClaimStatusColor(c);
+                     return color !== 'Hijau' && color !== 'Merah';
+                  }).length;
+                  const pendingRegs = eventRegistrations.filter(r => (r.status_pendaftaran || (r as any).status) === 'menunggu_validasi' || (r as any).status === 'Pending').length;
+                  const upcomingEvents = events.filter(e => {
+                     const d = parseIdDate(e.event_date);
+                     return d && d >= new Date();
+                  }).length;
+                  const activeLending = lendingRecords.filter(l => l.status_peminjaman === 'aktif').length;
+                  const todayMsg = messages.filter(m => {
+                     const t = m.waktu_pesan ? new Date(m.waktu_pesan) : null;
+                     if (!t) return false;
+                     const today = new Date();
+                     return t.toDateString() === today.toDateString();
+                  }).length;
+                  const isAdmin = currentUser?.role === 'Admin';
+
+                  return (
                   <div className="animate-fade-in space-y-6">
-                     {/* WELCOME CARD */}
-                     <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-2xl p-8 text-white shadow-lg border border-gray-700">
-                        <div className="flex justify-between items-start">
-                           <div>
-                              <h2 className="text-3xl font-bold mb-2">Selamat Datang Kembali! 👋</h2>
-                              <p className="text-gray-300">Anda login sebagai <span className="font-bold text-[#FFE500]">{currentUser?.nama_karyawan}</span> ({currentUser?.role})</p>
-                              <p className="text-gray-400 text-sm mt-2">Dashboard diperbarui untuk pengalaman yang lebih baik</p>
+                     {/* WELCOME CARD — bersih, tidak terlalu mewah */}
+                     <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-2xl p-6 md:p-8 text-white border border-zinc-700 shadow-sm">
+                        <div className="flex justify-between items-start gap-4">
+                           <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-[#FFE500] uppercase tracking-widest mb-2">Dashboard</p>
+                              <h2 className="text-2xl md:text-3xl font-bold mb-2">Halo, {currentUser?.nama_karyawan?.split(' ')[0] || 'Admin'} 👋</h2>
+                              <p className="text-zinc-400 text-sm">Login sebagai <span className="text-[#FFE500] font-semibold">{currentUser?.role}</span> · {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
                            </div>
-                           <div className="shadow-lg rounded-lg overflow-hidden">
-                              <img src="/nikon-logo.svg" alt="Nikon" className="h-16 w-auto" />
-                           </div>
+                           <img src="/nikon-logo.svg" alt="Nikon" className="h-12 md:h-14 w-auto opacity-80 flex-shrink-0" />
                         </div>
                      </div>
 
-                     {/* STATISTICS CARDS */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
-                              <div>
-                                 <p className="stat-label">Total Messages</p>
-                                 <p className="stat-value">{messages.length}</p>
-                              </div>
-                              <div className="text-4xl">💬</div>
+                     {/* PERLU PERHATIAN — actionable items dengan badge angka */}
+                     {(pendingClaims > 0 || pendingRegs > 0 || activeLending > 0) && (
+                        <Section label="Perlu Perhatian" title="Item yang Belum Selesai">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {pendingClaims > 0 && (
+                                 <Card hoverable padding="md" onClick={() => setActiveTab('claims')} className="border-amber-200 bg-amber-50/50">
+                                    <div className="flex items-start justify-between gap-3">
+                                       <div className="min-w-0">
+                                          <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Claim</p>
+                                          <p className="text-2xl font-bold text-amber-900 mt-1">{pendingClaims}</p>
+                                          <p className="text-xs text-amber-700/80 mt-1">menunggu validasi</p>
+                                       </div>
+                                       <span className="text-3xl flex-shrink-0">🎫</span>
+                                    </div>
+                                 </Card>
+                              )}
+                              {pendingRegs > 0 && (
+                                 <Card hoverable padding="md" onClick={() => setActiveTab('eventregistrations')} className="border-orange-200 bg-orange-50/50">
+                                    <div className="flex items-start justify-between gap-3">
+                                       <div className="min-w-0">
+                                          <p className="text-xs font-bold text-orange-700 uppercase tracking-wider">Pendaftaran Event</p>
+                                          <p className="text-2xl font-bold text-orange-900 mt-1">{pendingRegs}</p>
+                                          <p className="text-xs text-orange-700/80 mt-1">belum divalidasi pembayaran</p>
+                                       </div>
+                                       <span className="text-3xl flex-shrink-0">🎟️</span>
+                                    </div>
+                                 </Card>
+                              )}
+                              {activeLending > 0 && (
+                                 <Card hoverable padding="md" onClick={() => setActiveTab('lending')} className="border-blue-200 bg-blue-50/50">
+                                    <div className="flex items-start justify-between gap-3">
+                                       <div className="min-w-0">
+                                          <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Peminjaman</p>
+                                          <p className="text-2xl font-bold text-blue-900 mt-1">{activeLending}</p>
+                                          <p className="text-xs text-blue-700/80 mt-1">barang sedang dipinjam</p>
+                                       </div>
+                                       <span className="text-3xl flex-shrink-0">📦</span>
+                                    </div>
+                                 </Card>
+                              )}
                            </div>
-                           <div className="text-xs text-gray-500">Chat history</div>
-                        </div>
+                        </Section>
+                     )}
 
-                        <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
-                              <div>
-                                 <p className="stat-label">Claims Promo</p>
-                                 <p className="stat-value">{claims.length}</p>
-                              </div>
-                              <div className="text-4xl">🎁</div>
+                     {/* RINGKASAN DATA — overview cepat semua entity */}
+                     <Section label="Ringkasan" title="Data di Sistem">
+                        <StatGrid cols={4}>
+                           <Stat label="Konsumen" value={consumersList.length} icon="👥" onClick={() => setActiveTab('konsumen')} />
+                           <Stat label="Claim" value={claims.length} icon="🎫" onClick={() => setActiveTab('claims')} />
+                           <Stat label="Garansi" value={warranties.length} icon="🛡️" onClick={() => setActiveTab('warranties')} />
+                           <Stat label="Service" value={services.length} icon="🔧" onClick={() => setActiveTab('services')} />
+                        </StatGrid>
+
+                        <StatGrid cols={4}>
+                           <Stat label="Master Event" value={events.length} icon="📅" onClick={() => setActiveTab('events')} />
+                           <Stat label="Pendaftar Event" value={eventRegistrations.length} icon="🎟️" onClick={() => setActiveTab('eventregistrations')} />
+                           <Stat label="Event Mendatang" value={upcomingEvents} variant="brand" icon="✨" />
+                           <Stat label="Pesan Hari Ini" value={todayMsg} icon="💬" onClick={() => setActiveTab('messages')} />
+                        </StatGrid>
+                     </Section>
+
+                     {/* QUICK ACTIONS — tombol-tombol shortcut */}
+                     <Section label="Aksi Cepat" title="Operasi yang Sering Dipakai">
+                        <Card padding="md">
+                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                              <Button variant="secondary" size="md" leftIcon="💬" onClick={() => setActiveTab('messages')}>Buka Pesan</Button>
+                              <Button variant="secondary" size="md" leftIcon="🎫" onClick={() => setActiveTab('claims')}>Lihat Claim</Button>
+                              <Button variant="secondary" size="md" leftIcon="📅" onClick={() => setActiveTab('events')}>Master Event</Button>
+                              <Button variant="secondary" size="md" leftIcon="🎟️" onClick={() => setActiveTab('eventregistrations')}>Data Peserta</Button>
+                              <Button variant="secondary" size="md" leftIcon="📥" onClick={() => setActiveTab('import')}>Import Data</Button>
+                              <Button variant="secondary" size="md" leftIcon="📦" onClick={() => setActiveTab('lending')}>Peminjaman</Button>
+                              {isAdmin && <Button variant="secondary" size="md" leftIcon="🔐" onClick={() => setActiveTab('userrole')}>User Role</Button>}
+                              {isAdmin && <Button variant="secondary" size="md" leftIcon="⚙️" onClick={() => setActiveTab('botsettings')}>Bot Settings</Button>}
                            </div>
-                           <div className="text-xs text-gray-500">Active claims</div>
-                        </div>
+                        </Card>
+                     </Section>
 
-                        <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
-                              <div>
-                                 <p className="stat-label">Warranties</p>
-                                 <p className="stat-value">{warranties.length}</p>
-                              </div>
-                              <div className="text-4xl">🛡️</div>
-                           </div>
-                           <div className="text-xs text-gray-500">Product warranties</div>
-                        </div>
-
-                        <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
-                              <div>
-                                 <p className="stat-label">Employees</p>
-                                 <p className="stat-value">{karyawans.length}</p>
-                              </div>
-                              <div className="text-4xl">👥</div>
-                           </div>
-                           <div className="text-xs text-gray-500">Team members</div>
-                        </div>
-                     </div>
-
-                     {/* QUICK ACTIONS */}
-                     <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">⚡ Quick Actions</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                           <button onClick={() => setActiveTab('messages')} className="btn-primary text-center py-3 rounded-lg font-semibold hover:shadow-lg transition">
-                              📨 Open Messages
-                           </button>
-                           <button onClick={() => setActiveTab('claims')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition shadow-sm">
-                              🎯 View Claims
-                           </button>
-                           <button onClick={() => setActiveTab('import')} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition shadow-sm">
-                              📤 Import Data
-                           </button>
-                        </div>
-                     </div>
-
-                     {/* INFO CARDS */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6">
-                           <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2">💡 Tips</h4>
-                           <ul className="text-sm text-blue-800 space-y-1">
-                              <li>• Gunakan tab Pesan untuk komunikasi real-time</li>
-                              <li>• Import data dalam urutan yang benar untuk hasil optimal</li>
-                              <li>• Periksa database status di bagian bawah</li>
+                     {/* SYSTEM STATUS + TIPS */}
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <Card padding="md">
+                           <Card.Header
+                              icon="✅"
+                              title="Status Sistem"
+                              subtitle="Realtime check"
+                           />
+                           <ul className="space-y-2.5 text-sm">
+                              <li className="flex items-center justify-between">
+                                 <span className="flex items-center gap-2 text-slate-700"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />Database Supabase</span>
+                                 <Badge variant="success" size="xs" uppercase>Online</Badge>
+                              </li>
+                              <li className="flex items-center justify-between">
+                                 <span className="flex items-center gap-2 text-slate-700"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />WhatsApp Gateway</span>
+                                 <Badge variant="success" size="xs" uppercase>Active</Badge>
+                              </li>
+                              <li className="flex items-center justify-between">
+                                 <span className="flex items-center gap-2 text-slate-700"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />Google Drive</span>
+                                 <Badge variant="success" size="xs" uppercase>Connected</Badge>
+                              </li>
+                              <li className="flex items-center justify-between">
+                                 <span className="flex items-center gap-2 text-slate-700"><span className="w-2 h-2 rounded-full bg-blue-500" />Sesi Anda</span>
+                                 <Badge variant="info" size="xs">{currentUser?.role}</Badge>
+                              </li>
                            </ul>
-                        </div>
-                        <div className="bg-green-50 border border-green-100 rounded-2xl p-6">
-                           <h4 className="font-bold text-green-900 mb-2 flex items-center gap-2">✅ System Status</h4>
-                           <div className="text-sm text-green-800 space-y-1">
-                              <div className="flex items-center gap-2">
-                                 <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                 Database Connected
-                              </div>
-                              <div className="flex items-center gap-2">
-                                 <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                 All Services Running
-                              </div>
-                           </div>
-                        </div>
+                        </Card>
+
+                        <Card padding="md">
+                           <Card.Header
+                              icon="💡"
+                              title="Tips Pemakaian"
+                              subtitle="Shortcut & best practices"
+                           />
+                           <ul className="text-sm text-slate-600 space-y-2">
+                              <li className="flex gap-2"><span className="text-yellow-500">›</span>Klik kartu di atas untuk filter cepat data</li>
+                              <li className="flex gap-2"><span className="text-yellow-500">›</span>Gunakan dropdown <span className="font-semibold text-slate-800">🔗 Links</span> di header untuk akses page event</li>
+                              <li className="flex gap-2"><span className="text-yellow-500">›</span>Import data konsumen dulu sebelum claim/garansi</li>
+                              <li className="flex gap-2"><span className="text-yellow-500">›</span>Scan QR tiket di <span className="font-semibold text-slate-800">/admin/events/attendance</span> saat event berlangsung</li>
+                           </ul>
+                        </Card>
                      </div>
                   </div>
-               )}
+                  );
+               })()}
 
                {/* ======================= IMPORT DATA TAB ======================= */}
                {activeTab === 'import' && (
