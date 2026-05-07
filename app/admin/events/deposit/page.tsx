@@ -23,6 +23,7 @@ type DepositRegistration = {
   status_pengembalian_deposit: string | null;
   nama_bank: string | null;
   no_rekening: string | null;
+  nama_pemilik_rekening: string | null;
   refund_requested_at: string | null;
 };
 
@@ -251,7 +252,16 @@ export default function AdminDepositPage() {
                                 <button onClick={() => copyToClipboard(reg.no_rekening!, 'Nomor rekening')} className="text-zinc-500 hover:text-white text-xs">📋</button>
                               </p>
                             </div>
-                            <p className="text-[11px] text-zinc-400">a.n <span className="text-white">{reg.nama_lengkap}</span></p>
+                            <div className="bg-zinc-800/60 rounded-lg p-3">
+                              <p className="text-zinc-500 text-[10px] uppercase">Atas Nama</p>
+                              <p className="text-white font-bold text-sm flex items-center justify-between">
+                                {reg.nama_pemilik_rekening || reg.nama_lengkap}
+                                <button onClick={() => copyToClipboard(reg.nama_pemilik_rekening || reg.nama_lengkap, 'Nama pemilik rekening')} className="text-zinc-500 hover:text-white text-xs">📋</button>
+                              </p>
+                              {reg.nama_pemilik_rekening && reg.nama_pemilik_rekening.toLowerCase() !== reg.nama_lengkap.toLowerCase() && (
+                                <p className="text-[10px] text-yellow-400 mt-1">⚠️ Berbeda dari nama peserta ({reg.nama_lengkap})</p>
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <div className="bg-zinc-800/40 border border-dashed border-zinc-700 rounded-lg p-4 text-center">
