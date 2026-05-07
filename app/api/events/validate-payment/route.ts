@@ -25,12 +25,20 @@ export async function POST(req: NextRequest) {
 
     const { data: reg, error: fetchError } = await supabase
       .from('event_registrations')
-      .select('*, events:event_id(*)')
+      .select('*')
       .eq('id', registrationId)
       .single();
 
     if (fetchError || !reg) {
-      return NextResponse.json({ error: 'Registration not found' }, { status: 404 });
+      console.error('Registration fetch error:', fetchError, 'id:', registrationId);
+      return NextResponse.json({ error: `Registration not found: ${fetchError?.message || 'no rows'}` }, { status: 404 });
+    }
+
+    // Fetch related event manually (no FK relationship in schema)
+    let eventInfo: any = null;
+    if (reg.event_id) {
+      const { data: ev } = await supabase.from('events').select('*').eq('id', reg.event_id).maybeSingle();
+      eventInfo = ev;
     }
 
     if (action === 'reject') {
@@ -56,8 +64,8 @@ export async function POST(req: NextRequest) {
         fullName: reg.nama_lengkap,
         nomorWa: reg.nomor_wa,
         eventTitle: reg.event_name,
-        eventDate: reg.events?.event_date || '',
-        eventDetail: reg.events?.event_description || '',
+        eventDate: eventInfo?.event_date || '',
+        eventDetail: eventInfo?.event_description || '',
         cameraModel: reg.tipe_kamera || '',
         paymentType: reg.payment_type || 'regular',
       }),
