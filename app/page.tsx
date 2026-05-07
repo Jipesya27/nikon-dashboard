@@ -1936,6 +1936,14 @@ export default function NikonDashboard() {
                                  </div>
                                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                               </a>
+                              <a href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" onClick={() => setLinksMenuOpen(false)} className="flex items-start gap-3 px-4 py-3 hover:bg-yellow-50 transition-colors border-b border-gray-100">
+                                 <span className="text-2xl">📷</span>
+                                 <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-gray-900">Absensi & Scan QR</p>
+                                    <p className="text-[11px] text-gray-500 truncate">/admin/events/attendance</p>
+                                 </div>
+                                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
                               <a href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" onClick={() => setLinksMenuOpen(false)} className="flex items-start gap-3 px-4 py-3 hover:bg-yellow-50 transition-colors">
                                  <span className="text-2xl">💸</span>
                                  <div className="flex-1 min-w-0">
@@ -2956,6 +2964,10 @@ export default function NikonDashboard() {
                         <span className="text-xs font-bold text-gray-700 mr-2">🛠️ Halaman Admin:</span>
                         <a href="/admin/events" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-blue-100 text-gray-800 border border-blue-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
                            ✅ Validasi Pembayaran
+                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                        <a href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-blue-100 text-gray-800 border border-blue-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
+                           📷 Absensi Scan QR
                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                         </a>
                         <a href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-blue-100 text-gray-800 border border-blue-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
