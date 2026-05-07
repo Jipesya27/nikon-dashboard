@@ -22,48 +22,14 @@ function parseIdDate(str: string): Date | null {
 }
 
 function getEventClosed(evt: any, regCount: number): { closed: boolean; reason: string } {
-  if (evt.event_status === 'close') return { closed: true, reason: 'Ditutup' };
-  if (evt.event_status === 'sold_out') return { closed: true, reason: 'Sold Out' };
+  const status = (evt.event_status || '').toLowerCase();
+  if (status === 'close' || status === 'closed') return { closed: true, reason: 'Ditutup' };
+  if (status === 'sold out' || status === 'sold_out' || status === 'soldout') return { closed: true, reason: 'Sold Out' };
   if (evt.event_partisipant_stock > 0 && regCount >= evt.event_partisipant_stock) return { closed: true, reason: 'Kuota Penuh' };
   const evtDate = parseIdDate(evt.event_date);
   if (evtDate && evtDate < new Date()) return { closed: true, reason: 'Acara Selesai' };
   return { closed: false, reason: '' };
 }
-
-const EVENTS_DUMMY = [
-  {
-    id: 'z9-masterclass',
-    event_title: 'Nikon Z9 Masterclass: The Future of Speed',
-    event_price: 'Rp 750.000',
-    event_date: '12 Agustus 2026',
-    event_image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=600&auto=format&fit=crop',
-    rating: 5,
-    event_partisipant_stock: 20,
-    event_status: 'available',
-    event_description: 'Bergabunglah dengan lingkaran elit fotografer. Tingkatkan keahlian Anda dan rasakan pengalaman menggunakan gear terbaru dari Nikon dalam sesi eksklusif yang dipandu oleh profesional.',
-    event_speaker: 'Rizki Fauzan',
-    event_speaker_genre: 'Commercial Photographer',
-    bank_info: 'BCA 1234567890\na.n Nikon Event Indonesia',
-    event_payment_tipe: 'regular',
-    deposit_amount: null,
-  },
-  {
-    id: 'wildlife-expedition',
-    event_title: 'Wildlife Expedition with Nikon Z8',
-    event_price: 'Rp 1.500.000',
-    event_date: '20 September 2026',
-    event_image: 'https://images.unsplash.com/photo-1542314831-c6a4d142104d?q=80&w=600&auto=format&fit=crop',
-    rating: 5,
-    event_partisipant_stock: 15,
-    event_status: 'available',
-    event_description: 'Eksplorasi alam liar. Abadikan keindahan alam liar yang tak tertandingi dalam ekspedisi eksklusif bersama pemandu profesional.',
-    event_speaker: 'Andra Wijaya',
-    event_speaker_genre: 'Wildlife Photographer',
-    bank_info: 'BCA 1234567890\na.n Nikon Event Indonesia',
-    event_payment_tipe: 'deposit',
-    deposit_amount: 'Rp 300.000',
-  },
-];
 
 export default function EventCatalog() {
   const [events, setEvents] = useState<any[]>([]);
@@ -99,9 +65,9 @@ export default function EventCatalog() {
           }
         } catch {}
         if (error) throw error;
-        setEvents(data && data.length > 0 ? data : EVENTS_DUMMY);
+        setEvents(data || []);
       } catch {
-        setEvents(EVENTS_DUMMY);
+        setEvents([]);
       } finally {
         setIsLoadingEvents(false);
       }
@@ -224,6 +190,12 @@ export default function EventCatalog() {
         {isLoadingEvents ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#FFE800]" />
+          </div>
+        ) : events.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-96 text-center">
+            <div className="text-6xl mb-4">📅</div>
+            <h2 className="text-2xl font-bold mb-2">Belum Ada Event</h2>
+            <p className="text-zinc-500 text-sm max-w-sm">Saat ini belum ada event yang tersedia. Silakan kembali lagi nanti untuk melihat event mendatang.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

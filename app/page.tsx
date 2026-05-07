@@ -22,7 +22,9 @@ function parseIdDate(str: string): Date | null {
    return new Date(y, m, d + 1);
 }
 function getEventClosedStatus(evt: { event_status: string; event_partisipant_stock: number; event_date: string }, regCount: number): { closed: boolean; reason: string } {
-   if (evt.event_status === 'close') return { closed: true, reason: 'Ditutup Admin' };
+   const status = (evt.event_status || '').toLowerCase();
+   if (status === 'close' || status === 'closed') return { closed: true, reason: 'Ditutup Admin' };
+   if (status === 'sold out' || status === 'sold_out' || status === 'soldout') return { closed: true, reason: 'Sold Out' };
    if (evt.event_partisipant_stock > 0 && regCount >= evt.event_partisipant_stock) return { closed: true, reason: 'Kuota Penuh' };
    const evtDate = parseIdDate(evt.event_date);
    if (evtDate && evtDate < new Date()) return { closed: true, reason: 'Acara Selesai' };
@@ -241,6 +243,7 @@ export default function NikonDashboard() {
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
    const [eventForm, setEventForm] = useState<Partial<EventData>>({});
    const [eventImageFile, setEventImageFile] = useState<File | null>(null);
+   const [eventPaymentScreenshotFile, setEventPaymentScreenshotFile] = useState<File | null>(null);
    const [registrationForm, setRegistrationForm] = useState<Partial<EventRegistration>>({});
 
    // IMPORT CSV STATES
@@ -884,9 +887,10 @@ export default function NikonDashboard() {
          setEditingId(item?.id_karyawan || null);
       }
       else if (type === 'event') {
-         setEventForm(item || { event_status: 'available', event_partisipant_stock: 0, event_payment_tipe: 'regular' });
+         setEventForm(item || { event_status: 'In stock', event_partisipant_stock: 0, event_payment_tipe: 'regular' });
          setEditingId(item?.id || null);
          setEventImageFile(null);
+         setEventPaymentScreenshotFile(null);
       }
       else if (type === 'eventregistration') {
          setRegistrationForm(item || { status: 'Pending Payment' });
@@ -906,9 +910,10 @@ export default function NikonDashboard() {
       setKaryawanForm({});
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' });
       setBotSettingsForm({});
-      setEventForm({ event_status: 'available', event_partisipant_stock: 0, event_payment_tipe: 'regular' });
+      setEventForm({ event_status: 'In stock', event_partisipant_stock: 0, event_payment_tipe: 'regular' });
       setRegistrationForm({ status_pendaftaran: 'menunggu_validasi' });
       setEventImageFile(null);
+      setEventPaymentScreenshotFile(null);
       setEditingId(null);
       if (returnTab) {
          setActiveTab(returnTab);
@@ -1207,9 +1212,14 @@ export default function NikonDashboard() {
       e.preventDefault();
       try {
          const payload = { ...eventForm };
+         const titleSlug = eventForm.event_title?.replace(/\s+/g, '_') || 'event';
          if (eventImageFile) {
-            const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', eventForm.event_title?.replace(/\s+/g, '_') || 'poster');
+            const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', titleSlug);
             payload.event_image = imageUrl;
+         }
+         if (eventPaymentScreenshotFile) {
+            const paymentUrl = await uploadFileToStorage(eventPaymentScreenshotFile, 'EventPaymentInfo', titleSlug);
+            payload.event_upload_payment_screenshot = paymentUrl;
          }
          if (modalAction === 'create') {
             const { error } = await supabase.from('events').insert([payload]);
@@ -2906,27 +2916,45 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-4 py-3 text-center font-bold w-12">No</th><th className="px-4 py-3 text-left font-bold">Gambar</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'event_title')}>Judul Event {sortConfigEvents.column === 'event_title' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'event_date')}>Tanggal {sortConfigEvents.column === 'event_date' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Speaker</th><th className="px-4 py-3 text-left font-bold">Harga</th><th className="px-4 py-3 text-left font-bold">Tipe Bayar</th><th className="px-4 py-3 text-left font-bold">Kuota/Status</th><th className="px-4 py-3 text-left font-bold">Peserta</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
+                                 <tr>
+                                    <th className="px-3 py-3 text-center font-bold w-12">No</th>
+                                    <th className="px-3 py-3 text-left font-bold">Poster</th>
+                                    <th className="px-3 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'event_title')}>Judul {sortConfigEvents.column === 'event_title' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-3 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'event_date')}>Tanggal {sortConfigEvents.column === 'event_date' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-3 py-3 text-left font-bold">Speaker</th>
+                                    <th className="px-3 py-3 text-left font-bold">Harga / Bayar</th>
+                                    <th className="px-3 py-3 text-left font-bold">Bank Info</th>
+                                    <th className="px-3 py-3 text-left font-bold">QR Bayar</th>
+                                    <th className="px-3 py-3 text-left font-bold">Kuota</th>
+                                    <th className="px-3 py-3 text-left font-bold">Status</th>
+                                    <th className="px-3 py-3 text-left font-bold">Proposal</th>
+                                    <th className="px-3 py-3 text-left font-bold">Aksi</th>
+                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedEvents.map((evt: EventData) => {
+                                    const proposal = budgets.find(b => b.id_budget === evt.proposal_event_id);
                                     return (
                                     <tr key={evt.id} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-4 py-3 text-center font-bold text-gray-600">{eventNumberMap.get(evt.id!)}</td>
-                                       <td className="px-4 py-3">{evt.event_image ? <img src={evt.event_image} alt="poster" className="w-10 h-14 object-cover rounded" /> : <div className="w-10 h-14 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">–</div>}</td>
-                                       <td className="px-4 py-3 font-bold text-slate-800">{evt.event_title}</td>
-                                       <td className="px-4 py-3 text-sm">{evt.event_date}</td>
-                                       <td className="px-4 py-3 text-xs text-gray-600 max-w-[160px] whitespace-normal">{evt.event_speaker || '-'}{evt.event_speaker_genre && <span className="block text-gray-400">{evt.event_speaker_genre}</span>}</td>
-                                       <td className="px-4 py-3">{evt.event_price}</td>
-                                       <td className="px-4 py-3"><span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${evt.event_payment_tipe === 'deposit' ? 'bg-orange-100 text-orange-700' : evt.event_payment_tipe === 'gratis' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{evt.event_payment_tipe || 'regular'}</span></td>
-                                       <td className="px-4 py-3">
-                                          <span className="font-bold text-gray-700 text-sm">{eventRegistrationsCount[evt.event_title] || 0}/{evt.event_partisipant_stock} slot</span>
-                                          <br/>{(() => { const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.event_title] || 0); return <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>; })()}
+                                       <td className="px-3 py-3 text-center font-bold text-gray-600">{eventNumberMap.get(evt.id!)}</td>
+                                       <td className="px-3 py-3">{evt.event_image ? <img src={evt.event_image} alt="poster" className="w-10 h-14 object-cover rounded" /> : <div className="w-10 h-14 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">–</div>}</td>
+                                       <td className="px-3 py-3 font-bold text-slate-800 max-w-[180px] whitespace-normal">{evt.event_title}</td>
+                                       <td className="px-3 py-3 text-xs">{evt.event_date}</td>
+                                       <td className="px-3 py-3 text-xs text-gray-600 max-w-[140px] whitespace-normal">{evt.event_speaker || '-'}{evt.event_speaker_genre && <span className="block text-[10px] text-gray-400">{evt.event_speaker_genre}</span>}</td>
+                                       <td className="px-3 py-3 text-xs">
+                                          <span className="font-bold">{evt.event_price}</span>
+                                          <span className={`block text-[10px] uppercase font-bold mt-0.5 px-1.5 py-0.5 rounded inline-block ${evt.event_payment_tipe === 'deposit' ? 'bg-orange-100 text-orange-700' : evt.event_payment_tipe === 'gratis' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{evt.event_payment_tipe || 'regular'}</span>
+                                          {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && <span className="block text-[10px] text-orange-600 mt-0.5">DP: {evt.deposit_amount}</span>}
                                        </td>
-                                       <td className="px-4 py-3 font-bold text-blue-600 text-sm">
-                                          {eventRegistrationsCount[evt.event_title] || 0} orang
+                                       <td className="px-3 py-3 text-[11px] text-gray-600 max-w-[140px] whitespace-pre-wrap">{evt.bank_info || '-'}</td>
+                                       <td className="px-3 py-3">{evt.event_upload_payment_screenshot ? <a href={evt.event_upload_payment_screenshot} target="_blank" rel="noopener noreferrer"><img src={evt.event_upload_payment_screenshot} alt="qr" className="w-10 h-10 object-cover rounded border border-gray-200 hover:border-[#FFE500]" /></a> : <span className="text-gray-300 text-xs">–</span>}</td>
+                                       <td className="px-3 py-3 text-xs">
+                                          <span className="font-bold text-gray-700">{eventRegistrationsCount[evt.event_title] || 0}/{evt.event_partisipant_stock}</span>
+                                          <span className="block text-[10px] text-blue-600 font-bold mt-0.5">{eventRegistrationsCount[evt.event_title] || 0} peserta</span>
                                        </td>
-                                       <td className="px-4 py-3 flex gap-2">
+                                       <td className="px-3 py-3">{(() => { const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.event_title] || 0); return <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>; })()}</td>
+                                       <td className="px-3 py-3 text-[11px] text-gray-600 max-w-[120px] whitespace-normal">{proposal ? <span className="text-purple-700 font-mono">{proposal.proposal_no}</span> : <span className="text-gray-300">–</span>}</td>
+                                       <td className="px-3 py-3 flex gap-2">
                                           <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                           <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                        </td>
@@ -2940,27 +2968,35 @@ export default function NikonDashboard() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {sortedEvents.map((evt: EventData) => {
                               const descPreview = evt.event_description ? (evt.event_description.length > 80 ? evt.event_description.substring(0, 80) + '...' : evt.event_description) : '-';
+                              const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.event_title] || 0);
+                              const proposal = budgets.find(b => b.id_budget === evt.proposal_event_id);
                               return (
                               <div key={evt.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="border-b border-gray-100 pb-3 mb-3">
-                                    <div className="flex items-center gap-2 mb-2">
-                                       <span className="font-bold text-lg text-gray-600 bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center text-center">{eventNumberMap.get(evt.id!)}</span>
-                                       {evt.event_image && <img src={evt.event_image} alt="poster" className="w-12 h-16 object-cover rounded" />}
+                                 <div className="border-b border-gray-100 pb-3 mb-3 flex gap-3">
+                                    {evt.event_image ? <img src={evt.event_image} alt="poster" className="w-16 h-20 object-cover rounded flex-shrink-0" /> : <div className="w-16 h-20 bg-gray-100 rounded flex-shrink-0 flex items-center justify-center text-gray-400 text-xs">No img</div>}
+                                    <div className="flex-1 min-w-0">
+                                       <div className="flex items-center gap-2 mb-1">
+                                          <span className="font-bold text-xs text-gray-500 bg-gray-100 rounded-full w-5 h-5 flex items-center justify-center">{eventNumberMap.get(evt.id!)}</span>
+                                          <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>
+                                       </div>
+                                       <h3 className="font-bold text-sm text-slate-800 leading-tight">{evt.event_title}</h3>
+                                       <p className="text-xs text-gray-500 mt-0.5">{evt.event_date}</p>
+                                       {evt.event_speaker && <p className="text-[11px] text-gray-400 mt-0.5">🎤 {evt.event_speaker}{evt.event_speaker_genre ? ` — ${evt.event_speaker_genre}` : ''}</p>}
                                     </div>
-                                    <h3 className="font-bold text-base text-slate-800">{evt.event_title}</h3>
-                                    <p className="text-xs text-gray-500">{evt.event_date}</p>
-                                    {evt.event_speaker && <p className="text-xs text-gray-400 mt-1">🎤 {evt.event_speaker}{evt.event_speaker_genre ? ` — ${evt.event_speaker_genre}` : ''}</p>}
                                  </div>
-                                 <div className="space-y-2 text-xs flex-1">
-                                    <p><span className="font-bold w-20 inline-block">Deskripsi:</span> {descPreview}</p>
-                                    <p><span className="font-bold w-20 inline-block">Harga:</span> {evt.event_price}</p>
-                                    <p><span className="font-bold w-20 inline-block">Tipe:</span> <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${evt.event_payment_tipe === 'deposit' ? 'bg-orange-100 text-orange-700' : evt.event_payment_tipe === 'gratis' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{evt.event_payment_tipe || 'regular'}</span></p>
-                                    <p><span className="font-bold w-20 inline-block">Kuota:</span> {eventRegistrationsCount[evt.event_title] || 0}/{evt.event_partisipant_stock} slot</p>
-                                    <p><span className="font-bold w-20 inline-block">Peserta:</span> {eventRegistrationsCount[evt.event_title] || 0} orang</p>
-                                    <p><span className="font-bold w-20 inline-block">Status:</span> <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${evt.event_status === 'close' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.event_status === 'close' ? 'Tutup' : 'Aktif'}</span></p>
-                                    {evt.bank_info && <p className="bg-blue-50 border border-blue-100 rounded p-2 mt-2"><span className="font-bold">Rekening:</span> {evt.bank_info}</p>}
+                                 <div className="space-y-1.5 text-xs flex-1">
+                                    <p className="text-gray-600 leading-snug">{descPreview}</p>
+                                    <div className="flex items-center justify-between bg-gray-50 rounded px-2 py-1">
+                                       <span className="font-bold">{evt.event_price}</span>
+                                       <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${evt.event_payment_tipe === 'deposit' ? 'bg-orange-100 text-orange-700' : evt.event_payment_tipe === 'gratis' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{evt.event_payment_tipe || 'regular'}</span>
+                                    </div>
+                                    {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && <p className="text-orange-600 text-[11px]">Deposit: {evt.deposit_amount}</p>}
+                                    <p><span className="font-bold">Kuota:</span> {eventRegistrationsCount[evt.event_title] || 0}/{evt.event_partisipant_stock} slot · {eventRegistrationsCount[evt.event_title] || 0} peserta</p>
+                                    {evt.bank_info && <p className="bg-blue-50 border border-blue-100 rounded p-1.5 text-[11px] whitespace-pre-wrap"><span className="font-bold">Rekening:</span> {evt.bank_info}</p>}
+                                    {evt.event_upload_payment_screenshot && <a href={evt.event_upload_payment_screenshot} target="_blank" rel="noopener noreferrer" className="inline-block"><img src={evt.event_upload_payment_screenshot} alt="qr" className="w-16 h-16 rounded border border-gray-200 hover:border-[#FFE500]" /></a>}
+                                    {proposal && <p className="text-purple-700 text-[11px] font-mono">📄 {proposal.proposal_no}</p>}
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2 justify-end">
+                                 <div className="mt-3 pt-2 border-t border-gray-100 flex gap-2 justify-end">
                                     <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                  </div>
@@ -3862,10 +3898,10 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status</label>
-                                    <select value={eventForm.event_status || 'available'} onChange={e => setEventForm({ ...eventForm, event_status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
-                                       <option value="available">Available</option>
-                                       <option value="sold_out">Sold Out</option>
-                                       <option value="close">Close</option>
+                                    <select value={eventForm.event_status || 'In stock'} onChange={e => setEventForm({ ...eventForm, event_status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="In stock">In stock (Available)</option>
+                                       <option value="Sold Out">Sold Out</option>
+                                       <option value="Close">Close</option>
                                     </select>
                                  </div>
                                  <div>
@@ -3895,7 +3931,14 @@ export default function NikonDashboard() {
                               </div>
                               <div>
                                  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Screenshot / QR Pembayaran</label>
-                                 <input type="text" value={eventForm.event_upload_payment_screenshot || ''} onChange={e => setEventForm({ ...eventForm, event_upload_payment_screenshot: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="URL gambar QR/screenshot info pembayaran" />
+                                 {(eventPaymentScreenshotFile || eventForm.event_upload_payment_screenshot) && (
+                                    <div className="mb-2 relative w-32 h-32 rounded overflow-hidden border border-gray-100">
+                                       <img src={eventPaymentScreenshotFile ? URL.createObjectURL(eventPaymentScreenshotFile) : eventForm.event_upload_payment_screenshot} alt="payment qr" className="w-full h-full object-cover" />
+                                       <button type="button" onClick={() => { setEventPaymentScreenshotFile(null); setEventForm({ ...eventForm, event_upload_payment_screenshot: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
+                                    </div>
+                                 )}
+                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventPaymentScreenshotFile(e.target.files[0]); }} className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 transition-all cursor-pointer" />
+                                 <p className="text-xs text-gray-400 mt-1">Upload gambar QR atau screenshot info pembayaran (JPG, PNG, WEBP).</p>
                               </div>
                               <div>
                                  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Deskripsi Event</label>
