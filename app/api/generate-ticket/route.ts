@@ -19,9 +19,13 @@ function wrapText(text: string, maxCharsPerLine: number): string[] {
   return lines;
 }
 
+function sanitize(s: string): string {
+  return (s || '').replace(/[\/\\:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim().substring(0, 80);
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { registrationId, fullName, eventTitle, eventDate, eventDetail, cameraModel, paymentType } = await req.json();
+    const { registrationId, fullName, nomorWa, eventTitle, eventDate, eventDetail, cameraModel, paymentType } = await req.json();
 
     if (!registrationId || !fullName || !eventTitle) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -118,7 +122,13 @@ export async function POST(req: NextRequest) {
     }
 
     const pdfBytes = await pdfDoc.save();
-    const fileName = `Tiket_${fullName.replace(/\s+/g, '_')}_${registrationId.slice(0, 8)}.pdf`;
+    // Format konsisten dengan folder Pembayaran: tanggal_acara_nomorWa_namaLengkap
+    const fileName = [
+      sanitize(eventDate || 'tgl'),
+      sanitize(eventTitle || 'event'),
+      sanitize(nomorWa || 'wa'),
+      sanitize(fullName || 'nama'),
+    ].join('_') + '.pdf';
     const fileId = await uploadToGoogleDrive(new Blob([Buffer.from(pdfBytes)], { type: 'application/pdf' }), fileName, { mimeType: 'application/pdf', folderName: 'Tiket Event' });
     const ticketUrl = `https://drive.google.com/file/d/${fileId}/view`;
 

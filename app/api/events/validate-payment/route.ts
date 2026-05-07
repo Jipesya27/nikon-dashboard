@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         registrationId,
         fullName: reg.nama_lengkap,
+        nomorWa: reg.nomor_wa,
         eventTitle: reg.event_name,
         eventDate: reg.events?.event_date || '',
         eventDetail: reg.events?.event_description || '',
