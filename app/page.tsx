@@ -1978,22 +1978,38 @@ export default function NikonDashboard() {
                         </button>
                      ))}
 
-                     {/* EVENT TOOLS — link langsung ke page admin event */}
-                     <div className="pt-4 mt-4 border-t border-gray-200">
-                        <p className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Event Tools</p>
-                        <a href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 mb-2">
-                           <span className="flex items-center gap-2">📷 Absensi Scan QR</span>
-                           <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                        </a>
-                        <a href="/admin/events" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 mb-2">
-                           <span className="flex items-center gap-2">✅ Validasi Bayar</span>
-                           <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                        </a>
-                        <a href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200">
-                           <span className="flex items-center gap-2">💸 Deposit</span>
-                           <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                        </a>
-                     </div>
+                     {/* EVENT TOOLS — link langsung ke page admin event (di-gate per akses) */}
+                     {(() => {
+                        const isAdmin = currentUser?.role === 'Admin';
+                        const access = currentUser?.akses_halaman || [];
+                        const canAttendance = isAdmin || access.includes('admin_attendance');
+                        const canValidate = isAdmin || access.includes('admin_validate_payment');
+                        const canDeposit = isAdmin || access.includes('admin_deposit_refund');
+                        if (!canAttendance && !canValidate && !canDeposit) return null;
+                        return (
+                           <div className="pt-4 mt-4 border-t border-gray-200">
+                              <p className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Event Tools</p>
+                              {canAttendance && (
+                                 <a href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 mb-2">
+                                    <span className="flex items-center gap-2">📷 Absensi Scan QR</span>
+                                    <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                 </a>
+                              )}
+                              {canValidate && (
+                                 <a href="/admin/events" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 mb-2">
+                                    <span className="flex items-center gap-2">✅ Validasi Bayar</span>
+                                    <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                 </a>
+                              )}
+                              {canDeposit && (
+                                 <a href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200">
+                                    <span className="flex items-center gap-2">💸 Deposit</span>
+                                    <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                 </a>
+                              )}
+                           </div>
+                        );
+                     })()}
                   </div>
                </div>
 
@@ -3923,24 +3939,96 @@ export default function NikonDashboard() {
                                           </select>
                                        </div>
                                     </div>
-                                    <div className="mt-4 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
-                                       <label className="block text-sm font-bold text-gray-900 mb-2">Akses Halaman yang Diizinkan</label>
-                                       <p className="text-xs font-bold text-gray-500 mb-3">Pilih tab mana saja yang boleh dilihat oleh karyawan ini.</p>
-                                       <div className="grid grid-cols-2 gap-2">
-                                          {[{ id: 'messages', label: 'Pesan' }, { id: 'konsumen', label: 'Konsumen' }, { id: 'promos', label: 'Promo' }, { id: 'claims', label: 'Claim' }, { id: 'warranties', label: 'Garansi' }, { id: 'services', label: 'Service' }, { id: 'budgets', label: 'ProposalEvent' }, { id: 'import', label: 'Import Data' }, { id: 'lending', label: 'Peminjaman' }].map(tab => {
-                                             const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
-                                             return (
-                                                <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'} cursor-pointer`}>
-                                                   <input type="checkbox" checked={isChecked} disabled={karyawanForm.role === 'Admin'} onChange={() => {
-                                                      const current = karyawanForm.akses_halaman || [];
-                                                      if (current.includes(tab.id)) setKaryawanForm({ ...karyawanForm, akses_halaman: current.filter(x => x !== tab.id) });
-                                                      else setKaryawanForm({ ...karyawanForm, akses_halaman: [...current, tab.id] });
-                                                   }} className="w-4 h-4 text-black rounded focus:ring-black" />
-                                                   <span className="text-sm font-bold text-gray-700">{tab.label}</span>
-                                                </label>
-                                             )
-                                          })}
+                                    <div className="mt-4 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md space-y-4">
+                                       <div>
+                                          <label className="block text-sm font-bold text-gray-900 mb-2">Akses Halaman yang Diizinkan</label>
+                                          <p className="text-xs font-bold text-gray-500 mb-3">Pilih halaman/tab mana saja yang boleh diakses oleh karyawan ini.</p>
                                        </div>
+
+                                       {/* Tab Dashboard */}
+                                       <div>
+                                          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">📋 Tab Dashboard</p>
+                                          <div className="grid grid-cols-2 gap-2">
+                                             {[
+                                                { id: 'messages', label: 'Pesan' },
+                                                { id: 'konsumen', label: 'Konsumen' },
+                                                { id: 'promos', label: 'Promo' },
+                                                { id: 'claims', label: 'Claim' },
+                                                { id: 'warranties', label: 'Garansi' },
+                                                { id: 'services', label: 'Service' },
+                                                { id: 'budgets', label: 'ProposalEvent' },
+                                                { id: 'lending', label: 'Peminjaman' },
+                                                { id: 'import', label: 'Import Data' },
+                                                { id: 'botsettings', label: 'Bot Settings' },
+                                             ].map(tab => {
+                                                const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
+                                                return (
+                                                   <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'} cursor-pointer`}>
+                                                      <input type="checkbox" checked={isChecked} disabled={karyawanForm.role === 'Admin'} onChange={() => {
+                                                         const current = karyawanForm.akses_halaman || [];
+                                                         if (current.includes(tab.id)) setKaryawanForm({ ...karyawanForm, akses_halaman: current.filter(x => x !== tab.id) });
+                                                         else setKaryawanForm({ ...karyawanForm, akses_halaman: [...current, tab.id] });
+                                                      }} className="w-4 h-4 text-black rounded focus:ring-black" />
+                                                      <span className="text-sm font-bold text-gray-700">{tab.label}</span>
+                                                   </label>
+                                                );
+                                             })}
+                                          </div>
+                                       </div>
+
+                                       {/* Tab Event */}
+                                       <div>
+                                          <p className="text-[10px] font-bold text-yellow-600 uppercase tracking-wider mb-2">📅 Tab Event</p>
+                                          <div className="grid grid-cols-2 gap-2">
+                                             {[
+                                                { id: 'events', label: 'Master Event' },
+                                                { id: 'eventregistrations', label: 'Data Peserta' },
+                                             ].map(tab => {
+                                                const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
+                                                return (
+                                                   <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-100'} cursor-pointer`}>
+                                                      <input type="checkbox" checked={isChecked} disabled={karyawanForm.role === 'Admin'} onChange={() => {
+                                                         const current = karyawanForm.akses_halaman || [];
+                                                         if (current.includes(tab.id)) setKaryawanForm({ ...karyawanForm, akses_halaman: current.filter(x => x !== tab.id) });
+                                                         else setKaryawanForm({ ...karyawanForm, akses_halaman: [...current, tab.id] });
+                                                      }} className="w-4 h-4 text-black rounded focus:ring-black" />
+                                                      <span className="text-sm font-bold text-gray-700">{tab.label}</span>
+                                                   </label>
+                                                );
+                                             })}
+                                          </div>
+                                       </div>
+
+                                       {/* Halaman Admin Event */}
+                                       <div>
+                                          <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-2">🛠️ Halaman Admin Event</p>
+                                          <div className="grid grid-cols-1 gap-2">
+                                             {[
+                                                { id: 'admin_validate_payment', label: '✅ Validasi Pembayaran (/admin/events)', desc: 'Setujui/tolak pendaftaran event' },
+                                                { id: 'admin_attendance', label: '📷 Absensi & Scan QR (/admin/events/attendance)', desc: 'Konfirmasi kehadiran peserta' },
+                                                { id: 'admin_deposit_refund', label: '💸 Kelola Deposit (/admin/events/deposit)', desc: 'Cek registrasi & proses refund' },
+                                             ].map(tab => {
+                                                const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
+                                                return (
+                                                   <label key={tab.id} className={`flex items-start gap-2 p-2 rounded border ${isChecked ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-100'} cursor-pointer`}>
+                                                      <input type="checkbox" checked={isChecked} disabled={karyawanForm.role === 'Admin'} onChange={() => {
+                                                         const current = karyawanForm.akses_halaman || [];
+                                                         if (current.includes(tab.id)) setKaryawanForm({ ...karyawanForm, akses_halaman: current.filter(x => x !== tab.id) });
+                                                         else setKaryawanForm({ ...karyawanForm, akses_halaman: [...current, tab.id] });
+                                                      }} className="w-4 h-4 mt-0.5 text-black rounded focus:ring-black flex-shrink-0" />
+                                                      <div className="flex-1 min-w-0">
+                                                         <p className="text-sm font-bold text-gray-700 leading-tight">{tab.label}</p>
+                                                         <p className="text-[11px] text-gray-500">{tab.desc}</p>
+                                                      </div>
+                                                   </label>
+                                                );
+                                             })}
+                                          </div>
+                                       </div>
+
+                                       {karyawanForm.role === 'Admin' && (
+                                          <p className="text-xs text-gray-600 italic bg-yellow-50 border border-yellow-200 rounded p-2">⚡ Role <strong>Admin</strong> otomatis punya akses penuh ke semua halaman.</p>
+                                       )}
                                     </div>
                                  </>
                               )}
