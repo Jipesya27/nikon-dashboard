@@ -207,6 +207,7 @@ export default function NikonDashboard() {
    const [sortConfigLending, setSortConfigLending] = useState<SortConfig>({ column: '', direction: null });
    const [sortConfigKaryawans, setSortConfigKaryawans] = useState<SortConfig>({ column: '', direction: null });
    // UI STATES
+   const [sidebarOpen, setSidebarOpen] = useState(false);
    const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
    const [readStatus, setReadStatus] = useState<Record<string, string>>({});
    const [loading, setLoading] = useState(true);
@@ -1767,8 +1768,11 @@ export default function NikonDashboard() {
          <div className={`min-h-screen bg-gray-50 flex flex-col relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
 
             {/* HEADER */}
-            <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 shadow-lg border-b-4 border-[#FFE500] px-6 py-4 flex justify-between items-center text-white sticky top-0 z-20">
-               <div className="flex items-center gap-4">
+            <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 shadow-lg border-b-4 border-[#FFE500] px-4 md:px-6 py-4 flex justify-between items-center text-white sticky top-0 z-30">
+               <div className="flex items-center gap-3 md:gap-4">
+                  <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-gray-700 transition-colors">
+                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sidebarOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} /></svg>
+                  </button>
                   <div className="shadow-lg rounded-lg overflow-hidden">
                      <img src="/nikon-logo.svg" alt="Nikon" className="h-10 w-auto" />
                   </div>
@@ -1790,12 +1794,15 @@ export default function NikonDashboard() {
                </div>
             </header>
 
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden relative">
+               {/* MOBILE OVERLAY */}
+               {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-20 md:hidden" onClick={() => setSidebarOpen(false)} />}
+
                {/* SIDEBAR NAVIGATION */}
-               <div className="w-64 bg-white border-r border-gray-200 shadow-sm overflow-y-auto">
-                  <div className="p-4 space-y-2">
+               <div className={`fixed md:relative z-20 md:z-auto top-0 left-0 h-full w-64 bg-white border-r border-gray-200 shadow-sm overflow-y-auto transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+                  <div className="p-4 space-y-2 pt-20 md:pt-4">
                      {visibleTabs.map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between group ${activeTab === tab.id ? 'bg-[#FFE500] text-black shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}>
+                        <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between group ${activeTab === tab.id ? 'bg-[#FFE500] text-black shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}>
                            <span>{tab.label}</span>
                            {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${activeTab === tab.id ? 'bg-black/20' : 'bg-gray-200 text-gray-600'}`}>{tab.count}</span>}
                         </button>
@@ -1804,7 +1811,7 @@ export default function NikonDashboard() {
                </div>
 
                {/* MAIN CONTENT */}
-               <main className="flex-1 overflow-y-auto px-8 py-8 space-y-6">
+               <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
 
                {/* ======================= DASHBOARD OVERVIEW ======================= */}
                {activeTab === 'dashboard' && (
