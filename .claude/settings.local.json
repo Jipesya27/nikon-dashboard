@@ -39,7 +39,22 @@
       "Bash(git ls-tree *)",
       "Bash(supabase --version)",
       "Bash(supabase functions *)",
-      "Bash(rm -f dev.log)"
+      "Bash(rm -f dev.log)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Jamal\\\\Desktop\\\\nikon-dashboard\\\\.claude\\\\worktrees\\\\elegant-pike-e65f99\" -Force)",
+      "Bash(Select-Object Name, Mode)",
+      "Bash(npx tsc *)",
+      "Bash(npx supabase *)",
+      "Bash(type .env.local)",
+      "Bash(type .env)",
+      "Read(//c/Users/Jamal/Desktop/nikon-dashboard/**)",
+      "Bash(gh pr create --title 'feat: rombak skema Master Event — kolom baru, relasi konsumen & proposal' --body ' *)",
+      "Bash(dir .env*)",
+      "Bash(copy \"C:\\\\Users\\\\Jamal\\\\Desktop\\\\nikon-dashboard\\\\.env.local\" \"C:\\\\Users\\\\Jamal\\\\Desktop\\\\nikon-dashboard\\\\.claude\\\\worktrees\\\\elegant-pike-e65f99\\\\.env.local\")",
+      "Bash(cp \"C:/Users/Jamal/Desktop/nikon-dashboard/.env.local\" \"C:/Users/Jamal/Desktop/nikon-dashboard/.claude/worktrees/elegant-pike-e65f99/.env.local\" && ls -la C:/Users/Jamal/Desktop/nikon-dashboard/.claude/worktrees/elegant-pike-e65f99/.env.local)",
+      "Bash(curl -s \"https://hfqnlttxxrqarmpvtnhu.supabase.co/rest/v1/riwayat_pesan?limit=1\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmcW5sdHR4eHJxYXJtcHZ0bmh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDc0MTUsImV4cCI6MjA5MjMyMzQxNX0.diaYizgGiy2r6vlURrREP9W7TxE0OFF3vAaA19ptn0s\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmcW5sdHR4eHJxYXJtcHZ0bmh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDc0MTUsImV4cCI6MjA5MjMyMzQxNX0.diaYizgGiy2r6vlURrREP9W7TxE0OFF3vAaA19ptn0s\")",
+      "Bash(gh pr *)",
+      "Bash(git checkout *)",
+      "Bash(git mv *)"
     ]
   },
   "enabledPlugins": {
