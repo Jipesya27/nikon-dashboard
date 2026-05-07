@@ -1444,7 +1444,9 @@ export default function NikonDashboard() {
       const imgURL = canvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = imgURL;
-      a.download = `${c.nomor_seri}_Label.png`;
+      const sanitizedNama = nama.replace(/[^a-zA-Z0-9]/g, '_');
+      const sanitizedSeri = (c.nomor_seri || 'UNKNOWN').replace(/[^a-zA-Z0-9]/g, '_');
+      a.download = `${sanitizedNama}_${sanitizedSeri}_Label.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
