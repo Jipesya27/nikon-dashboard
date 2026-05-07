@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { chatbotTexts } from '@/app/chatbotTexts';
+import { whatsappMessages } from '@/app/whatsappMessages';
 import { uploadToGoogleDrive } from '@/app/lib/google-drive';
 
 const supabase = createClient(
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     if (refundUrl) {
       await sendWhatsApp(
         reg.nomor_wa,
-        chatbotTexts.depositRefundReady(reg.nama_lengkap, reg.event_name, refundUrl)
+        whatsappMessages.depositRefundReady(reg.nama_lengkap, reg.event_name, refundUrl)
       );
     }
 

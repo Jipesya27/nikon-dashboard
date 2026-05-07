@@ -1,4 +1,4 @@
-export const chatbotTexts = {
+export const whatsappMessages = {
   forgotPassword: (nama: string, tempPw: string) =>
     `Halo ${nama},\n\nPermintaan reset password Anda telah diterima. Password sementara Anda adalah: *${tempPw}*\n\nSilakan login dan segera ubah password Anda di dashboard.`,
 
