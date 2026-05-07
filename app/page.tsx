@@ -1980,6 +1980,23 @@ export default function NikonDashboard() {
                            {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${activeTab === tab.id ? 'bg-black/20' : 'bg-gray-200 text-gray-600'}`}>{tab.count}</span>}
                         </button>
                      ))}
+
+                     {/* EVENT TOOLS — link langsung ke page admin event */}
+                     <div className="pt-4 mt-4 border-t border-gray-200">
+                        <p className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Event Tools</p>
+                        <a href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 mb-2">
+                           <span className="flex items-center gap-2">📷 Absensi Scan QR</span>
+                           <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                        <a href="/admin/events" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 mb-2">
+                           <span className="flex items-center gap-2">✅ Validasi Bayar</span>
+                           <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                        <a href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200">
+                           <span className="flex items-center gap-2">💸 Deposit</span>
+                           <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                     </div>
                   </div>
                </div>
 
@@ -2173,7 +2190,7 @@ export default function NikonDashboard() {
                         )}
                         {activeTab === 'botsettings' && <button onClick={() => openModal('create', 'botsettings')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Pengaturan</button>}
                        {activeTab === 'events' && <button onClick={() => openModal('create', 'event')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Event</button>}
-                       {activeTab === 'eventregistrations' && <button onClick={() => setIsScannerOpen(true)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📷 Scan QR Kehadiran</button>}
+                       {activeTab === 'eventregistrations' && <a href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm flex items-center gap-1.5">📷 Absensi & Scan QR<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg></a>}
                         {activeTab === 'eventregistrations' && <button onClick={() => openModal('create', 'eventregistration')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Peserta</button>}
                         {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}
                         {activeTab === 'services' && <button onClick={() => openModal('create', 'service')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Service</button>}
