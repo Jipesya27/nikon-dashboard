@@ -52,7 +52,6 @@ interface PeminjamanItem {
    catatan_admin?: string; // Admin note during return
    status_pengembalian: 'dipinjam' | 'dikembalikan';
 }
-interface PeminjamanBarang { id_peminjaman?: string; nomor_wa_peminjam: string; nama_peminjam: string; link_ktp_peminjam?: string | File | null; items_dipinjam: PeminjamanItem[]; tanggal_peminjaman?: string; tanggal_pengembalian?: string | null; status_peminjaman: 'aktif' | 'selesai'; created_at?: string; updated_at?: string; }
 interface PeminjamanBarang {
    id_peminjaman?: string;
    nomor_wa_peminjam: string;
@@ -156,15 +155,15 @@ export default function NikonDashboard() {
    const getClaimStatusColor = (c: ClaimPromo) => {
       const mkt = (c.validasi_by_mkt || '').trim().toLowerCase();
       const fa = (c.validasi_by_fa || '').trim().toLowerCase();
+      const isPending = (v: string) => v === 'dalam proses verifikasi' || v === 'dalam proses validasi' || v === '';
       if (mkt === 'double input') return 'Merah';
-      if (mkt === 'dalam proses verifikasi' || mkt === 'dalam proses validasi') return 'Putih';      
-      if (c.nomor_resi && c.nomor_resi.trim() !== '' && c.nomor_resi.trim().toUpperCase() !== 'BELUM_DIISI') return 'Hijau';      
+      if (mkt === 'tidak valid') return 'Merah';
+      if (isPending(mkt)) return 'Putih';
+      if (c.nomor_resi && c.nomor_resi.trim() !== '' && c.nomor_resi.trim().toUpperCase() !== 'BELUM_DIISI') return 'Hijau';
       if (mkt === 'valid' && fa === 'valid') return 'Pink';
-      if (mkt === 'valid' && (fa === 'dalam proses verifikasi' || fa === 'dalam proses validasi' || fa === '')) return 'Biru';
+      if (mkt === 'valid' && isPending(fa)) return 'Biru';
       if (mkt === 'hold' && fa !== 'valid') return 'Orange';
-      if (mkt === 'tidak valid' && (fa === 'dalam proses verifikasi' || fa === 'dalam proses validasi' || fa === '')) return 'Merah';
-      if ((mkt === 'dalam proses verifikasi' || mkt === 'dalam proses validasi' || mkt === '') && (fa === 'dalam proses verifikasi' || fa === 'dalam proses validasi' || fa === '')) return 'Putih';
-      return 'Putih'; // default fallback
+      return 'Putih';
    };
 
    const getBadgeStyle = (color: string) => {
@@ -259,8 +258,6 @@ export default function NikonDashboard() {
    const [isDragging, setIsDragging] = useState(false);
    const [startDragPosition, setStartDragPosition] = useState({ x: 0, y: 0 });
 
-   // --- DYNAMIC DATALIST OPTIONS ---
-
    // --- SORTING LOGIC ---
    const handleSort = (sortConfig: SortConfig, setSortConfig: React.Dispatch<React.SetStateAction<SortConfig>>, column: string) => {
       let direction: SortDirection = 'asc';
@@ -339,8 +336,6 @@ export default function NikonDashboard() {
       };
    }, [claims, warranties, promos, services, karyawans, budgets, lendingRecords]); // Menambahkan lendingRecords ke dependensi
 
-   // --- IMAGE VIEWER LOGIC ---
-   // Helper function untuk mendeteksi apakah URL adalah Google Drive atau layanan Google lainnya
    const isGoogleDriveLink = (url: string): boolean => {
       if (typeof url !== 'string') return false;
       return /(?:drive\.google\.com|docs\.google\.com|sheets\.google\.com|slides\.google\.com|forms\.google\.com)/.test(url);
@@ -538,10 +533,6 @@ export default function NikonDashboard() {
       return () => { subscription.unsubscribe(); };
    }, [isLoggedIn, dateRange]);
 
-   useEffect(() => {
-      // Print handled manually via button in the print overlay
-   }, [printData]);
-
    const handlePrintDocument = () => {
       if (printData) {
          const originalTitle = document.title;
@@ -609,100 +600,54 @@ export default function NikonDashboard() {
    // --- FETCH DATA ---
    const fetchConsumers = async () => {
       try {
-         console.log("[INDICATOR DASHBOARD 1] Memulai fetchConsumers...");
          const map: Record<string, string> = {};
          const { data: konsumenData, error: kErr } = await supabase.from('konsumen').select('*').order('created_at', { ascending: false });
-         if (kErr) console.warn("[INDICATOR DASHBOARD 1B] Error fetch konsumen:", kErr?.message || kErr);
+         if (kErr) console.error("Error fetch konsumen:", kErr.message);
          if (konsumenData) {
             setConsumersList(konsumenData);
             konsumenData.forEach(k => { if (k.nama_lengkap) map[k.nomor_wa] = k.nama_lengkap; });
          }
          const { data: riwayatData, error: rErr } = await supabase.from('riwayat_pesan').select('nomor_wa, nama_profil_wa').neq('nama_profil_wa', 'Sistem Bot').order('created_at', { ascending: false });
-         if (rErr) console.warn("[INDICATOR DASHBOARD 2] Error fetch riwayatData:", rErr?.message || rErr);
+         if (rErr) console.error("Error fetch riwayat:", rErr.message);
          riwayatData?.forEach(r => { if (r.nomor_wa && !map[r.nomor_wa]) map[r.nomor_wa] = r.nama_profil_wa; });
-         console.log("[INDICATOR DASHBOARD 3] Consumers map size:", Object.keys(map).length);
          setConsumers(map);
       } catch (err) {
-         console.error("[INDICATOR DASHBOARD 1C] Unexpected error in fetchConsumers:", err);
+         console.error("fetchConsumers error:", err);
       }
    };
 
    const fetchMessages = async () => {
       try {
-         console.log("[INDICATOR DASHBOARD 4] Memulai fetchMessages. Range:", dateRange);
          const { data, error } = await supabase.from('riwayat_pesan').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false });
-         if (error) {
-            console.error("[INDICATOR DASHBOARD 5] Error fetchMessages:", error?.message || error?.code || JSON.stringify(error));
-         } else {
-            console.log("[INDICATOR DASHBOARD 6] Messages fetched count:", data?.length || 0);
-         }
+         if (error) console.error("fetchMessages error:", error.message);
          setMessages(data || []);
       } catch (err) {
-         console.error("[INDICATOR DASHBOARD 5B] Unexpected error in fetchMessages:", err);
+         console.error("fetchMessages error:", err);
          setMessages([]);
       }
    };
-   const fetchClaims = async () => {
+   const fetchTable = async <T,>(table: string, setter: (d: T[]) => void, options?: { dateFilter?: boolean; ascending?: boolean }) => {
       try {
-         const { data, error } = await supabase.from('claim_promo').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false });
-         if (error) console.error("[FETCH] Error fetching claims:", error?.message || error);
-         setClaims(data || []);
+         let query = supabase.from(table).select('*');
+         if (options?.dateFilter) {
+            query = query.gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`);
+         }
+         query = query.order('created_at', { ascending: options?.ascending ?? false });
+         const { data, error } = await query;
+         if (error) console.error(`fetch ${table}:`, error.message);
+         setter((data || []) as T[]);
       } catch (err) {
-         console.error("[FETCH] Unexpected error fetching claims:", err);
-         setClaims([]);
+         console.error(`fetch ${table}:`, err);
+         setter([]);
       }
    };
-   const fetchWarranties = async () => {
-      try {
-         const { data, error } = await supabase.from('garansi').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false });
-         if (error) console.error("[FETCH] Error fetching warranties:", error?.message || error);
-         setWarranties(data || []);
-      } catch (err) {
-         console.error("[FETCH] Unexpected error fetching warranties:", err);
-         setWarranties([]);
-      }
-   };
-   const fetchPromos = async () => {
-      try {
-         const { data, error } = await supabase.from('promosi').select('*').order('created_at', { ascending: false });
-         if (error) console.error("[FETCH] Error fetching promos:", error?.message || error);
-         setPromos(data || []);
-      } catch (err) {
-         console.error("[FETCH] Unexpected error fetching promos:", err);
-         setPromos([]);
-      }
-   };
-   const fetchServices = async () => {
-      try {
-         const { data, error } = await supabase.from('status_service').select('*').order('created_at', { ascending: false });
-         if (error) console.error("[FETCH] Error fetching services:", error?.message || error);
-         setServices(data || []);
-      } catch (err) {
-         console.error("[FETCH] Unexpected error fetching services:", err);
-         setServices([]);
-      }
-   };
-   const fetchBudgets = async () => {
-      try {
-         const { data, error } = await supabase.from('budget_approval').select('*').order('created_at', { ascending: false });
-         if (error) console.error("[FETCH] Error fetching budgets:", error?.message || error);
-         setBudgets(data || []);
-      } catch (err) {
-         console.error("[FETCH] Unexpected error fetching budgets:", err);
-         setBudgets([]);
-      }
-      setLoading(false);
-   };
-   const fetchLendingRecords = async () => {
-      try {
-         const { data, error } = await supabase.from('peminjaman_barang').select('*').order('created_at', { ascending: false });
-         if (error) console.error("[FETCH] Error fetching lending records:", error?.message || error);
-         setLendingRecords(data || []);
-      } catch (err) {
-         console.error("[FETCH] Unexpected error fetching lending records:", err);
-         setLendingRecords([]);
-      }
-   };
+
+   const fetchClaims = () => fetchTable<ClaimPromo>('claim_promo', setClaims, { dateFilter: true });
+   const fetchWarranties = () => fetchTable<Garansi>('garansi', setWarranties, { dateFilter: true });
+   const fetchPromos = () => fetchTable<Promosi>('promosi', setPromos);
+   const fetchServices = () => fetchTable<StatusService>('status_service', setServices);
+   const fetchBudgets = async () => { await fetchTable<BudgetApproval>('budget_approval', setBudgets); setLoading(false); };
+   const fetchLendingRecords = () => fetchTable<PeminjamanBarang>('peminjaman_barang', setLendingRecords);
    
    useEffect(() => {
       if (isScannerOpen) {
@@ -734,10 +679,10 @@ export default function NikonDashboard() {
    const fetchKaryawans = async () => {
       try {
          const { data, error } = await supabase.from('karyawan').select('*').order('created_at', { ascending: true });
-         if (error) console.warn("[FETCH] Error fetching karyawans:", error?.message || error);
+         if (error) console.error("fetch karyawan:", error.message);
          setKaryawans(data || []);
       } catch (err) {
-         console.error("[FETCH] Unexpected error fetching karyawans:", err);
+         console.error("fetch karyawan:", err);
          setKaryawans([]);
       }
    };
@@ -1538,12 +1483,6 @@ export default function NikonDashboard() {
       a.click();
       document.body.removeChild(a);
    };
-
-   const uniqueTipeBarang = Array.from(new Set([...claims.map(c => c.tipe_barang), ...warranties.map(w => w.tipe_barang)])).filter(Boolean);
-   const uniqueToko = Array.from(new Set(claims.map(c => c.nama_toko))).filter(Boolean);
-   const uniqueJasa = Array.from(new Set(claims.map(c => c.nama_jasa_pengiriman))).filter(Boolean);
-   const uniqueJenisPromo = Array.from(new Set([...claims.map(c => c.jenis_promosi), ...promos.map(p => p.nama_promo)])).filter(Boolean);
-   const uniqueRoles = Array.from(new Set(karyawans.map(k => k.role))).filter(Boolean);
 
    const uniqueContacts = useMemo(() => {
       return Array.from(messages.reduce((map, msg) => {
