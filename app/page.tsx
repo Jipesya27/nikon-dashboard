@@ -137,7 +137,7 @@ export default function NikonDashboard() {
          case 'Biru': return 'bg-blue-100 text-blue-800 border border-blue-200';
          case 'Orange': return 'bg-orange-100 text-orange-800 border border-orange-200';
          case 'Merah': return 'bg-red-100 text-red-800 border border-red-200';
-         case 'Putih': default: return 'bg-white text-slate-800 border border-slate-300';
+         case 'Putih': default: return 'bg-white text-slate-800 border border-gray-300';
       }
    };
 
@@ -175,7 +175,7 @@ export default function NikonDashboard() {
    const [readStatus, setReadStatus] = useState<Record<string, string>>({});
    const [loading, setLoading] = useState(true);
    const [dbStatus, setDbStatus] = useState<{ connected: boolean; message: string }>({ connected: false, message: 'Menghubungkan...' });
-   const [activeTab, setActiveTab] = useState('messages');
+   const [activeTab, setActiveTab] = useState('dashboard');
    const [returnTab, setReturnTab] = useState<string | null>(null);
    const [dateRange, setDateRange] = useState({ start: '2024-01-01', end: new Date().toISOString().split('T')[0] });
    const [msgTimeFilter, setMsgTimeFilter] = useState<'day' | 'week' | 'month'>('day');
@@ -1560,7 +1560,8 @@ export default function NikonDashboard() {
    }, [filteredLendingRecords, sortConfigLending, consumers]);
 
    const ALL_TABS = [
-            { id: 'messages', label: '💬 Pesan', count: messages.length },
+      { id: 'dashboard', label: '🎯 Dashboard', count: undefined },
+      { id: 'messages', label: '💬 Pesan', count: messages.length },
       { id: 'konsumen', label: '👥 Konsumen', count: consumersList.length },
 
       { id: 'promos', label: '📢 Promo', count: promos.length },
@@ -1590,40 +1591,47 @@ export default function NikonDashboard() {
 
    if (!isLoggedIn) {
       return (
-         <div className="flex items-center justify-center min-h-screen bg-black text-slate-900 relative overflow-hidden">
+         <div className="flex items-center justify-center min-h-screen bg-black text-gray-900 relative overflow-hidden">
             <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#FFE500 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-            <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm relative z-10 border-t-4 border-[#FFE500]">
-               <div className="text-center mb-8">
-                  <div className="bg-black text-[#FFE500] font-black text-3xl tracking-tighter inline-block px-4 py-1 mb-3 -skew-x-6 shadow-md">NIKON</div>
-                  <p className="text-sm text-slate-500 font-medium">Masuk untuk mengelola Bot & Data</p>
+            <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-sm relative z-10 border-t-4 border-[#FFE500]">
+               <div className="text-center mb-10">
+                  <div className="bg-gray-900 text-[#FFE500] font-black text-4xl tracking-tighter inline-block px-5 py-2 mb-4 rounded-xl shadow-lg transform hover:scale-105 transition">
+                     📷 NIKON
+                  </div>
+                  <p className="text-sm text-gray-600 font-semibold">Dashboard Manajemen</p>
+                  <p className="text-xs text-gray-500 mt-1">Masuk untuk mengelola Bot & Data</p>
                </div>
-               {loginError && <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded text-sm mb-4 font-medium shadow-sm">{loginError}</div>}
+               {loginError && <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg text-sm mb-5 font-medium shadow-sm">{loginError}</div>}
 
                {!isForgotPw ? (
                   <form onSubmit={handleLogin} className="space-y-5 animate-fade-in">
                      <div>
-                        <label className="block text-sm font-bold mb-1.5 text-slate-700">Username</label>
-                        <input type="text" value={loginForm.username} onChange={e => setLoginForm({ ...loginForm, username: e.target.value })} required className="w-full border-2 border-slate-200 rounded-lg px-4 py-2.5 outline-none focus:border-black focus:ring-4 focus:ring-black/5 bg-slate-50 text-slate-900 transition-all" />
+                        <label className="block text-sm font-bold mb-2 text-gray-800">Username</label>
+                        <input type="text" value={loginForm.username} onChange={e => setLoginForm({ ...loginForm, username: e.target.value })} required className="input-modern" placeholder="Masukkan username" />
                      </div>
                      <div>
-                        <label className="block text-sm font-bold mb-1.5 text-slate-700">Password</label>
-                        <input type="password" value={loginForm.password} onChange={e => setLoginForm({ ...loginForm, password: e.target.value })} required className="w-full border-2 border-slate-200 rounded-lg px-4 py-2.5 outline-none focus:border-black focus:ring-4 focus:ring-black/5 bg-slate-50 text-slate-900 transition-all" />
+                        <label className="block text-sm font-bold mb-2 text-gray-800">Password</label>
+                        <input type="password" value={loginForm.password} onChange={e => setLoginForm({ ...loginForm, password: e.target.value })} required className="input-modern" placeholder="Masukkan password" />
                      </div>
-                     <button type="submit" className="w-full bg-[#FFE500] hover:bg-[#E5CE00] text-black py-3 rounded-lg font-extrabold mt-4 transition-all transform hover:-translate-y-0.5 shadow-lg shadow-[#FFE500]/30">MASUK</button>
-                     <div className="text-center mt-5">
-                        <button type="button" onClick={() => setIsForgotPw(true)} className="text-sm font-bold text-slate-500 hover:text-black transition-colors">Lupa Password?</button>
+                     <button type="submit" className="btn-primary w-full mt-4">
+                        🔓 MASUK
+                     </button>
+                     <div className="text-center mt-6">
+                        <button type="button" onClick={() => setIsForgotPw(true)} className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">Lupa Password?</button>
                      </div>
                   </form>
                ) : (
-                  <form onSubmit={handleForgotPwSubmit} className="space-y-4 animate-fade-in">
-                     {forgotPwMessage && <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded text-sm font-medium mb-4">{forgotPwMessage}</div>}
+                  <form onSubmit={handleForgotPwSubmit} className="space-y-5 animate-fade-in">
+                     {forgotPwMessage && <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg text-sm font-medium mb-4">{forgotPwMessage}</div>}
                      <div>
-                        <label className="block text-sm font-bold mb-1 text-slate-700">Nomor WhatsApp Terdaftar</label>
-                        <input type="text" value={forgotPwUsername} onChange={e => setForgotPwUsername(e.target.value)} required className="w-full border-2 border-slate-200 rounded-lg px-4 py-2.5 outline-none focus:border-black bg-slate-50 text-slate-900" placeholder="Contoh: 62812345678" />
+                        <label className="block text-sm font-bold mb-2 text-gray-800">Nomor WhatsApp Terdaftar</label>
+                        <input type="text" value={forgotPwUsername} onChange={e => setForgotPwUsername(e.target.value)} required className="input-modern" placeholder="Contoh: 62812345678" />
                      </div>
-                     <button type="submit" disabled={isSubmitting} className="w-full bg-black hover:bg-gray-800 text-white py-3 rounded-lg font-bold mt-2 transition disabled:opacity-50">{isSubmitting ? 'Mengirim...' : 'Kirim Password Baru'}</button>
-                     <div className="text-center mt-4">
-                        <button type="button" onClick={() => { setIsForgotPw(false); setForgotPwMessage(''); setForgotPwUsername(''); }} className="text-sm font-bold text-slate-500 hover:text-slate-800">Kembali ke Login</button>
+                     <button type="submit" disabled={isSubmitting} className="btn-secondary w-full">
+                        {isSubmitting ? '⏳ Mengirim...' : '📤 Kirim Password Baru'}
+                     </button>
+                     <div className="text-center mt-6">
+                        <button type="button" onClick={() => { setIsForgotPw(false); setForgotPwMessage(''); setForgotPwUsername(''); }} className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">← Kembali ke Login</button>
                      </div>
                   </form>
                )}
@@ -1636,49 +1644,157 @@ export default function NikonDashboard() {
 
    return (
       <>
-         <div className={`min-h-screen bg-slate-50 pb-12 relative text-slate-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
+         <div className={`min-h-screen bg-gray-50 pb-12 relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
 
-            <header className="bg-black shadow-md border-b-4 border-[#FFE500] px-6 py-4 flex justify-between items-center text-white sticky top-0 z-20">
-               <div className="flex items-center gap-4">
-                  <div className="bg-[#FFE500] text-black font-black text-xl tracking-tighter px-3 py-1 -skew-x-6">NIKON</div>
+            <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 shadow-lg border-b-4 border-[#FFE500] px-6 py-5 flex justify-between items-center text-white sticky top-0 z-20">
+               <div className="flex items-center gap-5">
+                  <div className="bg-[#FFE500] text-black font-black text-2xl tracking-tighter px-4 py-2 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
+                     📷 NIKON
+                  </div>
                   <div>
-                     <h1 className="text-lg font-bold tracking-wide">Alta Nikindo Dashboard</h1>
-                     <p className="text-xs text-slate-400 font-medium">Role: <span className="text-[#FFE500]">{currentUser?.role}</span></p>
+                     <h1 className="text-xl font-bold tracking-wide">Alta Nikindo Dashboard</h1>
+                     <p className="text-xs text-gray-400 font-medium">Role: <span className="text-[#FFE500] font-bold">{currentUser?.role}</span></p>
                   </div>
                </div>
-               <div className="flex items-center gap-4">
+               <div className="flex items-center gap-3">
                   <div className="hidden md:block text-right">
-                     <span className="text-sm font-medium text-slate-300 block">Selamat datang kembali,</span>
-                     <span className="text-sm font-bold text-[#FFE500]">{currentUser?.nama_karyawan} 🚀</span>
+                     <span className="text-sm font-medium text-gray-400 block">Selamat datang,</span>
+                     <span className="text-sm font-bold text-[#FFE500]">{currentUser?.nama_karyawan}</span>
                   </div>
-                  <a href="/chatbot" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center gap-2">
-                     <span>🤖</span> Chatbot
+                  <div className="w-10 h-10 rounded-full bg-[#FFE500] text-black font-bold flex items-center justify-center shadow-md">{currentUser?.nama_karyawan?.substring(0, 1).toUpperCase()}</div>
+                  <a href="/chatbot" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
+                     <span>🤖</span>
                   </a>
-                  <button onClick={handleLogout} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">Logout</button>
+                  <button onClick={handleLogout} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">Logout</button>
                </div>
             </header>
 
-            <div className="bg-slate-50 border-b border-slate-200 sticky top-[76px] z-10 px-6 w-full shadow-sm">
-               <div className="flex flex-col items-center max-w-7xl mx-auto py-3">
-                  <div className="flex flex-wrap gap-2 md:gap-3 justify-center animate-fade-in w-full">
+            <div className="bg-white border-b border-gray-100 sticky top-[80px] z-10 px-6 w-full shadow-sm">
+               <div className="flex flex-col items-center max-w-7xl mx-auto">
+                  <div className="flex flex-wrap gap-3 justify-center animate-fade-in w-full overflow-x-auto pb-2">
                      {visibleTabs.map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-5 py-2 font-bold whitespace-nowrap transition-all rounded-full border ${activeTab === tab.id ? 'bg-[#FFE500] text-black border-[#FFE500] shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100 hover:text-black'}`}>
-                           {tab.label} {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-full ml-2 ${activeTab === tab.id ? 'bg-black/10 text-black' : 'bg-slate-100 text-slate-500'}`}>{tab.count}</span>}
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-6 py-3 font-bold whitespace-nowrap transition-all rounded-lg border-b-2 text-sm ${activeTab === tab.id ? 'border-[#FFE500] text-black bg-yellow-50' : 'border-transparent text-gray-600 hover:text-black hover:bg-gray-50'}`}>
+                           {tab.label} {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-md ml-2 font-semibold ${activeTab === tab.id ? 'bg-[#FFE500] text-black' : 'bg-gray-100 text-gray-600'}`}>{tab.count}</span>}
                         </button>
                      ))}
                   </div>
                </div>
             </div>
-            <main className="max-w-7xl mx-auto px-6 py-8">
+            <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+
+               {/* ======================= DASHBOARD OVERVIEW ======================= */}
+               {activeTab === 'dashboard' && (
+                  <div className="animate-fade-in space-y-6">
+                     {/* WELCOME CARD */}
+                     <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-2xl p-8 text-white shadow-lg border border-gray-700">
+                        <div className="flex justify-between items-start">
+                           <div>
+                              <h2 className="text-3xl font-bold mb-2">Selamat Datang Kembali! 👋</h2>
+                              <p className="text-gray-300">Anda login sebagai <span className="font-bold text-[#FFE500]">{currentUser?.nama_karyawan}</span> ({currentUser?.role})</p>
+                              <p className="text-gray-400 text-sm mt-2">Dashboard diperbarui untuk pengalaman yang lebih baik</p>
+                           </div>
+                           <div className="text-6xl">📷</div>
+                        </div>
+                     </div>
+
+                     {/* STATISTICS CARDS */}
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="stat-card hover:shadow-lg transition-all">
+                           <div className="flex items-center justify-between mb-3">
+                              <div>
+                                 <p className="stat-label">Total Messages</p>
+                                 <p className="stat-value">{messages.length}</p>
+                              </div>
+                              <div className="text-4xl">💬</div>
+                           </div>
+                           <div className="text-xs text-gray-500">Chat history</div>
+                        </div>
+
+                        <div className="stat-card hover:shadow-lg transition-all">
+                           <div className="flex items-center justify-between mb-3">
+                              <div>
+                                 <p className="stat-label">Claims Promo</p>
+                                 <p className="stat-value">{claims.length}</p>
+                              </div>
+                              <div className="text-4xl">🎁</div>
+                           </div>
+                           <div className="text-xs text-gray-500">Active claims</div>
+                        </div>
+
+                        <div className="stat-card hover:shadow-lg transition-all">
+                           <div className="flex items-center justify-between mb-3">
+                              <div>
+                                 <p className="stat-label">Warranties</p>
+                                 <p className="stat-value">{warranties.length}</p>
+                              </div>
+                              <div className="text-4xl">🛡️</div>
+                           </div>
+                           <div className="text-xs text-gray-500">Product warranties</div>
+                        </div>
+
+                        <div className="stat-card hover:shadow-lg transition-all">
+                           <div className="flex items-center justify-between mb-3">
+                              <div>
+                                 <p className="stat-label">Employees</p>
+                                 <p className="stat-value">{karyawans.length}</p>
+                              </div>
+                              <div className="text-4xl">👥</div>
+                           </div>
+                           <div className="text-xs text-gray-500">Team members</div>
+                        </div>
+                     </div>
+
+                     {/* QUICK ACTIONS */}
+                     <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">⚡ Quick Actions</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                           <button onClick={() => setActiveTab('messages')} className="btn-primary text-center py-3 rounded-lg font-semibold hover:shadow-lg transition">
+                              📨 Open Messages
+                           </button>
+                           <button onClick={() => setActiveTab('claims')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition shadow-sm">
+                              🎯 View Claims
+                           </button>
+                           <button onClick={() => setActiveTab('import')} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition shadow-sm">
+                              📤 Import Data
+                           </button>
+                        </div>
+                     </div>
+
+                     {/* INFO CARDS */}
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6">
+                           <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2">💡 Tips</h4>
+                           <ul className="text-sm text-blue-800 space-y-1">
+                              <li>• Gunakan tab Pesan untuk komunikasi real-time</li>
+                              <li>• Import data dalam urutan yang benar untuk hasil optimal</li>
+                              <li>• Periksa database status di bagian bawah</li>
+                           </ul>
+                        </div>
+                        <div className="bg-green-50 border border-green-100 rounded-2xl p-6">
+                           <h4 className="font-bold text-green-900 mb-2 flex items-center gap-2">✅ System Status</h4>
+                           <div className="text-sm text-green-800 space-y-1">
+                              <div className="flex items-center gap-2">
+                                 <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                 Database Connected
+                              </div>
+                              <div className="flex items-center gap-2">
+                                 <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                 All Services Running
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               )}
 
                {/* ======================= IMPORT DATA TAB ======================= */}
                {activeTab === 'import' && (
-                  <div className="space-y-8 animate-fade-in text-slate-900">
-                     <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
-                        <h2 className="text-xl font-bold mb-4">Pusat Upload & Update Database</h2>
-                        <p className="text-slate-600 mb-6 text-sm">Pilih tabel target, unduh template untuk menyesuaikan kolom, lalu unggah file CSV Anda. Sistem akan melakukan *Upsert* (Update jika data sudah ada, Insert jika data baru).</p>
-                        <p>Urutan template yang diupload :</p>
-                        <ul className="list-disc list-inside text-slate-600 text-sm mb-6">
+                  <div className="space-y-8 animate-fade-in text-gray-900">
+                     <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-md">
+                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">📤 Pusat Upload & Update Database</h2>
+                        <p className="text-gray-600 mb-6 text-sm">Pilih tabel target, unduh template untuk menyesuaikan kolom, lalu unggah file CSV Anda. Sistem akan melakukan *Upsert* (Update jika data sudah ada, Insert jika data baru).</p>
+                        <p className="font-semibold text-gray-800 mb-3">Urutan template yang diupload :</p>
+                        <ul className="list-disc list-inside text-gray-600 text-sm mb-6">
                            <li>Template 1: Tabel Konsumen (Wajib jika data konsumen belum ada, jika sudah bisa lanjut ke upload yang lainnya)</li>
                            <li>Template 2: Tabel Claim Promo</li>
                            <li>Template 3: Tabel Garansi</li>
@@ -1687,7 +1803,7 @@ export default function NikonDashboard() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                            <div>
                               <label className="block text-sm font-bold mb-2">1. Pilih Tabel Database</label>
-                              <select value={importTarget} onChange={e => setImportTarget(e.target.value as any)} className="w-full border border-slate-300 p-3 rounded-md bg-white text-slate-900 outline-none focus:ring-2 focus:ring-black">
+                              <select value={importTarget} onChange={e => setImportTarget(e.target.value as any)} className="w-full border border-gray-300 p-3 rounded-md bg-white text-gray-900 outline-none focus:ring-2 focus:ring-black">
                                  <option value="claim_promo">Tabel Claim Promo</option>
                                  <option value="garansi">Tabel Garansi</option>
                                  <option value="konsumen">Tabel Konsumen</option>
@@ -1695,16 +1811,16 @@ export default function NikonDashboard() {
                               </select>
                            </div>
                            <div>
-                              <button onClick={downloadTemplate} className="w-full bg-slate-800 text-white p-3 rounded-md font-bold hover:bg-slate-700 transition">
+                              <button onClick={downloadTemplate} className="w-full bg-gray-800 text-white p-3 rounded-md font-bold hover:bg-gray-700 transition">
                                  📥 Unduh Template CSV
                               </button>
                            </div>
                         </div>
 
-                        <div className="mt-10 p-10 border-2 border-dashed border-slate-300 rounded-xl text-center bg-slate-50">
+                        <div className="mt-10 p-10 border-2 border-dashed border-gray-300 rounded-xl text-center bg-gray-50">
                            <div className="mb-4 text-4xl">📄</div>
                            <h3 className="font-bold text-lg mb-1">Upload File CSV</h3>
-                           <p className="text-slate-500 text-sm mb-6">Pastikan file bertipe .csv dan mengikuti format template.</p>
+                           <p className="text-gray-500 text-sm mb-6">Pastikan file bertipe .csv dan mengikuti format template.</p>
                            <button onClick={() => fileInputRef.current?.click()} disabled={isSubmitting} className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 disabled:bg-slate-300 transition shadow-md">
                               {isSubmitting ? 'Sedang Memproses...' : 'Pilih File & Upload'}
                            </button>
@@ -1726,18 +1842,18 @@ export default function NikonDashboard() {
 
                {/* ======================= OTHER TABS FILTER HEADER ======================= */}
                {activeTab !== 'import' && activeTab !== 'lending' && activeTab !== 'messages' && (
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 flex flex-wrap gap-4 justify-between items-center text-slate-900 mb-6">
+                  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-wrap gap-4 justify-between items-center text-gray-900 mb-6">
                      <div className="flex flex-wrap gap-4 items-center">
                         {activeTab !== 'konsumen' && activeTab !== 'budgets' && activeTab !== 'userrole' && (
                            <>
-                              <label className="text-sm font-bold">Dari: <input type="date" value={dateRange.start} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} className="ml-2 border border-slate-300 bg-white text-slate-900 rounded p-1 outline-none focus:border-[#FFE500]" /></label>
-                              <label className="text-sm font-bold">Sampai: <input type="date" value={dateRange.end} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} className="ml-2 border border-slate-300 bg-white text-slate-900 rounded p-1 outline-none focus:border-[#FFE500]" /></label>
+                              <label className="text-sm font-bold">Dari: <input type="date" value={dateRange.start} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} className="ml-2 border border-gray-300 bg-white text-gray-900 rounded p-1 outline-none focus:border-[#FFE500]" /></label>
+                              <label className="text-sm font-bold">Sampai: <input type="date" value={dateRange.end} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} className="ml-2 border border-gray-300 bg-white text-gray-900 rounded p-1 outline-none focus:border-[#FFE500]" /></label>
                            </>
                         )}
                         {activeTab !== 'konsumen' && (
                            <div className="flex items-center gap-2">
-                              <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>📋Baris</button>
-                              <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🪪Kartu</button>
+                              <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>📋Baris</button>
+                              <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>🪪Kartu</button>
                            </div>
                         )}
                         {activeTab === 'konsumen' && <button onClick={() => openModal('create', 'konsumen')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Konsumen</button>}
@@ -1745,7 +1861,7 @@ export default function NikonDashboard() {
                      <div className="flex flex-wrap gap-2 items-center">
                         {activeTab === 'claims' && (
                            <>
-                              <button onClick={handleExportCSVClaim} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📥 Export CSV</button>
+                              <button onClick={handleExportCSVClaim} className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📥 Export CSV</button>
                               <button onClick={() => openModal('create', 'claim')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Claim</button>
                               </>
                         )}
@@ -1764,40 +1880,40 @@ export default function NikonDashboard() {
 
                {/* ======================= PESAN ======================= */}
                {activeTab === 'messages' && (
-                  <div className="animate-fade-in text-slate-900 h-[calc(100vh-220px)] bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden flex">
+                  <div className="animate-fade-in text-gray-900 h-[calc(100vh-220px)] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex">
                      {/* SIDEBAR: DAFTAR CHAT */}
-                     <div className={`w-full md:w-[350px] lg:w-[400px] border-r border-slate-200 flex flex-col bg-white shrink-0 ${selectedWa ? 'hidden md:flex' : 'flex'}`}>
-                        <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
-                           <h3 className="font-bold text-lg">Pesan</h3>
-                           <button onClick={handleRunCleanup} disabled={isSubmitting} className="ml-auto mr-2 p-2 text-slate-500 hover:text-red-600 transition" title="Bersihkan Sesi Inaktif">
+                     <div className={`w-full md:w-[360px] lg:w-[420px] border-r border-gray-100 flex flex-col bg-white shrink-0 ${selectedWa ? 'hidden md:flex' : 'flex'}`}>
+                        <div className="p-5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex justify-between items-center shrink-0">
+                           <h3 className="font-bold text-lg flex items-center gap-2">💬 Pesan</h3>
+                           <button onClick={handleRunCleanup} disabled={isSubmitting} className="ml-auto mr-3 p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Bersihkan Sesi Inaktif">
                               {isSubmitting ? '⏳' : '🧹'}
                            </button>
-                           <button onClick={() => setIsNewChatModalOpen(true)} className="w-9 h-9 flex items-center justify-center bg-[#FFE500] text-black rounded-full shadow-sm hover:bg-[#E5CE00] transition">
-                              <span className="text-xl">+</span>
+                           <button onClick={() => setIsNewChatModalOpen(true)} className="w-10 h-10 flex items-center justify-center bg-[#FFE500] text-black rounded-lg shadow-md hover:bg-[#E5CE00] transition-all transform hover:scale-110">
+                              <span className="text-xl font-bold">+</span>
                            </button>
                         </div>
-                        <div className="p-3 bg-white shrink-0">
+                        <div className="p-4 bg-white shrink-0">
                            <div className="relative">
-                              <input type="text" placeholder="Cari chat..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border-none bg-slate-100 rounded-lg px-10 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FFE500]" />
-                              <span className="absolute left-3 top-2.5 text-slate-400">🔍</span>
+                              <input type="text" placeholder="Cari chat..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border border-gray-200 bg-gray-50 rounded-lg px-10 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#FFE500] focus:border-transparent transition" />
+                              <span className="absolute left-3 top-3 text-gray-400">🔍</span>
                            </div>
                         </div>
-                        <div className="overflow-y-auto flex-1 divide-y divide-slate-50">
+                        <div className="overflow-y-auto flex-1 divide-y divide-gray-100">
                            {filteredContacts.map((c: RiwayatPesan) => {
                               const isNew = c.arah_pesan === 'IN' && (!readStatus[c.nomor_wa] || new Date(c.waktu_pesan || c.created_at!) > new Date(readStatus[c.nomor_wa]));
                               const profileName = getRealProfileName(c.nomor_wa);
                               return (
-                                 <div key={c.nomor_wa} onClick={() => setSelectedWa(c.nomor_wa)} className={`flex items-center gap-3 p-4 cursor-pointer transition-all hover:bg-slate-50 ${selectedWa === c.nomor_wa ? 'bg-slate-100' : ''}`}>
-                                    <div className="w-12 h-12 rounded-full bg-slate-200 flex-shrink-0 flex items-center justify-center font-bold text-slate-500 text-lg border border-slate-100 uppercase">
+                                 <div key={c.nomor_wa} onClick={() => setSelectedWa(c.nomor_wa)} className={`flex items-center gap-3 p-4 cursor-pointer transition-all hover:bg-gray-50 ${selectedWa === c.nomor_wa ? 'bg-yellow-50 border-l-4 border-[#FFE500]' : ''}`}>
+                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FFE500] to-yellow-400 flex-shrink-0 flex items-center justify-center font-bold text-black text-lg border border-yellow-200 uppercase shadow-sm">
                                        {profileName.substring(0, 1)}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                        <div className="flex justify-between items-baseline mb-0.5">
-                                          <h4 className={`text-sm truncate ${isNew ? 'font-bold text-black' : 'font-semibold text-slate-700'}`}>{profileName}</h4>
-                                          <span className="text-[10px] text-slate-400 font-medium">{new Date(c.waktu_pesan || c.created_at || 0).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} {new Date(c.waktu_pesan || c.created_at || 0).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                          <h4 className={`text-sm truncate ${isNew ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>{profileName}</h4>
+                                          <span className="text-[10px] text-gray-400 font-medium">{new Date(c.waktu_pesan || c.created_at || 0).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} {new Date(c.waktu_pesan || c.created_at || 0).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                                        </div>
                                        <div className="flex justify-between items-center gap-2">
-                                          <p className={`text-xs truncate flex-1 ${isNew ? 'font-bold text-slate-900' : 'text-slate-500'}`}>{c.isi_pesan}</p>
+                                          <p className={`text-xs truncate flex-1 ${isNew ? 'font-bold text-gray-900' : 'text-gray-500'}`}>{c.isi_pesan}</p>
                                           <div className="flex items-center gap-1.5 shrink-0">
                                              {c.bicara_dengan_cs && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-sm shadow-red-200"></span>}
                                              {isNew && <span className="bg-[#FFE500] text-black text-[9px] font-black px-1.5 py-0.5 rounded-full">BARU</span>}
@@ -1814,17 +1930,17 @@ export default function NikonDashboard() {
                      <div className={`flex-1 flex flex-col bg-[#efeae2] relative min-w-0 ${selectedWa ? 'flex' : 'hidden md:flex'}`}>
                         {selectedWa ? (
                            <>
-                              <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0 shadow-sm z-10">
+                              <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center shrink-0 shadow-sm z-10">
                                  <div className="flex items-center gap-3">
-                                    <button onClick={() => setSelectedWa(null)} className="md:hidden p-1 -ml-2 text-slate-600 hover:bg-slate-200 rounded-full transition">
+                                    <button onClick={() => setSelectedWa(null)} className="md:hidden p-1 -ml-2 text-gray-600 hover:bg-gray-200 rounded-full transition">
                                        <span className="text-xl">←</span>
                                     </button>
-                                    <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 uppercase">
+                                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500 uppercase">
                                        {getRealProfileName(selectedWa).substring(0, 1)}
                                     </div>
                                     <div>
-                                       <h3 className="font-bold text-slate-900 leading-tight">{getRealProfileName(selectedWa)}</h3>
-                                       <p className="text-[10px] font-bold text-slate-500">{selectedWa}</p>
+                                       <h3 className="font-bold text-gray-900 leading-tight">{getRealProfileName(selectedWa)}</h3>
+                                       <p className="text-[10px] font-bold text-gray-500">{selectedWa}</p>
                                     </div>
                                  </div>
                                  {uniqueContacts.find(c => c.nomor_wa === selectedWa)?.bicara_dengan_cs && (
@@ -1834,7 +1950,7 @@ export default function NikonDashboard() {
                               <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto space-y-3 relative scroll-smooth" style={{ backgroundImage: `url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')`, backgroundSize: '400px', backgroundRepeat: 'repeat' }}>
                                  {currentChatThread.map((msg: RiwayatPesan) => (
                                     <div key={msg.id_pesan || Math.random().toString()} className={`flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
-                                       <div className={`max-w-[85%] md:max-w-[70%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-slate-900 rounded-tr-none' : 'bg-white text-slate-900 rounded-tl-none'}`}>
+                                       <div className={`max-w-[85%] md:max-w-[70%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'}`}>
                                           {isImageUrl(msg.isi_pesan) ? (
                                              <div className="cursor-pointer" onClick={() => openImageViewer(msg.isi_pesan)}>
                                                 <img src={msg.isi_pesan} alt="Media" className="max-w-full rounded-md max-h-64 object-cover mb-1" onLoad={scrollToBottom} />
@@ -1842,7 +1958,7 @@ export default function NikonDashboard() {
                                           ) : (
                                              <p className="whitespace-pre-wrap leading-relaxed font-medium">{msg.isi_pesan}</p>
                                           )}
-                                          <div className="text-[9px] mt-1 text-right text-slate-500 font-bold">
+                                          <div className="text-[9px] mt-1 text-right text-gray-500 font-bold">
                                              {(() => {
                                                 const d = new Date(msg.waktu_pesan || msg.created_at || 0);
                                                 return isNaN(d.getTime()) ? '-' : `${d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
@@ -1853,9 +1969,9 @@ export default function NikonDashboard() {
                                  ))}
                                  <div ref={messagesEndRef} />
                               </div>
-                              <form onSubmit={handleSendReply} className="p-4 bg-slate-50 border-t border-slate-200 flex gap-3 items-center shrink-0">
+                              <form onSubmit={handleSendReply} className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3 items-center shrink-0">
                                  <div className="flex-1 relative">
-                                    <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="w-full border-none bg-white text-slate-900 rounded-full px-5 py-2.5 text-sm outline-none shadow-inner focus:ring-2 focus:ring-[#FFE500]" />
+                                    <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="w-full border-none bg-white text-gray-900 rounded-full px-5 py-2.5 text-sm outline-none shadow-inner focus:ring-2 focus:ring-[#FFE500]" />
                                  </div>
                                  <button type="submit" disabled={!replyText.trim()} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 transition shadow-md">
                                     <span className="text-xl">▶️</span>
@@ -1863,9 +1979,9 @@ export default function NikonDashboard() {
                               </form>
                            </>
                         ) : (
-                           <div className="flex-1 flex flex-col justify-center items-center text-slate-500 bg-slate-50 p-10 text-center">
-                              <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center text-4xl mb-4">💬</div>
-                              <h3 className="text-xl font-bold text-slate-700">Pilih Percakapan</h3>
+                           <div className="flex-1 flex flex-col justify-center items-center text-gray-500 bg-gray-50 p-10 text-center">
+                              <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center text-4xl mb-4">💬</div>
+                              <h3 className="text-xl font-bold text-gray-700">Pilih Percakapan</h3>
                               <p className="text-sm max-w-xs mt-2">Pilih salah satu konsumen di sebelah kiri untuk mulai membalas pesan secara real-time.</p>
                            </div>
                         )}
@@ -1876,16 +1992,16 @@ export default function NikonDashboard() {
 
 
                {activeTab === 'konsumen' && (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                                  <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>Nama {sortConfigKonsumen.column === 'nama_lengkap' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'id_konsumen')}>ID Konsumen {sortConfigKonsumen.column === 'id_konsumen' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nomor_wa')}>No. WhatsApp {sortConfigKonsumen.column === 'nomor_wa' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'alamat_rumah')}>Alamat {sortConfigKonsumen.column === 'alamat_rumah' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nik')}>NIK {sortConfigKonsumen.column === 'nik' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Riwayat Barang</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedConsumers.map((k: KonsumenData) => {
                                     const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
                                     return (
-                                       <tr key={k.nomor_wa} className="hover:bg-slate-50 font-medium">
+                                       <tr key={k.nomor_wa} className="hover:bg-gray-50 font-medium">
                                           <td className="px-4 py-3 text-slate-800 font-bold">{k.nama_lengkap || '-'}</td>
                                           <td className="px-4 py-3 font-mono">{k.id_konsumen || '-'}</td>
                                           <td className="px-4 py-3">{k.nomor_wa}</td>
@@ -1898,7 +2014,7 @@ export default function NikonDashboard() {
                                                       {c.tipe_barang} (SN: {c.nomor_seri})
                                                    </li>
                                                 )) : (
-                                                   <li className="text-slate-500 italic">Tidak ada</li>
+                                                   <li className="text-gray-500 italic">Tidak ada</li>
                                                 )}
                                              </ul>
                                           </td>
@@ -1917,28 +2033,28 @@ export default function NikonDashboard() {
                      )}
                {/* ======================= PROMOS ======================= */}
                {activeTab === 'promos' && (
-                  <div className="space-y-4 animate-fade-in text-slate-900">
-                     <input type="text" placeholder="🔍 Cari Nama Promo atau Periode Tanggal..." value={searchPromo} onChange={e => setSearchPromo(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                  <div className="space-y-4 animate-fade-in text-gray-900">
+                     <input type="text" placeholder="🔍 Cari Nama Promo atau Periode Tanggal..." value={searchPromo} onChange={e => setSearchPromo(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'card' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {sortedPromos.map((p: Promosi) => {
                               return (
-                                 <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                    <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
+                                 <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
+                                    <div className="flex justify-between items-start border-b border-gray-100 pb-3 mb-3">
                                        <div>
                                           <h3 className="font-bold text-lg text-slate-800">{p.nama_promo}</h3>
-                                          <div className="text-sm font-bold text-slate-500 mt-1">📅 {p.tanggal_mulai} s/d {p.tanggal_selesai}</div>
+                                          <div className="text-sm font-bold text-gray-500 mt-1">📅 {p.tanggal_mulai} s/d {p.tanggal_selesai}</div>
                                        </div>
                                        <span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
                                     </div>
                                     <div className="flex-1">
-                                       <h4 className="font-bold text-slate-700 text-sm mb-2">Tipe Produk Berlaku ({p.tipe_produk?.length || 0})</h4>
+                                       <h4 className="font-bold text-gray-700 text-sm mb-2">Tipe Produk Berlaku ({p.tipe_produk?.length || 0})</h4>
                                        {(!p.tipe_produk || p.tipe_produk.length === 0) ? (
-                                          <p className="text-xs font-bold text-slate-400 italic">Belum ada produk</p>
+                                          <p className="text-xs font-bold text-gray-400 italic">Belum ada produk</p>
                                        ) : (
                                           <div className="space-y-2 max-h-[150px] overflow-y-auto pr-2">
                                              {p.tipe_produk.map((prod, idx) => (
-                                                <div key={idx} className="text-xs p-2 bg-slate-50 border border-slate-100 rounded-md font-bold text-slate-700 flex items-center gap-2">
+                                                <div key={idx} className="text-xs p-2 bg-gray-50 border border-gray-100 rounded-md font-bold text-gray-700 flex items-center gap-2">
                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 block"></span>{prod.nama_produk}
                                                 </div>
                                              ))}
@@ -1946,7 +2062,7 @@ export default function NikonDashboard() {
                                        )}
                                     </div>
                                     {currentUser?.role === 'Admin' && (
-                                       <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                       <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                           <button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit Promo</button>
                                           <button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                        </div>
@@ -1956,14 +2072,14 @@ export default function NikonDashboard() {
                            })}
                         </div>
                      ) : (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                                  <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'status_aktif')}>Status {sortConfigPromos.column === 'status_aktif' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Produk Berlaku</th>{currentUser?.role === 'Admin' && <th className="px-4 py-3 text-left font-bold">Aksi</th>}</tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedPromos.map((p: Promosi) => (
-                                    <tr key={p.id_promo} className="hover:bg-slate-50 font-medium">
+                                    <tr key={p.id_promo} className="hover:bg-gray-50 font-medium">
                                        <td className="px-4 py-3 font-bold">{p.nama_promo}</td>
                                        <td className="px-4 py-3">{p.tanggal_mulai} s/d {p.tanggal_selesai}</td>
                                        <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span></td>
@@ -1982,10 +2098,10 @@ export default function NikonDashboard() {
 
                {/* ======================= CLAIMS ======================= */}
                {activeTab === 'claims' && (
-                  <div className="space-y-4 animate-fade-in text-slate-900">
+                  <div className="space-y-4 animate-fade-in text-gray-900">
                      <div className="flex flex-col md:flex-row gap-2">
-                        <input type="text" placeholder="🔍 Cari Nama / No Seri / Nama Promo / Status MKT / Status FA..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="flex-1 p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                        <select value={filterStatusWarna} onChange={e => setFilterStatusWarna(e.target.value)} className="p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium md:w-48">
+                        <input type="text" placeholder="🔍 Cari Nama / No Seri / Nama Promo / Status MKT / Status FA..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="flex-1 p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                        <select value={filterStatusWarna} onChange={e => setFilterStatusWarna(e.target.value)} className="p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium md:w-48">
                            <option value="Semua">Semua Status Warna</option>
                            <option value="Putih">Belum Di Cek (Putih)</option>
                            <option value="Merah">Tidak Valid (Merah)</option>
@@ -1996,42 +2112,42 @@ export default function NikonDashboard() {
                         </select>
                      </div>
                      <div className="flex flex-wrap gap-2">
-                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-white border border-slate-300"></span>
+                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                           <span className="w-3 h-3 rounded-full bg-white border border-gray-300"></span>
                            Belum Di Cek: {claimStatusCounts.Putih}
                         </div>
-                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
                            <span className="w-3 h-3 rounded-full bg-red-500"></span>
                            Tidak Valid: {claimStatusCounts.Merah}
                         </div>
-                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
                            <span className="w-3 h-3 rounded-full bg-orange-500"></span>
                            Hold: {claimStatusCounts.Orange}
                         </div>
-                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
                            <span className="w-3 h-3 rounded-full bg-blue-500"></span>
                            Tunggu FA Cek: {claimStatusCounts.Biru}
                         </div>
-                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
                            <span className="w-3 h-3 rounded-full bg-pink-500"></span>
                            Tunggu Resi: {claimStatusCounts.Pink}
                         </div>
-                        <div className="bg-white border border-slate-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
+                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
                            <span className="w-3 h-3 rounded-full bg-green-500"></span>
                            Selesai: {claimStatusCounts.Hijau}
                         </div>
                      </div>
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                                  <tr><th className="px-4 py-3 text-center font-bold">Status Sistem</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>Nama Promo {sortConfigClaims.column === 'jenis_promosi' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>Toko {sortConfigClaims.column === 'nama_toko' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Nota/Garansi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'validasi_by_mkt')}>MKT / FA {sortConfigClaims.column === 'validasi_by_mkt' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedClaims.map((c: ClaimPromo) => {
                                     const isDuplicate = c.id_claim ? duplicateClaimIds.has(c.id_claim) : false;
                                     return (
-                                    <tr key={c.id_claim} className={`hover:bg-slate-50 font-medium ${isDuplicate ? 'bg-red-50' : ''}`}>
+                                    <tr key={c.id_claim} className={`hover:bg-gray-50 font-medium ${isDuplicate ? 'bg-red-50' : ''}`}>
                                        <td className="px-4 py-3 text-center">
                                           <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold shadow-sm inline-block ${getBadgeStyle(getClaimStatusColor(c))}`}>
                                              {getBadgeLabel(getClaimStatusColor(c))}
@@ -2054,14 +2170,14 @@ export default function NikonDashboard() {
                                                 {typeof c.link_nota_pembelian === 'string' && isGoogleDriveLink(c.link_nota_pembelian) ? '🔗📂' : '🔗'} Lihat Nota {typeof c.link_nota_pembelian === 'string' && isGoogleDriveLink(c.link_nota_pembelian) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">(Google Drive)</span>}
                                              </button>
                                           ) : (
-                                             <span className="text-slate-500 italic">Tidak ada Nota</span>
+                                             <span className="text-gray-500 italic">Tidak ada Nota</span>
                                           )}
                                           {c.link_kartu_garansi ? (
                                              <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left flex items-center gap-1">
                                                 {typeof c.link_kartu_garansi === 'string' && isGoogleDriveLink(c.link_kartu_garansi) ? '🔗📂' : '🔗'} Lihat Garansi {typeof c.link_kartu_garansi === 'string' && isGoogleDriveLink(c.link_kartu_garansi) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">(Google Drive)</span>}
                                              </button>
                                           ) : (
-                                             <span className="text-slate-500 italic">Tidak ada Garansi</span>
+                                             <span className="text-gray-500 italic">Tidak ada Garansi</span>
                                           )}
                                        </td>
                                        <td className="px-4 py-3 text-xs font-bold whitespace-normal max-w-[150px]">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
@@ -2096,12 +2212,12 @@ export default function NikonDashboard() {
                            {sortedClaims.map((c: ClaimPromo) => {
                               const isDuplicate = c.id_claim ? duplicateClaimIds.has(c.id_claim) : false;
                               return (
-                              <div key={c.id_claim} className={`bg-white p-4 rounded-lg shadow-sm border flex flex-col hover:border-[#FFE500] transition ${isDuplicate ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}>
-                                 <div className="border-b border-slate-100 pb-3 mb-3">
+                              <div key={c.id_claim} className={`bg-white p-4 rounded-lg shadow-sm border flex flex-col hover:border-[#FFE500] transition ${isDuplicate ? 'border-red-500 bg-red-50' : 'border-gray-100'}`}>
+                                 <div className="border-b border-gray-100 pb-3 mb-3">
                                     <div className="flex justify-between items-start gap-2">
                                        <div>
                                           <h3 className="font-bold text-base text-slate-800">{consumers[c.nomor_wa] || c.nomor_wa}</h3>
-                                          <p className="text-xs text-slate-500 font-mono flex items-center gap-2">
+                                          <p className="text-xs text-gray-500 font-mono flex items-center gap-2">
                                              {c.nomor_seri}
                                              {isDuplicate && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap animate-pulse">⚠️ DUPLIKAT</span>}
                                           </p>
@@ -2126,7 +2242,7 @@ export default function NikonDashboard() {
                                        </button>}
                                     </div>
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                     <button onClick={() => handlePrintLabelPengiriman(c)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
                                     <button onClick={() => {
                                        const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
@@ -2152,12 +2268,12 @@ export default function NikonDashboard() {
 
                {/* ======================= WARRANTIES ======================= */}
                {activeTab === 'warranties' && (
-                  <div className="space-y-4 animate-fade-in text-slate-900">
-                     <input type="text" placeholder="🔍 Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                  <div className="space-y-4 animate-fade-in text-gray-900">
+                     <input type="text" placeholder="🔍 Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                                  <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'nomor_seri')}>No Seri {sortConfigWarranties.column === 'nomor_seri' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'tipe_barang')}>Barang {sortConfigWarranties.column === 'tipe_barang' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Nota/Garansi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'status_validasi')}>Status {sortConfigWarranties.column === 'status_validasi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'jenis_garansi')}>Jenis {sortConfigWarranties.column === 'jenis_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'lama_garansi')}>Sisa Garansi {sortConfigWarranties.column === 'lama_garansi' && (<span>{sortConfigWarranties.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
@@ -2166,7 +2282,7 @@ export default function NikonDashboard() {
                                     const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
                                     const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
                                     return (
-                                       <tr key={w.id_garansi} className="hover:bg-slate-50 font-medium">
+                                       <tr key={w.id_garansi} className="hover:bg-gray-50 font-medium">
                                           <td className="px-4 py-3 font-mono font-bold">{w.nomor_seri}</td>
                                           <td className="px-4 py-3">{w.tipe_barang}</td>
                                           <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
@@ -2180,7 +2296,7 @@ export default function NikonDashboard() {
                                                    )}
                                                 </div>
                                              ) : (
-                                                <span className="text-slate-500 italic">Tidak ada Nota</span>
+                                                <span className="text-gray-500 italic">Tidak ada Nota</span>
                                              )}
                                              {linkGaransi ? (
                                                 <div className="flex items-center gap-1 flex-wrap">
@@ -2192,14 +2308,14 @@ export default function NikonDashboard() {
                                                    )}
                                                 </div>
                                              ) : (
-                                                <span className="text-slate-500 italic">Tidak ada Garansi</span>
+                                                <span className="text-gray-500 italic">Tidak ada Garansi</span>
                                              )}
                                           </td>
                                           <td className="px-4 py-3">
                                              <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{w.status_validasi}</span>
                                           </td>
                                           <td className="px-4 py-3">{w.jenis_garansi}</td>
-                                          <td className="px-4 py-3 font-bold text-slate-700">{calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</td>
+                                          <td className="px-4 py-3 font-bold text-gray-700">{calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</td>
                                           <td className="px-4 py-3">
                                              <div className="flex gap-3 items-center">
                                                 <button onClick={() => handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim Status</button>
@@ -2221,10 +2337,10 @@ export default function NikonDashboard() {
                               const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
                               const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
                               return (
-                                 <div key={w.id_garansi} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                    <div className="border-b border-slate-100 pb-3 mb-3">
+                                 <div key={w.id_garansi} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
+                                    <div className="border-b border-gray-100 pb-3 mb-3">
                                        <h3 className="font-bold text-base text-slate-800 font-mono">{w.nomor_seri}</h3>
-                                       <p className="text-xs text-slate-500">{w.tipe_barang}</p>
+                                       <p className="text-xs text-gray-500">{w.tipe_barang}</p>
                                     </div>
                                     <div className="space-y-2 text-xs flex-1">
                                        <p><span className="font-bold w-24 inline-block">Status:</span> <span className={`px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{w.status_validasi}</span></p>
@@ -2239,7 +2355,7 @@ export default function NikonDashboard() {
                                           </button>}
                                        </div>
                                     </div>
-                                    <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                    <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                        <button onClick={() => handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim</button>
                                        <button onClick={() => openModal('edit', 'warranty', w)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                        <button onClick={() => handleDelete('warranty', w.id_garansi!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
@@ -2254,23 +2370,23 @@ export default function NikonDashboard() {
 
                {/* ======================= SERVICES ======================= */}
                {activeTab === 'services' && (
-                  <div className="space-y-4 animate-fade-in text-slate-900">
-                     <input type="text" placeholder="🔍 Cari No Tanda Terima / No Seri / Status..." value={searchService} onChange={e => setSearchService(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                  <div className="space-y-4 animate-fade-in text-gray-900">
+                     <input type="text" placeholder="🔍 Cari No Tanda Terima / No Seri / Status..." value={searchService} onChange={e => setSearchService(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                                  <tr><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_tanda_terima')}>No Tanda Terima {sortConfigServices.column === 'nomor_tanda_terima' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_seri')}>No Seri Barang {sortConfigServices.column === 'nomor_seri' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'status_service')}>Status Service {sortConfigServices.column === 'status_service' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'created_at')}>Tgl Update {sortConfigServices.column === 'created_at' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedServices.map((s: StatusService) => (
-                                    <tr key={s.id_service} className="hover:bg-slate-50 font-medium">
+                                    <tr key={s.id_service} className="hover:bg-gray-50 font-medium">
                                        <td className="px-6 py-3 font-mono font-bold text-slate-800">{s.nomor_tanda_terima}</td>
                                        <td className="px-6 py-3">{s.nomor_seri}</td>
                                        <td className="px-6 py-3">
                                           <span className="px-2 py-1 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span>
                                        </td>
-                                       <td className="px-6 py-3 font-bold text-slate-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</td>
+                                       <td className="px-6 py-3 font-bold text-gray-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</td>
                                        <td className="px-6 py-3 flex gap-3">
                                           <button onClick={() => openModal('edit', 'service', s)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                           <button onClick={() => handleDelete('service', s.id_service!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
@@ -2283,16 +2399,16 @@ export default function NikonDashboard() {
                      ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                            {sortedServices.map((s: StatusService) => (
-                              <div key={s.id_service} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="border-b border-slate-100 pb-3 mb-3">
+                              <div key={s.id_service} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
+                                 <div className="border-b border-gray-100 pb-3 mb-3">
                                     <h3 className="font-bold text-base text-slate-800 font-mono">{s.nomor_tanda_terima}</h3>
-                                    <p className="text-xs text-slate-500">{s.nomor_seri}</p>
+                                    <p className="text-xs text-gray-500">{s.nomor_seri}</p>
                                  </div>
                                  <div className="space-y-2 text-xs flex-1">
                                     <p><span className="font-bold w-20 inline-block">Status:</span> <span className="px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span></p>
                                     <p><span className="font-bold w-20 inline-block">Update:</span> {s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</p>
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                     <button onClick={() => openModal('edit', 'service', s)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => handleDelete('service', s.id_service!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                  </div>
@@ -2305,21 +2421,21 @@ export default function NikonDashboard() {
 
                {/* ======================= PROPOSAL EVENT ======================= */}
                {activeTab === 'budgets' && (
-                  <div className="space-y-4 animate-fade-in text-slate-900">
-                     <input type="text" placeholder="🔍 Cari Title Proposal..." value={searchBudget} onChange={e => setSearchBudget(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                  <div className="space-y-4 animate-fade-in text-gray-900">
+                     <input type="text" placeholder="🔍 Cari Title Proposal..." value={searchBudget} onChange={e => setSearchBudget(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                                  <tr><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'proposal_no')}>Proposal No {sortConfigBudgets.column === 'proposal_no' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'title')}>Title {sortConfigBudgets.column === 'title' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'period')}>Period {sortConfigBudgets.column === 'period' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'total_cost')}>Total Cost {sortConfigBudgets.column === 'total_cost' && (<span>{sortConfigBudgets.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedBudgets.map((b: BudgetApproval) => (
-                                    <tr key={b.id_budget} className="hover:bg-slate-50 font-medium">
+                                    <tr key={b.id_budget} className="hover:bg-gray-50 font-medium">
                                        <td className="px-6 py-3 font-mono font-bold text-slate-800">{b.proposal_no}</td>
                                        <td className="px-6 py-3">{b.title}</td>
                                        <td className="px-6 py-3">{b.period}</td>
-                                       <td className="px-6 py-3 font-bold text-slate-700">Rp {Number(b.total_cost).toLocaleString('id-ID')}</td>
+                                       <td className="px-6 py-3 font-bold text-gray-700">Rp {Number(b.total_cost).toLocaleString('id-ID')}</td>
                                        <td className="px-6 py-3 flex gap-3">
                                           <button onClick={() => setPrintData(b)} className="text-emerald-600 text-xs font-bold hover:underline">Print PDF</button>
                                           <button onClick={() => openModal('edit', 'budget', b)} className="text-black text-xs font-bold hover:underline">Edit</button>
@@ -2333,16 +2449,16 @@ export default function NikonDashboard() {
                      ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {sortedBudgets.map((b: BudgetApproval) => (
-                              <div key={b.id_budget} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="border-b border-slate-100 pb-3 mb-3">
+                              <div key={b.id_budget} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
+                                 <div className="border-b border-gray-100 pb-3 mb-3">
                                     <h3 className="font-bold text-base text-slate-800">{b.title}</h3>
-                                    <p className="text-xs text-slate-500 font-mono">{b.proposal_no}</p>
+                                    <p className="text-xs text-gray-500 font-mono">{b.proposal_no}</p>
                                  </div>
                                  <div className="space-y-2 text-xs flex-1">
                                     <p><span className="font-bold w-20 inline-block">Periode:</span> {b.period}</p>
                                     <p><span className="font-bold w-20 inline-block">Total Biaya:</span> Rp {Number(b.total_cost).toLocaleString('id-ID')}</p>
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                     <button onClick={() => setPrintData(b)} className="text-emerald-600 text-xs font-bold hover:underline">Print PDF</button>
                                     <button onClick={() => openModal('edit', 'budget', b)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => handleDelete('budget', b.id_budget!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
@@ -2356,33 +2472,33 @@ export default function NikonDashboard() {
 
                {/* ======================= LENDING FILTER HEADER ======================= */}
                {activeTab === 'lending' && (
-                  <div className="space-y-4 animate-fade-in text-slate-900">
+                  <div className="space-y-4 animate-fade-in text-gray-900">
                      <div className="flex-1 flex flex-wrap gap-4 items-center">
-                        <input type="text" placeholder="🔍 Cari Nama Peminjam / No WA / Nama Barang / No Seri..." value={searchLending} onChange={e => setSearchLending(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                        <input type="text" placeholder="🔍 Cari Nama Peminjam / No WA / Nama Barang / No Seri..." value={searchLending} onChange={e => setSearchLending(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                         <div className="flex items-center gap-2">
-                           <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>📋Baris</button>
-                           <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>🪪Kartu</button>
+                           <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>📋Baris</button>
+                           <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>🪪Kartu</button>
                         </div>
                      </div>
                      <button onClick={() => openModal('create', 'lending')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Pinjam Barang</button>
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                                  <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">KTP</th>{/* Not sortable as it's a button */}<th className="px-4 py-3 text-left font-bold">Barang Dipinjam</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_peminjaman')}>Tgl Pinjam {sortConfigLending.column === 'tanggal_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_pengembalian')}>Tgl Kembali {sortConfigLending.column === 'tanggal_pengembalian' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'status_peminjaman')}>Status {sortConfigLending.column === 'status_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedLendingRecords.map((l: PeminjamanBarang) => (
-                                    <tr key={l.id_peminjaman} className="hover:bg-slate-50 font-medium">
+                                    <tr key={l.id_peminjaman} className="hover:bg-gray-50 font-medium">
                                        <td className="px-4 py-3 text-slate-800 font-bold">
                                           {l.nama_peminjam} <br />
-                                          <span className="text-xs text-slate-500">{l.nomor_wa_peminjam}</span>
+                                          <span className="text-xs text-gray-500">{l.nomor_wa_peminjam}</span>
                                        </td>
                                        <td className="px-4 py-3">
                                           {l.link_ktp_peminjam ? (
                                              <button type="button" onClick={() => openImageViewer(l.link_ktp_peminjam as string)} className="hover:underline hover:text-blue-800 text-left text-xs font-bold">🔗 Lihat KTP</button>
                                           ) : (
-                                             <span className="text-slate-500 italic text-xs">Tidak ada</span>
+                                             <span className="text-gray-500 italic text-xs">Tidak ada</span>
                                           )}
                                        </td>
                                        <td className="px-4 py-3 text-xs">
@@ -2390,14 +2506,14 @@ export default function NikonDashboard() {
                                              {l.items_dipinjam.map((item, idx) => (
                                                 <li key={idx} className={`${item.status_pengembalian === 'dikembalikan' ? 'text-green-600 line-through' : 'text-slate-800'}`}>
                                                    {item.nama_barang} (SN: {item.nomor_seri})
-                                                   {item.catatan && <span className="text-slate-500 italic"> - {item.catatan}</span>}
+                                                   {item.catatan && <span className="text-gray-500 italic"> - {item.catatan}</span>}
                                                    {item.status_pengembalian === 'dikembalikan' && <span className="ml-1 text-green-700 font-bold">(Dikembalikan)</span>}
                                                 </li>
                                              ))}
                                           </ul>
                                        </td>
-                                       <td className="px-4 py-3 font-bold text-slate-700">{l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</td>
-                                       <td className="px-4 py-3 font-bold text-slate-700">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</td>
+                                       <td className="px-4 py-3 font-bold text-gray-700">{l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</td>
+                                       <td className="px-4 py-3 font-bold text-gray-700">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</td>
                                        <td className="px-4 py-3">
                                           <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
                                        </td>
@@ -2418,10 +2534,10 @@ export default function NikonDashboard() {
                      ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {sortedLendingRecords.map((l: PeminjamanBarang) => (
-                              <div key={l.id_peminjaman} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="border-b border-slate-100 pb-3 mb-3">
+                              <div key={l.id_peminjaman} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
+                                 <div className="border-b border-gray-100 pb-3 mb-3">
                                     <h3 className="font-bold text-base text-slate-800">{l.nama_peminjam}</h3>
-                                    <p className="text-xs text-slate-500">{l.nomor_wa_peminjam}</p>
+                                    <p className="text-xs text-gray-500">{l.nomor_wa_peminjam}</p>
                                     <span className={`mt-2 inline-block px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
                                  </div>
                                  <div className="space-y-2 text-xs flex-1">
@@ -2434,7 +2550,7 @@ export default function NikonDashboard() {
                                        ))}
                                     </ul>
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                     {l.status_peminjaman === 'aktif' && <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-xs font-bold hover:underline">Pengembalian</button>}
                                     <button onClick={() => openModal('edit', 'lending', l)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => handleDelete('lending', l.id_peminjaman!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
@@ -2449,28 +2565,28 @@ export default function NikonDashboard() {
                
                {/* ======================= EVENT REGISTRATIONS ======================= */}
                {activeTab === 'eventregistrations' && (
-                  <div className="space-y-4 animate-fade-in text-slate-900">
-                     <input type="text" placeholder="🔍 Cari Nama Peserta atau Event..." value={searchRegistration} onChange={e => setSearchRegistration(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                  <div className="space-y-4 animate-fade-in text-gray-900">
+                     <input type="text" placeholder="🔍 Cari Nama Peserta atau Event..." value={searchRegistration} onChange={e => setSearchRegistration(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                                  <tr><th className="px-6 py-3 text-left font-bold">Nama Lengkap</th><th className="px-6 py-3 text-left font-bold">Kontak (WA/Email)</th><th className="px-6 py-3 text-left font-bold">Event</th><th className="px-6 py-3 text-left font-bold">Status</th><th className="px-6 py-3 text-left font-bold">Kehadiran</th><th className="px-6 py-3 text-left font-bold">Bukti TF</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {eventRegistrations.filter(r => r.full_name.toLowerCase().includes(searchRegistration.toLowerCase()) || r.event_name.toLowerCase().includes(searchRegistration.toLowerCase())).map((reg: EventRegistration) => (
-                                    <tr key={reg.id} className="hover:bg-slate-50 font-medium">
-                                       <td className="px-6 py-3 font-bold text-slate-800">{reg.full_name}<br/><span className="text-[10px] text-slate-500">{reg.camera_model || '-'}</span></td>
-                                       <td className="px-6 py-3">{reg.wa_number}<br/><span className="text-xs text-slate-500">{reg.email}</span></td>
+                                    <tr key={reg.id} className="hover:bg-gray-50 font-medium">
+                                       <td className="px-6 py-3 font-bold text-slate-800">{reg.full_name}<br/><span className="text-[10px] text-gray-500">{reg.camera_model || '-'}</span></td>
+                                       <td className="px-6 py-3">{reg.wa_number}<br/><span className="text-xs text-gray-500">{reg.email}</span></td>
                                        <td className="px-6 py-3 text-amber-600 font-bold">{reg.event_name}</td>
                                        <td className="px-6 py-3">
                                           <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${reg.status === 'Confirmed' ? 'bg-green-100 text-green-700' : reg.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{reg.status}</span>
                                        </td>
                                        <td className="px-6 py-3">
-                                          {reg.is_attended ? <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-1 rounded">HADIR ✅</span> : <button onClick={() => handleMarkAttendance(reg.id!)} className="text-[10px] bg-slate-200 text-slate-700 hover:bg-slate-300 font-bold px-2 py-1 rounded border border-slate-300">Set Hadir</button>}
+                                          {reg.is_attended ? <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-1 rounded">HADIR ✅</span> : <button onClick={() => handleMarkAttendance(reg.id!)} className="text-[10px] bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold px-2 py-1 rounded border border-gray-300">Set Hadir</button>}
                                        </td>
                                        <td className="px-6 py-3">
-                                          {reg.bukti_transfer_url ? <a href={reg.bukti_transfer_url} target="_blank" className="text-blue-500 hover:underline font-bold">Lihat Bukti</a> : <span className="text-slate-400">Belum Ada</span>}
+                                          {reg.bukti_transfer_url ? <a href={reg.bukti_transfer_url} target="_blank" className="text-blue-500 hover:underline font-bold">Lihat Bukti</a> : <span className="text-gray-400">Belum Ada</span>}
                                        </td>
                                        <td className="px-6 py-3 flex gap-3">
                                           {reg.status === 'Confirmed' && (
@@ -2500,57 +2616,57 @@ export default function NikonDashboard() {
                            <form id="registrationForm" onSubmit={handleSaveRegistration} className="space-y-4">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Lengkap</label>
-                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Lengkap</label>
+                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Event</label>
-                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Event</label>
+                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nomor WhatsApp</label>
-                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nomor WhatsApp</label>
+                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Email</label>
-                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Email</label>
+                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Pendaftaran</label>
-                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status Pendaftaran</label>
+                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
                                     <option value="Pending Payment">Pending Payment</option>
                                     <option value="Confirmed">Confirmed</option>
                                     <option value="Cancelled">Cancelled</option>
                                  </select>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Bukti Transfer</label>
-                                 <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" placeholder="Opsional" />
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Link Bukti Transfer</label>
+                                 <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Opsional" />
                               </div>
                            </form>
                         )}
 
                         {activeTab === 'events' && (
-                  <div className="space-y-4 animate-fade-in text-slate-900">
-                     <input type="text" placeholder="🔍 Cari Judul Event..." value={searchEvent} onChange={e => setSearchEvent(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                  <div className="space-y-4 animate-fade-in text-gray-900">
+                     <input type="text" placeholder="🔍 Cari Judul Event..." value={searchEvent} onChange={e => setSearchEvent(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                                  <tr><th className="px-6 py-3 text-left font-bold">Gambar</th><th className="px-6 py-3 text-left font-bold cursor-pointer">Judul Event</th><th className="px-6 py-3 text-left font-bold">Tanggal</th><th className="px-6 py-3 text-left font-bold">Harga</th><th className="px-6 py-3 text-left font-bold">Kuota/Status</th><th className="px-6 py-3 text-left font-bold">Peserta</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {events.filter(e => e.title.toLowerCase().includes(searchEvent.toLowerCase())).map((evt: EventData) => (
-                                    <tr key={evt.id} className="hover:bg-slate-50 font-medium">
+                                    <tr key={evt.id} className="hover:bg-gray-50 font-medium">
                                        <td className="px-6 py-3"><img src={evt.image} alt="poster" className="w-12 h-16 object-cover rounded" /></td>
                                        <td className="px-6 py-3 font-bold text-slate-800">{evt.title}</td>
                                        <td className="px-6 py-3">{evt.date}</td>
                                        <td className="px-6 py-3">{evt.price}</td>
                                        <td className="px-6 py-3">
-                                          <span className="font-bold text-slate-700">{eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</span>
+                                          <span className="font-bold text-gray-700">{eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</span>
                                           <br/>{(() => { const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.title] || 0); return <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>; })()}
                                        </td>
                                        <td className="px-6 py-3 font-bold text-blue-600">
@@ -2576,35 +2692,35 @@ export default function NikonDashboard() {
                            <form id="registrationForm" onSubmit={handleSaveRegistration} className="space-y-4">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Lengkap</label>
-                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Lengkap</label>
+                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Event</label>
-                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Event</label>
+                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nomor WhatsApp</label>
-                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nomor WhatsApp</label>
+                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Email</label>
-                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Email</label>
+                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Pendaftaran</label>
-                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status Pendaftaran</label>
+                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
                                     <option value="Pending Payment">Pending Payment</option>
                                     <option value="Confirmed">Confirmed</option>
                                     <option value="Cancelled">Cancelled</option>
                                  </select>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Bukti Transfer</label>
-                                 <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" placeholder="Opsional" />
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Link Bukti Transfer</label>
+                                 <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Opsional" />
                               </div>
                            </form>
                         )}
@@ -2613,59 +2729,59 @@ export default function NikonDashboard() {
                            <form id="eventForm" onSubmit={handleSaveEvent} className="space-y-4">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Judul Event</label>
-                                    <input type="text" value={eventForm.title || ''} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Judul Event</label>
+                                    <input type="text" value={eventForm.title || ''} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Tanggal & Waktu</label>
-                                    <input type="text" value={eventForm.date || ''} onChange={e => setEventForm({ ...eventForm, date: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tanggal & Waktu</label>
+                                    <input type="text" value={eventForm.date || ''} onChange={e => setEventForm({ ...eventForm, date: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Harga</label>
-                                    <input type="text" value={eventForm.price || ''} onChange={e => setEventForm({ ...eventForm, price: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Harga</label>
+                                    <input type="text" value={eventForm.price || ''} onChange={e => setEventForm({ ...eventForm, price: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Kuota Slot (Stock)</label>
-                                    <input type="number" value={eventForm.stock || 0} onChange={e => setEventForm({ ...eventForm, stock: Number(e.target.value) })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kuota Slot (Stock)</label>
+                                    <input type="number" value={eventForm.stock || 0} onChange={e => setEventForm({ ...eventForm, stock: Number(e.target.value) })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Ketersediaan</label>
-                                    <select value={eventForm.status || 'aktif'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status Ketersediaan</label>
+                                    <select value={eventForm.status || 'aktif'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
                                        <option value="aktif">Aktif</option>
                                        <option value="close">Close</option>
                                     </select>
                                  </div>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Informasi Rekening Pembayaran</label>
-                                 <textarea rows={2} value={eventForm.bank_info || ''} onChange={e => setEventForm({ ...eventForm, bank_info: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" placeholder="Contoh: BCA 1234567890 a.n Nikon Event Indonesia" />
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Informasi Rekening Pembayaran</label>
+                                 <textarea rows={2} value={eventForm.bank_info || ''} onChange={e => setEventForm({ ...eventForm, bank_info: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Contoh: BCA 1234567890 a.n Nikon Event Indonesia" />
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Foto / Poster Acara</label>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Foto / Poster Acara</label>
                                  {(eventImageFile || eventForm.image) && (
-                                    <div className="mb-2 relative w-24 h-32 rounded overflow-hidden border border-slate-200">
+                                    <div className="mb-2 relative w-24 h-32 rounded overflow-hidden border border-gray-100">
                                        <img src={eventImageFile ? URL.createObjectURL(eventImageFile) : eventForm.image} alt="preview" className="w-full h-full object-cover" />
                                        <button type="button" onClick={() => { setEventImageFile(null); setEventForm({ ...eventForm, image: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
                                     </div>
                                  )}
-                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventImageFile(e.target.files[0]); }} className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-all cursor-pointer" />
-                                 <p className="text-xs text-slate-400 mt-1">Format: JPG, PNG, WEBP. Tampil sebagai poster (rasio 3:4 disarankan).</p>
+                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventImageFile(e.target.files[0]); }} className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 transition-all cursor-pointer" />
+                                 <p className="text-xs text-gray-400 mt-1">Format: JPG, PNG, WEBP. Tampil sebagai poster (rasio 3:4 disarankan).</p>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>
-                                 <textarea rows={6} value={eventForm.detail_acara || ''} onChange={e => setEventForm({ ...eventForm, detail_acara: e.target.value })} className="w-full p-3 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan detail acara lengkap..."></textarea>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>
+                                 <textarea rows={6} value={eventForm.detail_acara || ''} onChange={e => setEventForm({ ...eventForm, detail_acara: e.target.value })} className="w-full p-3 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan detail acara lengkap..."></textarea>
                               </div>
                            </form>
                         )}
 
                         {activeTab === 'botsettings' && (
-                  <div className="space-y-4 animate-fade-in text-slate-900">
-                     <p className="text-sm text-slate-600">Kelola pengaturan dan tautan yang digunakan oleh Chatbot.</p>
-                     <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                  <div className="space-y-4 animate-fade-in text-gray-900">
+                     <p className="text-sm text-gray-600">Kelola pengaturan dan tautan yang digunakan oleh Chatbot.</p>
+                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                         <table className="w-full text-sm whitespace-normal break-words">
-                           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                           <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                               <tr>
                                  <th className="px-4 py-3 text-left font-bold">Nama Pengaturan</th>
                                  <th className="px-4 py-3 text-left font-bold">URL / Value</th>
@@ -2675,16 +2791,16 @@ export default function NikonDashboard() {
                            </thead>
                            <tbody className="divide-y divide-slate-200">
                               {botSettings.map((setting: PengaturanBot) => (
-                                 <tr key={setting.id} className="hover:bg-slate-50 font-medium">
+                                 <tr key={setting.id} className="hover:bg-gray-50 font-medium">
                                     <td className="px-4 py-3 font-bold text-slate-800">{setting.nama_pengaturan}</td>
                                     <td className="px-4 py-3">
                                        {setting.url_file ? (
                                           <a href={setting.url_file} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{setting.url_file}</a>
                                        ) : (
-                                          <span className="text-slate-500 italic">-</span>
+                                          <span className="text-gray-500 italic">-</span>
                                        )}
                                     </td>
-                                    <td className="px-4 py-3 text-slate-600">{setting.description || '-'}</td>
+                                    <td className="px-4 py-3 text-gray-600">{setting.description || '-'}</td>
                                     <td className="px-4 py-3 flex gap-3">
                                        <button onClick={() => openModal('edit', 'botsettings', setting)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                        <button onClick={() => handleDelete('botsettings', setting.id!.toString())} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
@@ -2706,24 +2822,24 @@ export default function NikonDashboard() {
 
                {/* ======================= USER ROLE ======================= */}
                {activeTab === 'userrole' && currentUser?.role === 'Admin' && (
-                  <div className="space-y-4 animate-fade-in text-slate-900">
-                     <input type="text" placeholder="🔍 Cari Username atau Nama Karyawan..." value={searchKaryawan} onChange={e => setSearchKaryawan(e.target.value)} className="w-full p-3 border border-slate-300 bg-white text-slate-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                  <div className="space-y-4 animate-fade-in text-gray-900">
+                     <input type="text" placeholder="🔍 Cari Username atau Nama Karyawan..." value={searchKaryawan} onChange={e => setSearchKaryawan(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                                  <tr><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'username')}>Username {sortConfigKaryawans.column === 'username' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'nama_karyawan')}>Nama Karyawan {sortConfigKaryawans.column === 'nama_karyawan' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'role')}>Role {sortConfigKaryawans.column === 'role' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'status_aktif')}>Status {sortConfigKaryawans.column === 'status_aktif' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-6 py-3 text-left font-bold">Akses Halaman</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedKaryawans.map((k: Karyawan) => (
-                                    <tr key={k.id_karyawan} className="hover:bg-slate-50 font-medium">
+                                    <tr key={k.id_karyawan} className="hover:bg-gray-50 font-medium">
                                        <td className="px-6 py-3 font-bold text-slate-800">{k.username}</td>
                                        <td className="px-6 py-3">{k.nama_karyawan}</td>
                                        <td className="px-6 py-3 font-bold text-black">{k.role}</td>
                                        <td className="px-6 py-3">
                                           <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
                                        </td>
-                                       <td className="px-6 py-3 font-mono text-xs text-slate-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</td>
+                                       <td className="px-6 py-3 font-mono text-xs text-gray-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</td>
                                        <td className="px-6 py-3 flex gap-3">
                                           <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                           <button onClick={() => openModal('reset_pw', 'karyawan', k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
@@ -2737,12 +2853,12 @@ export default function NikonDashboard() {
                      ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {sortedKaryawans.map((k: Karyawan) => (
-                              <div key={k.id_karyawan} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="border-b border-slate-100 pb-3 mb-3">
+                              <div key={k.id_karyawan} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
+                                 <div className="border-b border-gray-100 pb-3 mb-3">
                                     <div className="flex justify-between items-start">
                                        <div>
                                           <h3 className="font-bold text-base text-slate-800">{k.nama_karyawan}</h3>
-                                          <p className="text-xs text-slate-500">{k.username}</p>
+                                          <p className="text-xs text-gray-500">{k.username}</p>
                                        </div>
                                        <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
                                     </div>
@@ -2750,9 +2866,9 @@ export default function NikonDashboard() {
                                  </div>
                                  <div className="space-y-1 text-xs flex-1">
                                     <p className="font-bold">Akses:</p>
-                                    <p className="font-mono text-slate-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</p>
+                                    <p className="font-mono text-gray-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</p>
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3 justify-end">
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                     <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => openModal('reset_pw', 'karyawan', k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
                                     <button onClick={() => handleDelete('karyawan', k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline" disabled={k.username === 'admin'}>Hapus</button>
@@ -2768,13 +2884,13 @@ export default function NikonDashboard() {
 
             {/* --- MODALS NEW CHAT --- */}
             {isNewChatModalOpen && (
-               <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 text-slate-900">
+               <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 text-gray-900">
                   <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
                      <h2 className="text-lg font-bold">Pesan Baru</h2>
-                     <input type="text" value={newChatWa} onChange={e => setNewChatWa(e.target.value)} placeholder="No WA (Contoh: 0812...)" className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                     <textarea rows={4} value={newChatMsg} onChange={e => setNewChatMsg(e.target.value)} placeholder="Isi pesan..." className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]"></textarea>
+                     <input type="text" value={newChatWa} onChange={e => setNewChatWa(e.target.value)} placeholder="No WA (Contoh: 0812...)" className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                     <textarea rows={4} value={newChatMsg} onChange={e => setNewChatMsg(e.target.value)} placeholder="Isi pesan..." className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]"></textarea>
                      <div className="flex justify-end gap-3">
-                        <button onClick={() => setIsNewChatModalOpen(false)} className="px-4 py-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-100 rounded-md text-sm font-bold transition">Batal</button>
+                        <button onClick={() => setIsNewChatModalOpen(false)} className="px-4 py-2 border border-gray-300 bg-white text-gray-900 hover:bg-gray-100 rounded-md text-sm font-bold transition">Batal</button>
                         <button onClick={handleSendNewChat} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black rounded-md text-sm font-bold transition disabled:opacity-50" disabled={!newChatWa || !newChatMsg}>Kirim</button>
                      </div>
                   </div>
@@ -2783,11 +2899,11 @@ export default function NikonDashboard() {
 
             {/* --- MODALS CREATE / EDIT --- */}
             {isModalOpen && (
-               <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 text-slate-900">
+               <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 text-gray-900">
                   <div className={`bg-white rounded-xl shadow-2xl w-full ${activeTab === 'budgets' ? 'max-w-4xl' : 'max-w-2xl'} overflow-hidden flex flex-col max-h-[90vh]`}>
-                     <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                     <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                         <h2 className="text-lg font-bold">{modalAction === 'create' ? 'Tambah' : modalAction === 'reset_pw' ? 'Reset Password' : 'Edit'} Data</h2>
-                        <button onClick={closeModal} className="text-2xl text-slate-400 hover:text-slate-700 leading-none transition">×</button>
+                        <button onClick={closeModal} className="text-2xl text-gray-400 hover:text-gray-700 leading-none transition">×</button>
                      </div>
 
                      <div className="p-6 overflow-y-auto">
@@ -2796,20 +2912,20 @@ export default function NikonDashboard() {
                            <form id="claimForm" onSubmit={handleSaveClaim} className="space-y-4">
                               <div>
                                  <label className="block text-sm font-bold mb-1">Nomor WA</label>
-                                 <input required type="text" value={claimForm.nomor_wa || ''} onChange={e => setClaimForm({ ...claimForm, nomor_wa: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 <input required type="text" value={claimForm.nomor_wa || ''} onChange={e => setClaimForm({ ...claimForm, nomor_wa: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                               </div>
                               <div>
                                  <label className="block text-sm font-bold mb-1">Nomor Seri</label>
-                                 <input required type="text" value={claimForm.nomor_seri || ''} onChange={e => setClaimForm({ ...claimForm, nomor_seri: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 <input required type="text" value={claimForm.nomor_seri || ''} onChange={e => setClaimForm({ ...claimForm, nomor_seri: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Tipe Barang</label>
-                                    <input type="text" list="list-tipe-barang" value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({ ...claimForm, tipe_barang: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                    <input type="text" list="list-tipe-barang" value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({ ...claimForm, tipe_barang: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Tgl Pembelian</label>
-                                    <input type="date" value={claimForm.tanggal_pembelian || ''} onChange={e => setClaimForm({ ...claimForm, tanggal_pembelian: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                    <input type="date" value={claimForm.tanggal_pembelian || ''} onChange={e => setClaimForm({ ...claimForm, tanggal_pembelian: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                  </div>
                               </div>
 
@@ -2819,33 +2935,33 @@ export default function NikonDashboard() {
                                     {claimForm.link_nota_pembelian ? (
                                        <button type="button" onClick={() => openImageViewer(claimForm.link_nota_pembelian as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Link Nota Pembelian</button>
                                     ) : (
-                                       <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Nota Pembelian</span>
+                                       <span className="text-xs font-bold text-gray-500 italic">Tidak ada link Nota Pembelian</span>
                                     )}
                                     {claimForm.link_kartu_garansi ? (
                                        <button type="button" onClick={() => openImageViewer(claimForm.link_kartu_garansi as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Link Kartu Garansi</button>
                                     ) : (
-                                       <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Kartu Garansi</span>
+                                       <span className="text-xs font-bold text-gray-500 italic">Tidak ada link Kartu Garansi</span>
                                     )}
                                  </div>
                               )}
 
                               {/* New file upload section for ClaimForm */}
-                              <div className="bg-slate-50 border border-slate-200 p-3 rounded-md space-y-3">
+                              <div className="bg-gray-50 border border-gray-100 p-3 rounded-md space-y-3">
                                  <div className="space-y-1">
-                                    <label className="block text-sm font-bold text-slate-900">Nota Pembelian (Upload atau Link)</label>
-                                    <input type="text" value={typeof claimForm.link_nota_pembelian === 'string' ? claimForm.link_nota_pembelian : ''} onChange={e => setClaimForm({ ...claimForm, link_nota_pembelian: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
+                                    <label className="block text-sm font-bold text-gray-900">Nota Pembelian (Upload atau Link)</label>
+                                    <input type="text" value={typeof claimForm.link_nota_pembelian === 'string' ? claimForm.link_nota_pembelian : ''} onChange={e => setClaimForm({ ...claimForm, link_nota_pembelian: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
                                     <div className="flex items-center gap-2">
-                                       <span className="text-[10px] font-bold text-slate-500">ATAU UPLOAD:</span>
+                                       <span className="text-[10px] font-bold text-gray-500">ATAU UPLOAD:</span>
                                        <input type="file" accept="image/*,application/pdf" onChange={e => {
                                           const file = e.target.files?.[0];
                                           if (file) setClaimForm(prev => ({ ...prev, link_nota_pembelian: file as any }));
-                                       }} className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1 text-[10px]" />
+                                       }} className="flex-1 border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-1 text-[10px]" />
                                     </div>
                                  </div>
 
                                  {claimForm.link_nota_pembelian && (
-                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-slate-100">
-                                       <span className="text-xs font-medium text-slate-600 truncate flex-1">
+                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-gray-100">
+                                       <span className="text-xs font-medium text-gray-600 truncate flex-1">
                                           {claimForm.link_nota_pembelian instanceof File ? `📄 File: ${claimForm.link_nota_pembelian.name}` : `${isGoogleDriveLink(claimForm.link_nota_pembelian) ? '🔗📂' : '🔗'} URL: ${String(claimForm.link_nota_pembelian).substring(0, 40)}...`}
                                        </span>
                                        <button type="button" onClick={() => setClaimForm(prev => ({ ...prev, link_nota_pembelian: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
@@ -2853,20 +2969,20 @@ export default function NikonDashboard() {
                                  )}
 
                                  <div className="space-y-1 mt-4">
-                                    <label className="block text-sm font-bold text-slate-900">Kartu Garansi (Upload atau Link)</label>
-                                    <input type="text" value={typeof claimForm.link_kartu_garansi === 'string' ? claimForm.link_kartu_garansi : ''} onChange={e => setClaimForm({ ...claimForm, link_kartu_garansi: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
+                                    <label className="block text-sm font-bold text-gray-900">Kartu Garansi (Upload atau Link)</label>
+                                    <input type="text" value={typeof claimForm.link_kartu_garansi === 'string' ? claimForm.link_kartu_garansi : ''} onChange={e => setClaimForm({ ...claimForm, link_kartu_garansi: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
                                     <div className="flex items-center gap-2">
-                                       <span className="text-[10px] font-bold text-slate-500">ATAU UPLOAD:</span>
+                                       <span className="text-[10px] font-bold text-gray-500">ATAU UPLOAD:</span>
                                        <input type="file" accept="image/*,application/pdf" onChange={e => {
                                           const file = e.target.files?.[0];
                                           if (file) setClaimForm(prev => ({ ...prev, link_kartu_garansi: file as any }));
-                                       }} className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1 text-[10px]" />
+                                       }} className="flex-1 border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-1 text-[10px]" />
                                     </div>
                                  </div>
 
                                  {claimForm.link_kartu_garansi && (
-                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-slate-100">
-                                       <span className="text-xs font-medium text-slate-600 truncate flex-1">
+                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-gray-100">
+                                       <span className="text-xs font-medium text-gray-600 truncate flex-1">
                                           {claimForm.link_kartu_garansi instanceof File ? `📄 File: ${claimForm.link_kartu_garansi.name}` : `${isGoogleDriveLink(claimForm.link_kartu_garansi) ? '🔗📂' : '🔗'} URL: ${String(claimForm.link_kartu_garansi).substring(0, 40)}...`}
                                        </span>
                                        <button type="button" onClick={() => setClaimForm(prev => ({ ...prev, link_kartu_garansi: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
@@ -2876,7 +2992,7 @@ export default function NikonDashboard() {
                               <div className="grid grid-cols-2 gap-4">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Validasi MKT</label>
-                                    <select value={claimForm.validasi_by_mkt || ''} onChange={e => setClaimForm({ ...claimForm, validasi_by_mkt: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
+                                    <select value={claimForm.validasi_by_mkt || ''} onChange={e => setClaimForm({ ...claimForm, validasi_by_mkt: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
                                        <option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option>
                                        <option value="Valid">Valid</option>
                                        <option value="Tidak Valid">Tidak Valid</option>
@@ -2884,36 +3000,36 @@ export default function NikonDashboard() {
                                        <option value="Double Input">Double Input</option>
                                     </select>
                                     <label className="block text-sm font-bold mt-3 mb-1">Catatan MKT</label>
-                                    <textarea rows={2} value={claimForm.catatan_mkt || ''} onChange={e => setClaimForm({ ...claimForm, catatan_mkt: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan tambahan MKT..."></textarea>
+                                    <textarea rows={2} value={claimForm.catatan_mkt || ''} onChange={e => setClaimForm({ ...claimForm, catatan_mkt: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan tambahan MKT..."></textarea>
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Validasi FA</label>
-                                    <select value={claimForm.validasi_by_fa || ''} onChange={e => setClaimForm({ ...claimForm, validasi_by_fa: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
+                                    <select value={claimForm.validasi_by_fa || ''} onChange={e => setClaimForm({ ...claimForm, validasi_by_fa: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
                                        <option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option>
                                        <option value="Valid">Valid</option>
                                        <option value="Tidak Valid">Tidak Valid</option>
                                     </select>
                                     <label className="block text-sm font-bold mt-3 mb-1">Catatan FA</label>
-                                    <textarea rows={2} value={claimForm.catatan_fa || ''} onChange={e => setClaimForm({ ...claimForm, catatan_fa: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan tambahan FA..."></textarea>
+                                    <textarea rows={2} value={claimForm.catatan_fa || ''} onChange={e => setClaimForm({ ...claimForm, catatan_fa: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan tambahan FA..."></textarea>
                                  </div>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-4 bg-slate-50 border border-slate-200 p-3 rounded-md">
+                              <div className="grid grid-cols-2 gap-4 bg-gray-50 border border-gray-100 p-3 rounded-md">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Nama Toko</label>
-                                    <input type="text" list="list-nama-toko" value={claimForm.nama_toko || ''} onChange={e => setClaimForm({ ...claimForm, nama_toko: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik nama toko..." />
+                                    <input type="text" list="list-nama-toko" value={claimForm.nama_toko || ''} onChange={e => setClaimForm({ ...claimForm, nama_toko: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik nama toko..." />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Jenis Promosi</label>
-                                    <input type="text" list="list-jenis-promo" value={claimForm.jenis_promosi || ''} onChange={e => setClaimForm({ ...claimForm, jenis_promosi: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik jenis promo..." />
+                                    <input type="text" list="list-jenis-promo" value={claimForm.jenis_promosi || ''} onChange={e => setClaimForm({ ...claimForm, jenis_promosi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik jenis promo..." />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Jasa Pengiriman</label>
-                                    <input type="text" list="list-jasa-kirim" value={claimForm.nama_jasa_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, nama_jasa_pengiriman: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="JNE / J&T / dll" />
+                                    <input type="text" list="list-jasa-kirim" value={claimForm.nama_jasa_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, nama_jasa_pengiriman: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="JNE / J&T / dll" />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Nomor Resi</label>
-                                    <input type="text" value={claimForm.nomor_resi || ''} onChange={e => setClaimForm({ ...claimForm, nomor_resi: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Masukkan nomor resi..." />
+                                    <input type="text" value={claimForm.nomor_resi || ''} onChange={e => setClaimForm({ ...claimForm, nomor_resi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Masukkan nomor resi..." />
                                  </div>
                               </div>
                            </form>
@@ -2924,45 +3040,45 @@ export default function NikonDashboard() {
                               <div className="grid grid-cols-2 gap-4">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Nama Lengkap</label>
-                                    <input required type="text" value={konsumenForm.nama_lengkap || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nama_lengkap: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                    <input required type="text" value={konsumenForm.nama_lengkap || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nama_lengkap: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Nomor WhatsApp</label>
-                                    <input required type="text" value={konsumenForm.nomor_wa || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nomor_wa: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'edit'} />
+                                    <input required type="text" value={konsumenForm.nomor_wa || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nomor_wa: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'edit'} />
                                  </div>
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">NIK</label>
-                                    <input type="text" value={konsumenForm.nik || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nik: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                    <input type="text" value={konsumenForm.nik || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nik: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Kode Pos</label>
-                                    <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                    <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                  </div>
                               </div>
                               <div>
                                  <label className="block text-sm font-bold mb-1">Alamat Rumah</label>
-                                 <textarea rows={2} value={konsumenForm.alamat_rumah || ''} onChange={e => setKonsumenForm({ ...konsumenForm, alamat_rumah: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]"></textarea>
+                                 <textarea rows={2} value={konsumenForm.alamat_rumah || ''} onChange={e => setKonsumenForm({ ...konsumenForm, alamat_rumah: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]"></textarea>
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Kelurahan</label>
-                                    <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                    <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Kecamatan</label>
-                                    <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                    <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                  </div>
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Kabupaten / Kotamadya</label>
-                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Provinsi</label>
-                                    <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                    <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                  </div>
                               </div>
                            </form>
@@ -2972,11 +3088,11 @@ export default function NikonDashboard() {
                            <form id="warrantyForm" onSubmit={handleSaveWarranty} className="space-y-4">
                               <div>
                                  <label className="block text-sm font-bold mb-1">Nomor Seri</label>
-                                 <input required type="text" value={warrantyForm.nomor_seri || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_seri: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 <input required type="text" value={warrantyForm.nomor_seri || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_seri: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                               </div>
                               <div>
                                  <label className="block text-sm font-bold mb-1">Tipe Barang</label>
-                                 <input required type="text" list="list-tipe-barang" value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({ ...warrantyForm, tipe_barang: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 <input required type="text" list="list-tipe-barang" value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({ ...warrantyForm, tipe_barang: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                               </div>
 
                               {(modalAction === 'edit') && (
@@ -2988,8 +3104,8 @@ export default function NikonDashboard() {
                                        const g = warrantyForm.link_kartu_garansi || linked?.link_kartu_garansi;
                                        return (
                                           <>
-                                             {n ? <button type="button" onClick={() => openImageViewer(n as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Lihat Bukti Nota</button> : <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Nota</span>}
-                                             {g ? <button type="button" onClick={() => openImageViewer(g as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Lihat Bukti Kartu Garansi</button> : <span className="text-xs font-bold text-slate-500 italic">Tidak ada link Kartu Garansi</span>}
+                                             {n ? <button type="button" onClick={() => openImageViewer(n as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Lihat Bukti Nota</button> : <span className="text-xs font-bold text-gray-500 italic">Tidak ada link Nota</span>}
+                                             {g ? <button type="button" onClick={() => openImageViewer(g as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Lihat Bukti Kartu Garansi</button> : <span className="text-xs font-bold text-gray-500 italic">Tidak ada link Kartu Garansi</span>}
                                           </>
                                        );
                                     })()}
@@ -2997,22 +3113,22 @@ export default function NikonDashboard() {
                               )}
 
                               {/* New file upload section for WarrantyForm */}
-                              <div className="bg-slate-50 border border-slate-200 p-3 rounded-md space-y-3">
+                              <div className="bg-gray-50 border border-gray-100 p-3 rounded-md space-y-3">
                                  <div className="space-y-1">
-                                    <label className="block text-sm font-bold text-slate-900">Nota Pembelian (Upload atau Link)</label>
-                                    <input type="text" value={typeof warrantyForm.link_nota_pembelian === 'string' ? warrantyForm.link_nota_pembelian : ''} onChange={e => setWarrantyForm({ ...warrantyForm, link_nota_pembelian: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
+                                    <label className="block text-sm font-bold text-gray-900">Nota Pembelian (Upload atau Link)</label>
+                                    <input type="text" value={typeof warrantyForm.link_nota_pembelian === 'string' ? warrantyForm.link_nota_pembelian : ''} onChange={e => setWarrantyForm({ ...warrantyForm, link_nota_pembelian: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
                                     <div className="flex items-center gap-2">
-                                       <span className="text-[10px] font-bold text-slate-500">ATAU UPLOAD:</span>
+                                       <span className="text-[10px] font-bold text-gray-500">ATAU UPLOAD:</span>
                                        <input type="file" accept="image/*,application/pdf" onChange={e => {
                                           const file = e.target.files?.[0];
                                           if (file) setWarrantyForm(prev => ({ ...prev, link_nota_pembelian: file as any }));
-                                       }} className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1 text-[10px]" />
+                                       }} className="flex-1 border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-1 text-[10px]" />
                                     </div>
                                  </div>
 
                                  {warrantyForm.link_nota_pembelian && (
-                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-slate-100">
-                                       <span className="text-xs font-medium text-slate-600 truncate flex-1">
+                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-gray-100">
+                                       <span className="text-xs font-medium text-gray-600 truncate flex-1">
                                           {warrantyForm.link_nota_pembelian instanceof File ? `📄 File: ${warrantyForm.link_nota_pembelian.name}` : `${isGoogleDriveLink(warrantyForm.link_nota_pembelian) ? '🔗📂' : '🔗'} URL: ${String(warrantyForm.link_nota_pembelian).substring(0, 40)}...`}
                                        </span>
                                        <button type="button" onClick={() => setWarrantyForm(prev => ({ ...prev, link_nota_pembelian: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
@@ -3020,20 +3136,20 @@ export default function NikonDashboard() {
                                  )}
 
                                  <div className="space-y-1 mt-4">
-                                    <label className="block text-sm font-bold text-slate-900">Kartu Garansi (Upload atau Link)</label>
-                                    <input type="text" value={typeof warrantyForm.link_kartu_garansi === 'string' ? warrantyForm.link_kartu_garansi : ''} onChange={e => setWarrantyForm({ ...warrantyForm, link_kartu_garansi: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
+                                    <label className="block text-sm font-bold text-gray-900">Kartu Garansi (Upload atau Link)</label>
+                                    <input type="text" value={typeof warrantyForm.link_kartu_garansi === 'string' ? warrantyForm.link_kartu_garansi : ''} onChange={e => setWarrantyForm({ ...warrantyForm, link_kartu_garansi: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
                                     <div className="flex items-center gap-2">
-                                       <span className="text-[10px] font-bold text-slate-500">ATAU UPLOAD:</span>
+                                       <span className="text-[10px] font-bold text-gray-500">ATAU UPLOAD:</span>
                                        <input type="file" accept="image/*,application/pdf" onChange={e => {
                                           const file = e.target.files?.[0];
                                           if (file) setWarrantyForm(prev => ({ ...prev, link_kartu_garansi: file as any }));
-                                       }} className="flex-1 border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1 text-[10px]" />
+                                       }} className="flex-1 border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-1 text-[10px]" />
                                     </div>
                                  </div>
 
                                  {warrantyForm.link_kartu_garansi && (
-                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-slate-100">
-                                       <span className="text-xs font-medium text-slate-600 truncate flex-1">
+                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-gray-100">
+                                       <span className="text-xs font-medium text-gray-600 truncate flex-1">
                                           {warrantyForm.link_kartu_garansi instanceof File ? `📄 File: ${warrantyForm.link_kartu_garansi.name}` : `${isGoogleDriveLink(warrantyForm.link_kartu_garansi) ? '🔗📂' : '🔗'} URL: ${String(warrantyForm.link_kartu_garansi).substring(0, 40)}...`}
                                        </span>
                                        <button type="button" onClick={() => setWarrantyForm(prev => ({ ...prev, link_kartu_garansi: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
@@ -3043,7 +3159,7 @@ export default function NikonDashboard() {
                               <div className="grid grid-cols-3 gap-4">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Status Validasi</label>
-                                    <select value={warrantyForm.status_validasi || ''} onChange={e => setWarrantyForm({ ...warrantyForm, status_validasi: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
+                                    <select value={warrantyForm.status_validasi || ''} onChange={e => setWarrantyForm({ ...warrantyForm, status_validasi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
                                        <option value="Menunggu">Menunggu</option>
                                        <option value="Valid">Valid</option>
                                        <option value="Tidak Valid">Tidak Valid</option>
@@ -3051,14 +3167,14 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Jenis Garansi</label>
-                                    <select value={warrantyForm.jenis_garansi || ''} onChange={e => setWarrantyForm({ ...warrantyForm, jenis_garansi: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
+                                    <select value={warrantyForm.jenis_garansi || ''} onChange={e => setWarrantyForm({ ...warrantyForm, jenis_garansi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
                                        <option value="Jasa 30%">Jasa 30%</option>
                                        <option value="Extended to 2 Year">Extended to 2 Year</option>
                                     </select>
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Lama Garansi</label>
-                                    <select value={warrantyForm.lama_garansi || ''} onChange={e => setWarrantyForm({ ...warrantyForm, lama_garansi: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
+                                    <select value={warrantyForm.lama_garansi || ''} onChange={e => setWarrantyForm({ ...warrantyForm, lama_garansi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
                                        <option value="1 Tahun">1 Tahun</option>
                                        <option value="2 Tahun">2 Tahun</option>
                                        <option value="Tidak Garansi">Tidak Garansi</option>
@@ -3072,39 +3188,39 @@ export default function NikonDashboard() {
                            <form id="promoForm" onSubmit={handleSavePromo} className="space-y-4">
                               <div>
                                  <label className="block text-sm font-bold mb-1">Nama Promo</label>
-                                 <input required type="text" list="list-jenis-promo" value={promoForm.nama_promo || ''} onChange={e => setPromoForm({ ...promoForm, nama_promo: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 <input required type="text" list="list-jenis-promo" value={promoForm.nama_promo || ''} onChange={e => setPromoForm({ ...promoForm, nama_promo: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Tgl Mulai</label>
-                                    <input required type="date" value={promoForm.tanggal_mulai || ''} onChange={e => setPromoForm({ ...promoForm, tanggal_mulai: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                    <input required type="date" value={promoForm.tanggal_mulai || ''} onChange={e => setPromoForm({ ...promoForm, tanggal_mulai: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Tgl Selesai</label>
-                                    <input required type="date" value={promoForm.tanggal_selesai || ''} onChange={e => setPromoForm({ ...promoForm, tanggal_selesai: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                    <input required type="date" value={promoForm.tanggal_selesai || ''} onChange={e => setPromoForm({ ...promoForm, tanggal_selesai: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                  </div>
                               </div>
                               <div>
                                  <label className="flex items-center gap-2">
                                     <input type="checkbox" checked={promoForm.status_aktif || false} onChange={e => setPromoForm({ ...promoForm, status_aktif: e.target.checked })} className="w-4 h-4 text-black border-gray-300 rounded focus:ring-black" />
-                                    <span className="text-sm font-bold text-slate-900">Promo Aktif</span>
+                                    <span className="text-sm font-bold text-gray-900">Promo Aktif</span>
                                  </label>
                               </div>
 
-                              <div className="mt-4 border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-md">
+                              <div className="mt-4 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
                                  <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-bold text-slate-900">Tipe Produk yang Berlaku</label>
-                                    <button type="button" onClick={() => setPromoForm({ ...promoForm, tipe_produk: [...(promoForm.tipe_produk || []), { nama_produk: '' }] })} className="bg-white border border-slate-300 px-3 py-1 rounded text-xs font-bold hover:bg-slate-100 transition text-slate-900">+ Tambah Produk</button>
+                                    <label className="block text-sm font-bold text-gray-900">Tipe Produk yang Berlaku</label>
+                                    <button type="button" onClick={() => setPromoForm({ ...promoForm, tipe_produk: [...(promoForm.tipe_produk || []), { nama_produk: '' }] })} className="bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100 transition text-gray-900">+ Tambah Produk</button>
                                  </div>
                                  {promoForm.tipe_produk?.map((item, index) => (
                                     <div key={index} className="flex gap-2 mb-2 items-center">
                                        <div className="flex-1">
-                                          <input type="text" list="list-tipe-barang" required value={item.nama_produk} onChange={e => { const newItems = [...(promoForm.tipe_produk || [])]; newItems[index].nama_produk = e.target.value; setPromoForm({ ...promoForm, tipe_produk: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik nama produk..." />
+                                          <input type="text" list="list-tipe-barang" required value={item.nama_produk} onChange={e => { const newItems = [...(promoForm.tipe_produk || [])]; newItems[index].nama_produk = e.target.value; setPromoForm({ ...promoForm, tipe_produk: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik nama produk..." />
                                        </div>
                                        <button type="button" onClick={() => { const newItems = [...(promoForm.tipe_produk || [])]; newItems.splice(index, 1); setPromoForm({ ...promoForm, tipe_produk: newItems }); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2 rounded text-sm transition border border-red-200">X</button>
                                     </div>
                                  ))}
-                                 {(!promoForm.tipe_produk || promoForm.tipe_produk.length === 0) && <p className="text-xs font-bold text-slate-500 italic mt-2">Belum ada produk ditambahkan</p>}
+                                 {(!promoForm.tipe_produk || promoForm.tipe_produk.length === 0) && <p className="text-xs font-bold text-gray-500 italic mt-2">Belum ada produk ditambahkan</p>}
                               </div>
                            </form>
                         )}
@@ -3113,15 +3229,15 @@ export default function NikonDashboard() {
                            <form id="serviceForm" onSubmit={handleSaveService} className="space-y-4">
                               <div>
                                  <label className="block text-sm font-bold mb-1">Nomor Tanda Terima</label>
-                                 <input required type="text" value={serviceForm.nomor_tanda_terima || ''} onChange={e => setServiceForm({ ...serviceForm, nomor_tanda_terima: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Masukkan ID/Resi service" />
+                                 <input required type="text" value={serviceForm.nomor_tanda_terima || ''} onChange={e => setServiceForm({ ...serviceForm, nomor_tanda_terima: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Masukkan ID/Resi service" />
                               </div>
                               <div>
                                  <label className="block text-sm font-bold mb-1">Nomor Seri</label>
-                                 <input required type="text" value={serviceForm.nomor_seri || ''} onChange={e => setServiceForm({ ...serviceForm, nomor_seri: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 <input required type="text" value={serviceForm.nomor_seri || ''} onChange={e => setServiceForm({ ...serviceForm, nomor_seri: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                               </div>
                               <div>
                                  <label className="block text-sm font-bold mb-1">Status Service</label>
-                                 <input required type="text" list="list-status-service" value={serviceForm.status_service || ''} onChange={e => setServiceForm({ ...serviceForm, status_service: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Contoh: Menunggu Sparepart / Selesai" />
+                                 <input required type="text" list="list-status-service" value={serviceForm.status_service || ''} onChange={e => setServiceForm({ ...serviceForm, status_service: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Contoh: Menunggu Sparepart / Selesai" />
                               </div>
                            </form>
                         )}
@@ -3131,58 +3247,58 @@ export default function NikonDashboard() {
                               <div className="grid grid-cols-2 gap-4">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Proposal No</label>
-                                    <input required type="text" value={budgetForm.proposal_no || ''} onChange={e => setBudgetForm({ ...budgetForm, proposal_no: e.target.value })} className="w-full border border-slate-300 bg-slate-100 text-slate-900 rounded-md px-3 py-2 text-sm font-mono" readOnly />
+                                    <input required type="text" value={budgetForm.proposal_no || ''} onChange={e => setBudgetForm({ ...budgetForm, proposal_no: e.target.value })} className="w-full border border-gray-300 bg-gray-100 text-gray-900 rounded-md px-3 py-2 text-sm font-mono" readOnly />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Title</label>
-                                    <input required type="text" value={budgetForm.title || ''} onChange={e => setBudgetForm({ ...budgetForm, title: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" />
+                                    <input required type="text" value={budgetForm.title || ''} onChange={e => setBudgetForm({ ...budgetForm, title: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
                                  </div>
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Period (Tanggal)</label>
-                                    <input required type="date" value={budgetForm.period || ''} onChange={e => setBudgetForm({ ...budgetForm, period: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" />
+                                    <input required type="date" value={budgetForm.period || ''} onChange={e => setBudgetForm({ ...budgetForm, period: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Budget Source</label>
-                                    <input required type="text" list="list-budget-source" value={budgetForm.budget_source || ''} onChange={e => setBudgetForm({ ...budgetForm, budget_source: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" />
+                                    <input required type="text" list="list-budget-source" value={budgetForm.budget_source || ''} onChange={e => setBudgetForm({ ...budgetForm, budget_source: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
                                  </div>
                               </div>
                               <div>
                                  <label className="block text-sm font-bold mb-1">Objectives</label>
-                                 <textarea required rows={2} value={budgetForm.objectives || ''} onChange={e => setBudgetForm({ ...budgetForm, objectives: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" />
+                                 <textarea required rows={2} value={budgetForm.objectives || ''} onChange={e => setBudgetForm({ ...budgetForm, objectives: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
                               </div>
                               <div>
                                  <label className="block text-sm font-bold mb-1">Detail of Activity</label>
-                                 <textarea required rows={2} value={budgetForm.detail_activity || ''} onChange={e => setBudgetForm({ ...budgetForm, detail_activity: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" />
+                                 <textarea required rows={2} value={budgetForm.detail_activity || ''} onChange={e => setBudgetForm({ ...budgetForm, detail_activity: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
                               </div>
                               <div>
                                  <label className="block text-sm font-bold mb-1">Expected Result</label>
-                                 <textarea required rows={2} value={budgetForm.expected_result || ''} onChange={e => setBudgetForm({ ...budgetForm, expected_result: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" />
+                                 <textarea required rows={2} value={budgetForm.expected_result || ''} onChange={e => setBudgetForm({ ...budgetForm, expected_result: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
                               </div>
 
-                              <div className="bg-slate-50 border border-slate-200 p-4 rounded-md space-y-4">
-                                 <label className="block text-sm font-bold text-slate-900 border-b border-slate-200 pb-2">Nama Penandatangan (Approval)</label>
+                              <div className="bg-gray-50 border border-gray-100 p-4 rounded-md space-y-4">
+                                 <label className="block text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Nama Penandatangan (Approval)</label>
                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                     <div>
-                                       <label className="block text-[11px] font-bold text-slate-600 mb-1">Proposed By</label>
-                                       <input type="text" value={budgetForm.drafter_name || ''} onChange={e => setBudgetForm({ ...budgetForm, drafter_name: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="Nama Pembuat" />
+                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Proposed By</label>
+                                       <input type="text" value={budgetForm.drafter_name || ''} onChange={e => setBudgetForm({ ...budgetForm, drafter_name: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Nama Pembuat" />
                                     </div>
                                     <div>
-                                       <label className="block text-[11px] font-bold text-slate-600 mb-1">Mgt. Comment 1</label>
-                                       <input type="text" value={budgetForm.mgt_comment_1 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_1: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="Kosongkan jika tidak perlu" />
+                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Mgt. Comment 1</label>
+                                       <input type="text" value={budgetForm.mgt_comment_1 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_1: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Kosongkan jika tidak perlu" />
                                     </div>
                                     <div>
-                                       <label className="block text-[11px] font-bold text-slate-600 mb-1">Mgt. Comment 2</label>
-                                       <input type="text" value={budgetForm.mgt_comment_2 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_2: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="Kosongkan jika tidak perlu" />
+                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Mgt. Comment 2</label>
+                                       <input type="text" value={budgetForm.mgt_comment_2 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_2: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Kosongkan jika tidak perlu" />
                                     </div>
                                     <div>
-                                       <label className="block text-[11px] font-bold text-slate-600 mb-1">Mgt. Consent</label>
-                                       <input type="text" value={budgetForm.mgt_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_consent: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="Contoh: Larry Handra" />
+                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Mgt. Consent</label>
+                                       <input type="text" value={budgetForm.mgt_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_consent: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Contoh: Larry Handra" />
                                     </div>
                                     <div>
-                                       <label className="block text-[11px] font-bold text-slate-600 mb-1">Finance Consent</label>
-                                       <input type="text" value={budgetForm.finance_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, finance_consent: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm" placeholder="Nama Finance" />
+                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Finance Consent</label>
+                                       <input type="text" value={budgetForm.finance_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, finance_consent: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Nama Finance" />
                                     </div>
                                  </div>
                               </div>
@@ -3200,7 +3316,7 @@ export default function NikonDashboard() {
                                                    newUrls[i] = file;
                                                    setBudgetForm({ ...budgetForm, attachment_urls: newUrls });
                                                 }
-                                             }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-2 py-1 text-xs" />
+                                             }} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-2 py-1 text-xs" />
                                              {budgetForm.attachment_urls?.[i] && (
                                                 <button type="button" onClick={() => {
                                                    const newUrls = [...(budgetForm.attachment_urls || [])];
@@ -3210,7 +3326,7 @@ export default function NikonDashboard() {
                                              )}
                                           </div>
                                           {budgetForm.attachment_urls?.[i] && (
-                                             <div className="border rounded p-1 bg-slate-50 text-center">
+                                             <div className="border rounded p-1 bg-gray-50 text-center">
                                                 <img
                                                    src={budgetForm.attachment_urls[i] instanceof File
                                                       ? URL.createObjectURL(budgetForm.attachment_urls[i] as File)
@@ -3225,35 +3341,35 @@ export default function NikonDashboard() {
                                     ))}
                                  </div>
                               </div>
-                              <div className="mt-6 border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-md">
+                              <div className="mt-6 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
                                  <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-bold text-slate-900">Rincian Budget (Items)</label>
-                                    <button type="button" onClick={() => setBudgetForm({ ...budgetForm, items: [...(budgetForm.items || []), { purpose: '', qty: 1, cost_unit: 0, value: 0 }] })} className="bg-white border border-slate-300 px-3 py-1 rounded text-xs font-bold hover:bg-slate-100 transition text-slate-900">+ Tambah Item</button>
+                                    <label className="block text-sm font-bold text-gray-900">Rincian Budget (Items)</label>
+                                    <button type="button" onClick={() => setBudgetForm({ ...budgetForm, items: [...(budgetForm.items || []), { purpose: '', qty: 1, cost_unit: 0, value: 0 }] })} className="bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100 transition text-gray-900">+ Tambah Item</button>
                                  </div>
                                  {budgetForm.items?.map((item, index) => (
                                     <div key={index} className="flex gap-2 mb-2 items-end">
                                        <div className="flex-1">
-                                          <label className="text-xs font-bold text-slate-700">Purpose</label>
-                                          <input type="text" value={item.purpose} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].purpose = e.target.value; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
+                                          <label className="text-xs font-bold text-gray-700">Purpose</label>
+                                          <input type="text" value={item.purpose} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].purpose = e.target.value; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
                                        </div>
                                        <div className="w-16">
-                                          <label className="text-xs font-bold text-slate-700">Qty</label>
-                                          <input type="number" value={item.qty} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].qty = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
+                                          <label className="text-xs font-bold text-gray-700">Qty</label>
+                                          <input type="number" value={item.qty} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].qty = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
                                        </div>
                                        <div className="w-32">
-                                          <label className="text-xs font-bold text-slate-700">Cost/Unit</label>
-                                          <input type="number" value={item.cost_unit} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].cost_unit = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
+                                          <label className="text-xs font-bold text-gray-700">Cost/Unit</label>
+                                          <input type="number" value={item.cost_unit} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].cost_unit = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
                                        </div>
                                        <div className="w-32">
-                                          <label className="text-xs font-bold text-slate-700">Value (Auto)</label>
-                                          <input type="number" readOnly value={item.value} className="w-full border border-slate-300 bg-slate-100 text-slate-600 rounded px-2 py-1 text-sm font-mono" />
+                                          <label className="text-xs font-bold text-gray-700">Value (Auto)</label>
+                                          <input type="number" readOnly value={item.value} className="w-full border border-gray-300 bg-gray-100 text-gray-600 rounded px-2 py-1 text-sm font-mono" />
                                        </div>
                                        <button type="button" onClick={() => { const newItems = [...(budgetForm.items || [])]; newItems.splice(index, 1); setBudgetForm({ ...budgetForm, items: newItems }); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2 py-1.5 rounded text-sm mb-0.5 transition border border-red-200">X</button>
                                     </div>
                                  ))}
                                  <div className="flex justify-end items-center mt-4 gap-4">
                                     <button type="button" onClick={() => { const total = (budgetForm.items || []).reduce((acc, curr) => acc + curr.value, 0); setBudgetForm({ ...budgetForm, total_cost: total }); }} className="text-xs font-bold text-black hover:text-blue-800 hover:underline transition">Hitung Ulang Total</button>
-                                    <div className="font-bold text-slate-900">Total Cost: Rp {Number(budgetForm.total_cost || 0).toLocaleString('id-ID')}</div>
+                                    <div className="font-bold text-gray-900">Total Cost: Rp {Number(budgetForm.total_cost || 0).toLocaleString('id-ID')}</div>
                                  </div>
                               </div>
                            </form>
@@ -3270,24 +3386,24 @@ export default function NikonDashboard() {
                               <div className="grid grid-cols-2 gap-4">
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Nama Peminjam</label>
-                                    <input required type="text" value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                    <input required type="text" value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
                                  </div>
                                  <div>
                                     <label className="block text-sm font-bold mb-1">Nomor WhatsApp Peminjam</label>
-                                    <input required type="text" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                    <input required type="text" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
                                  </div>
                               </div>
 
                               {modalAction !== 'return' && (
-                                 <div className="bg-slate-50 border border-slate-200 p-3 rounded-md space-y-3">
-                                    <label className="block text-sm font-bold text-slate-900">Upload Foto KTP / ID Card</label>
+                                 <div className="bg-gray-50 border border-gray-100 p-3 rounded-md space-y-3">
+                                    <label className="block text-sm font-bold text-gray-900">Upload Foto KTP / ID Card</label>
                                     <input type="file" accept="image/*,application/pdf" onChange={e => {
                                        const file = e.target.files?.[0];
                                        if (file) setLendingForm(prev => ({ ...prev, link_ktp_peminjam: file as any }));
-                                    }} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-1.5 text-sm" />
+                                    }} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-1.5 text-sm" />
                                     {lendingForm.link_ktp_peminjam && (
                                        <div className="flex items-center gap-2 mt-2">
-                                          <span className="text-xs font-medium text-slate-600 truncate max-w-[200px]">
+                                          <span className="text-xs font-medium text-gray-600 truncate max-w-[200px]">
                                              {lendingForm.link_ktp_peminjam instanceof File ? `File baru: ${lendingForm.link_ktp_peminjam.name}` : `URL: ${String(lendingForm.link_ktp_peminjam).substring(0, 30)}...`}
                                           </span>
                                           <button type="button" onClick={() => setLendingForm(prev => ({ ...prev, link_ktp_peminjam: null as any }))} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
@@ -3299,48 +3415,48 @@ export default function NikonDashboard() {
                                  </div>
                               )}
 
-                              <div className="mt-4 border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-md">
+                              <div className="mt-4 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
                                  <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-bold text-slate-900">Daftar Barang Dipinjam</label>
+                                    <label className="block text-sm font-bold text-gray-900">Daftar Barang Dipinjam</label>
                                     {modalAction !== 'return' && (
-                                       <button type="button" onClick={() => setLendingForm({ ...lendingForm, items_dipinjam: [...(lendingForm.items_dipinjam || []), { nama_barang: '', nomor_seri: '', catatan: '', catatan_pengembalian: '', status_pengembalian: 'dipinjam' }] })} className="bg-white border border-slate-300 px-3 py-1 rounded text-xs font-bold hover:bg-slate-100 transition text-slate-900">+ Tambah Barang</button>
+                                       <button type="button" onClick={() => setLendingForm({ ...lendingForm, items_dipinjam: [...(lendingForm.items_dipinjam || []), { nama_barang: '', nomor_seri: '', catatan: '', catatan_pengembalian: '', status_pengembalian: 'dipinjam' }] })} className="bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100 transition text-gray-900">+ Tambah Barang</button>
                                     )}
                                  </div>
                                  {lendingForm.items_dipinjam?.map((item, index) => (
                                     <React.Fragment key={index}>
-                                       <div className="flex gap-2 mb-2 items-end p-2 border border-slate-200 rounded-md bg-white">
+                                       <div className="flex gap-2 mb-2 items-end p-2 border border-gray-100 rounded-md bg-white">
                                           <div className="flex-1">
-                                             <label className="text-xs font-bold text-slate-700">Nama Barang</label>
-                                             <input type="text" list="list-nama-barang" required value={item.nama_barang} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].nama_barang = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                             <label className="text-xs font-bold text-gray-700">Nama Barang</label>
+                                             <input type="text" list="list-nama-barang" required value={item.nama_barang} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].nama_barang = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
                                           </div>
                                           <div className="flex-1">
-                                             <label className="text-xs font-bold text-slate-700">Nomor Seri</label>
-                                             <input type="text" required value={item.nomor_seri} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].nomor_seri = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                             <label className="text-xs font-bold text-gray-700">Nomor Seri</label>
+                                             <input type="text" required value={item.nomor_seri} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].nomor_seri = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
                                           </div>
                                           <div className="flex-1">
-                                             <label className="text-xs font-bold text-slate-700">Catatan</label>
-                                             <input type="text" list="list-catatan-peminjaman" value={item.catatan || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                             <label className="text-xs font-bold text-gray-700">Catatan</label>
+                                             <input type="text" list="list-catatan-peminjaman" value={item.catatan || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
                                           </div>
                                           {modalAction === 'return' ? (
                                              <div className="w-32">
-                                                <label className="text-xs font-bold text-slate-700">Status</label>
+                                                <label className="text-xs font-bold text-gray-700">Status</label>
                                                 <select value={item.status_pengembalian} onChange={e => {
                                                    const newItems = [...(lendingForm.items_dipinjam || [])];
                                                    newItems[index].status_pengembalian = e.target.value as 'dipinjam' | 'dikembalikan';
                                                    setLendingForm({ ...lendingForm, items_dipinjam: newItems });
-                                                }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]">
+                                                }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]">
                                                    <option value="dipinjam">Dipinjam</option>
                                                    <option value="dikembalikan">Dikembalikan</option>
                                                 </select>
                                              </div>
                                           ) : modalAction === 'edit' ? (
                                              <div className="w-32">
-                                                <label className="text-xs font-bold text-slate-700">Status</label>
+                                                <label className="text-xs font-bold text-gray-700">Status</label>
                                                 <select value={item.status_pengembalian} onChange={e => {
                                                    const newItems = [...(lendingForm.items_dipinjam || [])];
                                                    newItems[index].status_pengembalian = e.target.value as 'dipinjam' | 'dikembalikan';
                                                    setLendingForm({ ...lendingForm, items_dipinjam: newItems });
-                                                }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled>
+                                                }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled>
                                                    <option value="dipinjam">Dipinjam</option>
                                                    <option value="dikembalikan">Dikembalikan</option>
                                                 </select>
@@ -3350,21 +3466,21 @@ export default function NikonDashboard() {
                                           )}
                                        </div>
                                        {modalAction === 'return' && item.status_pengembalian === 'dikembalikan' && (
-                                          <div className="flex gap-2 mb-2 items-end p-2 border border-slate-200 rounded-md bg-white -mt-1">
+                                          <div className="flex gap-2 mb-2 items-end p-2 border border-gray-100 rounded-md bg-white -mt-1">
                                              <div className="flex-1">
-                                                <label className="text-xs font-bold text-slate-700">Catatan Pengembalian (Opsional)</label>
-                                                <input type="text" list="list-catatan-pengembalian" value={item.catatan_pengembalian || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan_pengembalian = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" placeholder="Kondisi barang, dll." />
+                                                <label className="text-xs font-bold text-gray-700">Catatan Pengembalian (Opsional)</label>
+                                                <input type="text" list="list-catatan-pengembalian" value={item.catatan_pengembalian || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan_pengembalian = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" placeholder="Kondisi barang, dll." />
                                              </div>
                                              <div className="flex-1">
-                                                <label className="text-xs font-bold text-slate-700">Catatan Admin</label>
-                                                <input type="text" value={item.catatan_admin || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan_admin = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-slate-300 bg-white text-slate-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan internal admin" />
+                                                <label className="text-xs font-bold text-gray-700">Catatan Admin</label>
+                                                <input type="text" value={item.catatan_admin || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan_admin = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan internal admin" />
                                              </div>
                                           </div>
                                        )}
                                     </React.Fragment>
                                  ))}
                                  {(!lendingForm.items_dipinjam || lendingForm.items_dipinjam.length === 0) && modalAction !== 'return' && (
-                                    <p className="text-xs font-bold text-slate-500 italic mt-2">Belum ada barang ditambahkan</p>
+                                    <p className="text-xs font-bold text-gray-500 italic mt-2">Belum ada barang ditambahkan</p>
                                  )}
                               </div>
                            </form>
@@ -3386,7 +3502,7 @@ export default function NikonDashboard() {
                                     </div>
                                     <div>
                                        <label className="block text-sm font-bold mb-1">Ketik Password Baru</label>
-                                       <input required type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({ ...karyawanForm, password: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Minimal 6 karakter..." />
+                                       <input required type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({ ...karyawanForm, password: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Minimal 6 karakter..." />
                                     </div>
                                  </>
                               ) : (
@@ -3394,50 +3510,50 @@ export default function NikonDashboard() {
                                     <div className="grid grid-cols-2 gap-4">
                                        <div>
                                           <label className="block text-sm font-bold mb-1">Nama Karyawan</label>
-                                          <input required type="text" value={karyawanForm.nama_karyawan || ''} onChange={e => setKaryawanForm({ ...karyawanForm, nama_karyawan: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                          <input required type="text" value={karyawanForm.nama_karyawan || ''} onChange={e => setKaryawanForm({ ...karyawanForm, nama_karyawan: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                        </div>
                                        <div>
                                           <label className="block text-sm font-bold mb-1">Nomor WhatsApp (Reset Pw)</label>
-                                          <input required type="text" placeholder="62812345..." value={karyawanForm.nomor_wa || ''} onChange={e => setKaryawanForm({ ...karyawanForm, nomor_wa: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                          <input required type="text" placeholder="62812345..." value={karyawanForm.nomor_wa || ''} onChange={e => setKaryawanForm({ ...karyawanForm, nomor_wa: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                        <div>
                                           <label className="block text-sm font-bold mb-1">Username Login</label>
-                                          <input required type="text" value={karyawanForm.username || ''} onChange={e => setKaryawanForm({ ...karyawanForm, username: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'} />
+                                          <input required type="text" value={karyawanForm.username || ''} onChange={e => setKaryawanForm({ ...karyawanForm, username: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'} />
                                        </div>
                                        <div>
-                                          <label className="block text-sm font-bold mb-1">Password {modalAction === 'edit' && <span className="text-[10px] font-normal text-slate-500">(Kosongkan jika tidak diubah)</span>}</label>
-                                          <input type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({ ...karyawanForm, password: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                          <label className="block text-sm font-bold mb-1">Password {modalAction === 'edit' && <span className="text-[10px] font-normal text-gray-500">(Kosongkan jika tidak diubah)</span>}</label>
+                                          <input type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({ ...karyawanForm, password: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                        <div>
                                           <label className="block text-sm font-bold mb-1">Role Akun</label>
-                                          <input type="text" list="list-roles" value={karyawanForm.role || ''} onChange={e => setKaryawanForm({ ...karyawanForm, role: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'} placeholder="Ketik atau pilih role..." />
+                                          <input type="text" list="list-roles" value={karyawanForm.role || ''} onChange={e => setKaryawanForm({ ...karyawanForm, role: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'} placeholder="Ketik atau pilih role..." />
                                        </div>
                                        <div>
                                           <label className="block text-sm font-bold mb-1">Status Akun</label>
-                                          <select value={karyawanForm.status_aktif ? 'true' : 'false'} onChange={e => setKaryawanForm({ ...karyawanForm, status_aktif: e.target.value === 'true' })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'}>
+                                          <select value={karyawanForm.status_aktif ? 'true' : 'false'} onChange={e => setKaryawanForm({ ...karyawanForm, status_aktif: e.target.value === 'true' })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'}>
                                              <option value="true">Aktif</option>
                                              <option value="false">Tidak Aktif (Blokir)</option>
                                           </select>
                                        </div>
                                     </div>
-                                    <div className="mt-4 border-t border-slate-200 pt-4 bg-slate-50 p-4 rounded-md">
-                                       <label className="block text-sm font-bold text-slate-900 mb-2">Akses Halaman yang Diizinkan</label>
-                                       <p className="text-xs font-bold text-slate-500 mb-3">Pilih tab mana saja yang boleh dilihat oleh karyawan ini.</p>
+                                    <div className="mt-4 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
+                                       <label className="block text-sm font-bold text-gray-900 mb-2">Akses Halaman yang Diizinkan</label>
+                                       <p className="text-xs font-bold text-gray-500 mb-3">Pilih tab mana saja yang boleh dilihat oleh karyawan ini.</p>
                                        <div className="grid grid-cols-2 gap-2">
                                           {[{ id: 'messages', label: 'Pesan' }, { id: 'konsumen', label: 'Konsumen' }, { id: 'promos', label: 'Promo' }, { id: 'claims', label: 'Claim' }, { id: 'warranties', label: 'Garansi' }, { id: 'services', label: 'Service' }, { id: 'budgets', label: 'ProposalEvent' }, { id: 'import', label: 'Import Data' }, { id: 'lending', label: 'Peminjaman' }].map(tab => {
                                              const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
                                              return (
-                                                <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'} cursor-pointer`}>
+                                                <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'} cursor-pointer`}>
                                                    <input type="checkbox" checked={isChecked} disabled={karyawanForm.role === 'Admin'} onChange={() => {
                                                       const current = karyawanForm.akses_halaman || [];
                                                       if (current.includes(tab.id)) setKaryawanForm({ ...karyawanForm, akses_halaman: current.filter(x => x !== tab.id) });
                                                       else setKaryawanForm({ ...karyawanForm, akses_halaman: [...current, tab.id] });
                                                    }} className="w-4 h-4 text-black rounded focus:ring-black" />
-                                                   <span className="text-sm font-bold text-slate-700">{tab.label}</span>
+                                                   <span className="text-sm font-bold text-gray-700">{tab.label}</span>
                                                 </label>
                                              )
                                           })}
@@ -3454,35 +3570,35 @@ export default function NikonDashboard() {
                            <form id="registrationForm" onSubmit={handleSaveRegistration} className="space-y-4">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Lengkap</label>
-                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Lengkap</label>
+                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Event</label>
-                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Event</label>
+                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nomor WhatsApp</label>
-                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nomor WhatsApp</label>
+                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Email</label>
-                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Email</label>
+                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Pendaftaran</label>
-                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status Pendaftaran</label>
+                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
                                     <option value="Pending Payment">Pending Payment</option>
                                     <option value="Confirmed">Confirmed</option>
                                     <option value="Cancelled">Cancelled</option>
                                  </select>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Link Bukti Transfer</label>
-                                 <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" placeholder="Opsional" />
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Link Bukti Transfer</label>
+                                 <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Opsional" />
                               </div>
                            </form>
                         )}
@@ -3491,45 +3607,45 @@ export default function NikonDashboard() {
                            <form id="eventForm" onSubmit={handleSaveEvent} className="space-y-4">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Judul Event</label>
-                                    <input type="text" value={eventForm.title || ''} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Judul Event</label>
+                                    <input type="text" value={eventForm.title || ''} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Tanggal & Waktu</label>
-                                    <input type="text" value={eventForm.date || ''} onChange={e => setEventForm({ ...eventForm, date: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tanggal & Waktu</label>
+                                    <input type="text" value={eventForm.date || ''} onChange={e => setEventForm({ ...eventForm, date: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Harga</label>
-                                    <input type="text" value={eventForm.price || ''} onChange={e => setEventForm({ ...eventForm, price: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Harga</label>
+                                    <input type="text" value={eventForm.price || ''} onChange={e => setEventForm({ ...eventForm, price: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Kuota Slot (Stock)</label>
-                                    <input type="number" value={eventForm.stock || 0} onChange={e => setEventForm({ ...eventForm, stock: Number(e.target.value) })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kuota Slot (Stock)</label>
+                                    <input type="number" value={eventForm.stock || 0} onChange={e => setEventForm({ ...eventForm, stock: Number(e.target.value) })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Status Ketersediaan</label>
-                                    <select value={eventForm.status || 'aktif'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-slate-300 rounded text-sm focus:border-[#FFE500]">
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status Ketersediaan</label>
+                                    <select value={eventForm.status || 'aktif'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
                                        <option value="aktif">Aktif</option>
                                        <option value="close">Close</option>
                                     </select>
                                  </div>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Foto / Poster Acara</label>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Foto / Poster Acara</label>
                                  {(eventImageFile || eventForm.image) && (
-                                    <div className="mb-2 relative w-24 h-32 rounded overflow-hidden border border-slate-200">
+                                    <div className="mb-2 relative w-24 h-32 rounded overflow-hidden border border-gray-100">
                                        <img src={eventImageFile ? URL.createObjectURL(eventImageFile) : eventForm.image} alt="preview" className="w-full h-full object-cover" />
                                        <button type="button" onClick={() => { setEventImageFile(null); setEventForm({ ...eventForm, image: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
                                     </div>
                                  )}
-                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventImageFile(e.target.files[0]); }} className="w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-all cursor-pointer" />
-                                 <p className="text-xs text-slate-400 mt-1">Format: JPG, PNG, WEBP. Tampil sebagai poster (rasio 3:4 disarankan).</p>
+                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventImageFile(e.target.files[0]); }} className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 transition-all cursor-pointer" />
+                                 <p className="text-xs text-gray-400 mt-1">Format: JPG, PNG, WEBP. Tampil sebagai poster (rasio 3:4 disarankan).</p>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>
-                                 <textarea rows={6} value={eventForm.detail_acara || ''} onChange={e => setEventForm({ ...eventForm, detail_acara: e.target.value })} className="w-full p-3 border border-slate-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan detail acara lengkap..."></textarea>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>
+                                 <textarea rows={6} value={eventForm.detail_acara || ''} onChange={e => setEventForm({ ...eventForm, detail_acara: e.target.value })} className="w-full p-3 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan detail acara lengkap..."></textarea>
                               </div>
                            </form>
                         )}
@@ -3538,21 +3654,21 @@ export default function NikonDashboard() {
                            <form id="botSettingsForm" onSubmit={handleSaveBotSettings} className="space-y-4">
                               <div>
                                  <label className="block text-sm font-bold mb-1">Nama Pengaturan</label>
-                                 <input required type="text" value={botSettingsForm.nama_pengaturan || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, nama_pengaturan: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Contoh: LINK_SYARAT_KETENTUAN" />
+                                 <input required type="text" value={botSettingsForm.nama_pengaturan || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, nama_pengaturan: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Contoh: LINK_SYARAT_KETENTUAN" />
                               </div>
                               <div>
                                  <label className="block text-sm font-bold mb-1">URL / Value</label>
-                                 <input type="text" value={botSettingsForm.url_file || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, url_file: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="https://..." />
+                                 <input type="text" value={botSettingsForm.url_file || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, url_file: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="https://..." />
                               </div>
                               <div>
                                  <label className="block text-sm font-bold mb-1">Deskripsi</label>
-                                 <textarea value={botSettingsForm.description || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, description: e.target.value })} className="w-full border border-slate-300 bg-white text-slate-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500] h-24" placeholder="Deskripsi atau kegunaan dari pengaturan ini..." />
+                                 <textarea value={botSettingsForm.description || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, description: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500] h-24" placeholder="Deskripsi atau kegunaan dari pengaturan ini..." />
                               </div>
                            </form>
                         )}
                      </div>
-                     <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
-                        <button onClick={closeModal} className="px-4 py-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-100 rounded-md text-sm font-bold transition">Batal</button>
+                     <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+                        <button onClick={closeModal} className="px-4 py-2 border border-gray-300 bg-white text-gray-900 hover:bg-gray-100 rounded-md text-sm font-bold transition">Batal</button>
                         {/* Logic for form ID */}
                         {(() => { // This IIFE calculates and returns the submit button
                            const formId = (() => {
@@ -3584,16 +3700,16 @@ export default function NikonDashboard() {
             <div className="flex flex-col absolute top-0 left-0 w-full bg-white text-black font-sans z-[100] min-h-screen pb-10 pt-6" style={{ fontSize: '13px', lineHeight: '1.4' }}>
 
                {/* PRINT CONTROL BAR */}
-               <div className="print:hidden fixed top-4 right-4 flex flex-col gap-3 z-50 bg-white p-3 rounded-lg shadow-xl border border-slate-200">
+               <div className="print:hidden fixed top-4 right-4 flex flex-col gap-3 z-50 bg-white p-3 rounded-lg shadow-xl border border-gray-100">
                   <div className="flex gap-3 justify-end">
-                     <button onClick={() => setPrintData(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md transition text-sm">Kembali</button>
+                     <button onClick={() => setPrintData(null)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-md transition text-sm">Kembali</button>
                      <button onClick={handlePrintDocument} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black font-bold rounded-md transition shadow-md text-sm flex items-center gap-2">🖨️ Cetak PDF</button>
                   </div>
                   {printData.attachment_urls && printData.attachment_urls.some(u => u) && (
-                     <div className="flex items-center gap-2 border-t border-slate-200 pt-2 mt-1">
-                        <label className="text-xs font-bold text-slate-600">Ukuran Gambar:</label>
+                     <div className="flex items-center gap-2 border-t border-gray-100 pt-2 mt-1">
+                        <label className="text-xs font-bold text-gray-600">Ukuran Gambar:</label>
                         <input type="range" min="100" max="800" value={printImageSize} onChange={(e) => setPrintImageSize(Number(e.target.value))} className="w-32 accent-[#FFE500]" />
-                        <span className="text-xs font-mono bg-slate-100 px-1 rounded">{printImageSize}px</span>
+                        <span className="text-xs font-mono bg-gray-100 px-1 rounded">{printImageSize}px</span>
                      </div>
                   )}
                </div>
@@ -3758,7 +3874,7 @@ export default function NikonDashboard() {
                      <button onClick={() => setImageScale(p => Math.max(0.1, p - 0.2))} className="hover:text-[#FFE500] text-xl leading-none w-6 h-6 flex items-center justify-center">-</button>
                      <span className="w-10 text-center">{Math.round(imageScale * 100)}%</span>
                      <button onClick={() => setImageScale(p => Math.min(5, p + 0.2))} className="hover:text-[#FFE500] text-xl leading-none w-6 h-6 flex items-center justify-center">+</button>
-                     <button onClick={() => { setImageScale(1); setImageTranslate({ x: 0, y: 0 }) }} className="ml-2 hover:text-[#FFE500] text-xs underline text-slate-300">Reset</button>
+                     <button onClick={() => { setImageScale(1); setImageTranslate({ x: 0, y: 0 }) }} className="ml-2 hover:text-[#FFE500] text-xs underline text-gray-300">Reset</button>
                   </div>
                   <div className="w-px h-6 bg-white/20"></div>
                   <button onClick={closeImageViewer} className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full font-bold flex items-center justify-center shadow-lg transition leading-none text-lg">×</button>
@@ -3800,7 +3916,7 @@ export default function NikonDashboard() {
          {/* CONNECTION INDICATOR */}
          <div className="fixed bottom-4 right-4 z-[100] flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-lg border text-[10px] font-bold transition-all print:hidden">
             <div className={`w-2 h-2 rounded-full ${dbStatus.connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-            <span className={dbStatus.connected ? 'text-slate-600' : 'text-red-600'}>
+            <span className={dbStatus.connected ? 'text-gray-600' : 'text-red-600'}>
                Database: {dbStatus.message}
             </span>
             {!dbStatus.connected && (

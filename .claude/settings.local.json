@@ -1,4 +1,12 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(wc -l C:\\\\\\\\Users\\\\\\\\Jamal\\\\\\\\Desktop\\\\\\\\nikon-dashboard\\\\\\\\.claude\\\\\\\\worktrees\\\\\\\\busy-shamir-0f5127\\\\\\\\app\\\\\\\\page.tsx)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'refactor: modernize dashboard design with card-based layout and Nikon theme *)"
+    ]
+  },
   "enabledPlugins": {
     "ruflo-core@ruflo": true,
     "ruflo-swarm@ruflo": true,

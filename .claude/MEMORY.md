@@ -1,0 +1,1 @@
+- [Dashboard Redesign Progress](dashboard_redesign.md) — Modern card-based design with Nikon yellow/black theme
