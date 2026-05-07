@@ -18,54 +18,34 @@ function parseIdDate(str: string): Date | null {
   if (p.length < 3) return null;
   const d = parseInt(p[0]), m = ID_MONTHS[p[1]], y = parseInt(p[2]);
   if (isNaN(d) || m === undefined || isNaN(y)) return null;
-  return new Date(y, m, d + 1); // +1 agar hari H masih terbuka
+  return new Date(y, m, d + 1);
+}
+
+function gdriveUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  const m = url.match(/(?:drive\.google\.com\/uc\?id=|drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=|drive\.google\.com\/thumbnail\?id=|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/);
+  if (m && m[1]) return `https://lh3.googleusercontent.com/d/${m[1]}=w2000`;
+  return url;
 }
 
 function getEventClosed(evt: any, regCount: number): { closed: boolean; reason: string } {
-  if (evt.status === 'close') return { closed: true, reason: 'Ditutup' };
-  if (evt.stock > 0 && regCount >= evt.stock) return { closed: true, reason: 'Kuota Penuh' };
-  const evtDate = parseIdDate(evt.date);
+  const status = (evt.event_status || '').toLowerCase();
+  if (status === 'close' || status === 'closed') return { closed: true, reason: 'Ditutup' };
+  if (status === 'sold out' || status === 'sold_out' || status === 'soldout') return { closed: true, reason: 'Sold Out' };
+  if (evt.event_partisipant_stock > 0 && regCount >= evt.event_partisipant_stock) return { closed: true, reason: 'Kuota Penuh' };
+  const evtDate = parseIdDate(evt.event_date);
   if (evtDate && evtDate < new Date()) return { closed: true, reason: 'Acara Selesai' };
   return { closed: false, reason: '' };
 }
-
-const EVENTS_DUMMY = [
-  {
-    id: 'z9-masterclass',
-    title: 'Nikon Z9 Masterclass: The Future of Speed',
-    price: 'Rp 750.000',
-    date: '12 Agustus 2026',
-    image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=600&auto=format&fit=crop',
-    rating: 5,
-    stock: 20,
-    status: 'In stock',
-    detail_acara: 'Bergabunglah dengan lingkaran elit fotografer. Tingkatkan keahlian Anda dan rasakan pengalaman menggunakan gear terbaru dari Nikon dalam sesi eksklusif yang dipandu oleh profesional.',
-    bank_info: 'BCA 1234567890\na.n Nikon Event Indonesia',
-    payment_type: 'regular',
-    deposit_amount: null,
-  },
-  {
-    id: 'wildlife-expedition',
-    title: 'Wildlife Expedition with Nikon Z8',
-    price: 'Rp 1.500.000',
-    date: '20 September 2026',
-    image: 'https://images.unsplash.com/photo-1542314831-c6a4d142104d?q=80&w=600&auto=format&fit=crop',
-    rating: 5,
-    stock: 15,
-    status: 'In stock',
-    detail_acara: 'Eksplorasi alam liar. Abadikan keindahan alam liar yang tak tertandingi dalam ekspedisi eksklusif bersama pemandu profesional. Acara ini mencakup transportasi, akomodasi, dan sesi review foto di malam hari.',
-    bank_info: 'BCA 1234567890\na.n Nikon Event Indonesia',
-    payment_type: 'deposit',
-    deposit_amount: 'Rp 300.000',
-  },
-];
 
 export default function EventCatalog() {
   const [events, setEvents] = useState<any[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ full_name: '', wa_number: '', email: '', camera_model: '' });
+  const [formData, setFormData] = useState({ nama_lengkap: '', nomor_wa: '', kabupaten_kotamadya: '', tipe_kamera: '' });
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
+  const [tipeBarangOptions, setTipeBarangOptions] = useState<string[]>([]);
   const [buktiTransfer, setBuktiTransfer] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -73,7 +53,7 @@ export default function EventCatalog() {
   const [registrationCounts, setRegistrationCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    const fetchEvents = async () => {
+    const fetchData = async () => {
       try {
         const { data, error } = await supabase.from('events').select('*').order('created_at', { ascending: false });
         try {
@@ -84,15 +64,22 @@ export default function EventCatalog() {
             setRegistrationCounts(counts);
           }
         } catch {}
+        try {
+          const { data: claimData } = await supabase.from('claim_promo').select('tipe_barang');
+          if (claimData) {
+            const unique = [...new Set(claimData.map((c: any) => c.tipe_barang).filter(Boolean))] as string[];
+            setTipeBarangOptions(unique);
+          }
+        } catch {}
         if (error) throw error;
-        setEvents(data && data.length > 0 ? data : EVENTS_DUMMY);
+        setEvents(data || []);
       } catch {
-        setEvents(EVENTS_DUMMY);
+        setEvents([]);
       } finally {
         setIsLoadingEvents(false);
       }
     };
-    fetchEvents();
+    fetchData();
   }, []);
 
   const uploadFileToStorage = async (file: File, prefix: string, serial: string) => {
@@ -105,8 +92,29 @@ export default function EventCatalog() {
     return (await response.json()).url;
   };
 
+  const handleWaChange = async (wa: string) => {
+    setFormData(f => ({ ...f, nomor_wa: wa }));
+    if (wa.length >= 10) {
+      setIsAutoFilling(true);
+      try {
+        const { data } = await supabase.from('konsumen').select('nama_lengkap, kabupaten_kotamadya').eq('nomor_wa', wa).single();
+        if (data) {
+          setFormData(f => ({
+            ...f,
+            nomor_wa: wa,
+            nama_lengkap: data.nama_lengkap || '',
+            kabupaten_kotamadya: data.kabupaten_kotamadya && data.kabupaten_kotamadya !== 'BELUM_DIISI' ? data.kabupaten_kotamadya : '',
+          }));
+        }
+      } catch {}
+      setIsAutoFilling(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'nomor_wa') { handleWaChange(value); return; }
+    setFormData(f => ({ ...f, [name]: value }));
   };
 
   const openModal = (event: any) => {
@@ -114,7 +122,7 @@ export default function EventCatalog() {
     setIsModalOpen(true);
     setIsSuccess(false);
     setErrorMsg('');
-    setFormData({ full_name: '', wa_number: '', email: '', camera_model: '' });
+    setFormData({ nama_lengkap: '', nomor_wa: '', kabupaten_kotamadya: '', tipe_kamera: '' });
     setBuktiTransfer(null);
   };
 
@@ -125,28 +133,26 @@ export default function EventCatalog() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { closed, reason } = getEventClosed(selectedEvent, registrationCounts[selectedEvent?.title] || 0);
+    const { closed, reason } = getEventClosed(selectedEvent, registrationCounts[selectedEvent?.event_title] || 0);
     if (closed) { setErrorMsg(`Pendaftaran ditutup: ${reason}`); return; }
     setIsSubmitting(true);
     setErrorMsg('');
     try {
       let buktiUrl: string | null = null;
       if (buktiTransfer) {
-        buktiUrl = await uploadFileToStorage(buktiTransfer, 'EventPayment', formData.wa_number || 'UNKNOWN');
+        buktiUrl = await uploadFileToStorage(buktiTransfer, 'EventPayment', formData.nomor_wa || 'UNKNOWN');
       }
 
       const { error } = await supabase.from('event_registrations').insert([{
-        full_name: formData.full_name,
-        wa_number: formData.wa_number,
-        email: formData.email,
-        camera_model: formData.camera_model,
-        event_name: selectedEvent.title,
+        nama_lengkap: formData.nama_lengkap,
+        nomor_wa: formData.nomor_wa,
+        kabupaten_kotamadya: formData.kabupaten_kotamadya,
+        tipe_kamera: formData.tipe_kamera,
+        event_name: selectedEvent.event_title,
         event_id: selectedEvent.id,
-        event_date: selectedEvent.date || '',
-        event_detail: selectedEvent.detail_acara || '',
         bukti_transfer_url: buktiUrl,
-        status: 'Pending',
-        payment_type: selectedEvent.payment_type || 'regular',
+        status_pendaftaran: 'menunggu_validasi',
+        payment_type: selectedEvent.event_payment_tipe || 'regular',
       }]);
 
       if (error) throw error;
@@ -158,7 +164,7 @@ export default function EventCatalog() {
     }
   };
 
-  const isDeposit = selectedEvent?.payment_type === 'deposit';
+  const isDeposit = selectedEvent?.event_payment_tipe === 'deposit';
 
   const renderStars = (rating: number) => {
     const n = rating || 5;
@@ -182,7 +188,10 @@ export default function EventCatalog() {
             <span className="font-bold tracking-widest uppercase text-sm hidden sm:block ml-2">Event Catalog</span>
           </div>
           <div className="flex items-center gap-4 text-sm text-zinc-400">
-            <span>Showing 1 - {events.length} of {events.length} events</span>
+            <a href="/events/refund" className="text-[#FFE800] border border-[#FFE800]/40 hover:bg-[#FFE800]/10 px-3 py-1.5 rounded-lg transition-all text-xs font-semibold">
+              💰 Klaim Pengembalian Deposit
+            </a>
+            <span className="hidden sm:inline">Showing 1 - {events.length} of {events.length} events</span>
           </div>
         </div>
       </header>
@@ -192,12 +201,18 @@ export default function EventCatalog() {
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#FFE800]" />
           </div>
+        ) : events.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-96 text-center">
+            <div className="text-6xl mb-4">📅</div>
+            <h2 className="text-2xl font-bold mb-2">Belum Ada Event</h2>
+            <p className="text-zinc-500 text-sm max-w-sm">Saat ini belum ada event yang tersedia. Silakan kembali lagi nanti untuk melihat event mendatang.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {events.map(evt => {
-              const regCount = registrationCounts[evt.title] || 0;
+              const regCount = registrationCounts[evt.event_title] || 0;
               const { closed, reason } = getEventClosed(evt, regCount);
-              const sisa = evt.stock - regCount;
+              const sisa = evt.event_partisipant_stock - regCount;
               return (
               <div
                 key={evt.id}
@@ -205,26 +220,29 @@ export default function EventCatalog() {
                 className={`group flex flex-col bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden transition-all duration-300 ${closed ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-white/20 hover:bg-zinc-900 hover:-translate-y-1'}`}
               >
                 <div className="relative aspect-[3/4] overflow-hidden">
-                  <img src={evt.image} alt={evt.title} className={`w-full h-full object-cover transition-transform duration-700 ${!closed && 'group-hover:scale-105'}`} />
+                  <img src={gdriveUrl(evt.event_image)} alt={evt.event_title} referrerPolicy="no-referrer" className={`w-full h-full object-cover transition-transform duration-700 ${!closed && 'group-hover:scale-105'}`} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   {closed && (
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                       <span className="bg-red-600 text-white text-sm font-extrabold px-4 py-2 rounded-lg tracking-widest uppercase shadow-lg">{reason}</span>
                     </div>
                   )}
-                  {!closed && evt.price === 'Gratis' && (
+                  {!closed && evt.event_price === 'Gratis' && (
                     <div className="absolute top-3 left-3 bg-[#FFE800] text-black text-xs font-bold px-2 py-1 rounded">FREE EVENT</div>
                   )}
-                  {!closed && evt.payment_type === 'deposit' && (
+                  {!closed && evt.event_payment_tipe === 'deposit' && (
                     <div className="absolute top-3 right-3 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">DEPOSIT</div>
                   )}
                 </div>
                 <div className="p-5 flex flex-col flex-1">
-                  <p className="text-xl font-medium text-white mb-1 tracking-tight">{evt.price}</p>
-                  {evt.payment_type === 'deposit' && evt.deposit_amount && (
+                  <p className="text-xl font-medium text-white mb-1 tracking-tight">{evt.event_price}</p>
+                  {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && (
                     <p className="text-xs text-orange-400 mb-2">Deposit: {evt.deposit_amount}</p>
                   )}
-                  <h3 className="text-sm font-semibold text-zinc-300 leading-snug mb-3 flex-1 group-hover:text-white transition-colors">{evt.title}</h3>
+                  <h3 className="text-sm font-semibold text-zinc-300 leading-snug mb-1 flex-1 group-hover:text-white transition-colors">{evt.event_title}</h3>
+                  {evt.event_speaker && (
+                    <p className="text-xs text-zinc-500 mb-2">🎤 {evt.event_speaker}{evt.event_speaker_genre ? ` — ${evt.event_speaker_genre}` : ''}</p>
+                  )}
                   <div className="flex flex-col gap-3 mt-auto">
                     {renderStars(evt.rating)}
                     <div className="flex items-center gap-2 text-xs font-medium">
@@ -234,7 +252,7 @@ export default function EventCatalog() {
                       ) : (
                         <span className="text-[#FFE800]">
                           Aktif, {sisa} slot tersisa
-                          {sisa <= Math.ceil(evt.stock * 0.3) && (
+                          {sisa <= Math.ceil(evt.event_partisipant_stock * 0.3) && (
                             <span className="ml-2 text-red-500 font-bold bg-red-500/10 px-2 py-0.5 rounded-full text-[10px]">Sisa {sisa} slot!</span>
                           )}
                         </span>
@@ -267,7 +285,7 @@ export default function EventCatalog() {
                 </div>
                 <h2 className="text-3xl font-bold mb-4">Pendaftaran Diterima!</h2>
                 <p className="text-gray-400 mb-3 max-w-sm mx-auto">
-                  Pendaftaran Anda untuk <strong className="text-white">{selectedEvent.title}</strong> sedang dalam proses validasi.
+                  Pendaftaran Anda untuk <strong className="text-white">{selectedEvent.event_title}</strong> sedang dalam proses validasi.
                 </p>
                 <p className="text-zinc-500 text-sm mb-8 max-w-sm mx-auto">
                   Tim kami akan memverifikasi pembayaran Anda. Setelah dikonfirmasi, tiket PDF dengan QR Code akan dikirim ke WhatsApp Anda.
@@ -286,26 +304,29 @@ export default function EventCatalog() {
               <div>
                 {/* Header cover */}
                 <div className="h-40 md:h-48 relative overflow-hidden rounded-t-2xl">
-                  <img src={selectedEvent.image} className="w-full h-full object-cover opacity-40" alt="Cover" />
+                  <img src={gdriveUrl(selectedEvent.event_image)} className="w-full h-full object-cover opacity-40" alt="Cover" referrerPolicy="no-referrer" />
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
                   <div className="absolute bottom-4 left-6 pr-12">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="bg-[#FFE800] text-black text-[10px] font-bold px-2 py-0.5 uppercase tracking-widest inline-block">
-                        {selectedEvent.date}
+                        {selectedEvent.event_date}
                       </div>
                       {isDeposit && (
                         <div className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 uppercase tracking-widest inline-block rounded">DEPOSIT</div>
                       )}
                     </div>
-                    <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight">{selectedEvent.title}</h2>
+                    <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight">{selectedEvent.event_title}</h2>
+                    {selectedEvent.event_speaker && (
+                      <p className="text-zinc-400 text-xs mt-1">🎤 {selectedEvent.event_speaker}{selectedEvent.event_speaker_genre ? ` — ${selectedEvent.event_speaker_genre}` : ''}</p>
+                    )}
                   </div>
                 </div>
 
-                {selectedEvent.detail_acara && (
+                {selectedEvent.event_description && (
                   <div className="px-6 md:px-8 pt-6">
                     <h3 className="text-sm font-bold text-[#FFE800] uppercase tracking-wider mb-2">Detail Acara</h3>
                     <p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap bg-zinc-900/50 p-4 rounded-lg border border-white/5">
-                      {selectedEvent.detail_acara}
+                      {selectedEvent.event_description}
                     </p>
                   </div>
                 )}
@@ -319,31 +340,37 @@ export default function EventCatalog() {
                     )}
 
                     <div>
+                      <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1">Nomor WhatsApp</label>
+                      <div className="relative">
+                        <input type="tel" name="nomor_wa" value={formData.nomor_wa} onChange={handleChange} placeholder="08123456789" required
+                          className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] transition-colors" />
+                        {isAutoFilling && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">mengisi...</span>}
+                      </div>
+                    </div>
+
+                    <div>
                       <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1">Nama Lengkap</label>
-                      <input type="text" name="full_name" value={formData.full_name} onChange={handleChange} placeholder="John Doe" required
+                      <input type="text" name="nama_lengkap" value={formData.nama_lengkap} onChange={handleChange} placeholder="Nama sesuai KTP" required
                         className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] transition-colors" />
                     </div>
 
                     <div className="flex flex-col md:flex-row gap-4">
                       <div className="flex-1">
-                        <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1">Nomor WhatsApp</label>
-                        <input type="tel" name="wa_number" value={formData.wa_number} onChange={handleChange} placeholder="08123456789" required
+                        <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1">Kabupaten / Kotamadya</label>
+                        <input type="text" name="kabupaten_kotamadya" value={formData.kabupaten_kotamadya} onChange={handleChange} placeholder="Kota domisili Anda" required
                           className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] transition-colors" />
                       </div>
                       <div className="flex-1">
-                        <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1">Email</label>
-                        <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="john@example.com" required
+                        <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1">Tipe Kamera</label>
+                        <input type="text" name="tipe_kamera" list="tipe-kamera-options" value={formData.tipe_kamera} onChange={handleChange} placeholder="Contoh: Nikon Z8" required
                           className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] transition-colors" />
+                        <datalist id="tipe-kamera-options">
+                          {tipeBarangOptions.map(opt => <option key={opt} value={opt} />)}
+                        </datalist>
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1">Brand & Model Kamera</label>
-                      <input type="text" name="camera_model" value={formData.camera_model} onChange={handleChange} placeholder="Contoh: Nikon Z8" required
-                        className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] transition-colors" />
-                    </div>
-
-                    {selectedEvent.price !== 'Gratis' && (
+                    {selectedEvent.event_price !== 'Gratis' && (
                       <div className="bg-zinc-900 border border-white/5 rounded-lg p-4 mt-2 space-y-3">
                         <label className="block text-xs font-medium text-[#FFE800] uppercase tracking-wider">Informasi Pembayaran</label>
 
@@ -352,7 +379,7 @@ export default function EventCatalog() {
                             <div className="space-y-2">
                               <div className="flex justify-between items-center">
                                 <span className="text-zinc-500 text-xs">Harga Acara</span>
-                                <span className="font-bold text-white text-sm">{selectedEvent.price}</span>
+                                <span className="font-bold text-white text-sm">{selectedEvent.event_price}</span>
                               </div>
                               <div className="flex justify-between items-center border-t border-white/10 pt-2">
                                 <span className="text-orange-400 text-xs font-semibold">Deposit (akan dikembalikan)</span>
@@ -364,7 +391,7 @@ export default function EventCatalog() {
                             <div className="flex justify-between items-center">
                               <div>
                                 <span className="text-zinc-500 text-xs block">Total Tagihan</span>
-                                <span className="font-bold text-white text-base">{selectedEvent.price}</span>
+                                <span className="font-bold text-white text-base">{selectedEvent.event_price}</span>
                               </div>
                               <div className="text-right">
                                 <span className="text-zinc-500 text-xs block">Transfer ke Rekening</span>
@@ -380,6 +407,13 @@ export default function EventCatalog() {
                               <span className="text-zinc-500 text-xs block">Transfer Deposit ke</span>
                               <span className="font-bold text-white text-sm whitespace-pre-wrap">{selectedEvent.bank_info || 'BCA 1234567890\na.n Nikon Event Indonesia'}</span>
                             </div>
+                          </div>
+                        )}
+
+                        {selectedEvent.event_upload_payment_screenshot && (
+                          <div>
+                            <p className="text-xs text-zinc-400 mb-2">QR / Info Pembayaran:</p>
+                            <img src={gdriveUrl(selectedEvent.event_upload_payment_screenshot)} alt="QR Pembayaran" referrerPolicy="no-referrer" className="max-w-[200px] rounded-lg border border-white/10" />
                           </div>
                         )}
 

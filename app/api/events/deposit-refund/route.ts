@@ -39,24 +39,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Registrasi ini bukan tipe deposit' }, { status: 400 });
     }
 
-    let refundUrl: string | null = reg.deposit_refund_url || null;
+    let refundUrl: string | null = reg.bukti_pengembalian_deposit || null;
 
     if (refundFile) {
       const ext = refundFile.name.split('.').pop();
-      const fileName = `DepositRefund_${reg.wa_number}_${Date.now()}.${ext}`;
+      const fileName = `DepositRefund_${reg.nomor_wa}_${Date.now()}.${ext}`;
       const fileId = await uploadToGoogleDrive(refundFile, fileName);
       refundUrl = `https://drive.google.com/uc?id=${fileId}&export=view`;
     }
 
     await supabase
       .from('event_registrations')
-      .update({ deposit_refund_url: refundUrl, deposit_refund_status: 'Processed' })
+      .update({ bukti_pengembalian_deposit: refundUrl, status_pengembalian_deposit: 'Processed' })
       .eq('id', registrationId);
 
     if (refundUrl) {
       await sendWhatsApp(
-        reg.wa_number,
-        chatbotTexts.depositRefundReady(reg.full_name, reg.event_name, refundUrl)
+        reg.nomor_wa,
+        chatbotTexts.depositRefundReady(reg.nama_lengkap, reg.event_name, refundUrl)
       );
     }
 

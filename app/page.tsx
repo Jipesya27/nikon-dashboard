@@ -9,6 +9,14 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrq
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error'; // Akan diisi via .env.local
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Konversi URL Google Drive lama (uc?id=X&export=view) ke format baru yg bisa di-embed
+function gdriveUrl(url: string | null | undefined): string {
+   if (!url) return '';
+   const m = url.match(/(?:drive\.google\.com\/uc\?id=|drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=|drive\.google\.com\/thumbnail\?id=|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/);
+   if (m && m[1]) return `https://lh3.googleusercontent.com/d/${m[1]}=w2000`;
+   return url;
+}
+
 const ID_MONTHS: Record<string, number> = {
    januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
    juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
@@ -21,10 +29,12 @@ function parseIdDate(str: string): Date | null {
    if (isNaN(d) || m === undefined || isNaN(y)) return null;
    return new Date(y, m, d + 1);
 }
-function getEventClosedStatus(evt: { status: string; stock: number; date: string }, regCount: number): { closed: boolean; reason: string } {
-   if (evt.status === 'close') return { closed: true, reason: 'Ditutup Admin' };
-   if (evt.stock > 0 && regCount >= evt.stock) return { closed: true, reason: 'Kuota Penuh' };
-   const evtDate = parseIdDate(evt.date);
+function getEventClosedStatus(evt: { event_status: string; event_partisipant_stock: number; event_date: string }, regCount: number): { closed: boolean; reason: string } {
+   const status = (evt.event_status || '').toLowerCase();
+   if (status === 'close' || status === 'closed') return { closed: true, reason: 'Ditutup Admin' };
+   if (status === 'sold out' || status === 'sold_out' || status === 'soldout') return { closed: true, reason: 'Sold Out' };
+   if (evt.event_partisipant_stock > 0 && regCount >= evt.event_partisipant_stock) return { closed: true, reason: 'Kuota Penuh' };
+   const evtDate = parseIdDate(evt.event_date);
    if (evtDate && evtDate < new Date()) return { closed: true, reason: 'Acara Selesai' };
    return { closed: false, reason: 'Aktif' };
 }
@@ -41,8 +51,8 @@ interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
 interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_urls?: (string | File | null)[]; }
 interface DataLog { id?: string; created_at?: string; user_name: string; action: string; table_name: string; record_id: string; old_values: any; new_values: any; }
-interface EventData { id?: string; title: string; date: string; price: string; image: string; stock: number; status: string; detail_acara: string; created_at?: string; bank_info?: string; }
-interface EventRegistration { id?: string; full_name: string; wa_number: string; email: string; camera_model: string; event_name: string; bukti_transfer_url: string; status: string; created_at?: string; is_attended?: boolean; }
+interface EventData { id?: string; event_title: string; event_date: string; event_price: string; event_image?: string; event_partisipant_stock: number; event_status: string; event_description?: string; event_speaker?: string; event_speaker_genre?: string; event_payment_tipe?: string; event_upload_payment_screenshot?: string; deposit_amount?: string; proposal_event_id?: string; bank_info?: string; created_at?: string; }
+interface EventRegistration { id?: string; nama_lengkap: string; nomor_wa: string; kabupaten_kotamadya?: string; tipe_kamera?: string; event_name: string; event_id?: string; bukti_transfer_url?: string; status_pendaftaran: string; payment_type?: string; ticket_url?: string; status_pengembalian_deposit?: string; bukti_pengembalian_deposit?: string; rejection_reason?: string; is_attended?: boolean; created_at?: string; }
 
 interface PeminjamanItem {
    nama_barang: string;
@@ -241,6 +251,7 @@ export default function NikonDashboard() {
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
    const [eventForm, setEventForm] = useState<Partial<EventData>>({});
    const [eventImageFile, setEventImageFile] = useState<File | null>(null);
+   const [eventPaymentScreenshotFile, setEventPaymentScreenshotFile] = useState<File | null>(null);
    const [registrationForm, setRegistrationForm] = useState<Partial<EventRegistration>>({});
 
    // IMPORT CSV STATES
@@ -884,9 +895,10 @@ export default function NikonDashboard() {
          setEditingId(item?.id_karyawan || null);
       }
       else if (type === 'event') {
-         setEventForm(item || { status: 'aktif', stock: 0 });
+         setEventForm(item || { event_status: 'In stock', event_partisipant_stock: 0, event_payment_tipe: 'regular' });
          setEditingId(item?.id || null);
          setEventImageFile(null);
+         setEventPaymentScreenshotFile(null);
       }
       else if (type === 'eventregistration') {
          setRegistrationForm(item || { status: 'Pending Payment' });
@@ -906,9 +918,10 @@ export default function NikonDashboard() {
       setKaryawanForm({});
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' });
       setBotSettingsForm({});
-      setEventForm({ status: 'aktif', stock: 0 });
-      setRegistrationForm({ status: 'Pending Payment' });
+      setEventForm({ event_status: 'In stock', event_partisipant_stock: 0, event_payment_tipe: 'regular' });
+      setRegistrationForm({ status_pendaftaran: 'menunggu_validasi' });
       setEventImageFile(null);
+      setEventPaymentScreenshotFile(null);
       setEditingId(null);
       if (returnTab) {
          setActiveTab(returnTab);
@@ -1207,9 +1220,14 @@ export default function NikonDashboard() {
       e.preventDefault();
       try {
          const payload = { ...eventForm };
+         const titleSlug = eventForm.event_title?.replace(/\s+/g, '_') || 'event';
          if (eventImageFile) {
-            const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', eventForm.title?.replace(/\s+/g, '_') || 'poster');
-            payload.image = imageUrl;
+            const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', titleSlug);
+            payload.event_image = imageUrl;
+         }
+         if (eventPaymentScreenshotFile) {
+            const paymentUrl = await uploadFileToStorage(eventPaymentScreenshotFile, 'EventPaymentInfo', titleSlug);
+            payload.event_upload_payment_screenshot = paymentUrl;
          }
          if (modalAction === 'create') {
             const { error } = await supabase.from('events').insert([payload]);
@@ -1308,19 +1326,19 @@ export default function NikonDashboard() {
    };
 
    const handleSendEventSuccessWA = async (reg: EventRegistration) => {
-      if (!window.confirm(`Kirim notifikasi konfirmasi pembayaran ke ${reg.full_name}?`)) return;
-      
-      const message = `Halo *${reg.full_name}*,\n\nPembayaran Anda untuk event *${reg.event_name}* telah kami validasi. ✅\n\nSilakan simpan pesan ini sebagai bukti pendaftaran resmi. Sampai jumpa di lokasi acara!\n\nSalam,\nNikon Indonesia`;
+      if (!window.confirm(`Kirim notifikasi konfirmasi pembayaran ke ${reg.nama_lengkap}?`)) return;
+
+      const message = `Halo *${reg.nama_lengkap}*,\n\nPembayaran Anda untuk event *${reg.event_name}* telah kami validasi. ✅\n\nSilakan simpan pesan ini sebagai bukti pendaftaran resmi. Sampai jumpa di lokasi acara!\n\nSalam,\nNikon Indonesia`;
 
       try {
-         await sendWhatsAppMessageViaFonnte(reg.wa_number, message);
-         await supabase.from('riwayat_pesan').insert([{ 
-            nomor_wa: reg.wa_number, 
-            nama_profil_wa: reg.full_name, 
-            arah_pesan: 'OUT', 
-            isi_pesan: message, 
-            waktu_pesan: new Date().toISOString(), 
-            bicara_dengan_cs: false 
+         await sendWhatsAppMessageViaFonnte(reg.nomor_wa, message);
+         await supabase.from('riwayat_pesan').insert([{
+            nomor_wa: reg.nomor_wa,
+            nama_profil_wa: reg.nama_lengkap,
+            arah_pesan: 'OUT',
+            isi_pesan: message,
+            waktu_pesan: new Date().toISOString(),
+            bicara_dengan_cs: false
          }]);
          alert('Notifikasi berhasil dikirim!');
          fetchMessages();
@@ -1655,7 +1673,7 @@ export default function NikonDashboard() {
       return map;
    }, [events]);
 
-   const filteredEvents = useMemo(() => events.filter((e: EventData) => (e.title || "").toLowerCase().includes(searchEvent.toLowerCase())), [events, searchEvent]);
+   const filteredEvents = useMemo(() => events.filter((e: EventData) => (e.event_title || "").toLowerCase().includes(searchEvent.toLowerCase())), [events, searchEvent]);
    const sortedEvents = useMemo(() => {
       const sortableItems = [...filteredEvents];
       return sortableItems.sort(getSortFunction(sortConfigEvents, consumers));
@@ -2857,16 +2875,18 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-6 py-3 text-left font-bold">Nama Lengkap</th><th className="px-6 py-3 text-left font-bold">Kontak (WA/Email)</th><th className="px-6 py-3 text-left font-bold">Event</th><th className="px-6 py-3 text-left font-bold">Status</th><th className="px-6 py-3 text-left font-bold">Kehadiran</th><th className="px-6 py-3 text-left font-bold">Bukti TF</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
+                                 <tr><th className="px-6 py-3 text-left font-bold">Nama Lengkap</th><th className="px-6 py-3 text-left font-bold">Nomor WA</th><th className="px-6 py-3 text-left font-bold">Kab/Kota</th><th className="px-6 py-3 text-left font-bold">Tipe Kamera</th><th className="px-6 py-3 text-left font-bold">Event</th><th className="px-6 py-3 text-left font-bold">Status</th><th className="px-6 py-3 text-left font-bold">Kehadiran</th><th className="px-6 py-3 text-left font-bold">Bukti TF</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
-                                 {eventRegistrations.filter(r => r.full_name.toLowerCase().includes(searchRegistration.toLowerCase()) || r.event_name.toLowerCase().includes(searchRegistration.toLowerCase())).map((reg: EventRegistration) => (
+                                 {eventRegistrations.filter(r => (r.nama_lengkap || '').toLowerCase().includes(searchRegistration.toLowerCase()) || r.event_name.toLowerCase().includes(searchRegistration.toLowerCase())).map((reg: EventRegistration) => (
                                     <tr key={reg.id} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-6 py-3 font-bold text-slate-800">{reg.full_name}<br/><span className="text-[10px] text-gray-500">{reg.camera_model || '-'}</span></td>
-                                       <td className="px-6 py-3">{reg.wa_number}<br/><span className="text-xs text-gray-500">{reg.email}</span></td>
+                                       <td className="px-6 py-3 font-bold text-slate-800">{reg.nama_lengkap}</td>
+                                       <td className="px-6 py-3">{reg.nomor_wa}</td>
+                                       <td className="px-6 py-3 text-xs text-gray-600">{reg.kabupaten_kotamadya || '-'}</td>
+                                       <td className="px-6 py-3 text-xs text-gray-600">{reg.tipe_kamera || '-'}</td>
                                        <td className="px-6 py-3 text-amber-600 font-bold">{reg.event_name}</td>
                                        <td className="px-6 py-3">
-                                          <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${reg.status === 'Confirmed' ? 'bg-green-100 text-green-700' : reg.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{reg.status}</span>
+                                          <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${reg.status_pendaftaran === 'terdaftar' ? 'bg-green-100 text-green-700' : reg.status_pendaftaran === 'ditolak' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{reg.status_pendaftaran === 'terdaftar' ? 'Terdaftar' : reg.status_pendaftaran === 'ditolak' ? 'Ditolak' : 'Menunggu Validasi'}</span>
                                        </td>
                                        <td className="px-6 py-3">
                                           {reg.is_attended ? <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-1 rounded">HADIR ✅</span> : <button onClick={() => handleMarkAttendance(reg.id!)} className="text-[10px] bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold px-2 py-1 rounded border border-gray-300">Set Hadir</button>}
@@ -2875,9 +2895,9 @@ export default function NikonDashboard() {
                                           {reg.bukti_transfer_url ? <a href={reg.bukti_transfer_url} target="_blank" className="text-blue-500 hover:underline font-bold">Lihat Bukti</a> : <span className="text-gray-400">Belum Ada</span>}
                                        </td>
                                        <td className="px-6 py-3 flex gap-3">
-                                          {reg.status === 'Confirmed' && (
-                                             <button 
-                                                onClick={() => handleSendEventSuccessWA(reg)} 
+                                          {reg.status_pendaftaran === 'terdaftar' && (
+                                             <button
+                                                onClick={() => handleSendEventSuccessWA(reg)}
                                                 className="text-green-600 text-xs font-bold hover:underline"
                                                 title="Kirim Konfirmasi WA"
                                              >
@@ -2904,27 +2924,45 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-4 py-3 text-center font-bold w-12">No</th><th className="px-4 py-3 text-left font-bold">Gambar</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'title')}>Judul Event {sortConfigEvents.column === 'title' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'date')}>Tanggal {sortConfigEvents.column === 'date' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Detail Acara</th><th className="px-4 py-3 text-left font-bold">Harga</th><th className="px-4 py-3 text-left font-bold">Kuota/Status</th><th className="px-4 py-3 text-left font-bold">Peserta</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
+                                 <tr>
+                                    <th className="px-3 py-3 text-center font-bold w-12">No</th>
+                                    <th className="px-3 py-3 text-left font-bold">Poster</th>
+                                    <th className="px-3 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'event_title')}>Judul {sortConfigEvents.column === 'event_title' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-3 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'event_date')}>Tanggal {sortConfigEvents.column === 'event_date' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-3 py-3 text-left font-bold">Speaker</th>
+                                    <th className="px-3 py-3 text-left font-bold">Harga / Bayar</th>
+                                    <th className="px-3 py-3 text-left font-bold">Bank Info</th>
+                                    <th className="px-3 py-3 text-left font-bold">QR Bayar</th>
+                                    <th className="px-3 py-3 text-left font-bold">Kuota</th>
+                                    <th className="px-3 py-3 text-left font-bold">Status</th>
+                                    <th className="px-3 py-3 text-left font-bold">Proposal</th>
+                                    <th className="px-3 py-3 text-left font-bold">Aksi</th>
+                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedEvents.map((evt: EventData) => {
-                                    const detailPreview = evt.detail_acara ? (evt.detail_acara.length > 60 ? evt.detail_acara.substring(0, 60) + '...' : evt.detail_acara) : '-';
+                                    const proposal = budgets.find(b => b.id_budget === evt.proposal_event_id);
                                     return (
                                     <tr key={evt.id} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-4 py-3 text-center font-bold text-gray-600">{eventNumberMap.get(evt.id!)}</td>
-                                       <td className="px-4 py-3"><img src={evt.image} alt="poster" className="w-10 h-14 object-cover rounded" /></td>
-                                       <td className="px-4 py-3 font-bold text-slate-800">{evt.title}</td>
-                                       <td className="px-4 py-3 text-sm">{evt.date}</td>
-                                       <td className="px-4 py-3 text-xs text-gray-600 max-w-[200px] whitespace-normal">{detailPreview}</td>
-                                       <td className="px-4 py-3">{evt.price}</td>
-                                       <td className="px-4 py-3">
-                                          <span className="font-bold text-gray-700 text-sm">{eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</span>
-                                          <br/>{(() => { const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.title] || 0); return <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>; })()}
+                                       <td className="px-3 py-3 text-center font-bold text-gray-600">{eventNumberMap.get(evt.id!)}</td>
+                                       <td className="px-3 py-3">{evt.event_image ? <img src={gdriveUrl(evt.event_image)} alt="poster" className="w-10 h-14 object-cover rounded" referrerPolicy="no-referrer" /> : <div className="w-10 h-14 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">–</div>}</td>
+                                       <td className="px-3 py-3 font-bold text-slate-800 max-w-[180px] whitespace-normal">{evt.event_title}</td>
+                                       <td className="px-3 py-3 text-xs">{evt.event_date}</td>
+                                       <td className="px-3 py-3 text-xs text-gray-600 max-w-[140px] whitespace-normal">{evt.event_speaker || '-'}{evt.event_speaker_genre && <span className="block text-[10px] text-gray-400">{evt.event_speaker_genre}</span>}</td>
+                                       <td className="px-3 py-3 text-xs">
+                                          <span className="font-bold">{evt.event_price}</span>
+                                          <span className={`block text-[10px] uppercase font-bold mt-0.5 px-1.5 py-0.5 rounded inline-block ${evt.event_payment_tipe === 'deposit' ? 'bg-orange-100 text-orange-700' : evt.event_payment_tipe === 'gratis' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{evt.event_payment_tipe || 'regular'}</span>
+                                          {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && <span className="block text-[10px] text-orange-600 mt-0.5">DP: {evt.deposit_amount}</span>}
                                        </td>
-                                       <td className="px-4 py-3 font-bold text-blue-600 text-sm">
-                                          {eventRegistrationsCount[evt.title] || 0} orang
+                                       <td className="px-3 py-3 text-[11px] text-gray-600 max-w-[140px] whitespace-pre-wrap">{evt.bank_info || '-'}</td>
+                                       <td className="px-3 py-3">{evt.event_upload_payment_screenshot ? <a href={gdriveUrl(evt.event_upload_payment_screenshot)} target="_blank" rel="noopener noreferrer"><img src={gdriveUrl(evt.event_upload_payment_screenshot)} alt="qr" className="w-10 h-10 object-cover rounded border border-gray-200 hover:border-[#FFE500]" referrerPolicy="no-referrer" /></a> : <span className="text-gray-300 text-xs">–</span>}</td>
+                                       <td className="px-3 py-3 text-xs">
+                                          <span className="font-bold text-gray-700">{eventRegistrationsCount[evt.event_title] || 0}/{evt.event_partisipant_stock}</span>
+                                          <span className="block text-[10px] text-blue-600 font-bold mt-0.5">{eventRegistrationsCount[evt.event_title] || 0} peserta</span>
                                        </td>
-                                       <td className="px-4 py-3 flex gap-2">
+                                       <td className="px-3 py-3">{(() => { const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.event_title] || 0); return <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>; })()}</td>
+                                       <td className="px-3 py-3 text-[11px] text-gray-600 max-w-[120px] whitespace-normal">{proposal ? <span className="text-purple-700 font-mono">{proposal.proposal_no}</span> : <span className="text-gray-300">–</span>}</td>
+                                       <td className="px-3 py-3 flex gap-2">
                                           <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                           <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                        </td>
@@ -2937,26 +2975,36 @@ export default function NikonDashboard() {
                      ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {sortedEvents.map((evt: EventData) => {
-                              const detailPreview = evt.detail_acara ? (evt.detail_acara.length > 100 ? evt.detail_acara.substring(0, 100) + '...' : evt.detail_acara) : '-';
+                              const descPreview = evt.event_description ? (evt.event_description.length > 80 ? evt.event_description.substring(0, 80) + '...' : evt.event_description) : '-';
+                              const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.event_title] || 0);
+                              const proposal = budgets.find(b => b.id_budget === evt.proposal_event_id);
                               return (
                               <div key={evt.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="border-b border-gray-100 pb-3 mb-3">
-                                    <div className="flex items-center gap-2 mb-2">
-                                       <span className="font-bold text-lg text-gray-600 bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center text-center">{eventNumberMap.get(evt.id!)}</span>
-                                       <img src={evt.image} alt="poster" className="w-12 h-16 object-cover rounded" />
+                                 <div className="border-b border-gray-100 pb-3 mb-3 flex gap-3">
+                                    {evt.event_image ? <img src={gdriveUrl(evt.event_image)} alt="poster" className="w-16 h-20 object-cover rounded flex-shrink-0" referrerPolicy="no-referrer" /> : <div className="w-16 h-20 bg-gray-100 rounded flex-shrink-0 flex items-center justify-center text-gray-400 text-xs">No img</div>}
+                                    <div className="flex-1 min-w-0">
+                                       <div className="flex items-center gap-2 mb-1">
+                                          <span className="font-bold text-xs text-gray-500 bg-gray-100 rounded-full w-5 h-5 flex items-center justify-center">{eventNumberMap.get(evt.id!)}</span>
+                                          <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>
+                                       </div>
+                                       <h3 className="font-bold text-sm text-slate-800 leading-tight">{evt.event_title}</h3>
+                                       <p className="text-xs text-gray-500 mt-0.5">{evt.event_date}</p>
+                                       {evt.event_speaker && <p className="text-[11px] text-gray-400 mt-0.5">🎤 {evt.event_speaker}{evt.event_speaker_genre ? ` — ${evt.event_speaker_genre}` : ''}</p>}
                                     </div>
-                                    <h3 className="font-bold text-base text-slate-800">{evt.title}</h3>
-                                    <p className="text-xs text-gray-500">{evt.date}</p>
                                  </div>
-                                 <div className="space-y-2 text-xs flex-1">
-                                    <p><span className="font-bold w-20 inline-block">Detail:</span> {detailPreview}</p>
-                                    <p><span className="font-bold w-20 inline-block">Harga:</span> {evt.price}</p>
-                                    <p><span className="font-bold w-20 inline-block">Kuota:</span> {eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</p>
-                                    <p><span className="font-bold w-20 inline-block">Peserta:</span> {eventRegistrationsCount[evt.title] || 0} orang</p>
-                                    <p><span className="font-bold w-20 inline-block">Status:</span> <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${evt.status === 'close' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.status === 'close' ? 'Tutup' : 'Aktif'}</span></p>
-                                    {evt.bank_info && <p className="bg-blue-50 border border-blue-100 rounded p-2 mt-2"><span className="font-bold">Rekening:</span> {evt.bank_info}</p>}
+                                 <div className="space-y-1.5 text-xs flex-1">
+                                    <p className="text-gray-600 leading-snug">{descPreview}</p>
+                                    <div className="flex items-center justify-between bg-gray-50 rounded px-2 py-1">
+                                       <span className="font-bold">{evt.event_price}</span>
+                                       <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${evt.event_payment_tipe === 'deposit' ? 'bg-orange-100 text-orange-700' : evt.event_payment_tipe === 'gratis' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{evt.event_payment_tipe || 'regular'}</span>
+                                    </div>
+                                    {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && <p className="text-orange-600 text-[11px]">Deposit: {evt.deposit_amount}</p>}
+                                    <p><span className="font-bold">Kuota:</span> {eventRegistrationsCount[evt.event_title] || 0}/{evt.event_partisipant_stock} slot · {eventRegistrationsCount[evt.event_title] || 0} peserta</p>
+                                    {evt.bank_info && <p className="bg-blue-50 border border-blue-100 rounded p-1.5 text-[11px] whitespace-pre-wrap"><span className="font-bold">Rekening:</span> {evt.bank_info}</p>}
+                                    {evt.event_upload_payment_screenshot && <a href={gdriveUrl(evt.event_upload_payment_screenshot)} target="_blank" rel="noopener noreferrer" className="inline-block"><img src={gdriveUrl(evt.event_upload_payment_screenshot)} alt="qr" className="w-16 h-16 rounded border border-gray-200 hover:border-[#FFE500]" referrerPolicy="no-referrer" /></a>}
+                                    {proposal && <p className="text-purple-700 text-[11px] font-mono">📄 {proposal.proposal_no}</p>}
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2 justify-end">
+                                 <div className="mt-3 pt-2 border-t border-gray-100 flex gap-2 justify-end">
                                     <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                  </div>
@@ -3764,30 +3812,44 @@ export default function NikonDashboard() {
                            <form id="registrationForm" onSubmit={handleSaveRegistration} className="space-y-4">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Lengkap</label>
-                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nomor WhatsApp</label>
+                                    <input type="text" value={registrationForm.nomor_wa || ''} onChange={async e => {
+                                       const wa = e.target.value;
+                                       setRegistrationForm({ ...registrationForm, nomor_wa: wa });
+                                       if (wa.length >= 10) {
+                                          const { data } = await supabase.from('konsumen').select('nama_lengkap, kabupaten_kotamadya').eq('nomor_wa', wa).single();
+                                          if (data) setRegistrationForm(f => ({ ...f, nomor_wa: wa, nama_lengkap: data.nama_lengkap || '', kabupaten_kotamadya: data.kabupaten_kotamadya || '' }));
+                                       }
+                                    }} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Event</label>
-                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Lengkap</label>
+                                    <input type="text" value={registrationForm.nama_lengkap || ''} onChange={e => setRegistrationForm({ ...registrationForm, nama_lengkap: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nomor WhatsApp</label>
-                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kabupaten / Kotamadya</label>
+                                    <input type="text" value={registrationForm.kabupaten_kotamadya || ''} onChange={e => setRegistrationForm({ ...registrationForm, kabupaten_kotamadya: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Auto-isi dari data konsumen" />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Email</label>
-                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tipe Kamera</label>
+                                    <input type="text" list="list-tipe-barang" value={registrationForm.tipe_kamera || ''} onChange={e => setRegistrationForm({ ...registrationForm, tipe_kamera: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" />
                                  </div>
                               </div>
                               <div>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Event</label>
+                                 <select value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required>
+                                    <option value="">Pilih event...</option>
+                                    {events.map(ev => <option key={ev.id} value={ev.event_title}>{ev.event_title}</option>)}
+                                 </select>
+                              </div>
+                              <div>
                                  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status Pendaftaran</label>
-                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
-                                    <option value="Pending Payment">Pending Payment</option>
-                                    <option value="Confirmed">Confirmed</option>
-                                    <option value="Cancelled">Cancelled</option>
+                                 <select value={registrationForm.status_pendaftaran || 'menunggu_validasi'} onChange={e => setRegistrationForm({ ...registrationForm, status_pendaftaran: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
+                                    <option value="menunggu_validasi">Menunggu Validasi Pembayaran</option>
+                                    <option value="terdaftar">Terdaftar</option>
+                                    <option value="ditolak">Ditolak</option>
                                  </select>
                               </div>
                               <div>
@@ -3802,44 +3864,93 @@ export default function NikonDashboard() {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Judul Event</label>
-                                    <input type="text" value={eventForm.title || ''} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <input type="text" value={eventForm.event_title || ''} onChange={e => setEventForm({ ...eventForm, event_title: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
                                     <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tanggal & Waktu</label>
-                                    <input type="text" value={eventForm.date || ''} onChange={e => setEventForm({ ...eventForm, date: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    <input type="text" value={eventForm.event_date || ''} onChange={e => setEventForm({ ...eventForm, event_date: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Contoh: 12 Agustus 2026" />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Speaker</label>
+                                    <input type="text" value={eventForm.event_speaker || ''} onChange={e => setEventForm({ ...eventForm, event_speaker: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Nama pembicara / instruktur" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Genre / Spesialisasi Speaker</label>
+                                    <input type="text" value={eventForm.event_speaker_genre || ''} onChange={e => setEventForm({ ...eventForm, event_speaker_genre: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Contoh: Wildlife Photographer" />
                                  </div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                  <div>
                                     <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Harga</label>
-                                    <input type="text" value={eventForm.price || ''} onChange={e => setEventForm({ ...eventForm, price: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
+                                    <input type="text" value={eventForm.event_price || ''} onChange={e => setEventForm({ ...eventForm, event_price: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kuota Slot (Stock)</label>
-                                    <input type="number" value={eventForm.stock || 0} onChange={e => setEventForm({ ...eventForm, stock: Number(e.target.value) })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status Ketersediaan</label>
-                                    <select value={eventForm.status || 'aktif'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
-                                       <option value="aktif">Aktif</option>
-                                       <option value="close">Close</option>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tipe Pembayaran</label>
+                                    <select value={eventForm.event_payment_tipe || 'regular'} onChange={e => setEventForm({ ...eventForm, event_payment_tipe: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="regular">Regular (Lunas)</option>
+                                       <option value="deposit">Deposit</option>
+                                       <option value="gratis">Gratis</option>
                                     </select>
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Jumlah Deposit</label>
+                                    <input type="text" value={eventForm.deposit_amount || ''} onChange={e => setEventForm({ ...eventForm, deposit_amount: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Isi jika tipe deposit" disabled={eventForm.event_payment_tipe !== 'deposit'} />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kuota Slot (Peserta)</label>
+                                    <input type="number" value={eventForm.event_partisipant_stock || 0} onChange={e => setEventForm({ ...eventForm, event_partisipant_stock: Number(e.target.value) })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status</label>
+                                    <select value={eventForm.event_status || 'In stock'} onChange={e => setEventForm({ ...eventForm, event_status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="In stock">In stock (Available)</option>
+                                       <option value="Sold Out">Sold Out</option>
+                                       <option value="Close">Close</option>
+                                    </select>
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Proposal Event</label>
+                                    <select value={eventForm.proposal_event_id || ''} onChange={e => setEventForm({ ...eventForm, proposal_event_id: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="">Tanpa proposal</option>
+                                       {budgets.map(b => <option key={b.id_budget} value={b.id_budget}>{b.proposal_no} — {b.title}</option>)}
+                                    </select>
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Info Rekening Bank</label>
+                                    <input type="text" value={eventForm.bank_info || ''} onChange={e => setEventForm({ ...eventForm, bank_info: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Contoh: BCA 1234567890 a.n Nikon" />
                                  </div>
                               </div>
                               <div>
                                  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Foto / Poster Acara</label>
-                                 {(eventImageFile || eventForm.image) && (
+                                 {(eventImageFile || eventForm.event_image) && (
                                     <div className="mb-2 relative w-24 h-32 rounded overflow-hidden border border-gray-100">
-                                       <img src={eventImageFile ? URL.createObjectURL(eventImageFile) : eventForm.image} alt="preview" className="w-full h-full object-cover" />
-                                       <button type="button" onClick={() => { setEventImageFile(null); setEventForm({ ...eventForm, image: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
+                                       <img src={eventImageFile ? URL.createObjectURL(eventImageFile) : gdriveUrl(eventForm.event_image)} alt="preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                       <button type="button" onClick={() => { setEventImageFile(null); setEventForm({ ...eventForm, event_image: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
                                     </div>
                                  )}
                                  <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventImageFile(e.target.files[0]); }} className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 transition-all cursor-pointer" />
-                                 <p className="text-xs text-gray-400 mt-1">Format: JPG, PNG, WEBP. Tampil sebagai poster (rasio 3:4 disarankan).</p>
+                                 <p className="text-xs text-gray-400 mt-1">Format: JPG, PNG, WEBP. Rasio 3:4 disarankan.</p>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>
-                                 <textarea rows={6} value={eventForm.detail_acara || ''} onChange={e => setEventForm({ ...eventForm, detail_acara: e.target.value })} className="w-full p-3 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan detail acara lengkap..."></textarea>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Screenshot / QR Pembayaran</label>
+                                 {(eventPaymentScreenshotFile || eventForm.event_upload_payment_screenshot) && (
+                                    <div className="mb-2 relative w-32 h-32 rounded overflow-hidden border border-gray-100">
+                                       <img src={eventPaymentScreenshotFile ? URL.createObjectURL(eventPaymentScreenshotFile) : gdriveUrl(eventForm.event_upload_payment_screenshot)} alt="payment qr" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                       <button type="button" onClick={() => { setEventPaymentScreenshotFile(null); setEventForm({ ...eventForm, event_upload_payment_screenshot: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
+                                    </div>
+                                 )}
+                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventPaymentScreenshotFile(e.target.files[0]); }} className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 transition-all cursor-pointer" />
+                                 <p className="text-xs text-gray-400 mt-1">Upload gambar QR atau screenshot info pembayaran (JPG, PNG, WEBP).</p>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Deskripsi Event</label>
+                                 <textarea rows={5} value={eventForm.event_description || ''} onChange={e => setEventForm({ ...eventForm, event_description: e.target.value })} className="w-full p-3 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan deskripsi acara lengkap..."></textarea>
                               </div>
                            </form>
                         )}
