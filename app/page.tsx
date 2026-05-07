@@ -1960,9 +1960,6 @@ export default function NikonDashboard() {
                         </>
                      )}
                   </div>
-                  <a href="/chatbot" className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-md">
-                     🤖
-                  </a>
                   <button onClick={handleLogout} className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-sm">Logout</button>
                </div>
             </header>
