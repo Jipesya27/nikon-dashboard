@@ -156,7 +156,7 @@ export default function NikonDashboard() {
    const getClaimStatusColor = (c: ClaimPromo) => {
       const mkt = (c.validasi_by_mkt || '').trim().toLowerCase();
       const fa = (c.validasi_by_fa || '').trim().toLowerCase();
-      if (mkt === 'double input') return 'Hijau';
+      if (mkt === 'double input') return 'Merah';
       if (mkt === 'dalam proses verifikasi' || mkt === 'dalam proses validasi') return 'Putih';      
       if (c.nomor_resi && c.nomor_resi.trim() !== '' && c.nomor_resi.trim().toUpperCase() !== 'BELUM_DIISI') return 'Hijau';      
       if (mkt === 'valid' && fa === 'valid') return 'Pink';
