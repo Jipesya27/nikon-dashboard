@@ -1400,6 +1400,24 @@ export default function NikonDashboard() {
    };
 
    // --- PRINT LABEL PENGIRIMAN (HTML5 CANVAS) ---
+   const wrapText = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
+      const words = text.split(' ');
+      const lines: string[] = [];
+      let currentLine = '';
+      words.forEach(word => {
+         const testLine = currentLine ? `${currentLine} ${word}` : word;
+         const metrics = ctx.measureText(testLine);
+         if (metrics.width > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+         } else {
+            currentLine = testLine;
+         }
+      });
+      if (currentLine) lines.push(currentLine);
+      return lines;
+   };
+
    const handlePrintLabelPengiriman = (c: ClaimPromo) => {
       const consumer = consumersList.find(k => k.nomor_wa === c.nomor_wa);
       const canvas = document.createElement('canvas');
@@ -1423,16 +1441,22 @@ export default function NikonDashboard() {
       const nama = (consumer?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa).toUpperCase();
       ctx.fillText(`${nama} (${c.nomor_wa})`, 160, 80);
       const alamat = consumer?.alamat_rumah !== 'BELUM_DIISI' ? consumer?.alamat_rumah : '-';
-      ctx.fillText((alamat || '-').toUpperCase(), 160, 110);
+      const alamatLines = wrapText(ctx, (alamat || '-').toUpperCase(), 650);
+      let currentY = 110;
+      alamatLines.forEach((line, index) => {
+         ctx.fillText(line, 160, currentY);
+         currentY += 25;
+      });
+      const areaY = currentY;
       const areaArr = [];
       if (consumer?.kelurahan && consumer.kelurahan !== 'BELUM_DIISI') areaArr.push(`KEL. ${consumer.kelurahan}`);
       if (consumer?.kecamatan && consumer.kecamatan !== 'BELUM_DIISI') areaArr.push(`KEC. ${consumer.kecamatan}`);
-      ctx.fillText(areaArr.length > 0 ? areaArr.join(', ').toUpperCase() : '-', 160, 140);
+      ctx.fillText(areaArr.length > 0 ? areaArr.join(', ').toUpperCase() : '-', 160, areaY);
       const provArr = [];
       if (consumer?.kabupaten_kotamadya && consumer.kabupaten_kotamadya !== 'BELUM_DIISI') provArr.push(`KAB/KOTA. ${consumer.kabupaten_kotamadya}`);
       if (consumer?.provinsi && consumer.provinsi !== 'BELUM_DIISI') provArr.push(`PROV. ${consumer.provinsi}`);
       if (consumer?.kodepos && consumer.kodepos !== 'BELUM_DIISI') provArr.push(`${consumer.kodepos}`);
-      ctx.fillText(provArr.length > 0 ? provArr.join(', ').toUpperCase() : '-', 160, 170);
+      ctx.fillText(provArr.length > 0 ? provArr.join(', ').toUpperCase() : '-', 160, areaY + 30);
       ctx.fillText('From :', 40, 230);
       ctx.fillText('Alta Nikindo', 160, 230);
       ctx.fillText('Komp. Mangga Dua Square Blok H No.1-2, Jakarta - 14430', 160, 260);
