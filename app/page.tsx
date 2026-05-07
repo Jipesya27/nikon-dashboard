@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { whatsappMessages } from './whatsappMessages';
-import { Card, Stat, StatGrid, Badge, Button, PageHeader, Section } from '@/app/components/ui';
+import { Card, Stat, StatGrid, Badge, Button, PageHeader, Section, EmptyState } from '@/app/components/ui';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error'; // Akan diisi via .env.local
@@ -3265,118 +3265,240 @@ export default function NikonDashboard() {
                )}
 
                {/* ======================= MASTER EVENT ======================= */}
-               {activeTab === 'events' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     {/* Quick links bar */}
-                     <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-3 flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-bold text-gray-700 mr-2">🔗 Link Public:</span>
-                        <a href="/events/register" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-yellow-100 text-gray-800 border border-yellow-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
-                           🎫 Katalog & Daftar Event
-                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                        </a>
-                        <a href="/events/refund" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-yellow-100 text-gray-800 border border-yellow-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
-                           💰 Klaim Pengembalian Deposit
-                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                        </a>
-                        <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/events/register`); alert('Link katalog event disalin!'); }} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-md font-bold transition">📋 Copy URL Katalog</button>
-                        <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/events/refund`); alert('Link refund disalin!'); }} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-md font-bold transition">📋 Copy URL Refund</button>
-                     </div>
-                     <input type="text" placeholder="🔍 Cari Judul Event..." value={searchEvent} onChange={e => setSearchEvent(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                           <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr>
-                                    <th className="px-3 py-3 text-center font-bold w-12">No</th>
-                                    <th className="px-3 py-3 text-left font-bold">Poster</th>
-                                    <th className="px-3 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'event_title')}>Judul {sortConfigEvents.column === 'event_title' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-3 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'event_date')}>Tanggal {sortConfigEvents.column === 'event_date' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-3 py-3 text-left font-bold">Speaker</th>
-                                    <th className="px-3 py-3 text-left font-bold">Harga / Bayar</th>
-                                    <th className="px-3 py-3 text-left font-bold">Bank Info</th>
-                                    <th className="px-3 py-3 text-left font-bold">QR Bayar</th>
-                                    <th className="px-3 py-3 text-left font-bold">Kuota</th>
-                                    <th className="px-3 py-3 text-left font-bold">Status</th>
-                                    <th className="px-3 py-3 text-left font-bold">Proposal</th>
-                                    <th className="px-3 py-3 text-left font-bold">Aksi</th>
-                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200">
-                                 {sortedEvents.map((evt: EventData) => {
-                                    const proposal = budgets.find(b => b.id_budget === evt.proposal_event_id);
-                                    return (
-                                    <tr key={evt.id} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-3 py-3 text-center font-bold text-gray-600">{eventNumberMap.get(evt.id!)}</td>
-                                       <td className="px-3 py-3">{evt.event_image ? <img src={gdriveUrl(evt.event_image)} alt="poster" className="w-10 h-14 object-cover rounded" referrerPolicy="no-referrer" /> : <div className="w-10 h-14 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">–</div>}</td>
-                                       <td className="px-3 py-3 font-bold text-slate-800 max-w-[180px] whitespace-normal">{evt.event_title}</td>
-                                       <td className="px-3 py-3 text-xs">{evt.event_date}</td>
-                                       <td className="px-3 py-3 text-xs text-gray-600 max-w-[140px] whitespace-normal">{evt.event_speaker || '-'}{evt.event_speaker_genre && <span className="block text-[10px] text-gray-400">{evt.event_speaker_genre}</span>}</td>
-                                       <td className="px-3 py-3 text-xs">
-                                          <span className="font-bold">{evt.event_price}</span>
-                                          <span className={`block text-[10px] uppercase font-bold mt-0.5 px-1.5 py-0.5 rounded inline-block ${evt.event_payment_tipe === 'deposit' ? 'bg-orange-100 text-orange-700' : evt.event_payment_tipe === 'gratis' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{evt.event_payment_tipe || 'regular'}</span>
-                                          {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && <span className="block text-[10px] text-orange-600 mt-0.5">DP: {evt.deposit_amount}</span>}
-                                       </td>
-                                       <td className="px-3 py-3 text-[11px] text-gray-600 max-w-[140px] whitespace-pre-wrap">{evt.bank_info || '-'}</td>
-                                       <td className="px-3 py-3">{evt.event_upload_payment_screenshot ? <a href={gdriveUrl(evt.event_upload_payment_screenshot)} target="_blank" rel="noopener noreferrer"><img src={gdriveUrl(evt.event_upload_payment_screenshot)} alt="qr" className="w-10 h-10 object-cover rounded border border-gray-200 hover:border-[#FFE500]" referrerPolicy="no-referrer" /></a> : <span className="text-gray-300 text-xs">–</span>}</td>
-                                       <td className="px-3 py-3 text-xs">
-                                          <span className="font-bold text-gray-700">{eventRegistrationsCount[evt.event_title] || 0}/{evt.event_partisipant_stock}</span>
-                                          <span className="block text-[10px] text-blue-600 font-bold mt-0.5">{eventRegistrationsCount[evt.event_title] || 0} peserta</span>
-                                       </td>
-                                       <td className="px-3 py-3">{(() => { const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.event_title] || 0); return <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>; })()}</td>
-                                       <td className="px-3 py-3 text-[11px] text-gray-600 max-w-[120px] whitespace-normal">{proposal ? <span className="text-purple-700 font-mono">{proposal.proposal_no}</span> : <span className="text-gray-300">–</span>}</td>
-                                       <td className="px-3 py-3 flex gap-2">
-                                          <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                          <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                       </td>
-                                    </tr>
-                                    );
-                                 })}
-                              </tbody>
-                           </table>
+               {activeTab === 'events' && (() => {
+                  // Compute stats
+                  const totalEvents = events.length;
+                  const aktifEvents = events.filter(e => {
+                     const { closed } = getEventClosedStatus(e, eventRegistrationsCount[e.event_title] || 0);
+                     return !closed;
+                  }).length;
+                  const soldOutEvents = events.filter(e => {
+                     const status = (e.event_status || '').toLowerCase();
+                     return status === 'sold out' || status === 'sold_out';
+                  }).length;
+                  const totalPeserta = events.reduce((sum, e) => sum + (eventRegistrationsCount[e.event_title] || 0), 0);
+
+                  // Helper to get payment variant
+                  const paymentVariant = (tipe: string | undefined): 'warning' | 'success' | 'info' => {
+                     if (tipe === 'deposit') return 'warning';
+                     if (tipe === 'gratis') return 'success';
+                     return 'info';
+                  };
+
+                  return (
+                  <div className="animate-fade-in space-y-6">
+                     {/* PAGE HEADER */}
+                     <PageHeader
+                        title="Master Event"
+                        subtitle="Kelola semua event Nikon — daftar, kuota, harga, dan poster"
+                        icon="📅"
+                     />
+
+                     {/* STATS */}
+                     <StatGrid cols={4}>
+                        <Stat label="Total Event" value={totalEvents} icon="📅" />
+                        <Stat label="Aktif" value={aktifEvents} variant="success" icon="✓" />
+                        <Stat label="Sold Out" value={soldOutEvents} variant="warning" icon="🔥" />
+                        <Stat label="Total Peserta" value={totalPeserta} icon="🎟️" onClick={() => setActiveTab('eventregistrations')} />
+                     </StatGrid>
+
+                     {/* QUICK LINKS */}
+                     <Card padding="sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">🔗 Link Public:</span>
+                           <Button variant="secondary" size="sm" leftIcon="🎫" onClick={() => window.open('/events/register', '_blank')}>Katalog Event</Button>
+                           <Button variant="secondary" size="sm" leftIcon="💰" onClick={() => window.open('/events/refund', '_blank')}>Refund Deposit</Button>
+                           <Button variant="ghost" size="sm" leftIcon="📋" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/events/register`); alert('Link katalog disalin!'); }}>Copy URL Katalog</Button>
+                           <Button variant="ghost" size="sm" leftIcon="📋" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/events/refund`); alert('Link refund disalin!'); }}>Copy URL Refund</Button>
                         </div>
+                     </Card>
+
+                     {/* SEARCH */}
+                     <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                        <input
+                           type="text"
+                           placeholder="Cari judul event..."
+                           value={searchEvent}
+                           onChange={e => setSearchEvent(e.target.value)}
+                           className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 transition"
+                        />
+                     </div>
+
+                     {/* EMPTY STATE */}
+                     {sortedEvents.length === 0 ? (
+                        <Card padding="lg">
+                           <EmptyState
+                              icon="📅"
+                              title={searchEvent ? 'Tidak ada event sesuai pencarian' : 'Belum Ada Event'}
+                              description={searchEvent ? `Tidak ditemukan event dengan kata kunci "${searchEvent}"` : 'Tambahkan event pertama untuk mulai menerima pendaftaran.'}
+                              action={!searchEvent && <Button variant="primary" onClick={() => openModal('create', 'event')}>+ Tambah Event Pertama</Button>}
+                           />
+                        </Card>
+                     ) : viewMode === 'table' ? (
+                        /* TABLE VIEW — kolom dipilih ringkas, info detail di card view */
+                        <Card padding="none">
+                           <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                              <table className="w-full text-sm">
+                                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                    <tr className="text-left">
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 w-12 text-center">No</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Event</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'event_date')}>
+                                          Tanggal {sortConfigEvents.column === 'event_date' && (sortConfigEvents.direction === 'asc' ? '↑' : '↓')}
+                                       </th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Harga</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Kuota</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-100">
+                                    {sortedEvents.map((evt: EventData) => {
+                                       const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.event_title] || 0);
+                                       const peserta = eventRegistrationsCount[evt.event_title] || 0;
+                                       const kuota = evt.event_partisipant_stock || 0;
+                                       const pct = kuota > 0 ? (peserta / kuota) * 100 : 0;
+                                       return (
+                                          <tr key={evt.id} className="hover:bg-slate-50 transition">
+                                             <td className="px-4 py-3 text-center font-bold text-slate-400 align-top">{eventNumberMap.get(evt.id!)}</td>
+                                             <td className="px-4 py-3 align-top">
+                                                <div className="flex gap-3 items-start">
+                                                   {evt.event_image
+                                                      ? <img src={gdriveUrl(evt.event_image)} alt="poster" className="w-10 h-14 object-cover rounded flex-shrink-0" referrerPolicy="no-referrer" />
+                                                      : <div className="w-10 h-14 bg-slate-100 rounded flex-shrink-0 flex items-center justify-center text-slate-300 text-xs">📷</div>
+                                                   }
+                                                   <div className="min-w-0">
+                                                      <p className="font-bold text-slate-900 leading-tight">{evt.event_title}</p>
+                                                      {evt.event_speaker && <p className="text-xs text-slate-500 mt-0.5">🎤 {evt.event_speaker}</p>}
+                                                   </div>
+                                                </div>
+                                             </td>
+                                             <td className="px-4 py-3 text-sm text-slate-700 align-top whitespace-nowrap">{evt.event_date}</td>
+                                             <td className="px-4 py-3 align-top">
+                                                <p className="font-bold text-slate-900 text-sm">{evt.event_price}</p>
+                                                <Badge variant={paymentVariant(evt.event_payment_tipe)} size="xs" uppercase className="mt-1">
+                                                   {evt.event_payment_tipe || 'regular'}
+                                                </Badge>
+                                                {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && (
+                                                   <p className="text-[11px] text-amber-700 mt-1">DP: {evt.deposit_amount}</p>
+                                                )}
+                                             </td>
+                                             <td className="px-4 py-3 align-top">
+                                                <p className="text-sm font-bold text-slate-900">{peserta} <span className="text-slate-400 font-normal">/ {kuota}</span></p>
+                                                <div className="w-24 h-1.5 bg-slate-200 rounded-full mt-1.5 overflow-hidden">
+                                                   <div className={`h-full ${pct >= 100 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                                                </div>
+                                             </td>
+                                             <td className="px-4 py-3 align-top">
+                                                <Badge variant={closed ? 'danger' : 'success'} size="xs" uppercase>{reason}</Badge>
+                                             </td>
+                                             <td className="px-4 py-3 align-top text-right whitespace-nowrap">
+                                                <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'event', evt)}>Edit</Button>
+                                                <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('events', evt.id!)}>Hapus</Button>
+                                             </td>
+                                          </tr>
+                                       );
+                                    })}
+                                 </tbody>
+                              </table>
+                           </div>
+                        </Card>
                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        /* CARD VIEW — full detail per card */
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                            {sortedEvents.map((evt: EventData) => {
-                              const descPreview = evt.event_description ? (evt.event_description.length > 80 ? evt.event_description.substring(0, 80) + '...' : evt.event_description) : '-';
+                              const descPreview = evt.event_description ? (evt.event_description.length > 100 ? evt.event_description.substring(0, 100) + '...' : evt.event_description) : '';
                               const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.event_title] || 0);
                               const proposal = budgets.find(b => b.id_budget === evt.proposal_event_id);
+                              const peserta = eventRegistrationsCount[evt.event_title] || 0;
+                              const kuota = evt.event_partisipant_stock || 0;
+                              const pct = kuota > 0 ? (peserta / kuota) * 100 : 0;
                               return (
-                              <div key={evt.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="border-b border-gray-100 pb-3 mb-3 flex gap-3">
-                                    {evt.event_image ? <img src={gdriveUrl(evt.event_image)} alt="poster" className="w-16 h-20 object-cover rounded flex-shrink-0" referrerPolicy="no-referrer" /> : <div className="w-16 h-20 bg-gray-100 rounded flex-shrink-0 flex items-center justify-center text-gray-400 text-xs">No img</div>}
-                                    <div className="flex-1 min-w-0">
-                                       <div className="flex items-center gap-2 mb-1">
-                                          <span className="font-bold text-xs text-gray-500 bg-gray-100 rounded-full w-5 h-5 flex items-center justify-center">{eventNumberMap.get(evt.id!)}</span>
-                                          <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>
+                                 <Card key={evt.id} padding="none" className="overflow-hidden flex flex-col">
+                                    {/* Poster header */}
+                                    <div className="relative h-44 bg-slate-100 overflow-hidden">
+                                       {evt.event_image ? (
+                                          <img src={gdriveUrl(evt.event_image)} alt={evt.event_title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                       ) : (
+                                          <div className="w-full h-full flex items-center justify-center text-5xl text-slate-300">📷</div>
+                                       )}
+                                       {/* Number badge */}
+                                       <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded">#{eventNumberMap.get(evt.id!)}</div>
+                                       {/* Status badge */}
+                                       <div className="absolute top-2 right-2">
+                                          <Badge variant={closed ? 'danger' : 'success'} size="xs" uppercase>{reason}</Badge>
                                        </div>
-                                       <h3 className="font-bold text-sm text-slate-800 leading-tight">{evt.event_title}</h3>
-                                       <p className="text-xs text-gray-500 mt-0.5">{evt.event_date}</p>
-                                       {evt.event_speaker && <p className="text-[11px] text-gray-400 mt-0.5">🎤 {evt.event_speaker}{evt.event_speaker_genre ? ` — ${evt.event_speaker_genre}` : ''}</p>}
+                                       {/* Date overlay */}
+                                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                          <p className="text-yellow-400 text-xs font-bold uppercase tracking-wider">{evt.event_date}</p>
+                                       </div>
                                     </div>
-                                 </div>
-                                 <div className="space-y-1.5 text-xs flex-1">
-                                    <p className="text-gray-600 leading-snug">{descPreview}</p>
-                                    <div className="flex items-center justify-between bg-gray-50 rounded px-2 py-1">
-                                       <span className="font-bold">{evt.event_price}</span>
-                                       <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${evt.event_payment_tipe === 'deposit' ? 'bg-orange-100 text-orange-700' : evt.event_payment_tipe === 'gratis' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{evt.event_payment_tipe || 'regular'}</span>
+
+                                    {/* Body */}
+                                    <div className="p-4 flex-1 flex flex-col">
+                                       <h3 className="font-bold text-base text-slate-900 leading-tight mb-1">{evt.event_title}</h3>
+                                       {evt.event_speaker && (
+                                          <p className="text-xs text-slate-500 mb-2">🎤 {evt.event_speaker}{evt.event_speaker_genre ? ` · ${evt.event_speaker_genre}` : ''}</p>
+                                       )}
+                                       {descPreview && <p className="text-xs text-slate-600 leading-relaxed mb-3 flex-1">{descPreview}</p>}
+
+                                       {/* Price + payment type row */}
+                                       <div className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 mb-2">
+                                          <div>
+                                             <p className="text-[10px] text-slate-500 uppercase tracking-wider">Harga</p>
+                                             <p className="font-bold text-sm text-slate-900">{evt.event_price}</p>
+                                             {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && (
+                                                <p className="text-[11px] text-amber-700">DP: {evt.deposit_amount}</p>
+                                             )}
+                                          </div>
+                                          <Badge variant={paymentVariant(evt.event_payment_tipe)} size="xs" uppercase>{evt.event_payment_tipe || 'regular'}</Badge>
+                                       </div>
+
+                                       {/* Kuota progress */}
+                                       <div className="mb-2">
+                                          <div className="flex items-center justify-between text-xs mb-1">
+                                             <span className="text-slate-500">Kuota</span>
+                                             <span className="font-bold text-slate-900">{peserta} / {kuota} peserta</span>
+                                          </div>
+                                          <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                             <div className={`h-full ${pct >= 100 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                                          </div>
+                                       </div>
+
+                                       {/* Meta info */}
+                                       <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
+                                          {evt.bank_info && (
+                                             <span className="text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded inline-flex items-center gap-1" title={evt.bank_info}>
+                                                🏦 Bank
+                                             </span>
+                                          )}
+                                          {evt.event_upload_payment_screenshot && (
+                                             <a href={gdriveUrl(evt.event_upload_payment_screenshot)} target="_blank" rel="noopener noreferrer" className="text-[11px] bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded hover:bg-purple-100 inline-flex items-center gap-1">
+                                                📱 QR Bayar
+                                             </a>
+                                          )}
+                                          {proposal && (
+                                             <span className="text-[11px] bg-yellow-50 text-yellow-800 border border-yellow-200 px-2 py-0.5 rounded font-mono inline-flex items-center gap-1" title={proposal.title}>
+                                                📄 {proposal.proposal_no}
+                                             </span>
+                                          )}
+                                       </div>
                                     </div>
-                                    {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && <p className="text-orange-600 text-[11px]">Deposit: {evt.deposit_amount}</p>}
-                                    <p><span className="font-bold">Kuota:</span> {eventRegistrationsCount[evt.event_title] || 0}/{evt.event_partisipant_stock} slot · {eventRegistrationsCount[evt.event_title] || 0} peserta</p>
-                                    {evt.bank_info && <p className="bg-blue-50 border border-blue-100 rounded p-1.5 text-[11px] whitespace-pre-wrap"><span className="font-bold">Rekening:</span> {evt.bank_info}</p>}
-                                    {evt.event_upload_payment_screenshot && <a href={gdriveUrl(evt.event_upload_payment_screenshot)} target="_blank" rel="noopener noreferrer" className="inline-block"><img src={gdriveUrl(evt.event_upload_payment_screenshot)} alt="qr" className="w-16 h-16 rounded border border-gray-200 hover:border-[#FFE500]" referrerPolicy="no-referrer" /></a>}
-                                    {proposal && <p className="text-purple-700 text-[11px] font-mono">📄 {proposal.proposal_no}</p>}
-                                 </div>
-                                 <div className="mt-3 pt-2 border-t border-gray-100 flex gap-2 justify-end">
-                                    <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                    <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                 </div>
-                              </div>
+
+                                    {/* Footer actions */}
+                                    <div className="border-t border-slate-100 px-4 py-2 flex items-center justify-end gap-1 bg-slate-50/50">
+                                       <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'event', evt)}>Edit</Button>
+                                       <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('events', evt.id!)}>Hapus</Button>
+                                    </div>
+                                 </Card>
                               );
                            })}
                         </div>
                      )}
                   </div>
-               )}
+                  );
+               })()}
 
                {/* ======================= BOT SETTINGS ======================= */}
                {activeTab === 'botsettings' && (
