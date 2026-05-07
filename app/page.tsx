@@ -1637,6 +1637,15 @@ export default function NikonDashboard() {
       return sortableItems.sort(getSortFunction(sortConfigClaims, consumers));
    }, [filteredClaims, sortConfigClaims, consumers]);
 
+   // Nomor urut permanen berdasarkan urutan asli dari database, tidak berubah saat filter/sort
+   const claimNumberMap = useMemo(() => {
+      const map = new Map<string, number>();
+      claims.forEach((c: ClaimPromo, idx: number) => {
+         if (c.id_claim) map.set(c.id_claim, idx + 1);
+      });
+      return map;
+   }, [claims]);
+
    const duplicateClaimIds = useMemo(() => {
       const duplicatesToMark = new Set<string>();
       const snToIds: Record<string, string[]> = {};
@@ -2304,11 +2313,11 @@ export default function NikonDashboard() {
                                  <tr><th className="px-4 py-3 text-center font-bold">No</th><th className="px-4 py-3 text-center font-bold">Status Sistem</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>Nama Promo {sortConfigClaims.column === 'jenis_promosi' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>Toko {sortConfigClaims.column === 'nama_toko' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Nota/Garansi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'validasi_by_mkt')}>MKT / FA {sortConfigClaims.column === 'validasi_by_mkt' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Catatan MKT</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
-                                 {sortedClaims.map((c: ClaimPromo, index: number) => {
+                                 {sortedClaims.map((c: ClaimPromo) => {
                                     const isDuplicate = c.id_claim ? duplicateClaimIds.has(c.id_claim) : false;
                                     return (
                                     <tr key={c.id_claim} className={`hover:bg-gray-50 font-medium ${isDuplicate ? 'bg-red-50' : ''}`}>
-                                       <td className="px-4 py-3 text-center font-bold text-gray-600">{index + 1}</td>
+                                       <td className="px-4 py-3 text-center font-bold text-gray-600">{claimNumberMap.get(c.id_claim!)}</td>
                                        <td className="px-4 py-3 text-center">
                                           <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold shadow-sm inline-block ${getBadgeStyle(getClaimStatusColor(c))}`}>
                                              {getBadgeLabel(getClaimStatusColor(c))}
@@ -2346,7 +2355,7 @@ export default function NikonDashboard() {
                                        <td className="px-4 py-3">
                                           <div className="flex gap-3 items-center flex-wrap min-w-[200px]">
                                              <div className="flex items-center gap-2">
-                                                <button onClick={() => handlePrintLabelPengiriman(c, index + 1)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
+                                                <button onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
                                                 <label className="flex items-center gap-1.5 cursor-pointer">
                                                    <input
                                                       type="checkbox"
@@ -2392,14 +2401,14 @@ export default function NikonDashboard() {
                         </div>
                      ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {sortedClaims.map((c: ClaimPromo, index: number) => {
+                           {sortedClaims.map((c: ClaimPromo) => {
                               const isDuplicate = c.id_claim ? duplicateClaimIds.has(c.id_claim) : false;
                               return (
                               <div key={c.id_claim} className={`bg-white p-4 rounded-lg shadow-sm border flex flex-col hover:border-[#FFE500] transition ${isDuplicate ? 'border-red-500 bg-red-50' : 'border-gray-100'}`}>
                                  <div className="border-b border-gray-100 pb-3 mb-3">
                                     <div className="flex justify-between items-start gap-2">
                                        <div className="flex items-center gap-2">
-                                          <span className="font-bold text-lg text-gray-600 bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center text-center">{index + 1}</span>
+                                          <span className="font-bold text-lg text-gray-600 bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center text-center">{claimNumberMap.get(c.id_claim!)}</span>
                                           <div>
                                              <h3 className="font-bold text-base text-slate-800">{consumers[c.nomor_wa] || c.nomor_wa}</h3>
                                              <p className="text-xs text-gray-500 font-mono flex items-center gap-2">
@@ -2431,7 +2440,7 @@ export default function NikonDashboard() {
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end flex-wrap">
                                     <div className="flex items-center gap-2">
-                                       <button onClick={() => handlePrintLabelPengiriman(c, index + 1)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
+                                       <button onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
                                        <label className="flex items-center gap-1.5 cursor-pointer">
                                           <input
                                              type="checkbox"
