@@ -79,6 +79,30 @@ const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) =
    }
 };
 
+// --- HELPER FUNCTION TO SAVE MESSAGES TO DATABASE ---
+const saveMessageToDatabase = async (
+   nomor_wa: string,
+   nama_profil_wa: string,
+   arah_pesan: 'IN' | 'OUT',
+   isi_pesan: string,
+   bicara_dengan_cs: boolean = false
+) => {
+   try {
+      const { error } = await supabase.from('riwayat_pesan').insert([{
+         nomor_wa,
+         nama_profil_wa,
+         arah_pesan,
+         isi_pesan,
+         waktu_pesan: new Date().toISOString(),
+         bicara_dengan_cs,
+         created_at: new Date().toISOString()
+      }]);
+      if (error) console.error('[SAVE_MESSAGE] Error saving message:', error);
+   } catch (error) {
+      console.error('[SAVE_MESSAGE] Unexpected error:', error);
+   }
+};
+
 export default function NikonDashboard() {
    // LOGIN & FORGOT PASSWORD STATES
    const [isLoggedIn, setIsLoggedIn] = useState(false);

@@ -4,7 +4,25 @@
       "Bash(wc -l C:\\\\\\\\Users\\\\\\\\Jamal\\\\\\\\Desktop\\\\\\\\nikon-dashboard\\\\\\\\.claude\\\\\\\\worktrees\\\\\\\\busy-shamir-0f5127\\\\\\\\app\\\\\\\\page.tsx)",
       "Bash(curl -s http://localhost:3000)",
       "Bash(git add *)",
-      "Bash(git commit -m 'refactor: modernize dashboard design with card-based layout and Nikon theme *)"
+      "Bash(git commit -m 'refactor: modernize dashboard design with card-based layout and Nikon theme *)",
+      "Bash(pkill -f \"node.*next\\\\|npm run dev\")",
+      "Bash(npm run *)",
+      "Bash(pkill -f \"node.*next\")",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs kill *)",
+      "Bash(taskkill /PID 4164 /F)",
+      "Bash(timeout 2)",
+      "PowerShell(Stop-Process -ID 4164 -Force)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__computer",
+      "Bash(git commit -m 'feat: add checkbox to mark printed labels on claims page *)",
+      "Bash(git commit -m 'feat: update print label filename to include consumer name and serial number *)",
+      "Bash(git commit -m 'feat: display MKT notes on claims page *)",
+      "Bash(git commit -m 'feat: reorganize print label address layout *)",
+      "Bash(git commit -m 'feat: add text wrapping to print label address *)",
+      "Bash(git commit -m 'feat: implement complete message storage system - all messages saved to database *)"
     ]
   },
   "enabledPlugins": {
