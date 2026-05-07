@@ -147,30 +147,48 @@ export async function generateTicket(input: GenerateTicketInput): Promise<Genera
   page.drawLine({ start: { x: CONTENT_LEFT, y: cursorY }, end: { x: CONTENT_RIGHT, y: cursorY }, thickness: 1, color: dividerColor });
   cursorY -= 24;
 
+  // ====== QR CODE BLOCK constants (didefinisikan dulu sblm detail acara) ======
+  const QR_SIZE = 150;
+  const QR_PAD = 12;
+  const QR_X = (PAGE_W - QR_SIZE) / 2;
+  const QR_Y = 150; // posisi QR
+  // Safe zone: detail acara TIDAK BOLEH masuk area ini
+  // QR top edge (dgn padding & label space)
+  const QR_LABEL_BOT = QR_Y - QR_PAD - 36; // bottom label position
+  const QR_TOP_WITH_PAD = QR_Y + QR_SIZE + QR_PAD;
+  const DETAIL_BOTTOM_LIMIT = QR_TOP_WITH_PAD + 18; // 18px breathing room
+
   // Detail acara
   if (eventDetail) {
     page.drawText('DETAIL ACARA', { x: CONTENT_LEFT, y: cursorY, size: 9, font: fontBold, color: dimText });
     cursorY -= 18;
     const detailLines = wrapText(eventDetail, 70);
-    for (const line of detailLines) {
-      if (cursorY < 290) break; // jangan masuk area QR
+    const lineHeight = 15;
+    // Hitung max lines yang aman muat
+    const availableSpace = cursorY - DETAIL_BOTTOM_LIMIT;
+    const maxLines = Math.max(0, Math.floor(availableSpace / lineHeight));
+    const linesToShow = detailLines.slice(0, maxLines);
+    const isTruncated = detailLines.length > maxLines;
+
+    for (let i = 0; i < linesToShow.length; i++) {
+      let line = linesToShow[i];
+      // Tambah ... di line terakhir kalau dipotong
+      if (isTruncated && i === linesToShow.length - 1) {
+        // Potong line terakhir lalu tambah ellipsis
+        if (line.length > 65) line = line.substring(0, 65);
+        line = line.trim() + '...';
+      }
       page.drawText(line, { x: CONTENT_LEFT, y: cursorY, size: 10, font: fontRegular, color: lightText });
-      cursorY -= 15;
+      cursorY -= lineHeight;
     }
   }
 
-  // ====== QR CODE BLOCK (centered) ======
-  const QR_SIZE = 150;
-  const QR_X = (PAGE_W - QR_SIZE) / 2;
-  const QR_Y = 130;
-
-  // White background untuk QR
-  const qrPad = 12;
+  // White background utk QR (gambar terakhir supaya selalu di atas, melindungi dari teks yg overflow)
   page.drawRectangle({
-    x: QR_X - qrPad,
-    y: QR_Y - qrPad,
-    width: QR_SIZE + qrPad * 2,
-    height: QR_SIZE + qrPad * 2,
+    x: QR_X - QR_PAD,
+    y: QR_Y - QR_PAD,
+    width: QR_SIZE + QR_PAD * 2,
+    height: QR_SIZE + QR_PAD * 2,
     color: white,
   });
 
@@ -182,8 +200,8 @@ export async function generateTicket(input: GenerateTicketInput): Promise<Genera
   const labelBot = 'Registrasi Ulang';
   const lbl1W = fontRegular.widthOfTextAtSize(labelTop, 10);
   const lbl2W = fontBold.widthOfTextAtSize(labelBot, 11);
-  page.drawText(labelTop, { x: (PAGE_W - lbl1W) / 2, y: QR_Y - qrPad - 18, size: 10, font: fontRegular, color: dimText });
-  page.drawText(labelBot, { x: (PAGE_W - lbl2W) / 2, y: QR_Y - qrPad - 32, size: 11, font: fontBold, color: white });
+  page.drawText(labelTop, { x: (PAGE_W - lbl1W) / 2, y: QR_Y - QR_PAD - 18, size: 10, font: fontRegular, color: dimText });
+  page.drawText(labelBot, { x: (PAGE_W - lbl2W) / 2, y: QR_Y - QR_PAD - 32, size: 11, font: fontBold, color: white });
 
   // ====== FOOTER (yellow band) ======
   const FOOTER_H = 50;
