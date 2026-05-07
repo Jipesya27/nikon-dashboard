@@ -1635,6 +1635,21 @@ export default function NikonDashboard() {
       return map;
    }, [warranties]);
 
+   const eventNumberMap = useMemo(() => {
+      const map = new Map<string, number>();
+      const total = events.length;
+      events.forEach((e, idx) => {
+         if (e.id) map.set(e.id, total - idx);
+      });
+      return map;
+   }, [events]);
+
+   const filteredEvents = useMemo(() => events.filter((e: EventData) => (e.title || "").toLowerCase().includes(searchEvent.toLowerCase())), [events, searchEvent]);
+   const sortedEvents = useMemo(() => {
+      const sortableItems = [...filteredEvents];
+      return sortableItems.sort(getSortFunction(sortConfigEvents, consumers));
+   }, [filteredEvents, sortConfigEvents, consumers]);
+
    const getClaimDurationDays = (createdAt?: string) => {
       if (!createdAt) return '-';
       const created = new Date(createdAt);
@@ -2878,32 +2893,67 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-6 py-3 text-left font-bold">Gambar</th><th className="px-6 py-3 text-left font-bold cursor-pointer">Judul Event</th><th className="px-6 py-3 text-left font-bold">Tanggal</th><th className="px-6 py-3 text-left font-bold">Harga</th><th className="px-6 py-3 text-left font-bold">Kuota/Status</th><th className="px-6 py-3 text-left font-bold">Peserta</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
+                                 <tr><th className="px-4 py-3 text-center font-bold w-12">No</th><th className="px-4 py-3 text-left font-bold">Gambar</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'title')}>Judul Event {sortConfigEvents.column === 'title' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'date')}>Tanggal {sortConfigEvents.column === 'date' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Detail Acara</th><th className="px-4 py-3 text-left font-bold">Harga</th><th className="px-4 py-3 text-left font-bold">Kuota/Status</th><th className="px-4 py-3 text-left font-bold">Peserta</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
-                                 {events.filter(e => e.title.toLowerCase().includes(searchEvent.toLowerCase())).map((evt: EventData) => (
+                                 {sortedEvents.map((evt: EventData) => {
+                                    const detailPreview = evt.detail_acara ? (evt.detail_acara.length > 60 ? evt.detail_acara.substring(0, 60) + '...' : evt.detail_acara) : '-';
+                                    return (
                                     <tr key={evt.id} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-6 py-3"><img src={evt.image} alt="poster" className="w-12 h-16 object-cover rounded" /></td>
-                                       <td className="px-6 py-3 font-bold text-slate-800">{evt.title}</td>
-                                       <td className="px-6 py-3">{evt.date}</td>
-                                       <td className="px-6 py-3">{evt.price}</td>
-                                       <td className="px-6 py-3">
-                                          <span className="font-bold text-gray-700">{eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</span>
+                                       <td className="px-4 py-3 text-center font-bold text-gray-600">{eventNumberMap.get(evt.id!)}</td>
+                                       <td className="px-4 py-3"><img src={evt.image} alt="poster" className="w-10 h-14 object-cover rounded" /></td>
+                                       <td className="px-4 py-3 font-bold text-slate-800">{evt.title}</td>
+                                       <td className="px-4 py-3 text-sm">{evt.date}</td>
+                                       <td className="px-4 py-3 text-xs text-gray-600 max-w-[200px] whitespace-normal">{detailPreview}</td>
+                                       <td className="px-4 py-3">{evt.price}</td>
+                                       <td className="px-4 py-3">
+                                          <span className="font-bold text-gray-700 text-sm">{eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</span>
                                           <br/>{(() => { const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.title] || 0); return <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>; })()}
                                        </td>
-                                       <td className="px-6 py-3 font-bold text-blue-600">
+                                       <td className="px-4 py-3 font-bold text-blue-600 text-sm">
                                           {eventRegistrationsCount[evt.title] || 0} orang
                                        </td>
-                                       <td className="px-6 py-3 flex gap-3">
+                                       <td className="px-4 py-3 flex gap-2">
                                           <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                           <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                        </td>
                                     </tr>
-                                 ))}
+                                    );
+                                 })}
                               </tbody>
                            </table>
                         </div>
-                     ) : (<div></div>)}
+                     ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                           {sortedEvents.map((evt: EventData) => {
+                              const detailPreview = evt.detail_acara ? (evt.detail_acara.length > 100 ? evt.detail_acara.substring(0, 100) + '...' : evt.detail_acara) : '-';
+                              return (
+                              <div key={evt.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
+                                 <div className="border-b border-gray-100 pb-3 mb-3">
+                                    <div className="flex items-center gap-2 mb-2">
+                                       <span className="font-bold text-lg text-gray-600 bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center text-center">{eventNumberMap.get(evt.id!)}</span>
+                                       <img src={evt.image} alt="poster" className="w-12 h-16 object-cover rounded" />
+                                    </div>
+                                    <h3 className="font-bold text-base text-slate-800">{evt.title}</h3>
+                                    <p className="text-xs text-gray-500">{evt.date}</p>
+                                 </div>
+                                 <div className="space-y-2 text-xs flex-1">
+                                    <p><span className="font-bold w-20 inline-block">Detail:</span> {detailPreview}</p>
+                                    <p><span className="font-bold w-20 inline-block">Harga:</span> {evt.price}</p>
+                                    <p><span className="font-bold w-20 inline-block">Kuota:</span> {eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</p>
+                                    <p><span className="font-bold w-20 inline-block">Peserta:</span> {eventRegistrationsCount[evt.title] || 0} orang</p>
+                                    <p><span className="font-bold w-20 inline-block">Status:</span> <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${evt.status === 'close' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.status === 'close' ? 'Tutup' : 'Aktif'}</span></p>
+                                    {evt.bank_info && <p className="bg-blue-50 border border-blue-100 rounded p-2 mt-2"><span className="font-bold">Rekening:</span> {evt.bank_info}</p>}
+                                 </div>
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2 justify-end">
+                                    <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                    <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                 </div>
+                              </div>
+                              );
+                           })}
+                        </div>
+                     )}
                   </div>
                )}
 
