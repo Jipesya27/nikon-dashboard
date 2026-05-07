@@ -2670,140 +2670,193 @@ export default function NikonDashboard() {
 
                {/* ======================= CLAIMS ======================= */}
                {activeTab === 'claims' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     <div className="flex flex-col md:flex-row gap-2">
-                        <input type="text" placeholder="🔍 Cari Nama / No Seri / Nama Promo / Status MKT / Status FA..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="flex-1 p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                        <select value={filterStatusWarna} onChange={e => setFilterStatusWarna(e.target.value)} className="p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium md:w-48">
-                           <option value="Semua">Semua Status Warna</option>
-                           <option value="Putih">Belum Di Cek (Putih)</option>
-                           <option value="Merah">Tidak Valid (Merah)</option>
-                           <option value="Orange">Hold (Orange)</option>
-                           <option value="Biru">Tunggu FA Cek (Biru)</option>
-                           <option value="Pink">Tunggu Resi (Pink)</option>
-                           <option value="Hijau">Selesai (Hijau)</option>
-                        </select>
+                  <div className="animate-fade-in space-y-6">
+                     <PageHeader
+                        title="Claim Promo"
+                        subtitle="Validasi & track status klaim promo dari konsumen — workflow MKT → FA → Selesai"
+                        icon="🎫"
+                     />
+
+                     {/* STATUS FILTER CHIPS — clickable Stats untuk filter */}
+                     {(() => {
+                        const statuses: { key: string; label: string; color: string; bg: string; border: string; text: string; dot: string }[] = [
+                           { key: 'Putih', label: 'Belum Dicek', color: 'neutral', bg: 'bg-white', border: 'border-slate-300', text: 'text-slate-700', dot: 'bg-slate-300' },
+                           { key: 'Merah', label: 'Tidak Valid', color: 'danger', bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', dot: 'bg-rose-500' },
+                           { key: 'Orange', label: 'Hold', color: 'warning', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', dot: 'bg-orange-500' },
+                           { key: 'Biru', label: 'Tunggu FA', color: 'info', bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', dot: 'bg-sky-500' },
+                           { key: 'Pink', label: 'Tunggu Resi', color: 'pink', bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-700', dot: 'bg-pink-500' },
+                           { key: 'Hijau', label: 'Selesai', color: 'success', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+                        ];
+                        const totalAll = claims.length;
+                        return (
+                           <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
+                              <button
+                                 onClick={() => setFilterStatusWarna('Semua')}
+                                 className={`p-3 rounded-lg border-2 text-left transition ${filterStatusWarna === 'Semua' ? 'border-yellow-400 bg-yellow-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                              >
+                                 <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Semua</span>
+                                    <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+                                 </div>
+                                 <p className="text-2xl font-bold text-slate-900">{totalAll}</p>
+                              </button>
+                              {statuses.map(s => {
+                                 const count = (claimStatusCounts as any)[s.key] || 0;
+                                 const isActive = filterStatusWarna === s.key;
+                                 return (
+                                    <button
+                                       key={s.key}
+                                       onClick={() => setFilterStatusWarna(isActive ? 'Semua' : s.key)}
+                                       className={`p-3 rounded-lg border-2 text-left transition ${isActive ? `${s.border} ${s.bg} ring-2 ring-yellow-400/30` : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                                    >
+                                       <div className="flex items-center justify-between mb-1">
+                                          <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? s.text : 'text-slate-500'}`}>{s.label}</span>
+                                          <span className={`w-2 h-2 rounded-full ${s.dot}`}></span>
+                                       </div>
+                                       <p className={`text-2xl font-bold ${isActive ? s.text : 'text-slate-900'}`}>{count}</p>
+                                    </button>
+                                 );
+                              })}
+                           </div>
+                        );
+                     })()}
+
+                     {/* SEARCH */}
+                     <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                        <input
+                           type="text"
+                           placeholder="Cari nama, nomor seri, nama promo, status MKT/FA..."
+                           value={searchClaim}
+                           onChange={e => setSearchClaim(e.target.value)}
+                           className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 transition"
+                        />
                      </div>
-                     <div className="flex flex-wrap gap-2">
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-white border border-gray-300"></span>
-                           Belum Di Cek: {claimStatusCounts.Putih}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                           Tidak Valid: {claimStatusCounts.Merah}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-orange-500"></span>
-                           Hold: {claimStatusCounts.Orange}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                           Tunggu FA Cek: {claimStatusCounts.Biru}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-pink-500"></span>
-                           Tunggu Resi: {claimStatusCounts.Pink}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                           Selesai: {claimStatusCounts.Hijau}
-                        </div>
-                     </div>
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                           <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-4 py-3 text-center font-bold">No</th><th className="px-4 py-3 text-center font-bold">Status Sistem</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>Nama Promo {sortConfigClaims.column === 'jenis_promosi' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'created_at')}>Tgl Submit {sortConfigClaims.column === 'created_at' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-center font-bold">Durasi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>Toko {sortConfigClaims.column === 'nama_toko' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Nota/Garansi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'validasi_by_mkt')}>MKT / FA {sortConfigClaims.column === 'validasi_by_mkt' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Catatan MKT</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200">
-                                 {sortedClaims.map((c: ClaimPromo) => {
-                                    const isDuplicate = c.id_claim ? duplicateClaimIds.has(c.id_claim) : false;
-                                    return (
-                                    <tr key={c.id_claim} className={`hover:bg-gray-50 font-medium ${isDuplicate ? 'bg-red-50' : ''}`}>
-                                       <td className="px-4 py-3 text-center font-bold text-gray-600">{claimNumberMap.get(c.id_claim!)}</td>
-                                       <td className="px-4 py-3 text-center">
-                                          <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold shadow-sm inline-block ${getBadgeStyle(getClaimStatusColor(c))}`}>
-                                             {getBadgeLabel(getClaimStatusColor(c))}
-                                          </span>
-                                       </td>
-                                       <td className="px-4 py-3 text-slate-800 font-bold">{consumers[c.nomor_wa] || c.nomor_wa}</td>
-                                       <td className="px-4 py-3 font-mono">
-                                          <div className="flex items-center gap-2">
-                                             {c.nomor_seri}
-                                             {isDuplicate && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap animate-pulse" title="Nomor seri ini sudah pernah diklaim sebelumnya">⚠️ DUPLIKAT</span>}
-                                          </div>
-                                       </td>
-                                       <td className="px-4 py-3">{c.tipe_barang}</td>
-                                       <td className="px-4 py-3 font-bold text-black">{c.jenis_promosi || getNamaPromo(c.tipe_barang)}</td>
-                                       <td className="px-4 py-3">{c.tanggal_pembelian}</td>
-                                       <td className="px-4 py-3">{formatSubmitDate(c.created_at)}</td>
-                                       <td className="px-4 py-3">{getClaimDurationDays(c.created_at)}</td>
-                                       <td className="px-4 py-3">{c.nama_toko || '-'}</td>
-                                       <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
-                                          {c.link_nota_pembelian ? (
-                                             <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="hover:underline hover:text-blue-800 text-left flex items-center gap-1">
-                                                {typeof c.link_nota_pembelian === 'string' && isGoogleDriveLink(c.link_nota_pembelian) ? '🔗📂' : '🔗'} Lihat Nota {typeof c.link_nota_pembelian === 'string' && isGoogleDriveLink(c.link_nota_pembelian) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">(Google Drive)</span>}
-                                             </button>
-                                          ) : (
-                                             <span className="text-gray-500 italic">Tidak ada Nota</span>
-                                          )}
-                                          {c.link_kartu_garansi ? (
-                                             <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left flex items-center gap-1">
-                                                {typeof c.link_kartu_garansi === 'string' && isGoogleDriveLink(c.link_kartu_garansi) ? '🔗📂' : '🔗'} Lihat Garansi {typeof c.link_kartu_garansi === 'string' && isGoogleDriveLink(c.link_kartu_garansi) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">(Google Drive)</span>}
-                                             </button>
-                                          ) : (
-                                             <span className="text-gray-500 italic">Tidak ada Garansi</span>
-                                          )}
-                                       </td>
-                                       <td className="px-4 py-3 text-xs font-bold whitespace-normal max-w-[150px]">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
-                                       <td className="px-4 py-3 text-xs text-gray-700 whitespace-normal max-w-[200px]">{c.catatan_mkt || '-'}</td>
-                                       <td className="px-4 py-3">
-                                          <div className="flex gap-3 items-center flex-wrap min-w-[200px]">
-                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
-                                                <label className="flex items-center gap-1.5 cursor-pointer">
-                                                   <input
-                                                      type="checkbox"
-                                                      checked={c.id_claim ? printedClaimIds.has(c.id_claim) : false}
-                                                      onChange={(e) => {
-                                                         if (c.id_claim) {
-                                                            const newSet = new Set(printedClaimIds);
-                                                            if (e.target.checked) {
-                                                               newSet.add(c.id_claim);
-                                                            } else {
-                                                               newSet.delete(c.id_claim);
-                                                            }
-                                                            setPrintedClaimIds(newSet);
-                                                         }
-                                                      }}
-                                                      className="w-4 h-4 cursor-pointer"
-                                                   />
-                                                   <span className="text-xs text-gray-600">Sudah Print</span>
-                                                </label>
-                                             </div>
-                                             <button onClick={() => {
-                                                const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
-                                                if (consumerObj) {
-                                                   setReturnTab('claims');
-                                                   setActiveTab('konsumen');
-                                                   openModal('edit', 'konsumen', consumerObj);
-                                                } else {
-                                                   alert('Data konsumen tidak ditemukan di database.');
-                                                }
-                                             }} className="text-orange-600 text-xs font-bold hover:underline">Edit Alamat</button>
-                                             <div className="w-px h-3 bg-slate-300"></div>
-                                             <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline">Kirim Status</button>
-                                             <div className="w-px h-3 bg-slate-300"></div>
-                                             <button onClick={() => openModal('edit', 'claim', c)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                             <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                          </div>
-                                       </td>
-                                       </tr>
+                     {sortedClaims.length === 0 ? (
+                        <Card padding="lg">
+                           <EmptyState
+                              icon="🎫"
+                              title={claims.length === 0 ? 'Belum Ada Claim' : 'Tidak ada claim sesuai filter'}
+                              description={claims.length === 0 ? 'Saat konsumen submit claim promo, datanya akan muncul di sini.' : 'Coba ubah filter status atau search untuk lihat data lain.'}
+                           />
+                        </Card>
+                     ) : viewMode === 'table' ? (
+                        <Card padding="none">
+                           <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                              <table className="w-full text-sm">
+                                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                    <tr className="text-left">
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 w-10 text-center">#</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>
+                                          Konsumen {sortConfigClaims.column === 'nama_konsumen' && (sortConfigClaims.direction === 'asc' ? '↑' : '↓')}
+                                       </th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>
+                                          Barang & Promo {sortConfigClaims.column === 'tipe_barang' && (sortConfigClaims.direction === 'asc' ? '↑' : '↓')}
+                                       </th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>
+                                          Tanggal {sortConfigClaims.column === 'tanggal_pembelian' && (sortConfigClaims.direction === 'asc' ? '↑' : '↓')}
+                                       </th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Validasi</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Lampiran</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-100">
+                                    {sortedClaims.map((c: ClaimPromo) => {
+                                       const isDuplicate = c.id_claim ? duplicateClaimIds.has(c.id_claim) : false;
+                                       const isPrinted = c.id_claim ? printedClaimIds.has(c.id_claim) : false;
+                                       const promo = c.jenis_promosi || getNamaPromo(c.tipe_barang);
+                                       const consumerName = consumers[c.nomor_wa] || c.nomor_wa;
+                                       return (
+                                          <tr key={c.id_claim} className={`hover:bg-slate-50 transition ${isDuplicate ? 'bg-rose-50/50' : ''}`}>
+                                             <td className="px-3 py-3 text-center font-bold text-slate-400 align-top">{claimNumberMap.get(c.id_claim!)}</td>
+                                             <td className="px-3 py-3 align-top">
+                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold inline-block ${getBadgeStyle(getClaimStatusColor(c))}`}>
+                                                   {getBadgeLabel(getClaimStatusColor(c))}
+                                                </span>
+                                                {isDuplicate && (
+                                                   <Badge variant="danger" size="xs" uppercase className="mt-1.5 block w-fit animate-pulse">⚠️ Duplikat</Badge>
+                                                )}
+                                             </td>
+                                             <td className="px-3 py-3 align-top">
+                                                <p className="font-bold text-slate-900 leading-tight">{consumerName}</p>
+                                                <p className="text-[11px] text-slate-500 mt-0.5">📱 {c.nomor_wa}</p>
+                                                <p className="text-[11px] font-mono text-slate-600 mt-0.5">SN: {c.nomor_seri}</p>
+                                             </td>
+                                             <td className="px-3 py-3 align-top">
+                                                <p className="font-semibold text-slate-900">{c.tipe_barang}</p>
+                                                <p className="text-xs text-amber-700 mt-0.5">🎁 {promo}</p>
+                                                {c.nama_toko && <p className="text-[11px] text-slate-500 mt-0.5">🏪 {c.nama_toko}</p>}
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-xs">
+                                                <p className="text-slate-700"><span className="text-slate-500">Beli:</span> {c.tanggal_pembelian}</p>
+                                                <p className="text-slate-700 mt-0.5"><span className="text-slate-500">Submit:</span> {formatSubmitDate(c.created_at)}</p>
+                                                <p className="text-[11px] text-slate-500 mt-0.5">⏱ {getClaimDurationDays(c.created_at)}</p>
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-xs">
+                                                <p><span className="text-slate-500">MKT:</span> <span className="font-semibold text-slate-700">{c.validasi_by_mkt || '-'}</span></p>
+                                                <p className="mt-0.5"><span className="text-slate-500">FA:</span> <span className="font-semibold text-slate-700">{c.validasi_by_fa || '-'}</span></p>
+                                                {c.catatan_mkt && <p className="text-[11px] text-slate-600 mt-1 bg-blue-50 border border-blue-100 rounded px-1.5 py-1 max-w-[180px]" title={c.catatan_mkt}>💬 {c.catatan_mkt.length > 40 ? c.catatan_mkt.substring(0, 40) + '...' : c.catatan_mkt}</p>}
+                                             </td>
+                                             <td className="px-3 py-3 align-top">
+                                                <div className="flex flex-col gap-1">
+                                                   {c.link_nota_pembelian ? (
+                                                      <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="text-[11px] text-blue-600 hover:text-blue-800 hover:underline text-left font-semibold inline-flex items-center gap-1">
+                                                         🧾 Nota
+                                                      </button>
+                                                   ) : (
+                                                      <span className="text-[11px] text-slate-400 italic">No nota</span>
+                                                   )}
+                                                   {c.link_kartu_garansi ? (
+                                                      <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="text-[11px] text-blue-600 hover:text-blue-800 hover:underline text-left font-semibold inline-flex items-center gap-1">
+                                                         🛡️ Garansi
+                                                      </button>
+                                                   ) : (
+                                                      <span className="text-[11px] text-slate-400 italic">No garansi</span>
+                                                   )}
+                                                </div>
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-right whitespace-nowrap">
+                                                <div className="flex flex-col gap-1 items-end">
+                                                   <div className="flex items-center gap-1">
+                                                      <Button variant="ghost" size="sm" onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="!text-blue-600">🖨️ Label</Button>
+                                                      <label className="flex items-center gap-1 cursor-pointer text-[11px] text-slate-600 hover:text-slate-900">
+                                                         <input
+                                                            type="checkbox"
+                                                            checked={isPrinted}
+                                                            onChange={(e) => {
+                                                               if (c.id_claim) {
+                                                                  const newSet = new Set(printedClaimIds);
+                                                                  if (e.target.checked) newSet.add(c.id_claim);
+                                                                  else newSet.delete(c.id_claim);
+                                                                  setPrintedClaimIds(newSet);
+                                                               }
+                                                            }}
+                                                            className="w-3.5 h-3.5 cursor-pointer"
+                                                         />
+                                                         <span>Done</span>
+                                                      </label>
+                                                   </div>
+                                                   <div className="flex items-center">
+                                                      <Button variant="ghost" size="sm" onClick={() => {
+                                                         const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
+                                                         if (consumerObj) { setReturnTab('claims'); setActiveTab('konsumen'); openModal('edit', 'konsumen', consumerObj); }
+                                                         else alert('Data konsumen tidak ditemukan di database.');
+                                                      }} className="!text-orange-600">📍 Alamat</Button>
+                                                      <Button variant="ghost" size="sm" className="!text-emerald-600" onClick={() => handleKirimStatusClaim(c)}>📱 WA</Button>
+                                                      <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'claim', c)}>Edit</Button>
+                                                      <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('claim', c.id_claim!)}>Hapus</Button>
+                                                   </div>
+                                                </div>
+                                             </td>
+                                          </tr>
                                        );
-                                       })}
+                                    })}
                                  </tbody>
                               </table>
-                        </div>
+                           </div>
+                        </Card>
                      ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {sortedClaims.map((c: ClaimPromo) => {
