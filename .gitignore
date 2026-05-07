@@ -56,3 +56,7 @@ supabase/.temp
 # Dev logs
 *.log
 dev.log
+
+# Local artifacts
+ruvector.db
+*.db
