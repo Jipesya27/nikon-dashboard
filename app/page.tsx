@@ -161,6 +161,8 @@ export default function NikonDashboard() {
    const [eventRegistrationsCount, setEventRegistrationsCount] = useState<Record<string, number>>({});
    const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]);
    const [searchRegistration, setSearchRegistration] = useState('');
+   const [filterStatusReg, setFilterStatusReg] = useState<string>('all');
+   const [filterEventReg, setFilterEventReg] = useState<string>('all');
 
    // SEARCH STATES
    const [searchKonsumen, setSearchKonsumen] = useState('');
@@ -3191,78 +3193,245 @@ export default function NikonDashboard() {
                )}
 
                
-               {/* ======================= EVENT REGISTRATIONS ======================= */}
-               {activeTab === 'eventregistrations' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     {/* Quick links bar */}
-                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-bold text-gray-700 mr-2">🛠️ Halaman Admin:</span>
-                        <a href="/admin/events" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-blue-100 text-gray-800 border border-blue-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
-                           ✅ Validasi Pembayaran
-                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                        </a>
-                        <a href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-blue-100 text-gray-800 border border-blue-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
-                           📷 Absensi Scan QR
-                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                        </a>
-                        <a href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-blue-100 text-gray-800 border border-blue-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
-                           💸 Kelola Deposit
-                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                        </a>
-                        <span className="text-gray-300 mx-1">|</span>
-                        <span className="text-[10px] text-gray-500">Public:</span>
-                        <a href="/events/register" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-yellow-100 text-gray-800 border border-yellow-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
-                           🎫 Daftar Event
-                        </a>
-                        <a href="/events/refund" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-yellow-100 text-gray-800 border border-yellow-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
-                           💰 Refund Deposit
-                        </a>
-                     </div>
-                     <input type="text" placeholder="🔍 Cari Nama Peserta atau Event..." value={searchRegistration} onChange={e => setSearchRegistration(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                           <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-6 py-3 text-left font-bold">Nama Lengkap</th><th className="px-6 py-3 text-left font-bold">Nomor WA</th><th className="px-6 py-3 text-left font-bold">Kab/Kota</th><th className="px-6 py-3 text-left font-bold">Tipe Kamera</th><th className="px-6 py-3 text-left font-bold">Event</th><th className="px-6 py-3 text-left font-bold">Status</th><th className="px-6 py-3 text-left font-bold">Kehadiran</th><th className="px-6 py-3 text-left font-bold">Bukti TF</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200">
-                                 {eventRegistrations.filter(r => (r.nama_lengkap || '').toLowerCase().includes(searchRegistration.toLowerCase()) || r.event_name.toLowerCase().includes(searchRegistration.toLowerCase())).map((reg: EventRegistration) => (
-                                    <tr key={reg.id} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-6 py-3 font-bold text-slate-800">{reg.nama_lengkap}</td>
-                                       <td className="px-6 py-3">{reg.nomor_wa}</td>
-                                       <td className="px-6 py-3 text-xs text-gray-600">{reg.kabupaten_kotamadya || '-'}</td>
-                                       <td className="px-6 py-3 text-xs text-gray-600">{reg.tipe_kamera || '-'}</td>
-                                       <td className="px-6 py-3 text-amber-600 font-bold">{reg.event_name}</td>
-                                       <td className="px-6 py-3">
-                                          <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${reg.status_pendaftaran === 'terdaftar' ? 'bg-green-100 text-green-700' : reg.status_pendaftaran === 'ditolak' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{reg.status_pendaftaran === 'terdaftar' ? 'Terdaftar' : reg.status_pendaftaran === 'ditolak' ? 'Ditolak' : 'Menunggu Validasi'}</span>
-                                       </td>
-                                       <td className="px-6 py-3">
-                                          {reg.is_attended ? <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-1 rounded">HADIR ✅</span> : <button onClick={() => handleMarkAttendance(reg.id!)} className="text-[10px] bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold px-2 py-1 rounded border border-gray-300">Set Hadir</button>}
-                                       </td>
-                                       <td className="px-6 py-3">
-                                          {reg.bukti_transfer_url ? <a href={reg.bukti_transfer_url} target="_blank" className="text-blue-500 hover:underline font-bold">Lihat Bukti</a> : <span className="text-gray-400">Belum Ada</span>}
-                                       </td>
-                                       <td className="px-6 py-3 flex gap-3">
-                                          {reg.status_pendaftaran === 'terdaftar' && (
-                                             <button
-                                                onClick={() => handleSendEventSuccessWA(reg)}
-                                                className="text-green-600 text-xs font-bold hover:underline"
-                                                title="Kirim Konfirmasi WA"
-                                             >
-                                                Kirim WA
-                                             </button>
-                                          )}
-                                          <button onClick={() => openModal('edit', 'eventregistration', reg)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                          <button onClick={() => handleDelete('eventregistration', reg.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                       </td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
+               {/* ======================= EVENT REGISTRATIONS / DATA PESERTA ======================= */}
+               {activeTab === 'eventregistrations' && (() => {
+                  // Stats
+                  const totalReg = eventRegistrations.length;
+                  const terdaftarCount = eventRegistrations.filter(r => r.status_pendaftaran === 'terdaftar').length;
+                  const menungguCount = eventRegistrations.filter(r => r.status_pendaftaran === 'menunggu_validasi' || (r as any).status === 'Pending').length;
+                  const hadirCount = eventRegistrations.filter(r => r.is_attended).length;
+
+                  // Filter state derived from search & filterStatusReg / filterEventReg
+                  const filtered = eventRegistrations.filter(r => {
+                     const matchSearch = !searchRegistration ||
+                        (r.nama_lengkap || '').toLowerCase().includes(searchRegistration.toLowerCase()) ||
+                        (r.event_name || '').toLowerCase().includes(searchRegistration.toLowerCase()) ||
+                        (r.nomor_wa || '').includes(searchRegistration);
+                     const matchStatus = filterStatusReg === 'all' || r.status_pendaftaran === filterStatusReg ||
+                        (filterStatusReg === 'attended' && r.is_attended);
+                     const matchEvent = filterEventReg === 'all' || r.event_name === filterEventReg;
+                     return matchSearch && matchStatus && matchEvent;
+                  });
+
+                  const uniqueEventNames = Array.from(new Set(eventRegistrations.map(r => r.event_name).filter(Boolean)));
+
+                  const statusBadge = (status: string, attended: boolean) => {
+                     if (attended) return { variant: 'success' as const, label: '✓ Hadir' };
+                     if (status === 'terdaftar') return { variant: 'success' as const, label: 'Terdaftar' };
+                     if (status === 'ditolak') return { variant: 'danger' as const, label: 'Ditolak' };
+                     return { variant: 'warning' as const, label: 'Menunggu Validasi' };
+                  };
+
+                  // Initial avatar
+                  const getInitial = (name: string) => (name || '?').trim().charAt(0).toUpperCase();
+                  const avatarColor = (name: string) => {
+                     const colors = ['bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-700', 'bg-purple-100 text-purple-700', 'bg-rose-100 text-rose-700', 'bg-indigo-100 text-indigo-700'];
+                     let hash = 0;
+                     for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+                     return colors[hash % colors.length];
+                  };
+
+                  return (
+                  <div className="animate-fade-in space-y-6">
+                     <PageHeader
+                        title="Data Peserta Event"
+                        subtitle="Daftar pendaftar event Nikon — kelola validasi, absensi, dan komunikasi"
+                        icon="🎟️"
+                     />
+
+                     {/* STATS */}
+                     <StatGrid cols={4}>
+                        <Stat label="Total Pendaftar" value={totalReg} icon="🎟️" />
+                        <Stat label="Terdaftar" value={terdaftarCount} variant="success" icon="✓" onClick={() => setFilterStatusReg('terdaftar')} active={filterStatusReg === 'terdaftar'} />
+                        <Stat label="Menunggu Validasi" value={menungguCount} variant="warning" icon="⏳" onClick={() => setFilterStatusReg('menunggu_validasi')} active={filterStatusReg === 'menunggu_validasi'} />
+                        <Stat label="Sudah Hadir" value={hadirCount} variant="info" icon="📍" onClick={() => setFilterStatusReg('attended')} active={filterStatusReg === 'attended'} />
+                     </StatGrid>
+
+                     {/* QUICK LINKS */}
+                     <Card padding="sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">🛠️ Admin:</span>
+                           <Button variant="secondary" size="sm" leftIcon="✅" onClick={() => window.open('/admin/events', '_blank')}>Validasi Pembayaran</Button>
+                           <Button variant="secondary" size="sm" leftIcon="📷" onClick={() => window.open('/admin/events/attendance', '_blank')}>Absensi Scan QR</Button>
+                           <Button variant="secondary" size="sm" leftIcon="💸" onClick={() => window.open('/admin/events/deposit', '_blank')}>Kelola Deposit</Button>
+                           <span className="text-slate-300 mx-1">|</span>
+                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Public:</span>
+                           <Button variant="ghost" size="sm" leftIcon="🎫" onClick={() => window.open('/events/register', '_blank')}>Daftar Event</Button>
+                           <Button variant="ghost" size="sm" leftIcon="💰" onClick={() => window.open('/events/refund', '_blank')}>Refund Deposit</Button>
                         </div>
-                     ) : (<div></div>)}
+                     </Card>
+
+                     {/* FILTERS */}
+                     <div className="flex flex-wrap gap-3 items-center">
+                        <div className="relative flex-1 min-w-[240px]">
+                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                           <input
+                              type="text"
+                              placeholder="Cari nama, nomor WA, atau event..."
+                              value={searchRegistration}
+                              onChange={e => setSearchRegistration(e.target.value)}
+                              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 transition"
+                           />
+                        </div>
+                        <select value={filterStatusReg} onChange={e => setFilterStatusReg(e.target.value)} className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-yellow-400">
+                           <option value="all">Semua Status</option>
+                           <option value="menunggu_validasi">Menunggu Validasi</option>
+                           <option value="terdaftar">Terdaftar</option>
+                           <option value="ditolak">Ditolak</option>
+                           <option value="attended">Sudah Hadir</option>
+                        </select>
+                        <select value={filterEventReg} onChange={e => setFilterEventReg(e.target.value)} className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-yellow-400">
+                           <option value="all">Semua Event</option>
+                           {uniqueEventNames.map(name => <option key={name} value={name}>{name}</option>)}
+                        </select>
+                        {(filterStatusReg !== 'all' || filterEventReg !== 'all' || searchRegistration) && (
+                           <Button variant="ghost" size="sm" onClick={() => { setFilterStatusReg('all'); setFilterEventReg('all'); setSearchRegistration(''); }}>✕ Reset Filter</Button>
+                        )}
+                     </div>
+
+                     {/* CONTENT */}
+                     {filtered.length === 0 ? (
+                        <Card padding="lg">
+                           <EmptyState
+                              icon="🎟️"
+                              title={totalReg === 0 ? 'Belum Ada Pendaftar' : 'Tidak ada peserta sesuai filter'}
+                              description={totalReg === 0 ? 'Saat customer mendaftar event di /events/register, datanya akan muncul di sini.' : 'Coba ubah filter atau reset untuk melihat semua data.'}
+                           />
+                        </Card>
+                     ) : viewMode === 'table' ? (
+                        <Card padding="none">
+                           <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                              <table className="w-full text-sm">
+                                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                    <tr className="text-left">
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Peserta</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Event</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Kamera</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Kehadiran</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Bukti TF</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-100">
+                                    {filtered.map((reg: EventRegistration) => {
+                                       const sb = statusBadge(reg.status_pendaftaran || (reg as any).status || '', false);
+                                       return (
+                                          <tr key={reg.id} className="hover:bg-slate-50 transition">
+                                             <td className="px-4 py-3 align-top">
+                                                <div className="flex gap-3 items-start">
+                                                   <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${avatarColor(reg.nama_lengkap || '')}`}>
+                                                      {getInitial(reg.nama_lengkap || '')}
+                                                   </div>
+                                                   <div className="min-w-0">
+                                                      <p className="font-bold text-slate-900 leading-tight">{reg.nama_lengkap}</p>
+                                                      <p className="text-xs text-slate-500 mt-0.5">📱 {reg.nomor_wa}</p>
+                                                      {reg.kabupaten_kotamadya && <p className="text-[11px] text-slate-400 mt-0.5">📍 {reg.kabupaten_kotamadya}</p>}
+                                                   </div>
+                                                </div>
+                                             </td>
+                                             <td className="px-4 py-3 align-top">
+                                                <p className="text-sm font-semibold text-slate-700 leading-tight">{reg.event_name}</p>
+                                             </td>
+                                             <td className="px-4 py-3 align-top text-xs text-slate-600">{reg.tipe_kamera || '-'}</td>
+                                             <td className="px-4 py-3 align-top">
+                                                <Badge variant={sb.variant} size="xs" uppercase>{sb.label}</Badge>
+                                             </td>
+                                             <td className="px-4 py-3 align-top">
+                                                {reg.is_attended ? (
+                                                   <Badge variant="success" size="xs" uppercase>✓ Hadir</Badge>
+                                                ) : (
+                                                   <Button variant="ghost" size="sm" onClick={() => handleMarkAttendance(reg.id!)}>Set Hadir</Button>
+                                                )}
+                                             </td>
+                                             <td className="px-4 py-3 align-top">
+                                                {reg.bukti_transfer_url ? (
+                                                   <a href={reg.bukti_transfer_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 font-semibold">
+                                                      🖼️ Lihat
+                                                   </a>
+                                                ) : (
+                                                   <span className="text-xs text-slate-400">—</span>
+                                                )}
+                                             </td>
+                                             <td className="px-4 py-3 align-top text-right whitespace-nowrap">
+                                                {reg.status_pendaftaran === 'terdaftar' && (
+                                                   <Button variant="ghost" size="sm" className="!text-emerald-600" onClick={() => handleSendEventSuccessWA(reg)} title="Kirim Konfirmasi WA">📱 WA</Button>
+                                                )}
+                                                <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'eventregistration', reg)}>Edit</Button>
+                                                <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('eventregistration', reg.id!)}>Hapus</Button>
+                                             </td>
+                                          </tr>
+                                       );
+                                    })}
+                                 </tbody>
+                              </table>
+                           </div>
+                        </Card>
+                     ) : (
+                        /* CARD VIEW */
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                           {filtered.map((reg: EventRegistration) => {
+                              const sb = statusBadge(reg.status_pendaftaran || (reg as any).status || '', false);
+                              return (
+                                 <Card key={reg.id} padding="md" className="flex flex-col">
+                                    <div className="flex items-start gap-3 mb-3">
+                                       <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0 ${avatarColor(reg.nama_lengkap || '')}`}>
+                                          {getInitial(reg.nama_lengkap || '')}
+                                       </div>
+                                       <div className="flex-1 min-w-0">
+                                          <h3 className="font-bold text-base text-slate-900 leading-tight">{reg.nama_lengkap}</h3>
+                                          <p className="text-xs text-slate-500 mt-0.5">📱 {reg.nomor_wa}</p>
+                                       </div>
+                                       <Badge variant={sb.variant} size="xs" uppercase>{sb.label}</Badge>
+                                    </div>
+
+                                    <div className="space-y-2 text-xs flex-1">
+                                       <div className="bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                                          <p className="text-[10px] text-amber-700 uppercase tracking-wider font-bold">Event</p>
+                                          <p className="font-semibold text-slate-900 mt-0.5">{reg.event_name}</p>
+                                       </div>
+                                       <div className="grid grid-cols-2 gap-2">
+                                          {reg.kabupaten_kotamadya && (
+                                             <div>
+                                                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Kab/Kota</p>
+                                                <p className="text-slate-700">{reg.kabupaten_kotamadya}</p>
+                                             </div>
+                                          )}
+                                          {reg.tipe_kamera && (
+                                             <div>
+                                                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Kamera</p>
+                                                <p className="text-slate-700">{reg.tipe_kamera}</p>
+                                             </div>
+                                          )}
+                                       </div>
+                                       <div className="flex flex-wrap gap-1.5 pt-1">
+                                          {reg.is_attended && <Badge variant="success" size="xs" uppercase>✓ Hadir</Badge>}
+                                          {reg.bukti_transfer_url && (
+                                             <a href={reg.bukti_transfer_url} target="_blank" rel="noopener noreferrer" className="text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded hover:bg-blue-100 inline-flex items-center gap-1">
+                                                🖼️ Bukti TF
+                                             </a>
+                                          )}
+                                       </div>
+                                    </div>
+
+                                    <div className="border-t border-slate-100 mt-3 pt-2 -mx-5 px-5 flex items-center justify-end gap-1 bg-slate-50/50">
+                                       {!reg.is_attended && (
+                                          <Button variant="ghost" size="sm" onClick={() => handleMarkAttendance(reg.id!)}>Set Hadir</Button>
+                                       )}
+                                       {reg.status_pendaftaran === 'terdaftar' && (
+                                          <Button variant="ghost" size="sm" className="!text-emerald-600" onClick={() => handleSendEventSuccessWA(reg)}>📱 WA</Button>
+                                       )}
+                                       <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'eventregistration', reg)}>Edit</Button>
+                                       <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('eventregistration', reg.id!)}>Hapus</Button>
+                                    </div>
+                                 </Card>
+                              );
+                           })}
+                        </div>
+                     )}
                   </div>
-               )}
+                  );
+               })()}
 
                {/* ======================= MASTER EVENT ======================= */}
                {activeTab === 'events' && (() => {
