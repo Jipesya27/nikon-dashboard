@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local Netlify folder
+.netlify
+
+# VS Code workspace files
+*.code-workspace
+
+# Supabase temp
+supabase/.branches
+supabase/.temp
+
+# Claude Code worktrees
+.claude/worktrees/
