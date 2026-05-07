@@ -1784,29 +1784,68 @@ export default function NikonDashboard() {
       return sortableItems.sort(getSortFunction(sortConfigLending, consumers));
    }, [filteredLendingRecords, sortConfigLending, consumers]);
 
-   const ALL_TABS = [
-      { id: 'dashboard', label: '🎯 Dashboard', count: undefined },
-      { id: 'messages', label: '💬 Pesan', count: messages.length },
-      { id: 'konsumen', label: '👥 Konsumen', count: consumersList.length },
-
-      { id: 'promos', label: '📢 Promo', count: promos.length },
-      { id: 'claims', label: '🎫 Claim', count: claims.length },
-      { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
-      { id: 'services', label: '🔧 Service', count: services.length },
-      { id: 'budgets', label: '💳 ProposalEvent', count: budgets.length },
-      { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
-      { id: 'import', label: '📦 Import Data', count: undefined },
-      { id: 'userrole', label: '🔐 User Role', count: karyawans.length },
-      { id: 'botsettings', label: '⚙️ Bot Settings', count: botSettings.length },
-      { id: 'events', label: '📅 Master Event', count: events.length },
-      { id: 'eventregistrations', label: '👥 Data Peserta', count: eventRegistrations.length },
+   // Tabs dikelompokkan untuk navbar yg lebih rapi
+   const TAB_GROUPS = [
+      {
+         label: 'Beranda',
+         tabs: [
+            { id: 'dashboard', label: '🎯 Dashboard', count: undefined as number | undefined },
+         ],
+      },
+      {
+         label: 'Komunikasi & Konsumen',
+         tabs: [
+            { id: 'messages', label: '💬 Pesan', count: messages.length },
+            { id: 'konsumen', label: '👥 Konsumen', count: consumersList.length },
+         ],
+      },
+      {
+         label: 'Produk & Layanan',
+         tabs: [
+            { id: 'promos', label: '📢 Promo', count: promos.length },
+            { id: 'claims', label: '🎫 Claim', count: claims.length },
+            { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
+            { id: 'services', label: '🔧 Service', count: services.length },
+         ],
+      },
+      {
+         label: 'Operasional',
+         tabs: [
+            { id: 'budgets', label: '💳 ProposalEvent', count: budgets.length },
+            { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
+            { id: 'import', label: '📥 Import Data', count: undefined },
+         ],
+      },
+      {
+         label: 'Event',
+         tabs: [
+            { id: 'events', label: '📅 Master Event', count: events.length },
+            { id: 'eventregistrations', label: '🎟️ Data Peserta', count: eventRegistrations.length },
+         ],
+      },
+      {
+         label: 'Sistem',
+         tabs: [
+            { id: 'botsettings', label: '⚙️ Bot Settings', count: botSettings.length },
+            { id: 'userrole', label: '🔐 User Role', count: karyawans.length },
+         ],
+      },
    ];
 
-   const visibleTabs = ALL_TABS.filter(tab => {
+   const ALL_TABS = TAB_GROUPS.flatMap(g => g.tabs);
+
+   const isTabVisible = (tabId: string) => {
       if (currentUser?.role === 'Admin') return true;
-      if (tab.id === 'userrole') return false;
-      return (currentUser?.akses_halaman || []).includes(tab.id);
-   });
+      if (tabId === 'userrole') return false;
+      return (currentUser?.akses_halaman || []).includes(tabId);
+   };
+
+   const visibleTabs = ALL_TABS.filter(t => isTabVisible(t.id));
+
+   const visibleTabGroups = TAB_GROUPS.map(g => ({
+      ...g,
+      tabs: g.tabs.filter(t => isTabVisible(t.id)),
+   })).filter(g => g.tabs.length > 0);
 
    useEffect(() => {
       if (currentUser && visibleTabs.length > 0 && !visibleTabs.find(t => t.id === activeTab)) { setActiveTab(visibleTabs[0].id); }
@@ -1970,12 +2009,17 @@ export default function NikonDashboard() {
 
                {/* SIDEBAR NAVIGATION */}
                <div className={`fixed md:relative z-20 md:z-auto top-0 left-0 h-full w-64 bg-white border-r border-gray-200 shadow-sm overflow-y-auto transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-                  <div className="p-4 space-y-2 pt-20 md:pt-4">
-                     {visibleTabs.map(tab => (
-                        <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between group ${activeTab === tab.id ? 'bg-[#FFE500] text-black shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}>
-                           <span>{tab.label}</span>
-                           {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${activeTab === tab.id ? 'bg-black/20' : 'bg-gray-200 text-gray-600'}`}>{tab.count}</span>}
-                        </button>
+                  <div className="p-4 pt-20 md:pt-4 space-y-4">
+                     {visibleTabGroups.map(group => (
+                        <div key={group.label} className="space-y-1">
+                           <p className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{group.label}</p>
+                           {group.tabs.map(tab => (
+                              <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between group ${activeTab === tab.id ? 'bg-[#FFE500] text-black shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}>
+                                 <span>{tab.label}</span>
+                                 {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${activeTab === tab.id ? 'bg-black/20' : 'bg-gray-200 text-gray-600'}`}>{tab.count}</span>}
+                              </button>
+                           ))}
+                        </div>
                      ))}
 
                      {/* EVENT TOOLS — link langsung ke page admin event (di-gate per akses) */}
