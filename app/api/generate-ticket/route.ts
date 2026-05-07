@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
 
     const pdfBytes = await pdfDoc.save();
     const fileName = `Tiket_${fullName.replace(/\s+/g, '_')}_${registrationId.slice(0, 8)}.pdf`;
-    const fileId = await uploadToGoogleDrive(new Blob([Buffer.from(pdfBytes)], { type: 'application/pdf' }), fileName, 'application/pdf');
+    const fileId = await uploadToGoogleDrive(new Blob([Buffer.from(pdfBytes)], { type: 'application/pdf' }), fileName, { mimeType: 'application/pdf', folderName: 'Tiket Event' });
     const ticketUrl = `https://drive.google.com/file/d/${fileId}/view`;
 
     return NextResponse.json({ success: true, ticketUrl, fileName });

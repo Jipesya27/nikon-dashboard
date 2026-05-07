@@ -29,6 +29,25 @@ function parseIdDate(str: string): Date | null {
    if (isNaN(d) || m === undefined || isNaN(y)) return null;
    return new Date(y, m, d + 1);
 }
+// "12 Agustus 2026" → "2026-08-12" untuk <input type="date">
+const ID_MONTHS_PAD: Record<string, string> = { januari:'01', februari:'02', maret:'03', april:'04', mei:'05', juni:'06', juli:'07', agustus:'08', september:'09', oktober:'10', november:'11', desember:'12' };
+const ID_MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+function idDateToIso(s: string | null | undefined): string {
+   if (!s) return '';
+   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+   const p = s.trim().toLowerCase().split(/\s+/);
+   if (p.length < 3) return '';
+   const d = p[0].padStart(2, '0'), m = ID_MONTHS_PAD[p[1]], y = p[2];
+   if (!m) return '';
+   return `${y}-${m}-${d}`;
+}
+// "2026-08-12" → "12 Agustus 2026"
+function isoToIdDate(iso: string): string {
+   if (!iso) return '';
+   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+   if (!m) return iso;
+   return `${parseInt(m[3])} ${ID_MONTH_NAMES[parseInt(m[2]) - 1]} ${m[1]}`;
+}
 function getEventClosedStatus(evt: { event_status: string; event_partisipant_stock: number; event_date: string }, regCount: number): { closed: boolean; reason: string } {
    const status = (evt.event_status || '').toLowerCase();
    if (status === 'close' || status === 'closed') return { closed: true, reason: 'Ditutup Admin' };
@@ -3867,8 +3886,9 @@ export default function NikonDashboard() {
                                     <input type="text" value={eventForm.event_title || ''} onChange={e => setEventForm({ ...eventForm, event_title: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
                                  </div>
                                  <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tanggal & Waktu</label>
-                                    <input type="text" value={eventForm.event_date || ''} onChange={e => setEventForm({ ...eventForm, event_date: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Contoh: 12 Agustus 2026" />
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tanggal Acara</label>
+                                    <input type="date" value={idDateToIso(eventForm.event_date)} onChange={e => setEventForm({ ...eventForm, event_date: isoToIdDate(e.target.value) })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    {eventForm.event_date && <p className="text-[10px] text-gray-400 mt-1">Tersimpan sebagai: <span className="font-mono">{eventForm.event_date}</span></p>}
                                  </div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
