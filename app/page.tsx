@@ -999,8 +999,13 @@ export default function NikonDashboard() {
             link_nota_pembelian: notaUrl,
          };
 
-         if (modalAction === 'create') await supabase.from('claim_promo').insert([dataToSave]);
-         else await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId);
+         if (modalAction === 'create') {
+            const { error: insertError } = await supabase.from('claim_promo').insert([{ ...dataToSave, created_at: new Date().toISOString() }]);
+            if (insertError) throw new Error(insertError.message);
+         } else {
+            const { error: updateError } = await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId);
+            if (updateError) throw new Error(updateError.message);
+         }
 
          if (dataToSave.validasi_by_mkt === 'Valid' && dataToSave.nomor_seri) {
             await supabase.from('garansi').update({ status_validasi: 'Valid' }).eq('nomor_seri', dataToSave.nomor_seri);
@@ -1637,11 +1642,12 @@ export default function NikonDashboard() {
       return sortableItems.sort(getSortFunction(sortConfigClaims, consumers));
    }, [filteredClaims, sortConfigClaims, consumers]);
 
-   // Nomor urut permanen berdasarkan urutan asli dari database, tidak berubah saat filter/sort
+   // Nomor urut permanen: data terbaru = nomor tertinggi (karena claims sudah DESC by created_at)
    const claimNumberMap = useMemo(() => {
       const map = new Map<string, number>();
+      const total = claims.length;
       claims.forEach((c: ClaimPromo, idx: number) => {
-         if (c.id_claim) map.set(c.id_claim, idx + 1);
+         if (c.id_claim) map.set(c.id_claim, total - idx);
       });
       return map;
    }, [claims]);
