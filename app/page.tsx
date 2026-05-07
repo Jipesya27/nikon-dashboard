@@ -1442,7 +1442,7 @@ export default function NikonDashboard() {
       return lines;
    };
 
-   const handlePrintLabelPengiriman = (c: ClaimPromo) => {
+   const handlePrintLabelPengiriman = (c: ClaimPromo, rowNumber?: number) => {
       const consumer = consumersList.find(k => k.nomor_wa === c.nomor_wa);
       const canvas = document.createElement('canvas');
       canvas.width = 850;
@@ -1454,6 +1454,23 @@ export default function NikonDashboard() {
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 2;
       ctx.strokeRect(15, 15, canvas.width - 30, canvas.height - 30);
+
+      // Draw row number box in top-left corner
+      if (rowNumber) {
+         const boxSize = 50;
+         const padding = 5;
+         ctx.fillStyle = '#FFFFFF';
+         ctx.fillRect(20, 20, boxSize, boxSize);
+         ctx.strokeStyle = '#000000';
+         ctx.lineWidth = 2;
+         ctx.strokeRect(20, 20, boxSize, boxSize);
+         ctx.fillStyle = '#000000';
+         ctx.font = 'bold 24px Arial';
+         ctx.textAlign = 'center';
+         ctx.textBaseline = 'middle';
+         ctx.fillText(rowNumber.toString(), 20 + boxSize / 2, 20 + boxSize / 2);
+      }
+
       ctx.fillStyle = '#000000';
       ctx.font = '14px Arial';
       ctx.textAlign = 'right';
@@ -2328,7 +2345,7 @@ export default function NikonDashboard() {
                                        <td className="px-4 py-3">
                                           <div className="flex gap-3 items-center flex-wrap min-w-[200px]">
                                              <div className="flex items-center gap-2">
-                                                <button onClick={() => handlePrintLabelPengiriman(c)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
+                                                <button onClick={() => handlePrintLabelPengiriman(c, index + 1)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
                                                 <label className="flex items-center gap-1.5 cursor-pointer">
                                                    <input
                                                       type="checkbox"
@@ -2413,7 +2430,7 @@ export default function NikonDashboard() {
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end flex-wrap">
                                     <div className="flex items-center gap-2">
-                                       <button onClick={() => handlePrintLabelPengiriman(c)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
+                                       <button onClick={() => handlePrintLabelPengiriman(c, index + 1)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
                                        <label className="flex items-center gap-1.5 cursor-pointer">
                                           <input
                                              type="checkbox"

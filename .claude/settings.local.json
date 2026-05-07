@@ -23,7 +23,9 @@
       "Bash(git commit -m 'feat: reorganize print label address layout *)",
       "Bash(git commit -m 'feat: add text wrapping to print label address *)",
       "Bash(git commit -m 'feat: implement complete message storage system - all messages saved to database *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "mcp__Claude_in_Chrome__read_console_messages"
     ]
   },
   "enabledPlugins": {
