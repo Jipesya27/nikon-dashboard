@@ -473,15 +473,22 @@ export default function NikonDashboard() {
       // Cek koneksi Supabase
       const checkConnection = async () => {
          try {
-            if (!supabaseKey) {
-               setDbStatus({ connected: false, message: 'Kunci API (Anon Key) tidak ditemukan di .env.local' });
+            if (!supabaseKey || supabaseKey === 'dummy-key-to-prevent-error') {
+               setDbStatus({ connected: false, message: 'Kunci API tidak dikonfigurasi. Setup .env.local' });
                return;
             }
-            const { error } = await supabase.from('karyawan').select('count', { count: 'exact', head: true });
-            if (error) throw error;
+            const { error, status } = await supabase.from('karyawan').select('count', { count: 'exact', head: true });
+            if (error) {
+               const errorMsg = error?.message || error?.code || 'Unknown error';
+               console.warn("[DB CONNECTION] Error checking connection:", errorMsg);
+               setDbStatus({ connected: false, message: `Gagal: ${errorMsg}` });
+               return;
+            }
             setDbStatus({ connected: true, message: 'Online' });
          } catch (err: any) {
-            setDbStatus({ connected: false, message: 'Gagal terhubung: ' + err.message });
+            const errorMsg = err?.message || String(err) || 'Unknown error';
+            console.error("[DB CONNECTION] Unexpected error:", errorMsg);
+            setDbStatus({ connected: false, message: `Koneksi gagal: ${errorMsg}` });
          }
       };
       checkConnection();
@@ -564,36 +571,101 @@ export default function NikonDashboard() {
 
    // --- FETCH DATA ---
    const fetchConsumers = async () => {
-      console.log("[INDICATOR DASHBOARD 1] Memulai fetchConsumers...");
-      const map: Record<string, string> = {};
-      const { data: konsumenData } = await supabase.from('konsumen').select('*').order('created_at', { ascending: false });
-      if (konsumenData) {
-         setConsumersList(konsumenData);
-         konsumenData.forEach(k => { if (k.nama_lengkap) map[k.nomor_wa] = k.nama_lengkap; });
+      try {
+         console.log("[INDICATOR DASHBOARD 1] Memulai fetchConsumers...");
+         const map: Record<string, string> = {};
+         const { data: konsumenData, error: kErr } = await supabase.from('konsumen').select('*').order('created_at', { ascending: false });
+         if (kErr) console.warn("[INDICATOR DASHBOARD 1B] Error fetch konsumen:", kErr?.message || kErr);
+         if (konsumenData) {
+            setConsumersList(konsumenData);
+            konsumenData.forEach(k => { if (k.nama_lengkap) map[k.nomor_wa] = k.nama_lengkap; });
+         }
+         const { data: riwayatData, error: rErr } = await supabase.from('riwayat_pesan').select('nomor_wa, nama_profil_wa').neq('nama_profil_wa', 'Sistem Bot').order('created_at', { ascending: false }).limit(2000);
+         if (rErr) console.warn("[INDICATOR DASHBOARD 2] Error fetch riwayatData:", rErr?.message || rErr);
+         riwayatData?.forEach(r => { if (r.nomor_wa && !map[r.nomor_wa]) map[r.nomor_wa] = r.nama_profil_wa; });
+         console.log("[INDICATOR DASHBOARD 3] Consumers map size:", Object.keys(map).length);
+         setConsumers(map);
+      } catch (err) {
+         console.error("[INDICATOR DASHBOARD 1C] Unexpected error in fetchConsumers:", err);
       }
-      const { data: riwayatData, error: rErr } = await supabase.from('riwayat_pesan').select('nomor_wa, nama_profil_wa').neq('nama_profil_wa', 'Sistem Bot').order('created_at', { ascending: false }).limit(2000);
-      if (rErr) console.error("[INDICATOR DASHBOARD 2] Error fetch riwayatData:", rErr);
-      riwayatData?.forEach(r => { if (r.nomor_wa && !map[r.nomor_wa]) map[r.nomor_wa] = r.nama_profil_wa; });
-      console.log("[INDICATOR DASHBOARD 3] Consumers map size:", Object.keys(map).length);
-      setConsumers(map);
    };
 
    const fetchMessages = async () => {
-      console.log("[INDICATOR DASHBOARD 4] Memulai fetchMessages. Range:", dateRange);
-      const { data, error } = await supabase.from('riwayat_pesan').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false });
-      if (error) {
-         console.error("[INDICATOR DASHBOARD 5] Error fetchMessages:", error);
-      } else {
-         console.log("[INDICATOR DASHBOARD 6] Messages fetched count:", data?.length || 0);
+      try {
+         console.log("[INDICATOR DASHBOARD 4] Memulai fetchMessages. Range:", dateRange);
+         const { data, error } = await supabase.from('riwayat_pesan').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false });
+         if (error) {
+            console.error("[INDICATOR DASHBOARD 5] Error fetchMessages:", error?.message || error?.code || JSON.stringify(error));
+         } else {
+            console.log("[INDICATOR DASHBOARD 6] Messages fetched count:", data?.length || 0);
+         }
+         setMessages(data || []);
+      } catch (err) {
+         console.error("[INDICATOR DASHBOARD 5B] Unexpected error in fetchMessages:", err);
+         setMessages([]);
       }
-      setMessages(data || []);
    };
-   const fetchClaims = async () => { const { data } = await supabase.from('claim_promo').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); setClaims(data || []); };
-   const fetchWarranties = async () => { const { data } = await supabase.from('garansi').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }); setWarranties(data || []); };
-   const fetchPromos = async () => { const { data } = await supabase.from('promosi').select('*').order('created_at', { ascending: false }); setPromos(data || []); };
-   const fetchServices = async () => { const { data } = await supabase.from('status_service').select('*').order('created_at', { ascending: false }); setServices(data || []); };
-   const fetchBudgets = async () => { const { data } = await supabase.from('budget_approval').select('*').order('created_at', { ascending: false }); setBudgets(data || []); setLoading(false); };
-   const fetchLendingRecords = async () => { const { data } = await supabase.from('peminjaman_barang').select('*').order('created_at', { ascending: false }); setLendingRecords(data || []); };
+   const fetchClaims = async () => {
+      try {
+         const { data, error } = await supabase.from('claim_promo').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false });
+         if (error) console.error("[FETCH] Error fetching claims:", error?.message || error);
+         setClaims(data || []);
+      } catch (err) {
+         console.error("[FETCH] Unexpected error fetching claims:", err);
+         setClaims([]);
+      }
+   };
+   const fetchWarranties = async () => {
+      try {
+         const { data, error } = await supabase.from('garansi').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false });
+         if (error) console.error("[FETCH] Error fetching warranties:", error?.message || error);
+         setWarranties(data || []);
+      } catch (err) {
+         console.error("[FETCH] Unexpected error fetching warranties:", err);
+         setWarranties([]);
+      }
+   };
+   const fetchPromos = async () => {
+      try {
+         const { data, error } = await supabase.from('promosi').select('*').order('created_at', { ascending: false });
+         if (error) console.error("[FETCH] Error fetching promos:", error?.message || error);
+         setPromos(data || []);
+      } catch (err) {
+         console.error("[FETCH] Unexpected error fetching promos:", err);
+         setPromos([]);
+      }
+   };
+   const fetchServices = async () => {
+      try {
+         const { data, error } = await supabase.from('status_service').select('*').order('created_at', { ascending: false });
+         if (error) console.error("[FETCH] Error fetching services:", error?.message || error);
+         setServices(data || []);
+      } catch (err) {
+         console.error("[FETCH] Unexpected error fetching services:", err);
+         setServices([]);
+      }
+   };
+   const fetchBudgets = async () => {
+      try {
+         const { data, error } = await supabase.from('budget_approval').select('*').order('created_at', { ascending: false });
+         if (error) console.error("[FETCH] Error fetching budgets:", error?.message || error);
+         setBudgets(data || []);
+      } catch (err) {
+         console.error("[FETCH] Unexpected error fetching budgets:", err);
+         setBudgets([]);
+      }
+      setLoading(false);
+   };
+   const fetchLendingRecords = async () => {
+      try {
+         const { data, error } = await supabase.from('peminjaman_barang').select('*').order('created_at', { ascending: false });
+         if (error) console.error("[FETCH] Error fetching lending records:", error?.message || error);
+         setLendingRecords(data || []);
+      } catch (err) {
+         console.error("[FETCH] Unexpected error fetching lending records:", err);
+         setLendingRecords([]);
+      }
+   };
    
    useEffect(() => {
       if (isScannerOpen) {
@@ -622,7 +694,16 @@ export default function NikonDashboard() {
    };
 
    const fetchBotSettings = async () => { const { data } = await supabase.from('pengaturan_bot').select('*'); setBotSettings(data || []); };
-   const fetchKaryawans = async () => { const { data } = await supabase.from('karyawan').select('*').order('created_at', { ascending: true }); setKaryawans(data || []); };
+   const fetchKaryawans = async () => {
+      try {
+         const { data, error } = await supabase.from('karyawan').select('*').order('created_at', { ascending: true });
+         if (error) console.warn("[FETCH] Error fetching karyawans:", error?.message || error);
+         setKaryawans(data || []);
+      } catch (err) {
+         console.error("[FETCH] Unexpected error fetching karyawans:", err);
+         setKaryawans([]);
+      }
+   };
    
    const fetchEventRegistrations = async () => { const { data } = await supabase.from('event_registrations').select('*').order('created_at', { ascending: false }); setEventRegistrations(data || []); };
    const fetchEvents = async () => { 
