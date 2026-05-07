@@ -1457,15 +1457,14 @@ export default function NikonDashboard() {
 
       // Draw row number box in top-left corner
       if (rowNumber) {
-         const boxSize = 50;
-         const padding = 5;
+         const boxSize = 35;
          ctx.fillStyle = '#FFFFFF';
          ctx.fillRect(20, 20, boxSize, boxSize);
          ctx.strokeStyle = '#000000';
-         ctx.lineWidth = 2;
+         ctx.lineWidth = 1.5;
          ctx.strokeRect(20, 20, boxSize, boxSize);
          ctx.fillStyle = '#000000';
-         ctx.font = 'bold 24px Arial';
+         ctx.font = 'bold 14px Arial';
          ctx.textAlign = 'center';
          ctx.textBaseline = 'middle';
          ctx.fillText(rowNumber.toString(), 20 + boxSize / 2, 20 + boxSize / 2);
