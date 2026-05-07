@@ -19,6 +19,7 @@ type DepositRegistration = {
   status_pendaftaran: string;
   payment_type: string;
   ticket_url: string | null;
+  bukti_transfer_url: string | null;
   bukti_pengembalian_deposit: string | null;
   status_pengembalian_deposit: string | null;
   nama_bank: string | null;
@@ -230,6 +231,21 @@ export default function AdminDepositPage() {
                             <span>📱 {reg.nomor_wa}</span>
                             {reg.kabupaten_kotamadya && <span>📍 {reg.kabupaten_kotamadya}</span>}
                           </div>
+                        </div>
+
+                        {/* Bukti pembayaran deposit (saat pendaftaran) — untuk cross-check */}
+                        <div className="mt-3 pt-3 border-t border-white/5">
+                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-2">Bukti Bayar Deposit (saat daftar)</p>
+                          {reg.bukti_transfer_url ? (
+                            <button
+                              onClick={() => setPreviewUrl(reg.bukti_transfer_url)}
+                              className="text-xs bg-blue-900/30 hover:bg-blue-900/50 text-blue-300 px-3 py-2 rounded-lg border border-blue-500/30 transition-all flex items-center gap-2"
+                            >
+                              🖼️ Lihat Bukti Transfer Pendaftaran
+                            </button>
+                          ) : (
+                            <p className="text-xs text-zinc-600 italic">Tidak ada bukti tersimpan</p>
+                          )}
                         </div>
                       </div>
 
