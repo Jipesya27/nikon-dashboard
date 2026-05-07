@@ -883,6 +883,15 @@ export default function NikonDashboard() {
          }
          setEditingId(item?.id_karyawan || null);
       }
+      else if (type === 'event') {
+         setEventForm(item || { status: 'aktif', stock: 0 });
+         setEditingId(item?.id || null);
+         setEventImageFile(null);
+      }
+      else if (type === 'eventregistration') {
+         setRegistrationForm(item || { status: 'Pending Payment' });
+         setEditingId(item?.id || null);
+      }
       setIsModalOpen(true);
    };
 
@@ -895,8 +904,11 @@ export default function NikonDashboard() {
       setBudgetForm({ items: [] });
       setKonsumenForm({});
       setKaryawanForm({});
-      setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' }); // Reset with default empty item
+      setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' });
       setBotSettingsForm({});
+      setEventForm({ status: 'aktif', stock: 0 });
+      setRegistrationForm({ status: 'Pending Payment' });
+      setEventImageFile(null);
       setEditingId(null);
       if (returnTab) {
          setActiveTab(returnTab);
@@ -1176,7 +1188,6 @@ export default function NikonDashboard() {
    
    const handleSaveRegistration = async (e: React.FormEvent) => {
       e.preventDefault();
-      setIsModalOpen(false);
       try {
          const payload = { ...registrationForm };
          if (modalAction === 'create') {
@@ -1188,18 +1199,17 @@ export default function NikonDashboard() {
          }
          fetchEventRegistrations();
          fetchEvents();
+         closeModal();
       } catch (err: any) { alert(err.message); }
    };
 
    const handleSaveEvent = async (e: React.FormEvent) => {
       e.preventDefault();
-      setIsModalOpen(false);
       try {
          const payload = { ...eventForm };
          if (eventImageFile) {
             const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', eventForm.title?.replace(/\s+/g, '_') || 'poster');
             payload.image = imageUrl;
-            setEventImageFile(null);
          }
          if (modalAction === 'create') {
             const { error } = await supabase.from('events').insert([payload]);
@@ -1209,6 +1219,7 @@ export default function NikonDashboard() {
             if (error) throw error;
          }
          fetchEvents();
+         closeModal();
       } catch (err: any) { alert(err.message); }
    };
 
