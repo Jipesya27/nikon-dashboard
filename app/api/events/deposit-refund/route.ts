@@ -43,9 +43,11 @@ export async function POST(req: NextRequest) {
 
     if (refundFile) {
       const ext = refundFile.name.split('.').pop();
-      const fileName = `DepositRefund_${reg.nomor_wa}_${Date.now()}.${ext}`;
-      const fileId = await uploadToGoogleDrive(refundFile, fileName);
-      refundUrl = `https://drive.google.com/uc?id=${fileId}&export=view`;
+      const sanitize = (s: string) => (s || '').replace(/[\/\\:*?"<>|]/g, '-').substring(0, 80);
+      const namePart = [reg.event_name || 'event', reg.nomor_wa || 'wa', reg.nama_lengkap || 'nama'].map(sanitize).join('_');
+      const fileName = `${namePart}.${ext}`;
+      const fileId = await uploadToGoogleDrive(refundFile, fileName, { folderName: 'Pengembalian Deposit' });
+      refundUrl = `https://lh3.googleusercontent.com/d/${fileId}=w2000`;
     }
 
     await supabase

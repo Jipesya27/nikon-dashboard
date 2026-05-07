@@ -1,21 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadToGoogleDrive, deleteFromGoogleDrive } from '@/app/lib/google-drive';
 
+// Sanitasi nama file: hapus karakter yang bermasalah di filesystem/Drive
+function sanitizeFileName(name: string): string {
+  return name
+    .replace(/[\/\\:*?"<>|]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 200);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const prefix = formData.get('prefix') as string || 'file';
     const serial = formData.get('serial') as string || 'unknown';
+    const customFileName = formData.get('filename') as string | null;
+    const folder = formData.get('folder') as string | null;
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
     const ext = file.name.split('.').pop();
-    const fileName = `${serial}_${prefix}_${Date.now()}.${ext}`;
-    const fileId = await uploadToGoogleDrive(file, fileName);
-    // New working format — old `uc?id=X&export=view` returns virus-scan HTML page now
+    const fileName = customFileName
+      ? `${sanitizeFileName(customFileName)}.${ext}`
+      : `${serial}_${prefix}_${Date.now()}.${ext}`;
+
+    const fileId = await uploadToGoogleDrive(file, fileName, folder ? { folderName: folder } : undefined);
     const publicUrl = `https://lh3.googleusercontent.com/d/${fileId}=w2000`;
 
     return NextResponse.json({ success: true, fileId, fileName, url: publicUrl });

@@ -82,11 +82,13 @@ export default function EventCatalog() {
     fetchData();
   }, []);
 
-  const uploadFileToStorage = async (file: File, prefix: string, serial: string) => {
+  const uploadFileToStorage = async (file: File, opts: { folder?: string; filename?: string; prefix?: string; serial?: string }) => {
     const fd = new FormData();
     fd.append('file', file);
-    fd.append('prefix', prefix);
-    fd.append('serial', serial);
+    if (opts.folder) fd.append('folder', opts.folder);
+    if (opts.filename) fd.append('filename', opts.filename);
+    if (opts.prefix) fd.append('prefix', opts.prefix);
+    if (opts.serial) fd.append('serial', opts.serial);
     const response = await fetch('/api/upload-google-drive', { method: 'POST', body: fd });
     if (!response.ok) { const e = await response.json(); throw new Error(e.error || 'Upload failed'); }
     return (await response.json()).url;
@@ -140,7 +142,14 @@ export default function EventCatalog() {
     try {
       let buktiUrl: string | null = null;
       if (buktiTransfer) {
-        buktiUrl = await uploadFileToStorage(buktiTransfer, 'EventPayment', formData.nomor_wa || 'UNKNOWN');
+        // Format: tanggalAcara_namaAcara_nomorWa_namaLengkap
+        const customName = [
+          selectedEvent.event_date || 'tgl',
+          selectedEvent.event_title || 'event',
+          formData.nomor_wa || 'wa',
+          formData.nama_lengkap || 'nama',
+        ].join('_');
+        buktiUrl = await uploadFileToStorage(buktiTransfer, { folder: 'Pembayaran', filename: customName });
       }
 
       const { error } = await supabase.from('event_registrations').insert([{
