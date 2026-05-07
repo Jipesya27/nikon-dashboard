@@ -800,6 +800,80 @@ export default function NikonDashboard() {
       window.URL.revokeObjectURL(url);
    };
 
+   // Parser CSV yang proper — handle quoted fields, escaped quotes (""), CRLF
+   const parseCsv = (text: string): string[][] => {
+      // Normalize line endings dulu
+      const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const rows: string[][] = [];
+      let field = '';
+      let row: string[] = [];
+      let inQuotes = false;
+
+      for (let i = 0; i < normalized.length; i++) {
+         const ch = normalized[i];
+         const next = normalized[i + 1];
+
+         if (inQuotes) {
+            if (ch === '"' && next === '"') {
+               // Escaped quote inside field
+               field += '"';
+               i++;
+            } else if (ch === '"') {
+               inQuotes = false;
+            } else {
+               field += ch;
+            }
+         } else {
+            if (ch === '"') {
+               inQuotes = true;
+            } else if (ch === ',') {
+               row.push(field);
+               field = '';
+            } else if (ch === '\n') {
+               row.push(field);
+               rows.push(row);
+               row = [];
+               field = '';
+            } else {
+               field += ch;
+            }
+         }
+      }
+      // Last field/row
+      if (field !== '' || row.length > 0) {
+         row.push(field);
+         rows.push(row);
+      }
+      return rows;
+   };
+
+   // Mapping header CSV → field DB (handle perbedaan nama)
+   const csvHeaderToDbField = (header: string, target: string): string => {
+      const cleaned = header.trim().split(' ')[0]; // strip "(kosongkan jika data baru)"
+      if (target === 'claim_promo') {
+         if (cleaned === 'catatan_by_mkt') return 'catatan_mkt';
+         if (cleaned === 'catatan_by_fa') return 'catatan_fa';
+      }
+      return cleaned;
+   };
+
+   // Field wajib per tabel — kalau kosong, baris di-skip
+   const REQUIRED_FIELDS: Record<string, string[]> = {
+      claim_promo: ['nomor_wa', 'nomor_seri'],
+      garansi: ['nomor_seri'],
+      konsumen: ['nomor_wa'],
+      status_service: ['nomor_tanda_terima', 'nomor_seri'],
+   };
+
+   // Field yang valid untuk setiap tabel — buang field yg gak dikenal supaya
+   // schema mismatch gak bikin error
+   const ALLOWED_FIELDS: Record<string, Set<string>> = {
+      claim_promo: new Set(['id_claim', 'nomor_wa', 'nomor_seri', 'tipe_barang', 'tanggal_pembelian', 'link_nota_pembelian', 'link_kartu_garansi', 'validasi_by_mkt', 'validasi_by_fa', 'catatan_mkt', 'catatan_fa', 'nama_toko', 'jenis_promosi', 'nama_jasa_pengiriman', 'nomor_resi']),
+      garansi: new Set(['id_garansi', 'nomor_seri', 'tipe_barang', 'status_validasi', 'jenis_garansi', 'lama_garansi', 'link_kartu_garansi', 'link_nota_pembelian']),
+      konsumen: new Set(['nomor_wa', 'nama_lengkap', 'nik', 'alamat_rumah', 'kelurahan', 'kecamatan', 'kabupaten_kotamadya', 'provinsi', 'kodepos', 'status_langkah']),
+      status_service: new Set(['id_service', 'nomor_tanda_terima', 'nomor_seri', 'status_service']),
+   };
+
    const handleCentralUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -808,50 +882,85 @@ export default function NikonDashboard() {
       reader.onload = async (event) => {
          try {
             const text = event.target?.result as string;
-            const lines = text.split('\n');
+            const rows = parseCsv(text);
 
-            // Membersihkan header dari keterangan tambahan '(kosongkan jika data baru)'
-            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').split(' ')[0]);
+            if (rows.length < 2) {
+               throw new Error('File CSV kosong atau hanya berisi header.');
+            }
 
-            const result = [];
+            // Header parsing: ambil baris pertama, mapping ke field DB
+            const rawHeaders = rows[0];
+            const headers = rawHeaders.map(h => csvHeaderToDbField(h, importTarget));
+            const allowed = ALLOWED_FIELDS[importTarget];
+            const required = REQUIRED_FIELDS[importTarget] || [];
 
-            for (let i = 1; i < lines.length; i++) {
-               if (!lines[i].trim()) continue;
+            const result: any[] = [];
+            const skipped: { row: number; reason: string }[] = [];
+
+            for (let i = 1; i < rows.length; i++) {
+               const cells = rows[i];
+               // Skip baris kosong (semua cell empty)
+               if (cells.every(c => !c || !c.trim())) continue;
+
                const obj: any = {};
-               const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-
                headers.forEach((header, j) => {
-                  let val: any = currentline[j] ? currentline[j].trim().replace(/^"|"$/g, '') : null;
-                  if (typeof val === 'string') val = val.replace(/""/g, '"');
-                  if (val === "") val = null;
-
-                  // Mapping header kustom ke field database
-                  let dbField = header;
-                  if (header === 'catatan_by_mkt') dbField = 'catatan_mkt';
-                  if (header === 'catatan_by_fa') dbField = 'catatan_fa';
-                  
-                  obj[dbField] = val;
+                  if (!header) return;
+                  if (allowed && !allowed.has(header) && !header.startsWith('id_')) return; // skip kolom asing
+                  let val: any = cells[j];
+                  if (val !== undefined && val !== null) {
+                     val = String(val).trim();
+                     if (val === '') val = null;
+                  } else {
+                     val = null;
+                  }
+                  obj[header] = val;
                });
 
-               // Hapus ID jika null agar Supabase generate UUID baru
+               // Validasi field wajib
+               const missing = required.filter(f => !obj[f]);
+               if (missing.length > 0) {
+                  skipped.push({ row: i + 1, reason: `field wajib kosong: ${missing.join(', ')}` });
+                  continue;
+               }
+
+               // Hapus ID kalau kosong → supaya Supabase generate UUID baru (insert)
+               // Kalau ada ID → upsert akan update existing row
                if (!obj.id_claim) delete obj.id_claim;
                if (!obj.id_garansi) delete obj.id_garansi;
                if (!obj.id_service) delete obj.id_service;
 
-               // Data dari file CSV tidak perlu bawa kolom tanggal ini, biar sistem yg generate
+               // Bersihkan kolom auto-managed
                delete obj.created_at;
                delete obj.updated_at;
 
                result.push(obj);
             }
 
-            const { error } = await supabase.from(importTarget).upsert(result);
+            if (result.length === 0) {
+               throw new Error(`Tidak ada baris valid untuk di-import.${skipped.length > 0 ? ` ${skipped.length} baris di-skip.` : ''}`);
+            }
+
+            // Tentukan onConflict berdasarkan target
+            const conflictKey: Record<string, string> = {
+               claim_promo: 'id_claim',
+               garansi: 'id_garansi',
+               konsumen: 'nomor_wa',
+               status_service: 'id_service',
+            };
+
+            const { error } = await supabase.from(importTarget).upsert(result, {
+               onConflict: conflictKey[importTarget],
+               ignoreDuplicates: false,
+            });
             if (error) throw error;
 
-            alert(`Data CSV berhasil di-update ke tabel ${importTarget}!`);
+            const skippedNote = skipped.length > 0
+               ? `\n\n⚠️ ${skipped.length} baris di-skip:\n${skipped.slice(0, 5).map(s => `• Baris ${s.row}: ${s.reason}`).join('\n')}${skipped.length > 5 ? `\n• ... (${skipped.length - 5} lainnya)` : ''}`
+               : '';
+            alert(`✅ Berhasil import ${result.length} baris ke tabel ${importTarget}.${skippedNote}`);
             window.location.reload();
          } catch (error: any) {
-            alert('Gagal import CSV: Pastikan format sesuai template. Pesan Error: ' + error.message);
+            alert('❌ Gagal import CSV: ' + error.message);
          } finally {
             setIsSubmitting(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
