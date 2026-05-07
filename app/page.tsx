@@ -1427,12 +1427,12 @@ export default function NikonDashboard() {
       const areaArr = [];
       if (consumer?.kelurahan && consumer.kelurahan !== 'BELUM_DIISI') areaArr.push(`KEL. ${consumer.kelurahan}`);
       if (consumer?.kecamatan && consumer.kecamatan !== 'BELUM_DIISI') areaArr.push(`KEC. ${consumer.kecamatan}`);
-      if (consumer?.kabupaten_kotamadya && consumer.kabupaten_kotamadya !== 'BELUM_DIISI') areaArr.push(`KAB/KOTA. ${consumer.kabupaten_kotamadya}`);
       ctx.fillText(areaArr.length > 0 ? areaArr.join(', ').toUpperCase() : '-', 160, 140);
       const provArr = [];
+      if (consumer?.kabupaten_kotamadya && consumer.kabupaten_kotamadya !== 'BELUM_DIISI') provArr.push(`KAB/KOTA. ${consumer.kabupaten_kotamadya}`);
       if (consumer?.provinsi && consumer.provinsi !== 'BELUM_DIISI') provArr.push(`PROV. ${consumer.provinsi}`);
-      if (consumer?.kodepos && consumer.kodepos !== 'BELUM_DIISI') provArr.push(`- ${consumer.kodepos}`);
-      ctx.fillText(provArr.length > 0 ? provArr.join(' ').toUpperCase() : '-', 160, 170);
+      if (consumer?.kodepos && consumer.kodepos !== 'BELUM_DIISI') provArr.push(`${consumer.kodepos}`);
+      ctx.fillText(provArr.length > 0 ? provArr.join(', ').toUpperCase() : '-', 160, 170);
       ctx.fillText('From :', 40, 230);
       ctx.fillText('Alta Nikindo', 160, 230);
       ctx.fillText('Komp. Mangga Dua Square Blok H No.1-2, Jakarta - 14430', 160, 260);
