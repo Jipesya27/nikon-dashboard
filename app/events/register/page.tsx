@@ -181,7 +181,10 @@ export default function EventCatalog() {
             <span className="font-bold tracking-widest uppercase text-sm hidden sm:block ml-2">Event Catalog</span>
           </div>
           <div className="flex items-center gap-4 text-sm text-zinc-400">
-            <span>Showing 1 - {events.length} of {events.length} events</span>
+            <a href="/events/refund" className="text-[#FFE800] border border-[#FFE800]/40 hover:bg-[#FFE800]/10 px-3 py-1.5 rounded-lg transition-all text-xs font-semibold">
+              💰 Klaim Pengembalian Deposit
+            </a>
+            <span className="hidden sm:inline">Showing 1 - {events.length} of {events.length} events</span>
           </div>
         </div>
       </header>
