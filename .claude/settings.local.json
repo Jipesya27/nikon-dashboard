@@ -25,7 +25,21 @@
       "Bash(git commit -m 'feat: implement complete message storage system - all messages saved to database *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "mcp__Claude_in_Chrome__read_console_messages"
+      "mcp__Claude_in_Chrome__read_console_messages",
+      "Bash(rm -f add_lightbox.js NOTA_PEMBELIAN_FEATURE.md)",
+      "Bash(rm -f app/nikon-dashboard.vercel-supabase-netlify.code-workspace)",
+      "Bash(rm -f public/file.svg public/globe.svg public/next.svg public/vercel.svg public/window.svg)",
+      "Bash(rm -rf nikon-wabot6/ upload_kg_nota/ app/api/chat-ai/)",
+      "Bash(git pull *)",
+      "Bash(git rebase *)",
+      "Bash(git fetch *)",
+      "Bash(git reset *)",
+      "Bash(git rm *)",
+      "Bash(git restore *)",
+      "Bash(git ls-tree *)",
+      "Bash(supabase --version)",
+      "Bash(supabase functions *)",
+      "Bash(rm -f dev.log)"
     ]
   },
   "enabledPlugins": {

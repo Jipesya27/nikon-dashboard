@@ -1743,8 +1743,8 @@ export default function NikonDashboard() {
             <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#FFE500 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
             <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-sm relative z-10 border-t-4 border-[#FFE500]">
                <div className="text-center mb-10">
-                  <div className="bg-gray-900 text-[#FFE500] font-black text-4xl tracking-tighter inline-block px-5 py-2 mb-4 rounded-xl shadow-lg transform hover:scale-105 transition">
-                     📷 NIKON
+                  <div className="mb-4 transform hover:scale-105 transition inline-block">
+                     <img src="/nikon-logo.svg" alt="Nikon" className="h-16 w-auto rounded-xl shadow-lg" />
                   </div>
                   <p className="text-sm text-gray-600 font-semibold">Dashboard Manajemen</p>
                   <p className="text-xs text-gray-500 mt-1">Masuk untuk mengelola Bot & Data</p>
@@ -1797,8 +1797,8 @@ export default function NikonDashboard() {
             {/* HEADER */}
             <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 shadow-lg border-b-4 border-[#FFE500] px-6 py-4 flex justify-between items-center text-white sticky top-0 z-20">
                <div className="flex items-center gap-4">
-                  <div className="bg-[#FFE500] text-black font-black text-2xl tracking-tighter px-3 py-1 rounded-lg shadow-lg">
-                     📷
+                  <div className="shadow-lg rounded-lg overflow-hidden">
+                     <img src="/nikon-logo.svg" alt="Nikon" className="h-10 w-auto" />
                   </div>
                   <div>
                      <h1 className="text-lg font-bold tracking-wide">Alta Nikindo</h1>
@@ -1845,7 +1845,9 @@ export default function NikonDashboard() {
                               <p className="text-gray-300">Anda login sebagai <span className="font-bold text-[#FFE500]">{currentUser?.nama_karyawan}</span> ({currentUser?.role})</p>
                               <p className="text-gray-400 text-sm mt-2">Dashboard diperbarui untuk pengalaman yang lebih baik</p>
                            </div>
-                           <div className="text-6xl">📷</div>
+                           <div className="shadow-lg rounded-lg overflow-hidden">
+                              <img src="/nikon-logo.svg" alt="Nikon" className="h-16 w-auto" />
+                           </div>
                         </div>
                      </div>
 

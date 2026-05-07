@@ -1,2 +1,3 @@
+- [Project Directory](project_directory.md) — Main project path: C:\Users\Jamal\Desktop\nikon-dashboard
 - [Dashboard Redesign Progress](dashboard_redesign.md) — Modern card-based design with Nikon yellow/black theme
 - [Message Storage System](message_storage.md) — All consumer and chatbot messages saved to database via webhook
