@@ -11,15 +11,14 @@ const supabase = createClient(
 type DepositRegistration = {
   id: string;
   created_at: string;
-  full_name: string;
-  wa_number: string;
-  email: string;
+  nama_lengkap: string;
+  nomor_wa: string;
   event_name: string;
-  status: string;
+  status_pendaftaran: string;
   payment_type: string;
   ticket_url: string | null;
-  deposit_refund_url: string | null;
-  deposit_refund_status: string | null;
+  bukti_pengembalian_deposit: string | null;
+  status_pengembalian_deposit: string | null;
 };
 
 export default function AdminDepositPage() {
@@ -44,26 +43,26 @@ export default function AdminDepositPage() {
       .select('*')
       .eq('payment_type', 'deposit')
       .order('created_at', { ascending: false });
-    if (!error && data) setRegistrations(data as DepositRegistration[]);
+    if (!error && data) setRegistrations(data as unknown as DepositRegistration[]);
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchRegistrations(); }, [fetchRegistrations]);
 
   const filtered = registrations.filter(r => {
-    if (filterStatus === 'pending_refund' && r.deposit_refund_status === 'Processed') return false;
-    if (filterStatus === 'refunded' && r.deposit_refund_status !== 'Processed') return false;
+    if (filterStatus === 'pending_refund' && r.status_pengembalian_deposit === 'Processed') return false;
+    if (filterStatus === 'refunded' && r.status_pengembalian_deposit !== 'Processed') return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      if (!r.full_name.toLowerCase().includes(q) && !r.wa_number.includes(q)) return false;
+      if (!r.nama_lengkap.toLowerCase().includes(q) && !r.nomor_wa.includes(q)) return false;
     }
     return true;
   });
 
   const counts = {
     all: registrations.length,
-    pending: registrations.filter(r => r.deposit_refund_status !== 'Processed').length,
-    refunded: registrations.filter(r => r.deposit_refund_status === 'Processed').length,
+    pending: registrations.filter(r => r.status_pengembalian_deposit !== 'Processed').length,
+    refunded: registrations.filter(r => r.status_pengembalian_deposit === 'Processed').length,
   };
 
   const handleRefund = async (regId: string) => {
@@ -176,7 +175,7 @@ export default function AdminDepositPage() {
         ) : (
           <div className="space-y-4">
             {filtered.map(reg => {
-              const isRefunded = reg.deposit_refund_status === 'Processed';
+              const isRefunded = reg.status_pengembalian_deposit === 'Processed';
               return (
                 <div key={reg.id} className={`bg-zinc-900 border rounded-xl overflow-hidden transition-all ${isRefunded ? 'border-green-500/20' : 'border-orange-500/20'}`}>
                   <div className="p-5">
@@ -187,22 +186,21 @@ export default function AdminDepositPage() {
                           <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${isRefunded ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-orange-500/20 text-orange-400 border-orange-500/30'}`}>
                             {isRefunded ? '✓ Deposit Dikembalikan' : '⏳ Belum Dikembalikan'}
                           </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${reg.status === 'Approved' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-zinc-700 text-zinc-400 border-zinc-600'}`}>
-                            Pembayaran: {reg.status === 'Approved' ? 'Disetujui' : reg.status}
+                          <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${reg.status_pendaftaran === 'terdaftar' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-zinc-700 text-zinc-400 border-zinc-600'}`}>
+                            Pembayaran: {reg.status_pendaftaran === 'terdaftar' ? 'Disetujui' : reg.status_pendaftaran}
                           </span>
                         </div>
 
-                        <h3 className="font-bold text-white text-lg">{reg.full_name}</h3>
+                        <h3 className="font-bold text-white text-lg">{reg.nama_lengkap}</h3>
                         <p className="text-zinc-400 text-sm mt-0.5">{reg.event_name}</p>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-zinc-500">
-                          <span>📱 {reg.wa_number}</span>
-                          <span>✉️ {reg.email}</span>
+                          <span>📱 {reg.nomor_wa}</span>
                         </div>
 
-                        {isRefunded && reg.deposit_refund_url && (
+                        {isRefunded && reg.bukti_pengembalian_deposit && (
                           <div className="mt-3 flex items-center gap-2">
                             <button
-                              onClick={() => setPreviewUrl(reg.deposit_refund_url)}
+                              onClick={() => setPreviewUrl(reg.bukti_pengembalian_deposit)}
                               className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-lg border border-white/10 transition-all"
                             >
                               🖼️ Lihat Bukti Pengembalian

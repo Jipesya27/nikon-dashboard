@@ -36,15 +36,15 @@ export async function POST(req: NextRequest) {
     if (action === 'reject') {
       await supabase
         .from('event_registrations')
-        .update({ status: 'Rejected', rejection_reason: rejectionReason || null })
+        .update({ status_pendaftaran: 'ditolak', rejection_reason: rejectionReason || null })
         .eq('id', registrationId);
 
       await sendWhatsApp(
-        reg.wa_number,
-        chatbotTexts.eventRegistrationRejected(reg.full_name, reg.event_name, rejectionReason)
+        reg.nomor_wa,
+        chatbotTexts.eventRegistrationRejected(reg.nama_lengkap, reg.event_name, rejectionReason)
       );
 
-      return NextResponse.json({ success: true, status: 'Rejected' });
+      return NextResponse.json({ success: true, status: 'ditolak' });
     }
 
     // --- APPROVE: generate ticket ---
@@ -53,11 +53,11 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         registrationId,
-        fullName: reg.full_name,
+        fullName: reg.nama_lengkap,
         eventTitle: reg.event_name,
-        eventDate: reg.event_date || reg.events?.date || '',
-        eventDetail: reg.event_detail || reg.events?.detail_acara || '',
-        cameraModel: reg.camera_model || '',
+        eventDate: reg.events?.event_date || '',
+        eventDetail: reg.events?.event_description || '',
+        cameraModel: reg.tipe_kamera || '',
         paymentType: reg.payment_type || 'regular',
       }),
     });
@@ -71,12 +71,12 @@ export async function POST(req: NextRequest) {
 
     await supabase
       .from('event_registrations')
-      .update({ status: 'Approved', ticket_url: ticketUrl })
+      .update({ status_pendaftaran: 'terdaftar', ticket_url: ticketUrl })
       .eq('id', registrationId);
 
     await sendWhatsApp(
-      reg.wa_number,
-      chatbotTexts.eventRegistrationApproved(reg.full_name, reg.event_name, ticketUrl)
+      reg.nomor_wa,
+      chatbotTexts.eventRegistrationApproved(reg.nama_lengkap, reg.event_name, ticketUrl)
     );
 
     return NextResponse.json({ success: true, status: 'Approved', ticketUrl });

@@ -11,24 +11,30 @@ const supabase = createClient(
 type Registration = {
   id: string;
   created_at: string;
-  full_name: string;
-  wa_number: string;
-  email: string;
-  camera_model: string;
+  nama_lengkap: string;
+  nomor_wa: string;
+  kabupaten_kotamadya: string | null;
+  tipe_kamera: string | null;
   event_name: string;
   bukti_transfer_url: string | null;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status_pendaftaran: 'menunggu_validasi' | 'terdaftar' | 'ditolak';
   payment_type: 'regular' | 'deposit';
   ticket_url: string | null;
-  deposit_refund_url: string | null;
-  deposit_refund_status: string | null;
+  status_pengembalian_deposit: string | null;
+  bukti_pengembalian_deposit: string | null;
   rejection_reason: string | null;
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  Pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  Approved: 'bg-green-500/20 text-green-400 border-green-500/30',
-  Rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
+  menunggu_validasi: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  terdaftar: 'bg-green-500/20 text-green-400 border-green-500/30',
+  ditolak: 'bg-red-500/20 text-red-400 border-red-500/30',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  menunggu_validasi: 'Menunggu Validasi',
+  terdaftar: 'Terdaftar',
+  ditolak: 'Ditolak',
 };
 
 export default function AdminEventsPage() {
@@ -63,11 +69,11 @@ export default function AdminEventsPage() {
   const uniqueEvents = Array.from(new Set(registrations.map(r => r.event_name)));
 
   const filtered = registrations.filter(r => {
-    if (filterStatus !== 'all' && r.status !== filterStatus) return false;
+    if (filterStatus !== 'all' && r.status_pendaftaran !== filterStatus) return false;
     if (filterEvent !== 'all' && r.event_name !== filterEvent) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      if (!r.full_name.toLowerCase().includes(q) && !r.wa_number.includes(q) && !r.email.toLowerCase().includes(q)) return false;
+      if (!r.nama_lengkap.toLowerCase().includes(q) && !r.nomor_wa.includes(q)) return false;
     }
     return true;
   });
@@ -115,9 +121,9 @@ export default function AdminEventsPage() {
 
   const counts = {
     all: registrations.length,
-    Pending: registrations.filter(r => r.status === 'Pending').length,
-    Approved: registrations.filter(r => r.status === 'Approved').length,
-    Rejected: registrations.filter(r => r.status === 'Rejected').length,
+    menunggu_validasi: registrations.filter(r => r.status_pendaftaran === 'menunggu_validasi').length,
+    terdaftar: registrations.filter(r => r.status_pendaftaran === 'terdaftar').length,
+    ditolak: registrations.filter(r => r.status_pendaftaran === 'ditolak').length,
   };
 
   return (
@@ -150,9 +156,9 @@ export default function AdminEventsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Total', value: counts.all, color: 'text-white', bg: 'bg-zinc-800' },
-            { label: 'Menunggu', value: counts.Pending, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-            { label: 'Disetujui', value: counts.Approved, color: 'text-green-400', bg: 'bg-green-500/10' },
-            { label: 'Ditolak', value: counts.Rejected, color: 'text-red-400', bg: 'bg-red-500/10' },
+            { label: 'Menunggu Validasi', value: counts.menunggu_validasi, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+            { label: 'Terdaftar', value: counts.terdaftar, color: 'text-green-400', bg: 'bg-green-500/10' },
+            { label: 'Ditolak', value: counts.ditolak, color: 'text-red-400', bg: 'bg-red-500/10' },
           ].map(s => (
             <div key={s.label} className={`${s.bg} rounded-xl p-4 border border-white/5`}>
               <p className="text-xs text-zinc-500 uppercase tracking-wider">{s.label}</p>
@@ -165,7 +171,7 @@ export default function AdminEventsPage() {
         <div className="flex flex-wrap gap-3 mb-6">
           <input
             type="text"
-            placeholder="Cari nama, WA, email..."
+            placeholder="Cari nama atau nomor WA..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="bg-zinc-900 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800] w-64"
@@ -176,9 +182,9 @@ export default function AdminEventsPage() {
             className="bg-zinc-900 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-[#FFE800]"
           >
             <option value="all">Semua Status</option>
-            <option value="Pending">Menunggu</option>
-            <option value="Approved">Disetujui</option>
-            <option value="Rejected">Ditolak</option>
+            <option value="menunggu_validasi">Menunggu Validasi</option>
+            <option value="terdaftar">Terdaftar</option>
+            <option value="ditolak">Ditolak</option>
           </select>
           <select
             value={filterEvent}
@@ -208,8 +214,8 @@ export default function AdminEventsPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${STATUS_COLORS[reg.status]}`}>
-                        {reg.status === 'Pending' ? 'Menunggu' : reg.status === 'Approved' ? 'Disetujui' : 'Ditolak'}
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${STATUS_COLORS[reg.status_pendaftaran]}`}>
+                        {STATUS_LABELS[reg.status_pendaftaran]}
                       </span>
                       {reg.payment_type === 'deposit' && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 font-semibold">DEPOSIT</span>
@@ -217,12 +223,12 @@ export default function AdminEventsPage() {
                       <span className="text-xs text-zinc-500">{new Date(reg.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
 
-                    <h3 className="font-bold text-white text-lg">{reg.full_name}</h3>
+                    <h3 className="font-bold text-white text-lg">{reg.nama_lengkap}</h3>
                     <p className="text-zinc-400 text-sm mt-0.5">{reg.event_name}</p>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-zinc-500">
-                      <span>📱 {reg.wa_number}</span>
-                      <span>✉️ {reg.email}</span>
-                      {reg.camera_model && <span>📷 {reg.camera_model}</span>}
+                      <span>📱 {reg.nomor_wa}</span>
+                      {reg.kabupaten_kotamadya && <span>📍 {reg.kabupaten_kotamadya}</span>}
+                      {reg.tipe_kamera && <span>📷 {reg.tipe_kamera}</span>}
                     </div>
                     {reg.rejection_reason && (
                       <p className="text-xs text-red-400 mt-2 bg-red-500/10 px-3 py-1.5 rounded-lg">Alasan: {reg.rejection_reason}</p>
@@ -245,7 +251,7 @@ export default function AdminEventsPage() {
                       </a>
                     )}
 
-                    {reg.status === 'Pending' && (
+                    {reg.status_pendaftaran === 'menunggu_validasi' && (
                       <div className="flex gap-2 mt-1">
                         <button
                           onClick={() => handleApprove(reg.id)}
@@ -255,7 +261,7 @@ export default function AdminEventsPage() {
                           {processingId === reg.id ? '...' : '✓ Setujui'}
                         </button>
                         <button
-                          onClick={() => setRejectModal({ id: reg.id, name: reg.full_name })}
+                          onClick={() => setRejectModal({ id: reg.id, name: reg.nama_lengkap })}
                           disabled={processingId === reg.id}
                           className="text-xs bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-4 py-1.5 rounded-lg transition-all"
                         >
@@ -313,32 +319,40 @@ export default function AdminEventsPage() {
         </div>
       )}
 
-      {/* SQL Schema hint (hidden) */}
       {/*
-        Supabase SQL needed:
+        SQL Migration needed:
 
-        create table event_registrations (
-          id uuid default gen_random_uuid() primary key,
-          created_at timestamptz default now(),
-          full_name text not null,
-          wa_number text not null,
-          email text not null,
-          camera_model text,
-          event_name text not null,
-          event_id text,
-          event_date text,
-          event_detail text,
-          bukti_transfer_url text,
-          status text default 'Pending',
-          payment_type text default 'regular',
-          ticket_url text,
-          deposit_refund_url text,
-          deposit_refund_status text,
-          rejection_reason text
-        );
+        -- Rename events table columns
+        ALTER TABLE events RENAME COLUMN title TO event_title;
+        ALTER TABLE events RENAME COLUMN date TO event_date;
+        ALTER TABLE events RENAME COLUMN image TO event_image;
+        ALTER TABLE events RENAME COLUMN price TO event_price;
+        ALTER TABLE events RENAME COLUMN stock TO event_partisipant_stock;
+        ALTER TABLE events RENAME COLUMN status TO event_status;
+        ALTER TABLE events RENAME COLUMN detail_acara TO event_description;
+        ALTER TABLE events RENAME COLUMN payment_type TO event_payment_tipe;
+        -- Add new columns to events
+        ALTER TABLE events ADD COLUMN IF NOT EXISTS event_speaker TEXT;
+        ALTER TABLE events ADD COLUMN IF NOT EXISTS event_speaker_genre TEXT;
+        ALTER TABLE events ADD COLUMN IF NOT EXISTS event_upload_payment_screenshot TEXT;
+        ALTER TABLE events ADD COLUMN IF NOT EXISTS proposal_event_id TEXT REFERENCES budget_approval(id_budget);
 
-        alter table events add column if not exists payment_type text default 'regular';
-        alter table events add column if not exists deposit_amount text;
+        -- Rename event_registrations table columns
+        ALTER TABLE event_registrations RENAME COLUMN full_name TO nama_lengkap;
+        ALTER TABLE event_registrations RENAME COLUMN wa_number TO nomor_wa;
+        ALTER TABLE event_registrations RENAME COLUMN camera_model TO tipe_kamera;
+        ALTER TABLE event_registrations RENAME COLUMN status TO status_pendaftaran;
+        ALTER TABLE event_registrations RENAME COLUMN deposit_refund_status TO status_pengembalian_deposit;
+        ALTER TABLE event_registrations RENAME COLUMN deposit_refund_url TO bukti_pengembalian_deposit;
+        -- Add new columns to event_registrations
+        ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS kabupaten_kotamadya TEXT;
+        -- Update status_pendaftaran values
+        UPDATE event_registrations SET status_pendaftaran = 'menunggu_validasi' WHERE status_pendaftaran = 'Pending';
+        UPDATE event_registrations SET status_pendaftaran = 'terdaftar' WHERE status_pendaftaran = 'Approved';
+        UPDATE event_registrations SET status_pendaftaran = 'ditolak' WHERE status_pendaftaran = 'Rejected';
+        -- Update event_status values
+        UPDATE events SET event_status = 'available' WHERE event_status = 'aktif';
+        UPDATE events SET event_status = 'sold_out' WHERE event_status = 'sold out';
       */}
     </div>
   );
