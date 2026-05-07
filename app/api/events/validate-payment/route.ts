@@ -56,7 +56,12 @@ export async function POST(req: NextRequest) {
     }
 
     // --- APPROVE: generate ticket ---
-    const ticketRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/generate-ticket`, {
+    // Cari base URL dgn priority: env var → VERCEL_URL → request origin
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+      || new URL(req.url).origin;
+
+    const ticketRes = await fetch(`${baseUrl}/api/generate-ticket`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
