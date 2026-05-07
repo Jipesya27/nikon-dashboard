@@ -139,7 +139,19 @@ export default function NikonDashboard() {
    const [searchPromo, setSearchPromo] = useState('');
    const [searchClaim, setSearchClaim] = useState('');
    const [filterStatusWarna, setFilterStatusWarna] = useState<string>('Semua');
-   const [printedClaimIds, setPrintedClaimIds] = useState<Set<string>>(new Set());
+   const [printedClaimIds, setPrintedClaimIds] = useState<Set<string>>(() => {
+      if (typeof window !== 'undefined') {
+         try {
+            const saved = localStorage.getItem('printedClaimIds');
+            if (saved) return new Set(JSON.parse(saved));
+         } catch {}
+      }
+      return new Set();
+   });
+
+   useEffect(() => {
+      localStorage.setItem('printedClaimIds', JSON.stringify([...printedClaimIds]));
+   }, [printedClaimIds]);
 
    const getClaimStatusColor = (c: ClaimPromo) => {
       const mkt = (c.validasi_by_mkt || '').trim().toLowerCase();
