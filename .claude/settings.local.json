@@ -22,7 +22,8 @@
       "Bash(git commit -m 'feat: display MKT notes on claims page *)",
       "Bash(git commit -m 'feat: reorganize print label address layout *)",
       "Bash(git commit -m 'feat: add text wrapping to print label address *)",
-      "Bash(git commit -m 'feat: implement complete message storage system - all messages saved to database *)"
+      "Bash(git commit -m 'feat: implement complete message storage system - all messages saved to database *)",
+      "Bash(git commit -m ' *)"
     ]
   },
   "enabledPlugins": {
