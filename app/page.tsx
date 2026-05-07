@@ -115,6 +115,7 @@ export default function NikonDashboard() {
    const [searchPromo, setSearchPromo] = useState('');
    const [searchClaim, setSearchClaim] = useState('');
    const [filterStatusWarna, setFilterStatusWarna] = useState<string>('Semua');
+   const [printedClaimIds, setPrintedClaimIds] = useState<Set<string>>(new Set());
 
    const getClaimStatusColor = (c: ClaimPromo) => {
       const mkt = (c.validasi_by_mkt || '').trim().toLowerCase();
@@ -580,7 +581,7 @@ export default function NikonDashboard() {
             setConsumersList(konsumenData);
             konsumenData.forEach(k => { if (k.nama_lengkap) map[k.nomor_wa] = k.nama_lengkap; });
          }
-         const { data: riwayatData, error: rErr } = await supabase.from('riwayat_pesan').select('nomor_wa, nama_profil_wa').neq('nama_profil_wa', 'Sistem Bot').order('created_at', { ascending: false }).limit(2000);
+         const { data: riwayatData, error: rErr } = await supabase.from('riwayat_pesan').select('nomor_wa, nama_profil_wa').neq('nama_profil_wa', 'Sistem Bot').order('created_at', { ascending: false });
          if (rErr) console.warn("[INDICATOR DASHBOARD 2] Error fetch riwayatData:", rErr?.message || rErr);
          riwayatData?.forEach(r => { if (r.nomor_wa && !map[r.nomor_wa]) map[r.nomor_wa] = r.nama_profil_wa; });
          console.log("[INDICATOR DASHBOARD 3] Consumers map size:", Object.keys(map).length);
@@ -1725,15 +1726,16 @@ export default function NikonDashboard() {
 
    return (
       <>
-         <div className={`min-h-screen bg-gray-50 pb-12 relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
+         <div className={`min-h-screen bg-gray-50 flex flex-col relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
 
-            <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 shadow-lg border-b-4 border-[#FFE500] px-6 py-5 flex justify-between items-center text-white sticky top-0 z-20">
-               <div className="flex items-center gap-5">
-                  <div className="bg-[#FFE500] text-black font-black text-2xl tracking-tighter px-4 py-2 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
-                     📷 NIKON
+            {/* HEADER */}
+            <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 shadow-lg border-b-4 border-[#FFE500] px-6 py-4 flex justify-between items-center text-white sticky top-0 z-20">
+               <div className="flex items-center gap-4">
+                  <div className="bg-[#FFE500] text-black font-black text-2xl tracking-tighter px-3 py-1 rounded-lg shadow-lg">
+                     📷
                   </div>
                   <div>
-                     <h1 className="text-xl font-bold tracking-wide">Alta Nikindo Dashboard</h1>
+                     <h1 className="text-lg font-bold tracking-wide">Alta Nikindo</h1>
                      <p className="text-xs text-gray-400 font-medium">Role: <span className="text-[#FFE500] font-bold">{currentUser?.role}</span></p>
                   </div>
                </div>
@@ -1742,26 +1744,29 @@ export default function NikonDashboard() {
                      <span className="text-sm font-medium text-gray-400 block">Selamat datang,</span>
                      <span className="text-sm font-bold text-[#FFE500]">{currentUser?.nama_karyawan}</span>
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-[#FFE500] text-black font-bold flex items-center justify-center shadow-md">{currentUser?.nama_karyawan?.substring(0, 1).toUpperCase()}</div>
-                  <a href="/chatbot" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
-                     <span>🤖</span>
+                  <div className="w-9 h-9 rounded-full bg-[#FFE500] text-black font-bold flex items-center justify-center shadow-md text-sm">{currentUser?.nama_karyawan?.substring(0, 1).toUpperCase()}</div>
+                  <a href="/chatbot" className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-md">
+                     🤖
                   </a>
-                  <button onClick={handleLogout} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">Logout</button>
+                  <button onClick={handleLogout} className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-sm">Logout</button>
                </div>
             </header>
 
-            <div className="bg-white border-b border-gray-100 sticky top-[80px] z-10 px-6 w-full shadow-sm">
-               <div className="flex flex-col items-center max-w-7xl mx-auto">
-                  <div className="flex flex-wrap gap-3 justify-center animate-fade-in w-full overflow-x-auto pb-2">
+            <div className="flex flex-1 overflow-hidden">
+               {/* SIDEBAR NAVIGATION */}
+               <div className="w-64 bg-white border-r border-gray-200 shadow-sm overflow-y-auto">
+                  <div className="p-4 space-y-2">
                      {visibleTabs.map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-6 py-3 font-bold whitespace-nowrap transition-all rounded-lg border-b-2 text-sm ${activeTab === tab.id ? 'border-[#FFE500] text-black bg-yellow-50' : 'border-transparent text-gray-600 hover:text-black hover:bg-gray-50'}`}>
-                           {tab.label} {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-md ml-2 font-semibold ${activeTab === tab.id ? 'bg-[#FFE500] text-black' : 'bg-gray-100 text-gray-600'}`}>{tab.count}</span>}
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between group ${activeTab === tab.id ? 'bg-[#FFE500] text-black shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}>
+                           <span>{tab.label}</span>
+                           {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${activeTab === tab.id ? 'bg-black/20' : 'bg-gray-200 text-gray-600'}`}>{tab.count}</span>}
                         </button>
                      ))}
                   </div>
                </div>
-            </div>
-            <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+
+               {/* MAIN CONTENT */}
+               <main className="flex-1 overflow-y-auto px-8 py-8 space-y-6">
 
                {/* ======================= DASHBOARD OVERVIEW ======================= */}
                {activeTab === 'dashboard' && (
@@ -1961,7 +1966,7 @@ export default function NikonDashboard() {
 
                {/* ======================= PESAN ======================= */}
                {activeTab === 'messages' && (
-                  <div className="animate-fade-in text-gray-900 h-[calc(100vh-220px)] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex">
+                  <div className="animate-fade-in text-gray-900 h-[calc(100vh-100px)] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex">
                      {/* SIDEBAR: DAFTAR CHAT */}
                      <div className={`w-full md:w-[360px] lg:w-[420px] border-r border-gray-100 flex flex-col bg-white shrink-0 ${selectedWa ? 'hidden md:flex' : 'flex'}`}>
                         <div className="p-5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex justify-between items-center shrink-0">
@@ -2073,8 +2078,13 @@ export default function NikonDashboard() {
 
 
                {activeTab === 'konsumen' && (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                           <table className="w-full text-sm whitespace-normal break-words">
+                  <div className="space-y-4 animate-fade-in text-gray-900">
+                     <div className="flex gap-3 items-center">
+                        <input type="text" placeholder="🔍 Cari Nama, No. WA, atau NIK..." value={searchKonsumen} onChange={e => setSearchKonsumen(e.target.value)} className="flex-1 p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                        <button onClick={() => openModal('create', 'konsumen')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2.5 rounded-md font-bold text-sm transition shadow-sm whitespace-nowrap">+ Tambah Konsumen</button>
+                     </div>
+                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                        <table className="w-full text-sm whitespace-normal break-words">
                               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                                  <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>Nama {sortConfigKonsumen.column === 'nama_lengkap' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'id_konsumen')}>ID Konsumen {sortConfigKonsumen.column === 'id_konsumen' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nomor_wa')}>No. WhatsApp {sortConfigKonsumen.column === 'nomor_wa' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'alamat_rumah')}>Alamat {sortConfigKonsumen.column === 'alamat_rumah' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nik')}>NIK {sortConfigKonsumen.column === 'nik' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Riwayat Barang</th></tr>
                               </thead>
@@ -2111,7 +2121,8 @@ export default function NikonDashboard() {
                               </tbody>
                            </table>
                         </div>
-                     )}
+                     </div>
+                  )}
                {/* ======================= PROMOS ======================= */}
                {activeTab === 'promos' && (
                   <div className="space-y-4 animate-fade-in text-gray-900">
@@ -2264,7 +2275,28 @@ export default function NikonDashboard() {
                                        <td className="px-4 py-3 text-xs font-bold whitespace-normal max-w-[150px]">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
                                        <td className="px-4 py-3">
                                           <div className="flex gap-3 items-center flex-wrap min-w-[200px]">
-                                             <button onClick={() => handlePrintLabelPengiriman(c)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
+                                             <div className="flex items-center gap-2">
+                                                <button onClick={() => handlePrintLabelPengiriman(c)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
+                                                <label className="flex items-center gap-1.5 cursor-pointer">
+                                                   <input
+                                                      type="checkbox"
+                                                      checked={c.id_claim ? printedClaimIds.has(c.id_claim) : false}
+                                                      onChange={(e) => {
+                                                         if (c.id_claim) {
+                                                            const newSet = new Set(printedClaimIds);
+                                                            if (e.target.checked) {
+                                                               newSet.add(c.id_claim);
+                                                            } else {
+                                                               newSet.delete(c.id_claim);
+                                                            }
+                                                            setPrintedClaimIds(newSet);
+                                                         }
+                                                      }}
+                                                      className="w-4 h-4 cursor-pointer"
+                                                   />
+                                                   <span className="text-xs text-gray-600">Sudah Print</span>
+                                                </label>
+                                             </div>
                                              <button onClick={() => {
                                                 const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
                                                 if (consumerObj) {
@@ -2323,8 +2355,29 @@ export default function NikonDashboard() {
                                        </button>}
                                     </div>
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
-                                    <button onClick={() => handlePrintLabelPengiriman(c)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end flex-wrap">
+                                    <div className="flex items-center gap-2">
+                                       <button onClick={() => handlePrintLabelPengiriman(c)} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
+                                       <label className="flex items-center gap-1.5 cursor-pointer">
+                                          <input
+                                             type="checkbox"
+                                             checked={c.id_claim ? printedClaimIds.has(c.id_claim) : false}
+                                             onChange={(e) => {
+                                                if (c.id_claim) {
+                                                   const newSet = new Set(printedClaimIds);
+                                                   if (e.target.checked) {
+                                                      newSet.add(c.id_claim);
+                                                   } else {
+                                                      newSet.delete(c.id_claim);
+                                                   }
+                                                   setPrintedClaimIds(newSet);
+                                                }
+                                             }}
+                                             className="w-4 h-4 cursor-pointer"
+                                          />
+                                          <span className="text-xs text-gray-600">Sudah Print</span>
+                                       </label>
+                                    </div>
                                     <button onClick={() => {
                                        const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
                                        if (consumerObj) {
@@ -2692,45 +2745,7 @@ export default function NikonDashboard() {
                )}
 
                {/* ======================= MASTER EVENT ======================= */}
-               
-                        {activeTab === 'eventregistrations' && (
-                           <form id="registrationForm" onSubmit={handleSaveRegistration} className="space-y-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Lengkap</label>
-                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Event</label>
-                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nomor WhatsApp</label>
-                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Email</label>
-                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                              </div>
-                              <div>
-                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status Pendaftaran</label>
-                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
-                                    <option value="Pending Payment">Pending Payment</option>
-                                    <option value="Confirmed">Confirmed</option>
-                                    <option value="Cancelled">Cancelled</option>
-                                 </select>
-                              </div>
-                              <div>
-                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Link Bukti Transfer</label>
-                                 <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Opsional" />
-                              </div>
-                           </form>
-                        )}
-
-                        {activeTab === 'events' && (
+               {activeTab === 'events' && (
                   <div className="space-y-4 animate-fade-in text-gray-900">
                      <input type="text" placeholder="🔍 Cari Judul Event..." value={searchEvent} onChange={e => setSearchEvent(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
@@ -2960,10 +2975,11 @@ export default function NikonDashboard() {
                      )}
                   </div>
                )}
-            </main>
+               </main>
+            </div>
          </div>
 
-            {/* --- MODALS NEW CHAT --- */}
+         {/* --- MODALS NEW CHAT --- */}
             {isNewChatModalOpen && (
                <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 text-gray-900">
                   <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
