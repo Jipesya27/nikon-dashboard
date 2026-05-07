@@ -9,6 +9,14 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrq
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error'; // Akan diisi via .env.local
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Konversi URL Google Drive lama (uc?id=X&export=view) ke format baru yg bisa di-embed
+function gdriveUrl(url: string | null | undefined): string {
+   if (!url) return '';
+   const m = url.match(/(?:drive\.google\.com\/uc\?id=|drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=|drive\.google\.com\/thumbnail\?id=|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/);
+   if (m && m[1]) return `https://lh3.googleusercontent.com/d/${m[1]}=w2000`;
+   return url;
+}
+
 const ID_MONTHS: Record<string, number> = {
    januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
    juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
@@ -2937,7 +2945,7 @@ export default function NikonDashboard() {
                                     return (
                                     <tr key={evt.id} className="hover:bg-gray-50 font-medium">
                                        <td className="px-3 py-3 text-center font-bold text-gray-600">{eventNumberMap.get(evt.id!)}</td>
-                                       <td className="px-3 py-3">{evt.event_image ? <img src={evt.event_image} alt="poster" className="w-10 h-14 object-cover rounded" /> : <div className="w-10 h-14 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">–</div>}</td>
+                                       <td className="px-3 py-3">{evt.event_image ? <img src={gdriveUrl(evt.event_image)} alt="poster" className="w-10 h-14 object-cover rounded" referrerPolicy="no-referrer" /> : <div className="w-10 h-14 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-xs">–</div>}</td>
                                        <td className="px-3 py-3 font-bold text-slate-800 max-w-[180px] whitespace-normal">{evt.event_title}</td>
                                        <td className="px-3 py-3 text-xs">{evt.event_date}</td>
                                        <td className="px-3 py-3 text-xs text-gray-600 max-w-[140px] whitespace-normal">{evt.event_speaker || '-'}{evt.event_speaker_genre && <span className="block text-[10px] text-gray-400">{evt.event_speaker_genre}</span>}</td>
@@ -2947,7 +2955,7 @@ export default function NikonDashboard() {
                                           {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && <span className="block text-[10px] text-orange-600 mt-0.5">DP: {evt.deposit_amount}</span>}
                                        </td>
                                        <td className="px-3 py-3 text-[11px] text-gray-600 max-w-[140px] whitespace-pre-wrap">{evt.bank_info || '-'}</td>
-                                       <td className="px-3 py-3">{evt.event_upload_payment_screenshot ? <a href={evt.event_upload_payment_screenshot} target="_blank" rel="noopener noreferrer"><img src={evt.event_upload_payment_screenshot} alt="qr" className="w-10 h-10 object-cover rounded border border-gray-200 hover:border-[#FFE500]" /></a> : <span className="text-gray-300 text-xs">–</span>}</td>
+                                       <td className="px-3 py-3">{evt.event_upload_payment_screenshot ? <a href={gdriveUrl(evt.event_upload_payment_screenshot)} target="_blank" rel="noopener noreferrer"><img src={gdriveUrl(evt.event_upload_payment_screenshot)} alt="qr" className="w-10 h-10 object-cover rounded border border-gray-200 hover:border-[#FFE500]" referrerPolicy="no-referrer" /></a> : <span className="text-gray-300 text-xs">–</span>}</td>
                                        <td className="px-3 py-3 text-xs">
                                           <span className="font-bold text-gray-700">{eventRegistrationsCount[evt.event_title] || 0}/{evt.event_partisipant_stock}</span>
                                           <span className="block text-[10px] text-blue-600 font-bold mt-0.5">{eventRegistrationsCount[evt.event_title] || 0} peserta</span>
@@ -2973,7 +2981,7 @@ export default function NikonDashboard() {
                               return (
                               <div key={evt.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
                                  <div className="border-b border-gray-100 pb-3 mb-3 flex gap-3">
-                                    {evt.event_image ? <img src={evt.event_image} alt="poster" className="w-16 h-20 object-cover rounded flex-shrink-0" /> : <div className="w-16 h-20 bg-gray-100 rounded flex-shrink-0 flex items-center justify-center text-gray-400 text-xs">No img</div>}
+                                    {evt.event_image ? <img src={gdriveUrl(evt.event_image)} alt="poster" className="w-16 h-20 object-cover rounded flex-shrink-0" referrerPolicy="no-referrer" /> : <div className="w-16 h-20 bg-gray-100 rounded flex-shrink-0 flex items-center justify-center text-gray-400 text-xs">No img</div>}
                                     <div className="flex-1 min-w-0">
                                        <div className="flex items-center gap-2 mb-1">
                                           <span className="font-bold text-xs text-gray-500 bg-gray-100 rounded-full w-5 h-5 flex items-center justify-center">{eventNumberMap.get(evt.id!)}</span>
@@ -2993,7 +3001,7 @@ export default function NikonDashboard() {
                                     {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && <p className="text-orange-600 text-[11px]">Deposit: {evt.deposit_amount}</p>}
                                     <p><span className="font-bold">Kuota:</span> {eventRegistrationsCount[evt.event_title] || 0}/{evt.event_partisipant_stock} slot · {eventRegistrationsCount[evt.event_title] || 0} peserta</p>
                                     {evt.bank_info && <p className="bg-blue-50 border border-blue-100 rounded p-1.5 text-[11px] whitespace-pre-wrap"><span className="font-bold">Rekening:</span> {evt.bank_info}</p>}
-                                    {evt.event_upload_payment_screenshot && <a href={evt.event_upload_payment_screenshot} target="_blank" rel="noopener noreferrer" className="inline-block"><img src={evt.event_upload_payment_screenshot} alt="qr" className="w-16 h-16 rounded border border-gray-200 hover:border-[#FFE500]" /></a>}
+                                    {evt.event_upload_payment_screenshot && <a href={gdriveUrl(evt.event_upload_payment_screenshot)} target="_blank" rel="noopener noreferrer" className="inline-block"><img src={gdriveUrl(evt.event_upload_payment_screenshot)} alt="qr" className="w-16 h-16 rounded border border-gray-200 hover:border-[#FFE500]" referrerPolicy="no-referrer" /></a>}
                                     {proposal && <p className="text-purple-700 text-[11px] font-mono">📄 {proposal.proposal_no}</p>}
                                  </div>
                                  <div className="mt-3 pt-2 border-t border-gray-100 flex gap-2 justify-end">
@@ -3922,7 +3930,7 @@ export default function NikonDashboard() {
                                  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Foto / Poster Acara</label>
                                  {(eventImageFile || eventForm.event_image) && (
                                     <div className="mb-2 relative w-24 h-32 rounded overflow-hidden border border-gray-100">
-                                       <img src={eventImageFile ? URL.createObjectURL(eventImageFile) : eventForm.event_image} alt="preview" className="w-full h-full object-cover" />
+                                       <img src={eventImageFile ? URL.createObjectURL(eventImageFile) : gdriveUrl(eventForm.event_image)} alt="preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                        <button type="button" onClick={() => { setEventImageFile(null); setEventForm({ ...eventForm, event_image: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
                                     </div>
                                  )}
@@ -3933,7 +3941,7 @@ export default function NikonDashboard() {
                                  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Screenshot / QR Pembayaran</label>
                                  {(eventPaymentScreenshotFile || eventForm.event_upload_payment_screenshot) && (
                                     <div className="mb-2 relative w-32 h-32 rounded overflow-hidden border border-gray-100">
-                                       <img src={eventPaymentScreenshotFile ? URL.createObjectURL(eventPaymentScreenshotFile) : eventForm.event_upload_payment_screenshot} alt="payment qr" className="w-full h-full object-cover" />
+                                       <img src={eventPaymentScreenshotFile ? URL.createObjectURL(eventPaymentScreenshotFile) : gdriveUrl(eventForm.event_upload_payment_screenshot)} alt="payment qr" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                        <button type="button" onClick={() => { setEventPaymentScreenshotFile(null); setEventForm({ ...eventForm, event_upload_payment_screenshot: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
                                     </div>
                                  )}

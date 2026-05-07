@@ -21,6 +21,13 @@ function parseIdDate(str: string): Date | null {
   return new Date(y, m, d + 1);
 }
 
+function gdriveUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  const m = url.match(/(?:drive\.google\.com\/uc\?id=|drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=|drive\.google\.com\/thumbnail\?id=|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/);
+  if (m && m[1]) return `https://lh3.googleusercontent.com/d/${m[1]}=w2000`;
+  return url;
+}
+
 function getEventClosed(evt: any, regCount: number): { closed: boolean; reason: string } {
   const status = (evt.event_status || '').toLowerCase();
   if (status === 'close' || status === 'closed') return { closed: true, reason: 'Ditutup' };
@@ -213,7 +220,7 @@ export default function EventCatalog() {
                 className={`group flex flex-col bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden transition-all duration-300 ${closed ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-white/20 hover:bg-zinc-900 hover:-translate-y-1'}`}
               >
                 <div className="relative aspect-[3/4] overflow-hidden">
-                  <img src={evt.event_image} alt={evt.event_title} className={`w-full h-full object-cover transition-transform duration-700 ${!closed && 'group-hover:scale-105'}`} />
+                  <img src={gdriveUrl(evt.event_image)} alt={evt.event_title} referrerPolicy="no-referrer" className={`w-full h-full object-cover transition-transform duration-700 ${!closed && 'group-hover:scale-105'}`} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   {closed && (
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -297,7 +304,7 @@ export default function EventCatalog() {
               <div>
                 {/* Header cover */}
                 <div className="h-40 md:h-48 relative overflow-hidden rounded-t-2xl">
-                  <img src={selectedEvent.event_image} className="w-full h-full object-cover opacity-40" alt="Cover" />
+                  <img src={gdriveUrl(selectedEvent.event_image)} className="w-full h-full object-cover opacity-40" alt="Cover" referrerPolicy="no-referrer" />
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
                   <div className="absolute bottom-4 left-6 pr-12">
                     <div className="flex items-center gap-2 mb-2">
@@ -406,7 +413,7 @@ export default function EventCatalog() {
                         {selectedEvent.event_upload_payment_screenshot && (
                           <div>
                             <p className="text-xs text-zinc-400 mb-2">QR / Info Pembayaran:</p>
-                            <img src={selectedEvent.event_upload_payment_screenshot} alt="QR Pembayaran" className="max-w-[200px] rounded-lg border border-white/10" />
+                            <img src={gdriveUrl(selectedEvent.event_upload_payment_screenshot)} alt="QR Pembayaran" referrerPolicy="no-referrer" className="max-w-[200px] rounded-lg border border-white/10" />
                           </div>
                         )}
 

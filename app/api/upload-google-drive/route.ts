@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
     const ext = file.name.split('.').pop();
     const fileName = `${serial}_${prefix}_${Date.now()}.${ext}`;
     const fileId = await uploadToGoogleDrive(file, fileName);
-    const publicUrl = `https://drive.google.com/uc?id=${fileId}&export=view`;
+    // New working format — old `uc?id=X&export=view` returns virus-scan HTML page now
+    const publicUrl = `https://lh3.googleusercontent.com/d/${fileId}=w2000`;
 
     return NextResponse.json({ success: true, fileId, fileName, url: publicUrl });
   } catch (error: any) {
