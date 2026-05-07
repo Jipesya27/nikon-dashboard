@@ -2556,53 +2556,149 @@ export default function NikonDashboard() {
 
 
 
-               {activeTab === 'konsumen' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     <div className="flex gap-3 items-center">
-                        <input type="text" placeholder="🔍 Cari Nama, No. WA, atau NIK..." value={searchKonsumen} onChange={e => setSearchKonsumen(e.target.value)} className="flex-1 p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                        <button onClick={() => openModal('create', 'konsumen')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2.5 rounded-md font-bold text-sm transition shadow-sm whitespace-nowrap">+ Tambah Konsumen</button>
+               {activeTab === 'konsumen' && (() => {
+                  // Stats
+                  const totalKonsumen = consumersList.length;
+                  const denganNik = consumersList.filter(k => k.nik && k.nik !== 'BELUM_DIISI').length;
+                  const adaAlamat = consumersList.filter(k => k.alamat_rumah && k.alamat_rumah !== 'BELUM_DIISI').length;
+                  const adaClaim = consumersList.filter(k => claims.some(c => c.nomor_wa === k.nomor_wa)).length;
+
+                  const getInitial = (name: string) => (name || '?').trim().charAt(0).toUpperCase();
+                  const avatarColor = (name: string) => {
+                     const colors = ['bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-700', 'bg-purple-100 text-purple-700', 'bg-rose-100 text-rose-700', 'bg-indigo-100 text-indigo-700', 'bg-teal-100 text-teal-700'];
+                     let hash = 0;
+                     for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+                     return colors[hash % colors.length];
+                  };
+
+                  const formatAddress = (k: KonsumenData) => {
+                     return [k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos]
+                        .filter(v => v && v !== 'BELUM_DIISI')
+                        .join(', ');
+                  };
+
+                  return (
+                  <div className="animate-fade-in space-y-6">
+                     <PageHeader
+                        title="Data Konsumen"
+                        subtitle="Master data konsumen — alamat, NIK, dan riwayat klaim"
+                        icon="👥"
+                        actions={<Button variant="primary" leftIcon="+" onClick={() => openModal('create', 'konsumen')}>Tambah Konsumen</Button>}
+                     />
+
+                     {/* STATS */}
+                     <StatGrid cols={4}>
+                        <Stat label="Total Konsumen" value={totalKonsumen} icon="👥" />
+                        <Stat label="NIK Lengkap" value={denganNik} variant="info" icon="🪪" />
+                        <Stat label="Alamat Lengkap" value={adaAlamat} variant="success" icon="📍" />
+                        <Stat label="Punya Claim" value={adaClaim} variant="warning" icon="🎫" onClick={() => setActiveTab('claims')} />
+                     </StatGrid>
+
+                     {/* SEARCH */}
+                     <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                        <input
+                           type="text"
+                           placeholder="Cari nama, nomor WA, atau NIK..."
+                           value={searchKonsumen}
+                           onChange={e => setSearchKonsumen(e.target.value)}
+                           className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 transition"
+                        />
                      </div>
-                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                        <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-4 py-3 text-center font-bold w-12">No</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>Nama {sortConfigKonsumen.column === 'nama_lengkap' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'id_konsumen')}>ID Konsumen {sortConfigKonsumen.column === 'id_konsumen' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nomor_wa')}>No. WhatsApp {sortConfigKonsumen.column === 'nomor_wa' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'alamat_rumah')}>Alamat {sortConfigKonsumen.column === 'alamat_rumah' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nik')}>NIK {sortConfigKonsumen.column === 'nik' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Riwayat Barang</th></tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200">
-                                 {sortedConsumers.map((k: KonsumenData) => {
-                                    const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
-                                    return (
-                                       <tr key={k.nomor_wa} className="hover:bg-gray-50 font-medium">
-                                          <td className="px-4 py-3 text-center font-bold text-gray-600">{konsumenNumberMap.get(k.nomor_wa)}</td>
-                                          <td className="px-4 py-3 text-slate-800 font-bold">{k.nama_lengkap || '-'}</td>
-                                          <td className="px-4 py-3 font-mono">{k.id_konsumen || '-'}</td>
-                                          <td className="px-4 py-3">{k.nomor_wa}</td>
-                                          <td className="px-4 py-3 whitespace-normal">{[k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos].filter(Boolean).join(', ')}</td>
-                                          <td className="px-4 py-3">{k.nik || '-'}</td>
-                                          <td className="px-4 py-3 text-xs">
-                                             <ul className="list-disc list-inside space-y-1">
-                                                {userClaims.length > 0 ? userClaims.map(c => (
-                                                   <li key={c.id_claim}>
-                                                      {c.tipe_barang} (SN: {c.nomor_seri})
-                                                   </li>
-                                                )) : (
-                                                   <li className="text-gray-500 italic">Tidak ada</li>
+
+                     {/* CONTENT */}
+                     {sortedConsumers.length === 0 ? (
+                        <Card padding="lg">
+                           <EmptyState
+                              icon="👥"
+                              title={consumersList.length === 0 ? 'Belum Ada Konsumen' : 'Tidak ada konsumen sesuai pencarian'}
+                              description={consumersList.length === 0 ? 'Tambahkan konsumen pertama, atau impor dari CSV via tab Import Data.' : `Tidak ditemukan konsumen dengan kata kunci "${searchKonsumen}"`}
+                              action={consumersList.length === 0 && <Button variant="primary" onClick={() => openModal('create', 'konsumen')}>+ Tambah Konsumen Pertama</Button>}
+                           />
+                        </Card>
+                     ) : (
+                        <Card padding="none">
+                           <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                              <table className="w-full text-sm">
+                                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                    <tr className="text-left">
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 w-10 text-center">#</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>
+                                          Konsumen {sortConfigKonsumen.column === 'nama_lengkap' && (sortConfigKonsumen.direction === 'asc' ? '↑' : '↓')}
+                                       </th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Identitas</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Alamat</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Riwayat Claim</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-100">
+                                    {sortedConsumers.map((k: KonsumenData) => {
+                                       const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
+                                       const address = formatAddress(k);
+                                       const hasNik = k.nik && k.nik !== 'BELUM_DIISI';
+                                       const hasAddress = !!address;
+                                       return (
+                                          <tr key={k.nomor_wa} className="hover:bg-slate-50 transition">
+                                             <td className="px-3 py-3 text-center font-bold text-slate-400 align-top">{konsumenNumberMap.get(k.nomor_wa)}</td>
+                                             <td className="px-3 py-3 align-top">
+                                                <div className="flex gap-3 items-start">
+                                                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${avatarColor(k.nama_lengkap || k.nomor_wa)}`}>
+                                                      {getInitial(k.nama_lengkap || k.nomor_wa)}
+                                                   </div>
+                                                   <div className="min-w-0">
+                                                      <p className="font-bold text-slate-900 leading-tight">{k.nama_lengkap || <span className="italic text-slate-400">Belum diisi</span>}</p>
+                                                      <p className="text-xs text-slate-500 mt-0.5">📱 {k.nomor_wa}</p>
+                                                      {k.id_konsumen && <p className="text-[11px] font-mono text-slate-400 mt-0.5">{k.id_konsumen}</p>}
+                                                   </div>
+                                                </div>
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-xs">
+                                                {hasNik ? (
+                                                   <p className="font-mono text-slate-700">🪪 {k.nik}</p>
+                                                ) : (
+                                                   <Badge variant="neutral" size="xs">NIK kosong</Badge>
                                                 )}
-                                             </ul>
-                                          </td>
-                                          <td className="px-4 py-3">
-                                             <div className="flex gap-3 items-center">
-                                                <button onClick={() => openModal('edit', 'konsumen', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                                <button onClick={() => handleDelete('konsumen', k.nomor_wa)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                             </div>
-                                          </td>
-                                       </tr>
-                                    );
-                                 })}
-                              </tbody>
-                           </table>
-                        </div>
-                     </div>
-                  )}
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-xs max-w-[280px]">
+                                                {hasAddress ? (
+                                                   <p className="text-slate-700 leading-relaxed">{address}</p>
+                                                ) : (
+                                                   <Badge variant="neutral" size="xs">Alamat kosong</Badge>
+                                                )}
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-xs">
+                                                {userClaims.length > 0 ? (
+                                                   <div className="space-y-1">
+                                                      <Badge variant="warning" size="xs">{userClaims.length} claim</Badge>
+                                                      <ul className="space-y-0.5 mt-1.5 max-w-[200px]">
+                                                         {userClaims.slice(0, 3).map(c => (
+                                                            <li key={c.id_claim} className="text-[11px] text-slate-600 truncate">
+                                                               • {c.tipe_barang} <span className="font-mono text-slate-400">({c.nomor_seri})</span>
+                                                            </li>
+                                                         ))}
+                                                         {userClaims.length > 3 && <li className="text-[10px] text-slate-400">+{userClaims.length - 3} lainnya</li>}
+                                                      </ul>
+                                                   </div>
+                                                ) : (
+                                                   <span className="text-slate-400 italic">Belum ada</span>
+                                                )}
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-right whitespace-nowrap">
+                                                <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'konsumen', k)}>Edit</Button>
+                                                <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('konsumen', k.nomor_wa)}>Hapus</Button>
+                                             </td>
+                                          </tr>
+                                       );
+                                    })}
+                                 </tbody>
+                              </table>
+                           </div>
+                        </Card>
+                     )}
+                  </div>
+                  );
+               })()}
                {/* ======================= PROMOS ======================= */}
                {activeTab === 'promos' && (
                   <div className="space-y-4 animate-fade-in text-gray-900">
