@@ -237,6 +237,7 @@ export default function NikonDashboard() {
    const [sortConfigKaryawans, setSortConfigKaryawans] = useState<SortConfig>({ column: '', direction: null });
    // UI STATES
    const [sidebarOpen, setSidebarOpen] = useState(false);
+   const [linksMenuOpen, setLinksMenuOpen] = useState(false);
    const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
    const [readStatus, setReadStatus] = useState<Record<string, string>>({});
    const [loading, setLoading] = useState(true);
@@ -1890,6 +1891,67 @@ export default function NikonDashboard() {
                      <span className="text-sm font-bold text-[#FFE500]">{currentUser?.nama_karyawan}</span>
                   </div>
                   <div className="w-9 h-9 rounded-full bg-[#FFE500] text-black font-bold flex items-center justify-center shadow-md text-sm">{currentUser?.nama_karyawan?.substring(0, 1).toUpperCase()}</div>
+                  {/* QUICK LINKS DROPDOWN */}
+                  <div className="relative">
+                     <button
+                        onClick={() => setLinksMenuOpen(v => !v)}
+                        className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-1.5"
+                        title="Link halaman event"
+                     >
+                        🔗 <span className="hidden md:inline">Links</span>
+                        <svg className={`w-3 h-3 transition-transform ${linksMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                     </button>
+                     {linksMenuOpen && (
+                        <>
+                           <div className="fixed inset-0 z-30" onClick={() => setLinksMenuOpen(false)} />
+                           <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-2xl border border-gray-200 z-40 overflow-hidden">
+                              <div className="bg-gray-50 px-4 py-2 border-b border-gray-100">
+                                 <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Halaman Publik (Customer)</p>
+                              </div>
+                              <a href="/events/register" target="_blank" rel="noopener noreferrer" onClick={() => setLinksMenuOpen(false)} className="flex items-start gap-3 px-4 py-3 hover:bg-yellow-50 transition-colors border-b border-gray-100">
+                                 <span className="text-2xl">🎫</span>
+                                 <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-gray-900">Katalog & Daftar Event</p>
+                                    <p className="text-[11px] text-gray-500 truncate">/events/register</p>
+                                 </div>
+                                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+                              <a href="/events/refund" target="_blank" rel="noopener noreferrer" onClick={() => setLinksMenuOpen(false)} className="flex items-start gap-3 px-4 py-3 hover:bg-yellow-50 transition-colors">
+                                 <span className="text-2xl">💰</span>
+                                 <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-gray-900">Klaim Pengembalian Deposit</p>
+                                    <p className="text-[11px] text-gray-500 truncate">/events/refund</p>
+                                 </div>
+                                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+
+                              <div className="bg-gray-50 px-4 py-2 border-b border-t border-gray-100">
+                                 <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Halaman Admin</p>
+                              </div>
+                              <a href="/admin/events" target="_blank" rel="noopener noreferrer" onClick={() => setLinksMenuOpen(false)} className="flex items-start gap-3 px-4 py-3 hover:bg-yellow-50 transition-colors border-b border-gray-100">
+                                 <span className="text-2xl">✅</span>
+                                 <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-gray-900">Validasi Pembayaran Event</p>
+                                    <p className="text-[11px] text-gray-500 truncate">/admin/events</p>
+                                 </div>
+                                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+                              <a href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" onClick={() => setLinksMenuOpen(false)} className="flex items-start gap-3 px-4 py-3 hover:bg-yellow-50 transition-colors">
+                                 <span className="text-2xl">💸</span>
+                                 <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-gray-900">Kelola Deposit Event</p>
+                                    <p className="text-[11px] text-gray-500 truncate">/admin/events/deposit</p>
+                                 </div>
+                                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+
+                              <div className="bg-gray-50 px-4 py-2 border-t border-gray-100">
+                                 <p className="text-[10px] text-gray-400">Klik untuk buka di tab baru</p>
+                              </div>
+                           </div>
+                        </>
+                     )}
+                  </div>
                   <a href="/chatbot" className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-md">
                      🤖
                   </a>
@@ -2889,6 +2951,26 @@ export default function NikonDashboard() {
                {/* ======================= EVENT REGISTRATIONS ======================= */}
                {activeTab === 'eventregistrations' && (
                   <div className="space-y-4 animate-fade-in text-gray-900">
+                     {/* Quick links bar */}
+                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-bold text-gray-700 mr-2">🛠️ Halaman Admin:</span>
+                        <a href="/admin/events" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-blue-100 text-gray-800 border border-blue-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
+                           ✅ Validasi Pembayaran
+                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                        <a href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-blue-100 text-gray-800 border border-blue-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
+                           💸 Kelola Deposit
+                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                        <span className="text-gray-300 mx-1">|</span>
+                        <span className="text-[10px] text-gray-500">Public:</span>
+                        <a href="/events/register" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-yellow-100 text-gray-800 border border-yellow-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
+                           🎫 Daftar Event
+                        </a>
+                        <a href="/events/refund" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-yellow-100 text-gray-800 border border-yellow-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
+                           💰 Refund Deposit
+                        </a>
+                     </div>
                      <input type="text" placeholder="🔍 Cari Nama Peserta atau Event..." value={searchRegistration} onChange={e => setSearchRegistration(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
@@ -2938,6 +3020,20 @@ export default function NikonDashboard() {
                {/* ======================= MASTER EVENT ======================= */}
                {activeTab === 'events' && (
                   <div className="space-y-4 animate-fade-in text-gray-900">
+                     {/* Quick links bar */}
+                     <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-3 flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-bold text-gray-700 mr-2">🔗 Link Public:</span>
+                        <a href="/events/register" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-yellow-100 text-gray-800 border border-yellow-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
+                           🎫 Katalog & Daftar Event
+                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                        <a href="/events/refund" target="_blank" rel="noopener noreferrer" className="text-xs bg-white hover:bg-yellow-100 text-gray-800 border border-yellow-300 px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5">
+                           💰 Klaim Pengembalian Deposit
+                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                        <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/events/register`); alert('Link katalog event disalin!'); }} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-md font-bold transition">📋 Copy URL Katalog</button>
+                        <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/events/refund`); alert('Link refund disalin!'); }} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-md font-bold transition">📋 Copy URL Refund</button>
+                     </div>
                      <input type="text" placeholder="🔍 Cari Judul Event..." value={searchEvent} onChange={e => setSearchEvent(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
