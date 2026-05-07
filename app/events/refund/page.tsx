@@ -19,6 +19,7 @@ type Registration = {
   bukti_pengembalian_deposit: string | null;
   nama_bank: string | null;
   no_rekening: string | null;
+  nama_pemilik_rekening: string | null;
 };
 
 type EventInfo = { id: string; event_title: string; event_date: string; deposit_amount: string | null };
@@ -30,7 +31,7 @@ export default function DepositRefundPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [registrations, setRegistrations] = useState<(Registration & { event?: EventInfo })[]>([]);
   const [selectedReg, setSelectedReg] = useState<(Registration & { event?: EventInfo }) | null>(null);
-  const [formData, setFormData] = useState({ nama_bank: '', no_rekening: '' });
+  const [formData, setFormData] = useState({ nama_bank: '', no_rekening: '', nama_pemilik_rekening: '' });
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +75,12 @@ export default function DepositRefundPage() {
 
   const handleSelect = (reg: Registration & { event?: EventInfo }) => {
     setSelectedReg(reg);
-    setFormData({ nama_bank: reg.nama_bank || '', no_rekening: reg.no_rekening || '' });
+    setFormData({
+      nama_bank: reg.nama_bank || '',
+      no_rekening: reg.no_rekening || '',
+      // Default ke nama peserta kalau belum diisi
+      nama_pemilik_rekening: reg.nama_pemilik_rekening || reg.nama_lengkap || '',
+    });
     setErrorMsg('');
     setStep('form');
   };
@@ -90,6 +96,7 @@ export default function DepositRefundPage() {
         .update({
           nama_bank: formData.nama_bank.trim(),
           no_rekening: formData.no_rekening.trim(),
+          nama_pemilik_rekening: formData.nama_pemilik_rekening.trim(),
           status_pengembalian_deposit: selectedReg.status_pengembalian_deposit === 'Processed' ? 'Processed' : 'requested',
           refund_requested_at: new Date().toISOString(),
         })
@@ -109,7 +116,7 @@ export default function DepositRefundPage() {
     setWaInput('');
     setRegistrations([]);
     setSelectedReg(null);
-    setFormData({ nama_bank: '', no_rekening: '' });
+    setFormData({ nama_bank: '', no_rekening: '', nama_pemilik_rekening: '' });
     setErrorMsg('');
   };
 
@@ -305,7 +312,25 @@ export default function DepositRefundPage() {
                   pattern="[0-9]{6,20}"
                   className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] font-mono"
                 />
-                <p className="text-[11px] text-zinc-500 mt-1">Pastikan nomor rekening atas nama yang sama dengan nama lengkap di atas.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1">Nama Pemilik Rekening</label>
+                <input
+                  type="text"
+                  value={formData.nama_pemilik_rekening}
+                  onChange={e => setFormData({ ...formData, nama_pemilik_rekening: e.target.value })}
+                  placeholder="Sesuai dengan nama di buku tabungan / m-banking"
+                  required
+                  className="w-full bg-zinc-900 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800]"
+                />
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  {formData.nama_pemilik_rekening && selectedReg && formData.nama_pemilik_rekening.trim().toLowerCase() !== selectedReg.nama_lengkap.toLowerCase() ? (
+                    <span className="text-yellow-400">⚠️ Berbeda dari nama peserta — pastikan ini rekening atas nama yang Anda tulis.</span>
+                  ) : (
+                    <span>Otomatis terisi sesuai nama peserta. Edit jika rekening atas nama orang lain.</span>
+                  )}
+                </p>
               </div>
 
               <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-300">
@@ -342,7 +367,7 @@ export default function DepositRefundPage() {
               <p className="text-zinc-500 text-xs">Akan transfer ke:</p>
               <p className="text-white font-bold">{formData.nama_bank}</p>
               <p className="text-white font-mono">{formData.no_rekening}</p>
-              <p className="text-zinc-400 text-xs mt-1">a.n {selectedReg.nama_lengkap}</p>
+              <p className="text-zinc-400 text-xs mt-1">a.n {formData.nama_pemilik_rekening || selectedReg.nama_lengkap}</p>
             </div>
             <div>
               <button onClick={reset} className="bg-[#FFE800] text-black font-bold py-3 px-8 rounded-lg hover:bg-[#FFE800]/90 transition-all">
