@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { chatbotTexts } from '@/app/chatbotTexts';
+import { whatsappMessages } from '@/app/whatsappMessages';
+import { generateTicket } from '@/app/lib/generate-ticket';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,7 +18,6 @@ async function sendWhatsApp(targetWa: string, message: string) {
 export async function POST(req: NextRequest) {
   try {
     const { registrationId, action, rejectionReason } = await req.json();
-    // action: 'approve' | 'reject'
 
     if (!registrationId || !action) {
       return NextResponse.json({ error: 'Missing registrationId or action' }, { status: 400 });
@@ -25,63 +25,76 @@ export async function POST(req: NextRequest) {
 
     const { data: reg, error: fetchError } = await supabase
       .from('event_registrations')
-      .select('*, events:event_id(*)')
+      .select('*')
       .eq('id', registrationId)
       .single();
 
     if (fetchError || !reg) {
-      return NextResponse.json({ error: 'Registration not found' }, { status: 404 });
+      console.error('Registration fetch error:', fetchError, 'id:', registrationId);
+      return NextResponse.json({ error: `Registration not found: ${fetchError?.message || 'no rows'}` }, { status: 404 });
+    }
+
+    // Fetch related event manually (no FK relationship in schema)
+    let eventInfo: any = null;
+    if (reg.event_id) {
+      const { data: ev } = await supabase.from('events').select('*').eq('id', reg.event_id).maybeSingle();
+      eventInfo = ev;
     }
 
     if (action === 'reject') {
       await supabase
         .from('event_registrations')
-        .update({ status: 'Rejected', rejection_reason: rejectionReason || null })
+        .update({ status_pendaftaran: 'ditolak', rejection_reason: rejectionReason || null })
         .eq('id', registrationId);
 
-      await sendWhatsApp(
-        reg.wa_number,
-        chatbotTexts.eventRegistrationRejected(reg.full_name, reg.event_name, rejectionReason)
-      );
+      try {
+        await sendWhatsApp(
+          reg.nomor_wa,
+          whatsappMessages.eventRegistrationRejected(reg.nama_lengkap, reg.event_name, rejectionReason)
+        );
+      } catch (waErr) {
+        console.error('WA notify (reject) failed:', waErr);
+      }
 
-      return NextResponse.json({ success: true, status: 'Rejected' });
+      return NextResponse.json({ success: true, status: 'ditolak' });
     }
 
-    // --- APPROVE: generate ticket ---
-    const ticketRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/generate-ticket`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    // --- APPROVE: generate ticket directly (no HTTP roundtrip) ---
+    let ticketUrl: string;
+    try {
+      const result = await generateTicket({
         registrationId,
-        fullName: reg.full_name,
+        fullName: reg.nama_lengkap,
+        nomorWa: reg.nomor_wa,
         eventTitle: reg.event_name,
-        eventDate: reg.event_date || reg.events?.date || '',
-        eventDetail: reg.event_detail || reg.events?.detail_acara || '',
-        cameraModel: reg.camera_model || '',
+        eventDate: eventInfo?.event_date || '',
+        eventDetail: eventInfo?.event_description || '',
+        cameraModel: reg.tipe_kamera || '',
         paymentType: reg.payment_type || 'regular',
-      }),
-    });
-
-    if (!ticketRes.ok) {
-      const err = await ticketRes.json();
-      return NextResponse.json({ error: `Ticket generation failed: ${err.error}` }, { status: 500 });
+      });
+      ticketUrl = result.ticketUrl;
+    } catch (err: any) {
+      console.error('generateTicket failed:', err);
+      return NextResponse.json({ error: `Ticket generation failed: ${err.message || err}` }, { status: 500 });
     }
-
-    const { ticketUrl } = await ticketRes.json();
 
     await supabase
       .from('event_registrations')
-      .update({ status: 'Approved', ticket_url: ticketUrl })
+      .update({ status_pendaftaran: 'terdaftar', ticket_url: ticketUrl })
       .eq('id', registrationId);
 
-    await sendWhatsApp(
-      reg.wa_number,
-      chatbotTexts.eventRegistrationApproved(reg.full_name, reg.event_name, ticketUrl)
-    );
+    try {
+      await sendWhatsApp(
+        reg.nomor_wa,
+        whatsappMessages.eventRegistrationApproved(reg.nama_lengkap, reg.event_name, ticketUrl)
+      );
+    } catch (waErr) {
+      console.error('WA notify (approve) failed:', waErr);
+    }
 
-    return NextResponse.json({ success: true, status: 'Approved', ticketUrl });
+    return NextResponse.json({ success: true, status: 'terdaftar', ticketUrl });
   } catch (err: any) {
     console.error('validate-payment error:', err);
-    return NextResponse.json({ error: err.message || 'Internal error' }, { status: 500 });
+    return NextResponse.json({ error: err?.message || 'Internal error' }, { status: 500 });
   }
 }

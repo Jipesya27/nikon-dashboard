@@ -3,11 +3,20 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { chatbotTexts } from './chatbotTexts';
+import { whatsappMessages } from './whatsappMessages';
+import { Card, Stat, StatGrid, Badge, Button, PageHeader, Section, EmptyState } from '@/app/components/ui';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error'; // Akan diisi via .env.local
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Konversi URL Google Drive lama (uc?id=X&export=view) ke format baru yg bisa di-embed
+function gdriveUrl(url: string | null | undefined): string {
+   if (!url) return '';
+   const m = url.match(/(?:drive\.google\.com\/uc\?id=|drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=|drive\.google\.com\/thumbnail\?id=|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/);
+   if (m && m[1]) return `https://lh3.googleusercontent.com/d/${m[1]}=w2000`;
+   return url;
+}
 
 const ID_MONTHS: Record<string, number> = {
    januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
@@ -21,10 +30,31 @@ function parseIdDate(str: string): Date | null {
    if (isNaN(d) || m === undefined || isNaN(y)) return null;
    return new Date(y, m, d + 1);
 }
-function getEventClosedStatus(evt: { status: string; stock: number; date: string }, regCount: number): { closed: boolean; reason: string } {
-   if (evt.status === 'close') return { closed: true, reason: 'Ditutup Admin' };
-   if (evt.stock > 0 && regCount >= evt.stock) return { closed: true, reason: 'Kuota Penuh' };
-   const evtDate = parseIdDate(evt.date);
+// "12 Agustus 2026" → "2026-08-12" untuk <input type="date">
+const ID_MONTHS_PAD: Record<string, string> = { januari:'01', februari:'02', maret:'03', april:'04', mei:'05', juni:'06', juli:'07', agustus:'08', september:'09', oktober:'10', november:'11', desember:'12' };
+const ID_MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+function idDateToIso(s: string | null | undefined): string {
+   if (!s) return '';
+   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+   const p = s.trim().toLowerCase().split(/\s+/);
+   if (p.length < 3) return '';
+   const d = p[0].padStart(2, '0'), m = ID_MONTHS_PAD[p[1]], y = p[2];
+   if (!m) return '';
+   return `${y}-${m}-${d}`;
+}
+// "2026-08-12" → "12 Agustus 2026"
+function isoToIdDate(iso: string): string {
+   if (!iso) return '';
+   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+   if (!m) return iso;
+   return `${parseInt(m[3])} ${ID_MONTH_NAMES[parseInt(m[2]) - 1]} ${m[1]}`;
+}
+function getEventClosedStatus(evt: { event_status: string; event_partisipant_stock: number; event_date: string }, regCount: number): { closed: boolean; reason: string } {
+   const status = (evt.event_status || '').toLowerCase();
+   if (status === 'close' || status === 'closed') return { closed: true, reason: 'Ditutup Admin' };
+   if (status === 'sold out' || status === 'sold_out' || status === 'soldout') return { closed: true, reason: 'Sold Out' };
+   if (evt.event_partisipant_stock > 0 && regCount >= evt.event_partisipant_stock) return { closed: true, reason: 'Kuota Penuh' };
+   const evtDate = parseIdDate(evt.event_date);
    if (evtDate && evtDate < new Date()) return { closed: true, reason: 'Acara Selesai' };
    return { closed: false, reason: 'Aktif' };
 }
@@ -41,8 +71,8 @@ interface StatusService { id_service?: string; nomor_tanda_terima: string; nomor
 interface BudgetItem { purpose: string; qty: number; cost_unit: number; value: number; petty_cash?: string; }
 interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_urls?: (string | File | null)[]; }
 interface DataLog { id?: string; created_at?: string; user_name: string; action: string; table_name: string; record_id: string; old_values: any; new_values: any; }
-interface EventData { id?: string; title: string; date: string; price: string; image: string; stock: number; status: string; detail_acara: string; created_at?: string; bank_info?: string; }
-interface EventRegistration { id?: string; full_name: string; wa_number: string; email: string; camera_model: string; event_name: string; bukti_transfer_url: string; status: string; created_at?: string; is_attended?: boolean; }
+interface EventData { id?: string; event_title: string; event_date: string; event_price: string; event_image?: string; event_partisipant_stock: number; event_status: string; event_description?: string; event_speaker?: string; event_speaker_genre?: string; event_payment_tipe?: string; event_upload_payment_screenshot?: string; deposit_amount?: string; proposal_event_id?: string; bank_info?: string; created_at?: string; }
+interface EventRegistration { id?: string; nama_lengkap: string; nomor_wa: string; kabupaten_kotamadya?: string; tipe_kamera?: string; event_name: string; event_id?: string; bukti_transfer_url?: string; status_pendaftaran: string; payment_type?: string; ticket_url?: string; status_pengembalian_deposit?: string; bukti_pengembalian_deposit?: string; rejection_reason?: string; is_attended?: boolean; created_at?: string; }
 
 interface PeminjamanItem {
    nama_barang: string;
@@ -131,6 +161,8 @@ export default function NikonDashboard() {
    const [eventRegistrationsCount, setEventRegistrationsCount] = useState<Record<string, number>>({});
    const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]);
    const [searchRegistration, setSearchRegistration] = useState('');
+   const [filterStatusReg, setFilterStatusReg] = useState<string>('all');
+   const [filterEventReg, setFilterEventReg] = useState<string>('all');
 
    // SEARCH STATES
    const [searchKonsumen, setSearchKonsumen] = useState('');
@@ -208,6 +240,7 @@ export default function NikonDashboard() {
    const [sortConfigKaryawans, setSortConfigKaryawans] = useState<SortConfig>({ column: '', direction: null });
    // UI STATES
    const [sidebarOpen, setSidebarOpen] = useState(false);
+   const [linksMenuOpen, setLinksMenuOpen] = useState(false);
    const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
    const [readStatus, setReadStatus] = useState<Record<string, string>>({});
    const [loading, setLoading] = useState(true);
@@ -241,6 +274,7 @@ export default function NikonDashboard() {
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
    const [eventForm, setEventForm] = useState<Partial<EventData>>({});
    const [eventImageFile, setEventImageFile] = useState<File | null>(null);
+   const [eventPaymentScreenshotFile, setEventPaymentScreenshotFile] = useState<File | null>(null);
    const [registrationForm, setRegistrationForm] = useState<Partial<EventRegistration>>({});
 
    // IMPORT CSV STATES
@@ -579,7 +613,7 @@ export default function NikonDashboard() {
             const tempPw = Math.random().toString(36).substring(2, 10);
             await supabase.from('karyawan').update({ password: tempPw }).eq('id_karyawan', data.id_karyawan);
 
-            const msg = chatbotTexts.forgotPassword(data.nama_karyawan, tempPw);
+            const msg = whatsappMessages.forgotPassword(data.nama_karyawan, tempPw);
             await sendWhatsAppMessageViaFonnte(data.nomor_wa!, msg);
 
             setForgotPwMessage('Password baru telah dikirim ke WhatsApp Anda!');
@@ -769,6 +803,80 @@ export default function NikonDashboard() {
       window.URL.revokeObjectURL(url);
    };
 
+   // Parser CSV yang proper — handle quoted fields, escaped quotes (""), CRLF
+   const parseCsv = (text: string): string[][] => {
+      // Normalize line endings dulu
+      const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const rows: string[][] = [];
+      let field = '';
+      let row: string[] = [];
+      let inQuotes = false;
+
+      for (let i = 0; i < normalized.length; i++) {
+         const ch = normalized[i];
+         const next = normalized[i + 1];
+
+         if (inQuotes) {
+            if (ch === '"' && next === '"') {
+               // Escaped quote inside field
+               field += '"';
+               i++;
+            } else if (ch === '"') {
+               inQuotes = false;
+            } else {
+               field += ch;
+            }
+         } else {
+            if (ch === '"') {
+               inQuotes = true;
+            } else if (ch === ',') {
+               row.push(field);
+               field = '';
+            } else if (ch === '\n') {
+               row.push(field);
+               rows.push(row);
+               row = [];
+               field = '';
+            } else {
+               field += ch;
+            }
+         }
+      }
+      // Last field/row
+      if (field !== '' || row.length > 0) {
+         row.push(field);
+         rows.push(row);
+      }
+      return rows;
+   };
+
+   // Mapping header CSV → field DB (handle perbedaan nama)
+   const csvHeaderToDbField = (header: string, target: string): string => {
+      const cleaned = header.trim().split(' ')[0]; // strip "(kosongkan jika data baru)"
+      if (target === 'claim_promo') {
+         if (cleaned === 'catatan_by_mkt') return 'catatan_mkt';
+         if (cleaned === 'catatan_by_fa') return 'catatan_fa';
+      }
+      return cleaned;
+   };
+
+   // Field wajib per tabel — kalau kosong, baris di-skip
+   const REQUIRED_FIELDS: Record<string, string[]> = {
+      claim_promo: ['nomor_wa', 'nomor_seri'],
+      garansi: ['nomor_seri'],
+      konsumen: ['nomor_wa'],
+      status_service: ['nomor_tanda_terima', 'nomor_seri'],
+   };
+
+   // Field yang valid untuk setiap tabel — buang field yg gak dikenal supaya
+   // schema mismatch gak bikin error
+   const ALLOWED_FIELDS: Record<string, Set<string>> = {
+      claim_promo: new Set(['id_claim', 'nomor_wa', 'nomor_seri', 'tipe_barang', 'tanggal_pembelian', 'link_nota_pembelian', 'link_kartu_garansi', 'validasi_by_mkt', 'validasi_by_fa', 'catatan_mkt', 'catatan_fa', 'nama_toko', 'jenis_promosi', 'nama_jasa_pengiriman', 'nomor_resi']),
+      garansi: new Set(['id_garansi', 'nomor_seri', 'tipe_barang', 'status_validasi', 'jenis_garansi', 'lama_garansi', 'link_kartu_garansi', 'link_nota_pembelian']),
+      konsumen: new Set(['nomor_wa', 'nama_lengkap', 'nik', 'alamat_rumah', 'kelurahan', 'kecamatan', 'kabupaten_kotamadya', 'provinsi', 'kodepos', 'status_langkah']),
+      status_service: new Set(['id_service', 'nomor_tanda_terima', 'nomor_seri', 'status_service']),
+   };
+
    const handleCentralUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -777,50 +885,85 @@ export default function NikonDashboard() {
       reader.onload = async (event) => {
          try {
             const text = event.target?.result as string;
-            const lines = text.split('\n');
+            const rows = parseCsv(text);
 
-            // Membersihkan header dari keterangan tambahan '(kosongkan jika data baru)'
-            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').split(' ')[0]);
+            if (rows.length < 2) {
+               throw new Error('File CSV kosong atau hanya berisi header.');
+            }
 
-            const result = [];
+            // Header parsing: ambil baris pertama, mapping ke field DB
+            const rawHeaders = rows[0];
+            const headers = rawHeaders.map(h => csvHeaderToDbField(h, importTarget));
+            const allowed = ALLOWED_FIELDS[importTarget];
+            const required = REQUIRED_FIELDS[importTarget] || [];
 
-            for (let i = 1; i < lines.length; i++) {
-               if (!lines[i].trim()) continue;
+            const result: any[] = [];
+            const skipped: { row: number; reason: string }[] = [];
+
+            for (let i = 1; i < rows.length; i++) {
+               const cells = rows[i];
+               // Skip baris kosong (semua cell empty)
+               if (cells.every(c => !c || !c.trim())) continue;
+
                const obj: any = {};
-               const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-
                headers.forEach((header, j) => {
-                  let val: any = currentline[j] ? currentline[j].trim().replace(/^"|"$/g, '') : null;
-                  if (typeof val === 'string') val = val.replace(/""/g, '"');
-                  if (val === "") val = null;
-
-                  // Mapping header kustom ke field database
-                  let dbField = header;
-                  if (header === 'catatan_by_mkt') dbField = 'catatan_mkt';
-                  if (header === 'catatan_by_fa') dbField = 'catatan_fa';
-                  
-                  obj[dbField] = val;
+                  if (!header) return;
+                  if (allowed && !allowed.has(header) && !header.startsWith('id_')) return; // skip kolom asing
+                  let val: any = cells[j];
+                  if (val !== undefined && val !== null) {
+                     val = String(val).trim();
+                     if (val === '') val = null;
+                  } else {
+                     val = null;
+                  }
+                  obj[header] = val;
                });
 
-               // Hapus ID jika null agar Supabase generate UUID baru
+               // Validasi field wajib
+               const missing = required.filter(f => !obj[f]);
+               if (missing.length > 0) {
+                  skipped.push({ row: i + 1, reason: `field wajib kosong: ${missing.join(', ')}` });
+                  continue;
+               }
+
+               // Hapus ID kalau kosong → supaya Supabase generate UUID baru (insert)
+               // Kalau ada ID → upsert akan update existing row
                if (!obj.id_claim) delete obj.id_claim;
                if (!obj.id_garansi) delete obj.id_garansi;
                if (!obj.id_service) delete obj.id_service;
 
-               // Data dari file CSV tidak perlu bawa kolom tanggal ini, biar sistem yg generate
+               // Bersihkan kolom auto-managed
                delete obj.created_at;
                delete obj.updated_at;
 
                result.push(obj);
             }
 
-            const { error } = await supabase.from(importTarget).upsert(result);
+            if (result.length === 0) {
+               throw new Error(`Tidak ada baris valid untuk di-import.${skipped.length > 0 ? ` ${skipped.length} baris di-skip.` : ''}`);
+            }
+
+            // Tentukan onConflict berdasarkan target
+            const conflictKey: Record<string, string> = {
+               claim_promo: 'id_claim',
+               garansi: 'id_garansi',
+               konsumen: 'nomor_wa',
+               status_service: 'id_service',
+            };
+
+            const { error } = await supabase.from(importTarget).upsert(result, {
+               onConflict: conflictKey[importTarget],
+               ignoreDuplicates: false,
+            });
             if (error) throw error;
 
-            alert(`Data CSV berhasil di-update ke tabel ${importTarget}!`);
+            const skippedNote = skipped.length > 0
+               ? `\n\n⚠️ ${skipped.length} baris di-skip:\n${skipped.slice(0, 5).map(s => `• Baris ${s.row}: ${s.reason}`).join('\n')}${skipped.length > 5 ? `\n• ... (${skipped.length - 5} lainnya)` : ''}`
+               : '';
+            alert(`✅ Berhasil import ${result.length} baris ke tabel ${importTarget}.${skippedNote}`);
             window.location.reload();
          } catch (error: any) {
-            alert('Gagal import CSV: Pastikan format sesuai template. Pesan Error: ' + error.message);
+            alert('❌ Gagal import CSV: ' + error.message);
          } finally {
             setIsSubmitting(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -884,9 +1027,10 @@ export default function NikonDashboard() {
          setEditingId(item?.id_karyawan || null);
       }
       else if (type === 'event') {
-         setEventForm(item || { status: 'aktif', stock: 0 });
+         setEventForm(item || { event_status: 'In stock', event_partisipant_stock: 0, event_payment_tipe: 'regular' });
          setEditingId(item?.id || null);
          setEventImageFile(null);
+         setEventPaymentScreenshotFile(null);
       }
       else if (type === 'eventregistration') {
          setRegistrationForm(item || { status: 'Pending Payment' });
@@ -906,9 +1050,10 @@ export default function NikonDashboard() {
       setKaryawanForm({});
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' });
       setBotSettingsForm({});
-      setEventForm({ status: 'aktif', stock: 0 });
-      setRegistrationForm({ status: 'Pending Payment' });
+      setEventForm({ event_status: 'In stock', event_partisipant_stock: 0, event_payment_tipe: 'regular' });
+      setRegistrationForm({ status_pendaftaran: 'menunggu_validasi' });
       setEventImageFile(null);
+      setEventPaymentScreenshotFile(null);
       setEditingId(null);
       if (returnTab) {
          setActiveTab(returnTab);
@@ -1093,7 +1238,7 @@ export default function NikonDashboard() {
             if (!karyawanForm.nomor_wa) throw new Error("Nomor WhatsApp wajib diisi!");
             await supabase.from('karyawan').insert([{ ...karyawanForm, password: passwordToUse }]);
 
-            const msg = chatbotTexts.newKaryawan(karyawanForm.nama_karyawan!, karyawanForm.username!, passwordToUse);
+            const msg = whatsappMessages.newKaryawan(karyawanForm.nama_karyawan!, karyawanForm.username!, passwordToUse);
             await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
          } else {
             const updateData = { ...karyawanForm };
@@ -1101,7 +1246,7 @@ export default function NikonDashboard() {
             await supabase.from('karyawan').update(updateData).eq('id_karyawan', editingId);
 
             if (updateData.password && karyawanForm.nomor_wa) {
-               const msg = chatbotTexts.updatePasswordAdmin(karyawanForm.nama_karyawan!, updateData.password);
+               const msg = whatsappMessages.updatePasswordAdmin(karyawanForm.nama_karyawan!, updateData.password);
                await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
             }
          }
@@ -1117,7 +1262,7 @@ export default function NikonDashboard() {
          await supabase.from('karyawan').update({ password: karyawanForm.password }).eq('id_karyawan', editingId);
 
          if (karyawanForm.nomor_wa) {
-            const msg = chatbotTexts.resetPasswordAdmin(karyawanForm.nama_karyawan!, karyawanForm.password!);
+            const msg = whatsappMessages.resetPasswordAdmin(karyawanForm.nama_karyawan!, karyawanForm.password!);
             await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
          }
 
@@ -1170,12 +1315,12 @@ export default function NikonDashboard() {
          else await supabase.from('peminjaman_barang').update(dataToSave).eq('id_peminjaman', editingId);
 
          // 3. Send WhatsApp message
-         let message = chatbotTexts.lendingInitHeader(lendingForm.nama_peminjam!);
+         let message = whatsappMessages.lendingInitHeader(lendingForm.nama_peminjam!);
          lendingForm.items_dipinjam?.forEach((item, idx) => {
-            message += chatbotTexts.lendingInitItem(idx, item.nama_barang, item.nomor_seri, item.catatan || '');
+            message += whatsappMessages.lendingInitItem(idx, item.nama_barang, item.nomor_seri, item.catatan || '');
          });
          // The initial message for lending doesn't need return notes.
-         message += chatbotTexts.lendingInitFooter();
+         message += whatsappMessages.lendingInitFooter();
          await sendWhatsAppMessageViaFonnte(lendingForm.nomor_wa_peminjam!, message);
 
          fetchLendingRecords();
@@ -1207,9 +1352,14 @@ export default function NikonDashboard() {
       e.preventDefault();
       try {
          const payload = { ...eventForm };
+         const titleSlug = eventForm.event_title?.replace(/\s+/g, '_') || 'event';
          if (eventImageFile) {
-            const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', eventForm.title?.replace(/\s+/g, '_') || 'poster');
-            payload.image = imageUrl;
+            const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', titleSlug);
+            payload.event_image = imageUrl;
+         }
+         if (eventPaymentScreenshotFile) {
+            const paymentUrl = await uploadFileToStorage(eventPaymentScreenshotFile, 'EventPaymentInfo', titleSlug);
+            payload.event_upload_payment_screenshot = paymentUrl;
          }
          if (modalAction === 'create') {
             const { error } = await supabase.from('events').insert([payload]);
@@ -1289,7 +1439,7 @@ export default function NikonDashboard() {
    const handleKirimStatusClaim = async (c: ClaimPromo) => {
 
       if (!window.confirm('Kirim status claim ke WA konsumen?')) return;
-      const msg = chatbotTexts.statusClaim(c.nomor_seri, c.tipe_barang, c.validasi_by_mkt, c.validasi_by_fa, c.nama_jasa_pengiriman || '-', c.nomor_resi || '-', c.catatan_mkt || '');
+      const msg = whatsappMessages.statusClaim(c.nomor_seri, c.tipe_barang, c.validasi_by_mkt, c.validasi_by_fa, c.nama_jasa_pengiriman || '-', c.nomor_resi || '-', c.catatan_mkt || '');
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
       await supabase.from('riwayat_pesan').insert([{ nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
       alert('Pesan status berhasil dikirim!');
@@ -1300,7 +1450,7 @@ export default function NikonDashboard() {
       const linked = claims.find(c => c.nomor_seri === w.nomor_seri);
       if (!linked || !linked.nomor_wa) return alert('Gagal: Tidak dapat menemukan Nomor WA (Barang ini tidak ada di tabel Claim Promo).');
       if (!window.confirm('Kirim status garansi ke WA konsumen?')) return;
-      const msg = chatbotTexts.statusGaransi(w.nomor_seri, w.tipe_barang, w.jenis_garansi, w.lama_garansi, calculateSisaGaransi(linked.tanggal_pembelian, w.lama_garansi));
+      const msg = whatsappMessages.statusGaransi(w.nomor_seri, w.tipe_barang, w.jenis_garansi, w.lama_garansi, calculateSisaGaransi(linked.tanggal_pembelian, w.lama_garansi));
       await sendWhatsAppMessageViaFonnte(linked.nomor_wa, msg);
       await supabase.from('riwayat_pesan').insert([{ nomor_wa: linked.nomor_wa, nama_profil_wa: getRealProfileName(linked.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
       alert('Pesan status berhasil dikirim!');
@@ -1308,19 +1458,19 @@ export default function NikonDashboard() {
    };
 
    const handleSendEventSuccessWA = async (reg: EventRegistration) => {
-      if (!window.confirm(`Kirim notifikasi konfirmasi pembayaran ke ${reg.full_name}?`)) return;
-      
-      const message = `Halo *${reg.full_name}*,\n\nPembayaran Anda untuk event *${reg.event_name}* telah kami validasi. ✅\n\nSilakan simpan pesan ini sebagai bukti pendaftaran resmi. Sampai jumpa di lokasi acara!\n\nSalam,\nNikon Indonesia`;
+      if (!window.confirm(`Kirim notifikasi konfirmasi pembayaran ke ${reg.nama_lengkap}?`)) return;
+
+      const message = `Halo *${reg.nama_lengkap}*,\n\nPembayaran Anda untuk event *${reg.event_name}* telah kami validasi. ✅\n\nSilakan simpan pesan ini sebagai bukti pendaftaran resmi. Sampai jumpa di lokasi acara!\n\nSalam,\nNikon Indonesia`;
 
       try {
-         await sendWhatsAppMessageViaFonnte(reg.wa_number, message);
-         await supabase.from('riwayat_pesan').insert([{ 
-            nomor_wa: reg.wa_number, 
-            nama_profil_wa: reg.full_name, 
-            arah_pesan: 'OUT', 
-            isi_pesan: message, 
-            waktu_pesan: new Date().toISOString(), 
-            bicara_dengan_cs: false 
+         await sendWhatsAppMessageViaFonnte(reg.nomor_wa, message);
+         await supabase.from('riwayat_pesan').insert([{
+            nomor_wa: reg.nomor_wa,
+            nama_profil_wa: reg.nama_lengkap,
+            arah_pesan: 'OUT',
+            isi_pesan: message,
+            waktu_pesan: new Date().toISOString(),
+            bicara_dengan_cs: false
          }]);
          alert('Notifikasi berhasil dikirim!');
          fetchMessages();
@@ -1355,11 +1505,11 @@ export default function NikonDashboard() {
          // Send WhatsApp message for returned items
          const returnedItems = lending.items_dipinjam.filter(item => item.status_pengembalian === 'dikembalikan');
          if (returnedItems.length > 0) {
-            let message = chatbotTexts.lendingReturnHeader(lending.nama_peminjam);
+            let message = whatsappMessages.lendingReturnHeader(lending.nama_peminjam);
             returnedItems.forEach((item, idx) => {
-               message += chatbotTexts.lendingReturnItem(idx, item.nama_barang, item.nomor_seri, item.catatan_pengembalian || '');
+               message += whatsappMessages.lendingReturnItem(idx, item.nama_barang, item.nomor_seri, item.catatan_pengembalian || '');
             });
-            message += chatbotTexts.lendingReturnFooter();
+            message += whatsappMessages.lendingReturnFooter();
             await sendWhatsAppMessageViaFonnte(lending.nomor_wa_peminjam, message);
          }
 
@@ -1655,7 +1805,7 @@ export default function NikonDashboard() {
       return map;
    }, [events]);
 
-   const filteredEvents = useMemo(() => events.filter((e: EventData) => (e.title || "").toLowerCase().includes(searchEvent.toLowerCase())), [events, searchEvent]);
+   const filteredEvents = useMemo(() => events.filter((e: EventData) => (e.event_title || "").toLowerCase().includes(searchEvent.toLowerCase())), [events, searchEvent]);
    const sortedEvents = useMemo(() => {
       const sortableItems = [...filteredEvents];
       return sortableItems.sort(getSortFunction(sortConfigEvents, consumers));
@@ -1746,29 +1896,68 @@ export default function NikonDashboard() {
       return sortableItems.sort(getSortFunction(sortConfigLending, consumers));
    }, [filteredLendingRecords, sortConfigLending, consumers]);
 
-   const ALL_TABS = [
-      { id: 'dashboard', label: '🎯 Dashboard', count: undefined },
-      { id: 'messages', label: '💬 Pesan', count: messages.length },
-      { id: 'konsumen', label: '👥 Konsumen', count: consumersList.length },
-
-      { id: 'promos', label: '📢 Promo', count: promos.length },
-      { id: 'claims', label: '🎫 Claim', count: claims.length },
-      { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
-      { id: 'services', label: '🔧 Service', count: services.length },
-      { id: 'budgets', label: '💳 ProposalEvent', count: budgets.length },
-      { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
-      { id: 'import', label: '📦 Import Data', count: undefined },
-      { id: 'userrole', label: '🔐 User Role', count: karyawans.length },
-      { id: 'botsettings', label: '⚙️ Bot Settings', count: botSettings.length },
-      { id: 'events', label: '📅 Master Event', count: events.length },
-      { id: 'eventregistrations', label: '👥 Data Peserta', count: eventRegistrations.length },
+   // Tabs dikelompokkan untuk navbar yg lebih rapi
+   const TAB_GROUPS = [
+      {
+         label: 'Beranda',
+         tabs: [
+            { id: 'dashboard', label: '🎯 Dashboard', count: undefined as number | undefined },
+         ],
+      },
+      {
+         label: 'Komunikasi & Konsumen',
+         tabs: [
+            { id: 'messages', label: '💬 Pesan', count: messages.length },
+            { id: 'konsumen', label: '👥 Konsumen', count: consumersList.length },
+         ],
+      },
+      {
+         label: 'Produk & Layanan',
+         tabs: [
+            { id: 'promos', label: '📢 Promo', count: promos.length },
+            { id: 'claims', label: '🎫 Claim', count: claims.length },
+            { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
+            { id: 'services', label: '🔧 Service', count: services.length },
+         ],
+      },
+      {
+         label: 'Operasional',
+         tabs: [
+            { id: 'budgets', label: '💳 ProposalEvent', count: budgets.length },
+            { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
+            { id: 'import', label: '📥 Import Data', count: undefined },
+         ],
+      },
+      {
+         label: 'Event',
+         tabs: [
+            { id: 'events', label: '📅 Master Event', count: events.length },
+            { id: 'eventregistrations', label: '🎟️ Data Peserta', count: eventRegistrations.length },
+         ],
+      },
+      {
+         label: 'Sistem',
+         tabs: [
+            { id: 'botsettings', label: '⚙️ Bot Settings', count: botSettings.length },
+            { id: 'userrole', label: '🔐 User Role', count: karyawans.length },
+         ],
+      },
    ];
 
-   const visibleTabs = ALL_TABS.filter(tab => {
+   const ALL_TABS = TAB_GROUPS.flatMap(g => g.tabs);
+
+   const isTabVisible = (tabId: string) => {
       if (currentUser?.role === 'Admin') return true;
-      if (tab.id === 'userrole') return false;
-      return (currentUser?.akses_halaman || []).includes(tab.id);
-   });
+      if (tabId === 'userrole') return false;
+      return (currentUser?.akses_halaman || []).includes(tabId);
+   };
+
+   const visibleTabs = ALL_TABS.filter(t => isTabVisible(t.id));
+
+   const visibleTabGroups = TAB_GROUPS.map(g => ({
+      ...g,
+      tabs: g.tabs.filter(t => isTabVisible(t.id)),
+   })).filter(g => g.tabs.length > 0);
 
    useEffect(() => {
       if (currentUser && visibleTabs.length > 0 && !visibleTabs.find(t => t.id === activeTab)) { setActiveTab(visibleTabs[0].id); }
@@ -1853,9 +2042,75 @@ export default function NikonDashboard() {
                      <span className="text-sm font-bold text-[#FFE500]">{currentUser?.nama_karyawan}</span>
                   </div>
                   <div className="w-9 h-9 rounded-full bg-[#FFE500] text-black font-bold flex items-center justify-center shadow-md text-sm">{currentUser?.nama_karyawan?.substring(0, 1).toUpperCase()}</div>
-                  <a href="/chatbot" className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-md">
-                     🤖
-                  </a>
+                  {/* QUICK LINKS DROPDOWN */}
+                  <div className="relative">
+                     <button
+                        onClick={() => setLinksMenuOpen(v => !v)}
+                        className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-1.5"
+                        title="Link halaman event"
+                     >
+                        🔗 <span className="hidden md:inline">Links</span>
+                        <svg className={`w-3 h-3 transition-transform ${linksMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                     </button>
+                     {linksMenuOpen && (
+                        <>
+                           <div className="fixed inset-0 z-30" onClick={() => setLinksMenuOpen(false)} />
+                           <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-2xl border border-gray-200 z-40 overflow-hidden">
+                              <div className="bg-gray-50 px-4 py-2 border-b border-gray-100">
+                                 <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Halaman Publik (Customer)</p>
+                              </div>
+                              <a href="/events/register" target="_blank" rel="noopener noreferrer" onClick={() => setLinksMenuOpen(false)} className="flex items-start gap-3 px-4 py-3 hover:bg-yellow-50 transition-colors border-b border-gray-100">
+                                 <span className="text-2xl">🎫</span>
+                                 <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-gray-900">Katalog & Daftar Event</p>
+                                    <p className="text-[11px] text-gray-500 truncate">/events/register</p>
+                                 </div>
+                                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+                              <a href="/events/refund" target="_blank" rel="noopener noreferrer" onClick={() => setLinksMenuOpen(false)} className="flex items-start gap-3 px-4 py-3 hover:bg-yellow-50 transition-colors">
+                                 <span className="text-2xl">💰</span>
+                                 <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-gray-900">Klaim Pengembalian Deposit</p>
+                                    <p className="text-[11px] text-gray-500 truncate">/events/refund</p>
+                                 </div>
+                                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+
+                              <div className="bg-gray-50 px-4 py-2 border-b border-t border-gray-100">
+                                 <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Halaman Admin</p>
+                              </div>
+                              <a href="/admin/events" target="_blank" rel="noopener noreferrer" onClick={() => setLinksMenuOpen(false)} className="flex items-start gap-3 px-4 py-3 hover:bg-yellow-50 transition-colors border-b border-gray-100">
+                                 <span className="text-2xl">✅</span>
+                                 <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-gray-900">Validasi Pembayaran Event</p>
+                                    <p className="text-[11px] text-gray-500 truncate">/admin/events</p>
+                                 </div>
+                                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+                              <a href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" onClick={() => setLinksMenuOpen(false)} className="flex items-start gap-3 px-4 py-3 hover:bg-yellow-50 transition-colors border-b border-gray-100">
+                                 <span className="text-2xl">📷</span>
+                                 <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-gray-900">Absensi & Scan QR</p>
+                                    <p className="text-[11px] text-gray-500 truncate">/admin/events/attendance</p>
+                                 </div>
+                                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+                              <a href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" onClick={() => setLinksMenuOpen(false)} className="flex items-start gap-3 px-4 py-3 hover:bg-yellow-50 transition-colors">
+                                 <span className="text-2xl">💸</span>
+                                 <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-gray-900">Kelola Deposit Event</p>
+                                    <p className="text-[11px] text-gray-500 truncate">/admin/events/deposit</p>
+                                 </div>
+                                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+
+                              <div className="bg-gray-50 px-4 py-2 border-t border-gray-100">
+                                 <p className="text-[10px] text-gray-400">Klik untuk buka di tab baru</p>
+                              </div>
+                           </div>
+                        </>
+                     )}
+                  </div>
                   <button onClick={handleLogout} className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-sm">Logout</button>
                </div>
             </header>
@@ -1866,13 +2121,51 @@ export default function NikonDashboard() {
 
                {/* SIDEBAR NAVIGATION */}
                <div className={`fixed md:relative z-20 md:z-auto top-0 left-0 h-full w-64 bg-white border-r border-gray-200 shadow-sm overflow-y-auto transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-                  <div className="p-4 space-y-2 pt-20 md:pt-4">
-                     {visibleTabs.map(tab => (
-                        <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between group ${activeTab === tab.id ? 'bg-[#FFE500] text-black shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}>
-                           <span>{tab.label}</span>
-                           {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${activeTab === tab.id ? 'bg-black/20' : 'bg-gray-200 text-gray-600'}`}>{tab.count}</span>}
-                        </button>
+                  <div className="p-4 pt-20 md:pt-4 space-y-4">
+                     {visibleTabGroups.map(group => (
+                        <div key={group.label} className="space-y-1">
+                           <p className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{group.label}</p>
+                           {group.tabs.map(tab => (
+                              <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between group ${activeTab === tab.id ? 'bg-[#FFE500] text-black shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}>
+                                 <span>{tab.label}</span>
+                                 {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${activeTab === tab.id ? 'bg-black/20' : 'bg-gray-200 text-gray-600'}`}>{tab.count}</span>}
+                              </button>
+                           ))}
+                        </div>
                      ))}
+
+                     {/* EVENT TOOLS — link langsung ke page admin event (di-gate per akses) */}
+                     {(() => {
+                        const isAdmin = currentUser?.role === 'Admin';
+                        const access = currentUser?.akses_halaman || [];
+                        const canAttendance = isAdmin || access.includes('admin_attendance');
+                        const canValidate = isAdmin || access.includes('admin_validate_payment');
+                        const canDeposit = isAdmin || access.includes('admin_deposit_refund');
+                        if (!canAttendance && !canValidate && !canDeposit) return null;
+                        return (
+                           <div className="pt-4 mt-4 border-t border-gray-200">
+                              <p className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Event Tools</p>
+                              {canAttendance && (
+                                 <a href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 mb-2">
+                                    <span className="flex items-center gap-2">📷 Absensi Scan QR</span>
+                                    <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                 </a>
+                              )}
+                              {canValidate && (
+                                 <a href="/admin/events" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 mb-2">
+                                    <span className="flex items-center gap-2">✅ Validasi Bayar</span>
+                                    <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                 </a>
+                              )}
+                              {canDeposit && (
+                                 <a href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" className="w-full text-left px-4 py-3 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200">
+                                    <span className="flex items-center gap-2">💸 Deposit</span>
+                                    <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                 </a>
+                              )}
+                           </div>
+                        );
+                     })()}
                   </div>
                </div>
 
@@ -1880,111 +2173,162 @@ export default function NikonDashboard() {
                <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
 
                {/* ======================= DASHBOARD OVERVIEW ======================= */}
-               {activeTab === 'dashboard' && (
+               {activeTab === 'dashboard' && (() => {
+                  // Hitung metrik penting yg jadi insight untuk admin
+                  const pendingClaims = claims.filter(c => {
+                     const color = getClaimStatusColor(c);
+                     return color !== 'Hijau' && color !== 'Merah';
+                  }).length;
+                  const pendingRegs = eventRegistrations.filter(r => (r.status_pendaftaran || (r as any).status) === 'menunggu_validasi' || (r as any).status === 'Pending').length;
+                  const upcomingEvents = events.filter(e => {
+                     const d = parseIdDate(e.event_date);
+                     return d && d >= new Date();
+                  }).length;
+                  const activeLending = lendingRecords.filter(l => l.status_peminjaman === 'aktif').length;
+                  const todayMsg = messages.filter(m => {
+                     const t = m.waktu_pesan ? new Date(m.waktu_pesan) : null;
+                     if (!t) return false;
+                     const today = new Date();
+                     return t.toDateString() === today.toDateString();
+                  }).length;
+                  const isAdmin = currentUser?.role === 'Admin';
+
+                  return (
                   <div className="animate-fade-in space-y-6">
-                     {/* WELCOME CARD */}
-                     <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-2xl p-8 text-white shadow-lg border border-gray-700">
-                        <div className="flex justify-between items-start">
-                           <div>
-                              <h2 className="text-3xl font-bold mb-2">Selamat Datang Kembali! 👋</h2>
-                              <p className="text-gray-300">Anda login sebagai <span className="font-bold text-[#FFE500]">{currentUser?.nama_karyawan}</span> ({currentUser?.role})</p>
-                              <p className="text-gray-400 text-sm mt-2">Dashboard diperbarui untuk pengalaman yang lebih baik</p>
+                     {/* WELCOME CARD — bersih, tidak terlalu mewah */}
+                     <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-2xl p-6 md:p-8 text-white border border-zinc-700 shadow-sm">
+                        <div className="flex justify-between items-start gap-4">
+                           <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-[#FFE500] uppercase tracking-widest mb-2">Dashboard</p>
+                              <h2 className="text-2xl md:text-3xl font-bold mb-2">Halo, {currentUser?.nama_karyawan?.split(' ')[0] || 'Admin'} 👋</h2>
+                              <p className="text-zinc-400 text-sm">Login sebagai <span className="text-[#FFE500] font-semibold">{currentUser?.role}</span> · {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
                            </div>
-                           <div className="shadow-lg rounded-lg overflow-hidden">
-                              <img src="/nikon-logo.svg" alt="Nikon" className="h-16 w-auto" />
-                           </div>
+                           <img src="/nikon-logo.svg" alt="Nikon" className="h-12 md:h-14 w-auto opacity-80 flex-shrink-0" />
                         </div>
                      </div>
 
-                     {/* STATISTICS CARDS */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
-                              <div>
-                                 <p className="stat-label">Total Messages</p>
-                                 <p className="stat-value">{messages.length}</p>
-                              </div>
-                              <div className="text-4xl">💬</div>
+                     {/* PERLU PERHATIAN — actionable items dengan badge angka */}
+                     {(pendingClaims > 0 || pendingRegs > 0 || activeLending > 0) && (
+                        <Section label="Perlu Perhatian" title="Item yang Belum Selesai">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {pendingClaims > 0 && (
+                                 <Card hoverable padding="md" onClick={() => setActiveTab('claims')} className="border-amber-200 bg-amber-50/50">
+                                    <div className="flex items-start justify-between gap-3">
+                                       <div className="min-w-0">
+                                          <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Claim</p>
+                                          <p className="text-2xl font-bold text-amber-900 mt-1">{pendingClaims}</p>
+                                          <p className="text-xs text-amber-700/80 mt-1">menunggu validasi</p>
+                                       </div>
+                                       <span className="text-3xl flex-shrink-0">🎫</span>
+                                    </div>
+                                 </Card>
+                              )}
+                              {pendingRegs > 0 && (
+                                 <Card hoverable padding="md" onClick={() => setActiveTab('eventregistrations')} className="border-orange-200 bg-orange-50/50">
+                                    <div className="flex items-start justify-between gap-3">
+                                       <div className="min-w-0">
+                                          <p className="text-xs font-bold text-orange-700 uppercase tracking-wider">Pendaftaran Event</p>
+                                          <p className="text-2xl font-bold text-orange-900 mt-1">{pendingRegs}</p>
+                                          <p className="text-xs text-orange-700/80 mt-1">belum divalidasi pembayaran</p>
+                                       </div>
+                                       <span className="text-3xl flex-shrink-0">🎟️</span>
+                                    </div>
+                                 </Card>
+                              )}
+                              {activeLending > 0 && (
+                                 <Card hoverable padding="md" onClick={() => setActiveTab('lending')} className="border-blue-200 bg-blue-50/50">
+                                    <div className="flex items-start justify-between gap-3">
+                                       <div className="min-w-0">
+                                          <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Peminjaman</p>
+                                          <p className="text-2xl font-bold text-blue-900 mt-1">{activeLending}</p>
+                                          <p className="text-xs text-blue-700/80 mt-1">barang sedang dipinjam</p>
+                                       </div>
+                                       <span className="text-3xl flex-shrink-0">📦</span>
+                                    </div>
+                                 </Card>
+                              )}
                            </div>
-                           <div className="text-xs text-gray-500">Chat history</div>
-                        </div>
+                        </Section>
+                     )}
 
-                        <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
-                              <div>
-                                 <p className="stat-label">Claims Promo</p>
-                                 <p className="stat-value">{claims.length}</p>
-                              </div>
-                              <div className="text-4xl">🎁</div>
+                     {/* RINGKASAN DATA — overview cepat semua entity */}
+                     <Section label="Ringkasan" title="Data di Sistem">
+                        <StatGrid cols={4}>
+                           <Stat label="Konsumen" value={consumersList.length} icon="👥" onClick={() => setActiveTab('konsumen')} />
+                           <Stat label="Claim" value={claims.length} icon="🎫" onClick={() => setActiveTab('claims')} />
+                           <Stat label="Garansi" value={warranties.length} icon="🛡️" onClick={() => setActiveTab('warranties')} />
+                           <Stat label="Service" value={services.length} icon="🔧" onClick={() => setActiveTab('services')} />
+                        </StatGrid>
+
+                        <StatGrid cols={4}>
+                           <Stat label="Master Event" value={events.length} icon="📅" onClick={() => setActiveTab('events')} />
+                           <Stat label="Pendaftar Event" value={eventRegistrations.length} icon="🎟️" onClick={() => setActiveTab('eventregistrations')} />
+                           <Stat label="Event Mendatang" value={upcomingEvents} variant="brand" icon="✨" />
+                           <Stat label="Pesan Hari Ini" value={todayMsg} icon="💬" onClick={() => setActiveTab('messages')} />
+                        </StatGrid>
+                     </Section>
+
+                     {/* QUICK ACTIONS — tombol-tombol shortcut */}
+                     <Section label="Aksi Cepat" title="Operasi yang Sering Dipakai">
+                        <Card padding="md">
+                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                              <Button variant="secondary" size="md" leftIcon="💬" onClick={() => setActiveTab('messages')}>Buka Pesan</Button>
+                              <Button variant="secondary" size="md" leftIcon="🎫" onClick={() => setActiveTab('claims')}>Lihat Claim</Button>
+                              <Button variant="secondary" size="md" leftIcon="📅" onClick={() => setActiveTab('events')}>Master Event</Button>
+                              <Button variant="secondary" size="md" leftIcon="🎟️" onClick={() => setActiveTab('eventregistrations')}>Data Peserta</Button>
+                              <Button variant="secondary" size="md" leftIcon="📥" onClick={() => setActiveTab('import')}>Import Data</Button>
+                              <Button variant="secondary" size="md" leftIcon="📦" onClick={() => setActiveTab('lending')}>Peminjaman</Button>
+                              {isAdmin && <Button variant="secondary" size="md" leftIcon="🔐" onClick={() => setActiveTab('userrole')}>User Role</Button>}
+                              {isAdmin && <Button variant="secondary" size="md" leftIcon="⚙️" onClick={() => setActiveTab('botsettings')}>Bot Settings</Button>}
                            </div>
-                           <div className="text-xs text-gray-500">Active claims</div>
-                        </div>
+                        </Card>
+                     </Section>
 
-                        <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
-                              <div>
-                                 <p className="stat-label">Warranties</p>
-                                 <p className="stat-value">{warranties.length}</p>
-                              </div>
-                              <div className="text-4xl">🛡️</div>
-                           </div>
-                           <div className="text-xs text-gray-500">Product warranties</div>
-                        </div>
-
-                        <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
-                              <div>
-                                 <p className="stat-label">Employees</p>
-                                 <p className="stat-value">{karyawans.length}</p>
-                              </div>
-                              <div className="text-4xl">👥</div>
-                           </div>
-                           <div className="text-xs text-gray-500">Team members</div>
-                        </div>
-                     </div>
-
-                     {/* QUICK ACTIONS */}
-                     <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">⚡ Quick Actions</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                           <button onClick={() => setActiveTab('messages')} className="btn-primary text-center py-3 rounded-lg font-semibold hover:shadow-lg transition">
-                              📨 Open Messages
-                           </button>
-                           <button onClick={() => setActiveTab('claims')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition shadow-sm">
-                              🎯 View Claims
-                           </button>
-                           <button onClick={() => setActiveTab('import')} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition shadow-sm">
-                              📤 Import Data
-                           </button>
-                        </div>
-                     </div>
-
-                     {/* INFO CARDS */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6">
-                           <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2">💡 Tips</h4>
-                           <ul className="text-sm text-blue-800 space-y-1">
-                              <li>• Gunakan tab Pesan untuk komunikasi real-time</li>
-                              <li>• Import data dalam urutan yang benar untuk hasil optimal</li>
-                              <li>• Periksa database status di bagian bawah</li>
+                     {/* SYSTEM STATUS + TIPS */}
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <Card padding="md">
+                           <Card.Header
+                              icon="✅"
+                              title="Status Sistem"
+                              subtitle="Realtime check"
+                           />
+                           <ul className="space-y-2.5 text-sm">
+                              <li className="flex items-center justify-between">
+                                 <span className="flex items-center gap-2 text-slate-700"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />Database Supabase</span>
+                                 <Badge variant="success" size="xs" uppercase>Online</Badge>
+                              </li>
+                              <li className="flex items-center justify-between">
+                                 <span className="flex items-center gap-2 text-slate-700"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />WhatsApp Gateway</span>
+                                 <Badge variant="success" size="xs" uppercase>Active</Badge>
+                              </li>
+                              <li className="flex items-center justify-between">
+                                 <span className="flex items-center gap-2 text-slate-700"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />Google Drive</span>
+                                 <Badge variant="success" size="xs" uppercase>Connected</Badge>
+                              </li>
+                              <li className="flex items-center justify-between">
+                                 <span className="flex items-center gap-2 text-slate-700"><span className="w-2 h-2 rounded-full bg-blue-500" />Sesi Anda</span>
+                                 <Badge variant="info" size="xs">{currentUser?.role}</Badge>
+                              </li>
                            </ul>
-                        </div>
-                        <div className="bg-green-50 border border-green-100 rounded-2xl p-6">
-                           <h4 className="font-bold text-green-900 mb-2 flex items-center gap-2">✅ System Status</h4>
-                           <div className="text-sm text-green-800 space-y-1">
-                              <div className="flex items-center gap-2">
-                                 <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                 Database Connected
-                              </div>
-                              <div className="flex items-center gap-2">
-                                 <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                 All Services Running
-                              </div>
-                           </div>
-                        </div>
+                        </Card>
+
+                        <Card padding="md">
+                           <Card.Header
+                              icon="💡"
+                              title="Tips Pemakaian"
+                              subtitle="Shortcut & best practices"
+                           />
+                           <ul className="text-sm text-slate-600 space-y-2">
+                              <li className="flex gap-2"><span className="text-yellow-500">›</span>Klik kartu di atas untuk filter cepat data</li>
+                              <li className="flex gap-2"><span className="text-yellow-500">›</span>Gunakan dropdown <span className="font-semibold text-slate-800">🔗 Links</span> di header untuk akses page event</li>
+                              <li className="flex gap-2"><span className="text-yellow-500">›</span>Import data konsumen dulu sebelum claim/garansi</li>
+                              <li className="flex gap-2"><span className="text-yellow-500">›</span>Scan QR tiket di <span className="font-semibold text-slate-800">/admin/events/attendance</span> saat event berlangsung</li>
+                           </ul>
+                        </Card>
                      </div>
                   </div>
-               )}
+                  );
+               })()}
 
                {/* ======================= IMPORT DATA TAB ======================= */}
                {activeTab === 'import' && (
@@ -2066,7 +2410,7 @@ export default function NikonDashboard() {
                         )}
                         {activeTab === 'botsettings' && <button onClick={() => openModal('create', 'botsettings')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Pengaturan</button>}
                        {activeTab === 'events' && <button onClick={() => openModal('create', 'event')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Event</button>}
-                       {activeTab === 'eventregistrations' && <button onClick={() => setIsScannerOpen(true)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📷 Scan QR Kehadiran</button>}
+                       {activeTab === 'eventregistrations' && <a href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm flex items-center gap-1.5">📷 Absensi & Scan QR<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg></a>}
                         {activeTab === 'eventregistrations' && <button onClick={() => openModal('create', 'eventregistration')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Peserta</button>}
                         {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}
                         {activeTab === 'services' && <button onClick={() => openModal('create', 'service')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Service</button>}
@@ -2212,53 +2556,149 @@ export default function NikonDashboard() {
 
 
 
-               {activeTab === 'konsumen' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     <div className="flex gap-3 items-center">
-                        <input type="text" placeholder="🔍 Cari Nama, No. WA, atau NIK..." value={searchKonsumen} onChange={e => setSearchKonsumen(e.target.value)} className="flex-1 p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                        <button onClick={() => openModal('create', 'konsumen')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2.5 rounded-md font-bold text-sm transition shadow-sm whitespace-nowrap">+ Tambah Konsumen</button>
+               {activeTab === 'konsumen' && (() => {
+                  // Stats
+                  const totalKonsumen = consumersList.length;
+                  const denganNik = consumersList.filter(k => k.nik && k.nik !== 'BELUM_DIISI').length;
+                  const adaAlamat = consumersList.filter(k => k.alamat_rumah && k.alamat_rumah !== 'BELUM_DIISI').length;
+                  const adaClaim = consumersList.filter(k => claims.some(c => c.nomor_wa === k.nomor_wa)).length;
+
+                  const getInitial = (name: string) => (name || '?').trim().charAt(0).toUpperCase();
+                  const avatarColor = (name: string) => {
+                     const colors = ['bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-700', 'bg-purple-100 text-purple-700', 'bg-rose-100 text-rose-700', 'bg-indigo-100 text-indigo-700', 'bg-teal-100 text-teal-700'];
+                     let hash = 0;
+                     for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+                     return colors[hash % colors.length];
+                  };
+
+                  const formatAddress = (k: KonsumenData) => {
+                     return [k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos]
+                        .filter(v => v && v !== 'BELUM_DIISI')
+                        .join(', ');
+                  };
+
+                  return (
+                  <div className="animate-fade-in space-y-6">
+                     <PageHeader
+                        title="Data Konsumen"
+                        subtitle="Master data konsumen — alamat, NIK, dan riwayat klaim"
+                        icon="👥"
+                        actions={<Button variant="primary" leftIcon="+" onClick={() => openModal('create', 'konsumen')}>Tambah Konsumen</Button>}
+                     />
+
+                     {/* STATS */}
+                     <StatGrid cols={4}>
+                        <Stat label="Total Konsumen" value={totalKonsumen} icon="👥" />
+                        <Stat label="NIK Lengkap" value={denganNik} variant="info" icon="🪪" />
+                        <Stat label="Alamat Lengkap" value={adaAlamat} variant="success" icon="📍" />
+                        <Stat label="Punya Claim" value={adaClaim} variant="warning" icon="🎫" onClick={() => setActiveTab('claims')} />
+                     </StatGrid>
+
+                     {/* SEARCH */}
+                     <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                        <input
+                           type="text"
+                           placeholder="Cari nama, nomor WA, atau NIK..."
+                           value={searchKonsumen}
+                           onChange={e => setSearchKonsumen(e.target.value)}
+                           className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 transition"
+                        />
                      </div>
-                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                        <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-4 py-3 text-center font-bold w-12">No</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>Nama {sortConfigKonsumen.column === 'nama_lengkap' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'id_konsumen')}>ID Konsumen {sortConfigKonsumen.column === 'id_konsumen' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nomor_wa')}>No. WhatsApp {sortConfigKonsumen.column === 'nomor_wa' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'alamat_rumah')}>Alamat {sortConfigKonsumen.column === 'alamat_rumah' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nik')}>NIK {sortConfigKonsumen.column === 'nik' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Riwayat Barang</th></tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200">
-                                 {sortedConsumers.map((k: KonsumenData) => {
-                                    const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
-                                    return (
-                                       <tr key={k.nomor_wa} className="hover:bg-gray-50 font-medium">
-                                          <td className="px-4 py-3 text-center font-bold text-gray-600">{konsumenNumberMap.get(k.nomor_wa)}</td>
-                                          <td className="px-4 py-3 text-slate-800 font-bold">{k.nama_lengkap || '-'}</td>
-                                          <td className="px-4 py-3 font-mono">{k.id_konsumen || '-'}</td>
-                                          <td className="px-4 py-3">{k.nomor_wa}</td>
-                                          <td className="px-4 py-3 whitespace-normal">{[k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos].filter(Boolean).join(', ')}</td>
-                                          <td className="px-4 py-3">{k.nik || '-'}</td>
-                                          <td className="px-4 py-3 text-xs">
-                                             <ul className="list-disc list-inside space-y-1">
-                                                {userClaims.length > 0 ? userClaims.map(c => (
-                                                   <li key={c.id_claim}>
-                                                      {c.tipe_barang} (SN: {c.nomor_seri})
-                                                   </li>
-                                                )) : (
-                                                   <li className="text-gray-500 italic">Tidak ada</li>
+
+                     {/* CONTENT */}
+                     {sortedConsumers.length === 0 ? (
+                        <Card padding="lg">
+                           <EmptyState
+                              icon="👥"
+                              title={consumersList.length === 0 ? 'Belum Ada Konsumen' : 'Tidak ada konsumen sesuai pencarian'}
+                              description={consumersList.length === 0 ? 'Tambahkan konsumen pertama, atau impor dari CSV via tab Import Data.' : `Tidak ditemukan konsumen dengan kata kunci "${searchKonsumen}"`}
+                              action={consumersList.length === 0 && <Button variant="primary" onClick={() => openModal('create', 'konsumen')}>+ Tambah Konsumen Pertama</Button>}
+                           />
+                        </Card>
+                     ) : (
+                        <Card padding="none">
+                           <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                              <table className="w-full text-sm">
+                                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                    <tr className="text-left">
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 w-10 text-center">#</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>
+                                          Konsumen {sortConfigKonsumen.column === 'nama_lengkap' && (sortConfigKonsumen.direction === 'asc' ? '↑' : '↓')}
+                                       </th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Identitas</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Alamat</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Riwayat Claim</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-100">
+                                    {sortedConsumers.map((k: KonsumenData) => {
+                                       const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
+                                       const address = formatAddress(k);
+                                       const hasNik = k.nik && k.nik !== 'BELUM_DIISI';
+                                       const hasAddress = !!address;
+                                       return (
+                                          <tr key={k.nomor_wa} className="hover:bg-slate-50 transition">
+                                             <td className="px-3 py-3 text-center font-bold text-slate-400 align-top">{konsumenNumberMap.get(k.nomor_wa)}</td>
+                                             <td className="px-3 py-3 align-top">
+                                                <div className="flex gap-3 items-start">
+                                                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${avatarColor(k.nama_lengkap || k.nomor_wa)}`}>
+                                                      {getInitial(k.nama_lengkap || k.nomor_wa)}
+                                                   </div>
+                                                   <div className="min-w-0">
+                                                      <p className="font-bold text-slate-900 leading-tight">{k.nama_lengkap || <span className="italic text-slate-400">Belum diisi</span>}</p>
+                                                      <p className="text-xs text-slate-500 mt-0.5">📱 {k.nomor_wa}</p>
+                                                      {k.id_konsumen && <p className="text-[11px] font-mono text-slate-400 mt-0.5">{k.id_konsumen}</p>}
+                                                   </div>
+                                                </div>
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-xs">
+                                                {hasNik ? (
+                                                   <p className="font-mono text-slate-700">🪪 {k.nik}</p>
+                                                ) : (
+                                                   <Badge variant="neutral" size="xs">NIK kosong</Badge>
                                                 )}
-                                             </ul>
-                                          </td>
-                                          <td className="px-4 py-3">
-                                             <div className="flex gap-3 items-center">
-                                                <button onClick={() => openModal('edit', 'konsumen', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                                <button onClick={() => handleDelete('konsumen', k.nomor_wa)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                             </div>
-                                          </td>
-                                       </tr>
-                                    );
-                                 })}
-                              </tbody>
-                           </table>
-                        </div>
-                     </div>
-                  )}
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-xs max-w-[280px]">
+                                                {hasAddress ? (
+                                                   <p className="text-slate-700 leading-relaxed">{address}</p>
+                                                ) : (
+                                                   <Badge variant="neutral" size="xs">Alamat kosong</Badge>
+                                                )}
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-xs">
+                                                {userClaims.length > 0 ? (
+                                                   <div className="space-y-1">
+                                                      <Badge variant="warning" size="xs">{userClaims.length} claim</Badge>
+                                                      <ul className="space-y-0.5 mt-1.5 max-w-[200px]">
+                                                         {userClaims.slice(0, 3).map(c => (
+                                                            <li key={c.id_claim} className="text-[11px] text-slate-600 truncate">
+                                                               • {c.tipe_barang} <span className="font-mono text-slate-400">({c.nomor_seri})</span>
+                                                            </li>
+                                                         ))}
+                                                         {userClaims.length > 3 && <li className="text-[10px] text-slate-400">+{userClaims.length - 3} lainnya</li>}
+                                                      </ul>
+                                                   </div>
+                                                ) : (
+                                                   <span className="text-slate-400 italic">Belum ada</span>
+                                                )}
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-right whitespace-nowrap">
+                                                <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'konsumen', k)}>Edit</Button>
+                                                <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('konsumen', k.nomor_wa)}>Hapus</Button>
+                                             </td>
+                                          </tr>
+                                       );
+                                    })}
+                                 </tbody>
+                              </table>
+                           </div>
+                        </Card>
+                     )}
+                  </div>
+                  );
+               })()}
                {/* ======================= PROMOS ======================= */}
                {activeTab === 'promos' && (
                   <div className="space-y-4 animate-fade-in text-gray-900">
@@ -2326,140 +2766,193 @@ export default function NikonDashboard() {
 
                {/* ======================= CLAIMS ======================= */}
                {activeTab === 'claims' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     <div className="flex flex-col md:flex-row gap-2">
-                        <input type="text" placeholder="🔍 Cari Nama / No Seri / Nama Promo / Status MKT / Status FA..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="flex-1 p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                        <select value={filterStatusWarna} onChange={e => setFilterStatusWarna(e.target.value)} className="p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium md:w-48">
-                           <option value="Semua">Semua Status Warna</option>
-                           <option value="Putih">Belum Di Cek (Putih)</option>
-                           <option value="Merah">Tidak Valid (Merah)</option>
-                           <option value="Orange">Hold (Orange)</option>
-                           <option value="Biru">Tunggu FA Cek (Biru)</option>
-                           <option value="Pink">Tunggu Resi (Pink)</option>
-                           <option value="Hijau">Selesai (Hijau)</option>
-                        </select>
+                  <div className="animate-fade-in space-y-6">
+                     <PageHeader
+                        title="Claim Promo"
+                        subtitle="Validasi & track status klaim promo dari konsumen — workflow MKT → FA → Selesai"
+                        icon="🎫"
+                     />
+
+                     {/* STATUS FILTER CHIPS — clickable Stats untuk filter */}
+                     {(() => {
+                        const statuses: { key: string; label: string; color: string; bg: string; border: string; text: string; dot: string }[] = [
+                           { key: 'Putih', label: 'Belum Dicek', color: 'neutral', bg: 'bg-white', border: 'border-slate-300', text: 'text-slate-700', dot: 'bg-slate-300' },
+                           { key: 'Merah', label: 'Tidak Valid', color: 'danger', bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', dot: 'bg-rose-500' },
+                           { key: 'Orange', label: 'Hold', color: 'warning', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', dot: 'bg-orange-500' },
+                           { key: 'Biru', label: 'Tunggu FA', color: 'info', bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', dot: 'bg-sky-500' },
+                           { key: 'Pink', label: 'Tunggu Resi', color: 'pink', bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-700', dot: 'bg-pink-500' },
+                           { key: 'Hijau', label: 'Selesai', color: 'success', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+                        ];
+                        const totalAll = claims.length;
+                        return (
+                           <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
+                              <button
+                                 onClick={() => setFilterStatusWarna('Semua')}
+                                 className={`p-3 rounded-lg border-2 text-left transition ${filterStatusWarna === 'Semua' ? 'border-yellow-400 bg-yellow-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                              >
+                                 <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Semua</span>
+                                    <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+                                 </div>
+                                 <p className="text-2xl font-bold text-slate-900">{totalAll}</p>
+                              </button>
+                              {statuses.map(s => {
+                                 const count = (claimStatusCounts as any)[s.key] || 0;
+                                 const isActive = filterStatusWarna === s.key;
+                                 return (
+                                    <button
+                                       key={s.key}
+                                       onClick={() => setFilterStatusWarna(isActive ? 'Semua' : s.key)}
+                                       className={`p-3 rounded-lg border-2 text-left transition ${isActive ? `${s.border} ${s.bg} ring-2 ring-yellow-400/30` : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                                    >
+                                       <div className="flex items-center justify-between mb-1">
+                                          <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? s.text : 'text-slate-500'}`}>{s.label}</span>
+                                          <span className={`w-2 h-2 rounded-full ${s.dot}`}></span>
+                                       </div>
+                                       <p className={`text-2xl font-bold ${isActive ? s.text : 'text-slate-900'}`}>{count}</p>
+                                    </button>
+                                 );
+                              })}
+                           </div>
+                        );
+                     })()}
+
+                     {/* SEARCH */}
+                     <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                        <input
+                           type="text"
+                           placeholder="Cari nama, nomor seri, nama promo, status MKT/FA..."
+                           value={searchClaim}
+                           onChange={e => setSearchClaim(e.target.value)}
+                           className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 transition"
+                        />
                      </div>
-                     <div className="flex flex-wrap gap-2">
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-white border border-gray-300"></span>
-                           Belum Di Cek: {claimStatusCounts.Putih}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                           Tidak Valid: {claimStatusCounts.Merah}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-orange-500"></span>
-                           Hold: {claimStatusCounts.Orange}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                           Tunggu FA Cek: {claimStatusCounts.Biru}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-pink-500"></span>
-                           Tunggu Resi: {claimStatusCounts.Pink}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                           Selesai: {claimStatusCounts.Hijau}
-                        </div>
-                     </div>
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                           <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-4 py-3 text-center font-bold">No</th><th className="px-4 py-3 text-center font-bold">Status Sistem</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>Nama Promo {sortConfigClaims.column === 'jenis_promosi' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'created_at')}>Tgl Submit {sortConfigClaims.column === 'created_at' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-center font-bold">Durasi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>Toko {sortConfigClaims.column === 'nama_toko' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Nota/Garansi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'validasi_by_mkt')}>MKT / FA {sortConfigClaims.column === 'validasi_by_mkt' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Catatan MKT</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200">
-                                 {sortedClaims.map((c: ClaimPromo) => {
-                                    const isDuplicate = c.id_claim ? duplicateClaimIds.has(c.id_claim) : false;
-                                    return (
-                                    <tr key={c.id_claim} className={`hover:bg-gray-50 font-medium ${isDuplicate ? 'bg-red-50' : ''}`}>
-                                       <td className="px-4 py-3 text-center font-bold text-gray-600">{claimNumberMap.get(c.id_claim!)}</td>
-                                       <td className="px-4 py-3 text-center">
-                                          <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold shadow-sm inline-block ${getBadgeStyle(getClaimStatusColor(c))}`}>
-                                             {getBadgeLabel(getClaimStatusColor(c))}
-                                          </span>
-                                       </td>
-                                       <td className="px-4 py-3 text-slate-800 font-bold">{consumers[c.nomor_wa] || c.nomor_wa}</td>
-                                       <td className="px-4 py-3 font-mono">
-                                          <div className="flex items-center gap-2">
-                                             {c.nomor_seri}
-                                             {isDuplicate && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap animate-pulse" title="Nomor seri ini sudah pernah diklaim sebelumnya">⚠️ DUPLIKAT</span>}
-                                          </div>
-                                       </td>
-                                       <td className="px-4 py-3">{c.tipe_barang}</td>
-                                       <td className="px-4 py-3 font-bold text-black">{c.jenis_promosi || getNamaPromo(c.tipe_barang)}</td>
-                                       <td className="px-4 py-3">{c.tanggal_pembelian}</td>
-                                       <td className="px-4 py-3">{formatSubmitDate(c.created_at)}</td>
-                                       <td className="px-4 py-3">{getClaimDurationDays(c.created_at)}</td>
-                                       <td className="px-4 py-3">{c.nama_toko || '-'}</td>
-                                       <td className="px-4 py-3 text-black font-bold text-xs flex flex-col gap-1 whitespace-normal">
-                                          {c.link_nota_pembelian ? (
-                                             <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="hover:underline hover:text-blue-800 text-left flex items-center gap-1">
-                                                {typeof c.link_nota_pembelian === 'string' && isGoogleDriveLink(c.link_nota_pembelian) ? '🔗📂' : '🔗'} Lihat Nota {typeof c.link_nota_pembelian === 'string' && isGoogleDriveLink(c.link_nota_pembelian) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">(Google Drive)</span>}
-                                             </button>
-                                          ) : (
-                                             <span className="text-gray-500 italic">Tidak ada Nota</span>
-                                          )}
-                                          {c.link_kartu_garansi ? (
-                                             <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="hover:underline hover:text-blue-800 text-left flex items-center gap-1">
-                                                {typeof c.link_kartu_garansi === 'string' && isGoogleDriveLink(c.link_kartu_garansi) ? '🔗📂' : '🔗'} Lihat Garansi {typeof c.link_kartu_garansi === 'string' && isGoogleDriveLink(c.link_kartu_garansi) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">(Google Drive)</span>}
-                                             </button>
-                                          ) : (
-                                             <span className="text-gray-500 italic">Tidak ada Garansi</span>
-                                          )}
-                                       </td>
-                                       <td className="px-4 py-3 text-xs font-bold whitespace-normal max-w-[150px]">{c.validasi_by_mkt} / {c.validasi_by_fa}</td>
-                                       <td className="px-4 py-3 text-xs text-gray-700 whitespace-normal max-w-[200px]">{c.catatan_mkt || '-'}</td>
-                                       <td className="px-4 py-3">
-                                          <div className="flex gap-3 items-center flex-wrap min-w-[200px]">
-                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
-                                                <label className="flex items-center gap-1.5 cursor-pointer">
-                                                   <input
-                                                      type="checkbox"
-                                                      checked={c.id_claim ? printedClaimIds.has(c.id_claim) : false}
-                                                      onChange={(e) => {
-                                                         if (c.id_claim) {
-                                                            const newSet = new Set(printedClaimIds);
-                                                            if (e.target.checked) {
-                                                               newSet.add(c.id_claim);
-                                                            } else {
-                                                               newSet.delete(c.id_claim);
-                                                            }
-                                                            setPrintedClaimIds(newSet);
-                                                         }
-                                                      }}
-                                                      className="w-4 h-4 cursor-pointer"
-                                                   />
-                                                   <span className="text-xs text-gray-600">Sudah Print</span>
-                                                </label>
-                                             </div>
-                                             <button onClick={() => {
-                                                const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
-                                                if (consumerObj) {
-                                                   setReturnTab('claims');
-                                                   setActiveTab('konsumen');
-                                                   openModal('edit', 'konsumen', consumerObj);
-                                                } else {
-                                                   alert('Data konsumen tidak ditemukan di database.');
-                                                }
-                                             }} className="text-orange-600 text-xs font-bold hover:underline">Edit Alamat</button>
-                                             <div className="w-px h-3 bg-slate-300"></div>
-                                             <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline">Kirim Status</button>
-                                             <div className="w-px h-3 bg-slate-300"></div>
-                                             <button onClick={() => openModal('edit', 'claim', c)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                             <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                          </div>
-                                       </td>
-                                       </tr>
+                     {sortedClaims.length === 0 ? (
+                        <Card padding="lg">
+                           <EmptyState
+                              icon="🎫"
+                              title={claims.length === 0 ? 'Belum Ada Claim' : 'Tidak ada claim sesuai filter'}
+                              description={claims.length === 0 ? 'Saat konsumen submit claim promo, datanya akan muncul di sini.' : 'Coba ubah filter status atau search untuk lihat data lain.'}
+                           />
+                        </Card>
+                     ) : viewMode === 'table' ? (
+                        <Card padding="none">
+                           <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                              <table className="w-full text-sm">
+                                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                    <tr className="text-left">
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 w-10 text-center">#</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>
+                                          Konsumen {sortConfigClaims.column === 'nama_konsumen' && (sortConfigClaims.direction === 'asc' ? '↑' : '↓')}
+                                       </th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>
+                                          Barang & Promo {sortConfigClaims.column === 'tipe_barang' && (sortConfigClaims.direction === 'asc' ? '↑' : '↓')}
+                                       </th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>
+                                          Tanggal {sortConfigClaims.column === 'tanggal_pembelian' && (sortConfigClaims.direction === 'asc' ? '↑' : '↓')}
+                                       </th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Validasi</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Lampiran</th>
+                                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-100">
+                                    {sortedClaims.map((c: ClaimPromo) => {
+                                       const isDuplicate = c.id_claim ? duplicateClaimIds.has(c.id_claim) : false;
+                                       const isPrinted = c.id_claim ? printedClaimIds.has(c.id_claim) : false;
+                                       const promo = c.jenis_promosi || getNamaPromo(c.tipe_barang);
+                                       const consumerName = consumers[c.nomor_wa] || c.nomor_wa;
+                                       return (
+                                          <tr key={c.id_claim} className={`hover:bg-slate-50 transition ${isDuplicate ? 'bg-rose-50/50' : ''}`}>
+                                             <td className="px-3 py-3 text-center font-bold text-slate-400 align-top">{claimNumberMap.get(c.id_claim!)}</td>
+                                             <td className="px-3 py-3 align-top">
+                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold inline-block ${getBadgeStyle(getClaimStatusColor(c))}`}>
+                                                   {getBadgeLabel(getClaimStatusColor(c))}
+                                                </span>
+                                                {isDuplicate && (
+                                                   <Badge variant="danger" size="xs" uppercase className="mt-1.5 block w-fit animate-pulse">⚠️ Duplikat</Badge>
+                                                )}
+                                             </td>
+                                             <td className="px-3 py-3 align-top">
+                                                <p className="font-bold text-slate-900 leading-tight">{consumerName}</p>
+                                                <p className="text-[11px] text-slate-500 mt-0.5">📱 {c.nomor_wa}</p>
+                                                <p className="text-[11px] font-mono text-slate-600 mt-0.5">SN: {c.nomor_seri}</p>
+                                             </td>
+                                             <td className="px-3 py-3 align-top">
+                                                <p className="font-semibold text-slate-900">{c.tipe_barang}</p>
+                                                <p className="text-xs text-amber-700 mt-0.5">🎁 {promo}</p>
+                                                {c.nama_toko && <p className="text-[11px] text-slate-500 mt-0.5">🏪 {c.nama_toko}</p>}
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-xs">
+                                                <p className="text-slate-700"><span className="text-slate-500">Beli:</span> {c.tanggal_pembelian}</p>
+                                                <p className="text-slate-700 mt-0.5"><span className="text-slate-500">Submit:</span> {formatSubmitDate(c.created_at)}</p>
+                                                <p className="text-[11px] text-slate-500 mt-0.5">⏱ {getClaimDurationDays(c.created_at)}</p>
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-xs">
+                                                <p><span className="text-slate-500">MKT:</span> <span className="font-semibold text-slate-700">{c.validasi_by_mkt || '-'}</span></p>
+                                                <p className="mt-0.5"><span className="text-slate-500">FA:</span> <span className="font-semibold text-slate-700">{c.validasi_by_fa || '-'}</span></p>
+                                                {c.catatan_mkt && <p className="text-[11px] text-slate-600 mt-1 bg-blue-50 border border-blue-100 rounded px-1.5 py-1 max-w-[180px]" title={c.catatan_mkt}>💬 {c.catatan_mkt.length > 40 ? c.catatan_mkt.substring(0, 40) + '...' : c.catatan_mkt}</p>}
+                                             </td>
+                                             <td className="px-3 py-3 align-top">
+                                                <div className="flex flex-col gap-1">
+                                                   {c.link_nota_pembelian ? (
+                                                      <button type="button" onClick={() => openImageViewer(c.link_nota_pembelian as string)} className="text-[11px] text-blue-600 hover:text-blue-800 hover:underline text-left font-semibold inline-flex items-center gap-1">
+                                                         🧾 Nota
+                                                      </button>
+                                                   ) : (
+                                                      <span className="text-[11px] text-slate-400 italic">No nota</span>
+                                                   )}
+                                                   {c.link_kartu_garansi ? (
+                                                      <button type="button" onClick={() => openImageViewer(c.link_kartu_garansi as string)} className="text-[11px] text-blue-600 hover:text-blue-800 hover:underline text-left font-semibold inline-flex items-center gap-1">
+                                                         🛡️ Garansi
+                                                      </button>
+                                                   ) : (
+                                                      <span className="text-[11px] text-slate-400 italic">No garansi</span>
+                                                   )}
+                                                </div>
+                                             </td>
+                                             <td className="px-3 py-3 align-top text-right whitespace-nowrap">
+                                                <div className="flex flex-col gap-1 items-end">
+                                                   <div className="flex items-center gap-1">
+                                                      <Button variant="ghost" size="sm" onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="!text-blue-600">🖨️ Label</Button>
+                                                      <label className="flex items-center gap-1 cursor-pointer text-[11px] text-slate-600 hover:text-slate-900">
+                                                         <input
+                                                            type="checkbox"
+                                                            checked={isPrinted}
+                                                            onChange={(e) => {
+                                                               if (c.id_claim) {
+                                                                  const newSet = new Set(printedClaimIds);
+                                                                  if (e.target.checked) newSet.add(c.id_claim);
+                                                                  else newSet.delete(c.id_claim);
+                                                                  setPrintedClaimIds(newSet);
+                                                               }
+                                                            }}
+                                                            className="w-3.5 h-3.5 cursor-pointer"
+                                                         />
+                                                         <span>Done</span>
+                                                      </label>
+                                                   </div>
+                                                   <div className="flex items-center">
+                                                      <Button variant="ghost" size="sm" onClick={() => {
+                                                         const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
+                                                         if (consumerObj) { setReturnTab('claims'); setActiveTab('konsumen'); openModal('edit', 'konsumen', consumerObj); }
+                                                         else alert('Data konsumen tidak ditemukan di database.');
+                                                      }} className="!text-orange-600">📍 Alamat</Button>
+                                                      <Button variant="ghost" size="sm" className="!text-emerald-600" onClick={() => handleKirimStatusClaim(c)}>📱 WA</Button>
+                                                      <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'claim', c)}>Edit</Button>
+                                                      <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('claim', c.id_claim!)}>Hapus</Button>
+                                                   </div>
+                                                </div>
+                                             </td>
+                                          </tr>
                                        );
-                                       })}
+                                    })}
                                  </tbody>
                               </table>
-                        </div>
+                           </div>
+                        </Card>
                      ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {sortedClaims.map((c: ClaimPromo) => {
@@ -2849,124 +3342,481 @@ export default function NikonDashboard() {
                )}
 
                
-               {/* ======================= EVENT REGISTRATIONS ======================= */}
-               {activeTab === 'eventregistrations' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     <input type="text" placeholder="🔍 Cari Nama Peserta atau Event..." value={searchRegistration} onChange={e => setSearchRegistration(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                           <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-6 py-3 text-left font-bold">Nama Lengkap</th><th className="px-6 py-3 text-left font-bold">Kontak (WA/Email)</th><th className="px-6 py-3 text-left font-bold">Event</th><th className="px-6 py-3 text-left font-bold">Status</th><th className="px-6 py-3 text-left font-bold">Kehadiran</th><th className="px-6 py-3 text-left font-bold">Bukti TF</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200">
-                                 {eventRegistrations.filter(r => r.full_name.toLowerCase().includes(searchRegistration.toLowerCase()) || r.event_name.toLowerCase().includes(searchRegistration.toLowerCase())).map((reg: EventRegistration) => (
-                                    <tr key={reg.id} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-6 py-3 font-bold text-slate-800">{reg.full_name}<br/><span className="text-[10px] text-gray-500">{reg.camera_model || '-'}</span></td>
-                                       <td className="px-6 py-3">{reg.wa_number}<br/><span className="text-xs text-gray-500">{reg.email}</span></td>
-                                       <td className="px-6 py-3 text-amber-600 font-bold">{reg.event_name}</td>
-                                       <td className="px-6 py-3">
-                                          <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${reg.status === 'Confirmed' ? 'bg-green-100 text-green-700' : reg.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{reg.status}</span>
-                                       </td>
-                                       <td className="px-6 py-3">
-                                          {reg.is_attended ? <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-1 rounded">HADIR ✅</span> : <button onClick={() => handleMarkAttendance(reg.id!)} className="text-[10px] bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold px-2 py-1 rounded border border-gray-300">Set Hadir</button>}
-                                       </td>
-                                       <td className="px-6 py-3">
-                                          {reg.bukti_transfer_url ? <a href={reg.bukti_transfer_url} target="_blank" className="text-blue-500 hover:underline font-bold">Lihat Bukti</a> : <span className="text-gray-400">Belum Ada</span>}
-                                       </td>
-                                       <td className="px-6 py-3 flex gap-3">
-                                          {reg.status === 'Confirmed' && (
-                                             <button 
-                                                onClick={() => handleSendEventSuccessWA(reg)} 
-                                                className="text-green-600 text-xs font-bold hover:underline"
-                                                title="Kirim Konfirmasi WA"
-                                             >
-                                                Kirim WA
-                                             </button>
-                                          )}
-                                          <button onClick={() => openModal('edit', 'eventregistration', reg)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                          <button onClick={() => handleDelete('eventregistration', reg.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                       </td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
-                        </div>
-                     ) : (<div></div>)}
-                  </div>
-               )}
+               {/* ======================= EVENT REGISTRATIONS / DATA PESERTA ======================= */}
+               {activeTab === 'eventregistrations' && (() => {
+                  // Stats
+                  const totalReg = eventRegistrations.length;
+                  const terdaftarCount = eventRegistrations.filter(r => r.status_pendaftaran === 'terdaftar').length;
+                  const menungguCount = eventRegistrations.filter(r => r.status_pendaftaran === 'menunggu_validasi' || (r as any).status === 'Pending').length;
+                  const hadirCount = eventRegistrations.filter(r => r.is_attended).length;
 
-               {/* ======================= MASTER EVENT ======================= */}
-               {activeTab === 'events' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     <input type="text" placeholder="🔍 Cari Judul Event..." value={searchEvent} onChange={e => setSearchEvent(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                           <table className="w-full text-sm whitespace-normal break-words">
-                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-4 py-3 text-center font-bold w-12">No</th><th className="px-4 py-3 text-left font-bold">Gambar</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'title')}>Judul Event {sortConfigEvents.column === 'title' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'date')}>Tanggal {sortConfigEvents.column === 'date' && (<span>{sortConfigEvents.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Detail Acara</th><th className="px-4 py-3 text-left font-bold">Harga</th><th className="px-4 py-3 text-left font-bold">Kuota/Status</th><th className="px-4 py-3 text-left font-bold">Peserta</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200">
-                                 {sortedEvents.map((evt: EventData) => {
-                                    const detailPreview = evt.detail_acara ? (evt.detail_acara.length > 60 ? evt.detail_acara.substring(0, 60) + '...' : evt.detail_acara) : '-';
-                                    return (
-                                    <tr key={evt.id} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-4 py-3 text-center font-bold text-gray-600">{eventNumberMap.get(evt.id!)}</td>
-                                       <td className="px-4 py-3"><img src={evt.image} alt="poster" className="w-10 h-14 object-cover rounded" /></td>
-                                       <td className="px-4 py-3 font-bold text-slate-800">{evt.title}</td>
-                                       <td className="px-4 py-3 text-sm">{evt.date}</td>
-                                       <td className="px-4 py-3 text-xs text-gray-600 max-w-[200px] whitespace-normal">{detailPreview}</td>
-                                       <td className="px-4 py-3">{evt.price}</td>
-                                       <td className="px-4 py-3">
-                                          <span className="font-bold text-gray-700 text-sm">{eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</span>
-                                          <br/>{(() => { const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.title] || 0); return <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>; })()}
-                                       </td>
-                                       <td className="px-4 py-3 font-bold text-blue-600 text-sm">
-                                          {eventRegistrationsCount[evt.title] || 0} orang
-                                       </td>
-                                       <td className="px-4 py-3 flex gap-2">
-                                          <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                          <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                       </td>
-                                    </tr>
-                                    );
-                                 })}
-                              </tbody>
-                           </table>
+                  // Filter state derived from search & filterStatusReg / filterEventReg
+                  const filtered = eventRegistrations.filter(r => {
+                     const matchSearch = !searchRegistration ||
+                        (r.nama_lengkap || '').toLowerCase().includes(searchRegistration.toLowerCase()) ||
+                        (r.event_name || '').toLowerCase().includes(searchRegistration.toLowerCase()) ||
+                        (r.nomor_wa || '').includes(searchRegistration);
+                     const matchStatus = filterStatusReg === 'all' || r.status_pendaftaran === filterStatusReg ||
+                        (filterStatusReg === 'attended' && r.is_attended);
+                     const matchEvent = filterEventReg === 'all' || r.event_name === filterEventReg;
+                     return matchSearch && matchStatus && matchEvent;
+                  });
+
+                  const uniqueEventNames = Array.from(new Set(eventRegistrations.map(r => r.event_name).filter(Boolean)));
+
+                  const statusBadge = (status: string, attended: boolean) => {
+                     if (attended) return { variant: 'success' as const, label: '✓ Hadir' };
+                     if (status === 'terdaftar') return { variant: 'success' as const, label: 'Terdaftar' };
+                     if (status === 'ditolak') return { variant: 'danger' as const, label: 'Ditolak' };
+                     return { variant: 'warning' as const, label: 'Menunggu Validasi' };
+                  };
+
+                  // Initial avatar
+                  const getInitial = (name: string) => (name || '?').trim().charAt(0).toUpperCase();
+                  const avatarColor = (name: string) => {
+                     const colors = ['bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-700', 'bg-purple-100 text-purple-700', 'bg-rose-100 text-rose-700', 'bg-indigo-100 text-indigo-700'];
+                     let hash = 0;
+                     for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+                     return colors[hash % colors.length];
+                  };
+
+                  return (
+                  <div className="animate-fade-in space-y-6">
+                     <PageHeader
+                        title="Data Peserta Event"
+                        subtitle="Daftar pendaftar event Nikon — kelola validasi, absensi, dan komunikasi"
+                        icon="🎟️"
+                     />
+
+                     {/* STATS */}
+                     <StatGrid cols={4}>
+                        <Stat label="Total Pendaftar" value={totalReg} icon="🎟️" />
+                        <Stat label="Terdaftar" value={terdaftarCount} variant="success" icon="✓" onClick={() => setFilterStatusReg('terdaftar')} active={filterStatusReg === 'terdaftar'} />
+                        <Stat label="Menunggu Validasi" value={menungguCount} variant="warning" icon="⏳" onClick={() => setFilterStatusReg('menunggu_validasi')} active={filterStatusReg === 'menunggu_validasi'} />
+                        <Stat label="Sudah Hadir" value={hadirCount} variant="info" icon="📍" onClick={() => setFilterStatusReg('attended')} active={filterStatusReg === 'attended'} />
+                     </StatGrid>
+
+                     {/* QUICK LINKS */}
+                     <Card padding="sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">🛠️ Admin:</span>
+                           <Button variant="secondary" size="sm" leftIcon="✅" onClick={() => window.open('/admin/events', '_blank')}>Validasi Pembayaran</Button>
+                           <Button variant="secondary" size="sm" leftIcon="📷" onClick={() => window.open('/admin/events/attendance', '_blank')}>Absensi Scan QR</Button>
+                           <Button variant="secondary" size="sm" leftIcon="💸" onClick={() => window.open('/admin/events/deposit', '_blank')}>Kelola Deposit</Button>
+                           <span className="text-slate-300 mx-1">|</span>
+                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Public:</span>
+                           <Button variant="ghost" size="sm" leftIcon="🎫" onClick={() => window.open('/events/register', '_blank')}>Daftar Event</Button>
+                           <Button variant="ghost" size="sm" leftIcon="💰" onClick={() => window.open('/events/refund', '_blank')}>Refund Deposit</Button>
                         </div>
+                     </Card>
+
+                     {/* FILTERS */}
+                     <div className="flex flex-wrap gap-3 items-center">
+                        <div className="relative flex-1 min-w-[240px]">
+                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                           <input
+                              type="text"
+                              placeholder="Cari nama, nomor WA, atau event..."
+                              value={searchRegistration}
+                              onChange={e => setSearchRegistration(e.target.value)}
+                              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 transition"
+                           />
+                        </div>
+                        <select value={filterStatusReg} onChange={e => setFilterStatusReg(e.target.value)} className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-yellow-400">
+                           <option value="all">Semua Status</option>
+                           <option value="menunggu_validasi">Menunggu Validasi</option>
+                           <option value="terdaftar">Terdaftar</option>
+                           <option value="ditolak">Ditolak</option>
+                           <option value="attended">Sudah Hadir</option>
+                        </select>
+                        <select value={filterEventReg} onChange={e => setFilterEventReg(e.target.value)} className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-yellow-400">
+                           <option value="all">Semua Event</option>
+                           {uniqueEventNames.map(name => <option key={name} value={name}>{name}</option>)}
+                        </select>
+                        {(filterStatusReg !== 'all' || filterEventReg !== 'all' || searchRegistration) && (
+                           <Button variant="ghost" size="sm" onClick={() => { setFilterStatusReg('all'); setFilterEventReg('all'); setSearchRegistration(''); }}>✕ Reset Filter</Button>
+                        )}
+                     </div>
+
+                     {/* CONTENT */}
+                     {filtered.length === 0 ? (
+                        <Card padding="lg">
+                           <EmptyState
+                              icon="🎟️"
+                              title={totalReg === 0 ? 'Belum Ada Pendaftar' : 'Tidak ada peserta sesuai filter'}
+                              description={totalReg === 0 ? 'Saat customer mendaftar event di /events/register, datanya akan muncul di sini.' : 'Coba ubah filter atau reset untuk melihat semua data.'}
+                           />
+                        </Card>
+                     ) : viewMode === 'table' ? (
+                        <Card padding="none">
+                           <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                              <table className="w-full text-sm">
+                                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                    <tr className="text-left">
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Peserta</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Event</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Kamera</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Kehadiran</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Bukti TF</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-100">
+                                    {filtered.map((reg: EventRegistration) => {
+                                       const sb = statusBadge(reg.status_pendaftaran || (reg as any).status || '', false);
+                                       return (
+                                          <tr key={reg.id} className="hover:bg-slate-50 transition">
+                                             <td className="px-4 py-3 align-top">
+                                                <div className="flex gap-3 items-start">
+                                                   <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${avatarColor(reg.nama_lengkap || '')}`}>
+                                                      {getInitial(reg.nama_lengkap || '')}
+                                                   </div>
+                                                   <div className="min-w-0">
+                                                      <p className="font-bold text-slate-900 leading-tight">{reg.nama_lengkap}</p>
+                                                      <p className="text-xs text-slate-500 mt-0.5">📱 {reg.nomor_wa}</p>
+                                                      {reg.kabupaten_kotamadya && <p className="text-[11px] text-slate-400 mt-0.5">📍 {reg.kabupaten_kotamadya}</p>}
+                                                   </div>
+                                                </div>
+                                             </td>
+                                             <td className="px-4 py-3 align-top">
+                                                <p className="text-sm font-semibold text-slate-700 leading-tight">{reg.event_name}</p>
+                                             </td>
+                                             <td className="px-4 py-3 align-top text-xs text-slate-600">{reg.tipe_kamera || '-'}</td>
+                                             <td className="px-4 py-3 align-top">
+                                                <Badge variant={sb.variant} size="xs" uppercase>{sb.label}</Badge>
+                                             </td>
+                                             <td className="px-4 py-3 align-top">
+                                                {reg.is_attended ? (
+                                                   <Badge variant="success" size="xs" uppercase>✓ Hadir</Badge>
+                                                ) : (
+                                                   <Button variant="ghost" size="sm" onClick={() => handleMarkAttendance(reg.id!)}>Set Hadir</Button>
+                                                )}
+                                             </td>
+                                             <td className="px-4 py-3 align-top">
+                                                {reg.bukti_transfer_url ? (
+                                                   <a href={reg.bukti_transfer_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 font-semibold">
+                                                      🖼️ Lihat
+                                                   </a>
+                                                ) : (
+                                                   <span className="text-xs text-slate-400">—</span>
+                                                )}
+                                             </td>
+                                             <td className="px-4 py-3 align-top text-right whitespace-nowrap">
+                                                {reg.status_pendaftaran === 'terdaftar' && (
+                                                   <Button variant="ghost" size="sm" className="!text-emerald-600" onClick={() => handleSendEventSuccessWA(reg)} title="Kirim Konfirmasi WA">📱 WA</Button>
+                                                )}
+                                                <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'eventregistration', reg)}>Edit</Button>
+                                                <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('eventregistration', reg.id!)}>Hapus</Button>
+                                             </td>
+                                          </tr>
+                                       );
+                                    })}
+                                 </tbody>
+                              </table>
+                           </div>
+                        </Card>
                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {sortedEvents.map((evt: EventData) => {
-                              const detailPreview = evt.detail_acara ? (evt.detail_acara.length > 100 ? evt.detail_acara.substring(0, 100) + '...' : evt.detail_acara) : '-';
+                        /* CARD VIEW */
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                           {filtered.map((reg: EventRegistration) => {
+                              const sb = statusBadge(reg.status_pendaftaran || (reg as any).status || '', false);
                               return (
-                              <div key={evt.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="border-b border-gray-100 pb-3 mb-3">
-                                    <div className="flex items-center gap-2 mb-2">
-                                       <span className="font-bold text-lg text-gray-600 bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center text-center">{eventNumberMap.get(evt.id!)}</span>
-                                       <img src={evt.image} alt="poster" className="w-12 h-16 object-cover rounded" />
+                                 <Card key={reg.id} padding="md" className="flex flex-col">
+                                    <div className="flex items-start gap-3 mb-3">
+                                       <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0 ${avatarColor(reg.nama_lengkap || '')}`}>
+                                          {getInitial(reg.nama_lengkap || '')}
+                                       </div>
+                                       <div className="flex-1 min-w-0">
+                                          <h3 className="font-bold text-base text-slate-900 leading-tight">{reg.nama_lengkap}</h3>
+                                          <p className="text-xs text-slate-500 mt-0.5">📱 {reg.nomor_wa}</p>
+                                       </div>
+                                       <Badge variant={sb.variant} size="xs" uppercase>{sb.label}</Badge>
                                     </div>
-                                    <h3 className="font-bold text-base text-slate-800">{evt.title}</h3>
-                                    <p className="text-xs text-gray-500">{evt.date}</p>
-                                 </div>
-                                 <div className="space-y-2 text-xs flex-1">
-                                    <p><span className="font-bold w-20 inline-block">Detail:</span> {detailPreview}</p>
-                                    <p><span className="font-bold w-20 inline-block">Harga:</span> {evt.price}</p>
-                                    <p><span className="font-bold w-20 inline-block">Kuota:</span> {eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</p>
-                                    <p><span className="font-bold w-20 inline-block">Peserta:</span> {eventRegistrationsCount[evt.title] || 0} orang</p>
-                                    <p><span className="font-bold w-20 inline-block">Status:</span> <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${evt.status === 'close' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.status === 'close' ? 'Tutup' : 'Aktif'}</span></p>
-                                    {evt.bank_info && <p className="bg-blue-50 border border-blue-100 rounded p-2 mt-2"><span className="font-bold">Rekening:</span> {evt.bank_info}</p>}
-                                 </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2 justify-end">
-                                    <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                    <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                 </div>
-                              </div>
+
+                                    <div className="space-y-2 text-xs flex-1">
+                                       <div className="bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                                          <p className="text-[10px] text-amber-700 uppercase tracking-wider font-bold">Event</p>
+                                          <p className="font-semibold text-slate-900 mt-0.5">{reg.event_name}</p>
+                                       </div>
+                                       <div className="grid grid-cols-2 gap-2">
+                                          {reg.kabupaten_kotamadya && (
+                                             <div>
+                                                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Kab/Kota</p>
+                                                <p className="text-slate-700">{reg.kabupaten_kotamadya}</p>
+                                             </div>
+                                          )}
+                                          {reg.tipe_kamera && (
+                                             <div>
+                                                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Kamera</p>
+                                                <p className="text-slate-700">{reg.tipe_kamera}</p>
+                                             </div>
+                                          )}
+                                       </div>
+                                       <div className="flex flex-wrap gap-1.5 pt-1">
+                                          {reg.is_attended && <Badge variant="success" size="xs" uppercase>✓ Hadir</Badge>}
+                                          {reg.bukti_transfer_url && (
+                                             <a href={reg.bukti_transfer_url} target="_blank" rel="noopener noreferrer" className="text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded hover:bg-blue-100 inline-flex items-center gap-1">
+                                                🖼️ Bukti TF
+                                             </a>
+                                          )}
+                                       </div>
+                                    </div>
+
+                                    <div className="border-t border-slate-100 mt-3 pt-2 -mx-5 px-5 flex items-center justify-end gap-1 bg-slate-50/50">
+                                       {!reg.is_attended && (
+                                          <Button variant="ghost" size="sm" onClick={() => handleMarkAttendance(reg.id!)}>Set Hadir</Button>
+                                       )}
+                                       {reg.status_pendaftaran === 'terdaftar' && (
+                                          <Button variant="ghost" size="sm" className="!text-emerald-600" onClick={() => handleSendEventSuccessWA(reg)}>📱 WA</Button>
+                                       )}
+                                       <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'eventregistration', reg)}>Edit</Button>
+                                       <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('eventregistration', reg.id!)}>Hapus</Button>
+                                    </div>
+                                 </Card>
                               );
                            })}
                         </div>
                      )}
                   </div>
-               )}
+                  );
+               })()}
+
+               {/* ======================= MASTER EVENT ======================= */}
+               {activeTab === 'events' && (() => {
+                  // Compute stats
+                  const totalEvents = events.length;
+                  const aktifEvents = events.filter(e => {
+                     const { closed } = getEventClosedStatus(e, eventRegistrationsCount[e.event_title] || 0);
+                     return !closed;
+                  }).length;
+                  const soldOutEvents = events.filter(e => {
+                     const status = (e.event_status || '').toLowerCase();
+                     return status === 'sold out' || status === 'sold_out';
+                  }).length;
+                  const totalPeserta = events.reduce((sum, e) => sum + (eventRegistrationsCount[e.event_title] || 0), 0);
+
+                  // Helper to get payment variant
+                  const paymentVariant = (tipe: string | undefined): 'warning' | 'success' | 'info' => {
+                     if (tipe === 'deposit') return 'warning';
+                     if (tipe === 'gratis') return 'success';
+                     return 'info';
+                  };
+
+                  return (
+                  <div className="animate-fade-in space-y-6">
+                     {/* PAGE HEADER */}
+                     <PageHeader
+                        title="Master Event"
+                        subtitle="Kelola semua event Nikon — daftar, kuota, harga, dan poster"
+                        icon="📅"
+                     />
+
+                     {/* STATS */}
+                     <StatGrid cols={4}>
+                        <Stat label="Total Event" value={totalEvents} icon="📅" />
+                        <Stat label="Aktif" value={aktifEvents} variant="success" icon="✓" />
+                        <Stat label="Sold Out" value={soldOutEvents} variant="warning" icon="🔥" />
+                        <Stat label="Total Peserta" value={totalPeserta} icon="🎟️" onClick={() => setActiveTab('eventregistrations')} />
+                     </StatGrid>
+
+                     {/* QUICK LINKS */}
+                     <Card padding="sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">🔗 Link Public:</span>
+                           <Button variant="secondary" size="sm" leftIcon="🎫" onClick={() => window.open('/events/register', '_blank')}>Katalog Event</Button>
+                           <Button variant="secondary" size="sm" leftIcon="💰" onClick={() => window.open('/events/refund', '_blank')}>Refund Deposit</Button>
+                           <Button variant="ghost" size="sm" leftIcon="📋" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/events/register`); alert('Link katalog disalin!'); }}>Copy URL Katalog</Button>
+                           <Button variant="ghost" size="sm" leftIcon="📋" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/events/refund`); alert('Link refund disalin!'); }}>Copy URL Refund</Button>
+                        </div>
+                     </Card>
+
+                     {/* SEARCH */}
+                     <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                        <input
+                           type="text"
+                           placeholder="Cari judul event..."
+                           value={searchEvent}
+                           onChange={e => setSearchEvent(e.target.value)}
+                           className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 transition"
+                        />
+                     </div>
+
+                     {/* EMPTY STATE */}
+                     {sortedEvents.length === 0 ? (
+                        <Card padding="lg">
+                           <EmptyState
+                              icon="📅"
+                              title={searchEvent ? 'Tidak ada event sesuai pencarian' : 'Belum Ada Event'}
+                              description={searchEvent ? `Tidak ditemukan event dengan kata kunci "${searchEvent}"` : 'Tambahkan event pertama untuk mulai menerima pendaftaran.'}
+                              action={!searchEvent && <Button variant="primary" onClick={() => openModal('create', 'event')}>+ Tambah Event Pertama</Button>}
+                           />
+                        </Card>
+                     ) : viewMode === 'table' ? (
+                        /* TABLE VIEW — kolom dipilih ringkas, info detail di card view */
+                        <Card padding="none">
+                           <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                              <table className="w-full text-sm">
+                                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                    <tr className="text-left">
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 w-12 text-center">No</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Event</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'event_date')}>
+                                          Tanggal {sortConfigEvents.column === 'event_date' && (sortConfigEvents.direction === 'asc' ? '↑' : '↓')}
+                                       </th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Harga</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Kuota</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                                       <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-100">
+                                    {sortedEvents.map((evt: EventData) => {
+                                       const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.event_title] || 0);
+                                       const peserta = eventRegistrationsCount[evt.event_title] || 0;
+                                       const kuota = evt.event_partisipant_stock || 0;
+                                       const pct = kuota > 0 ? (peserta / kuota) * 100 : 0;
+                                       return (
+                                          <tr key={evt.id} className="hover:bg-slate-50 transition">
+                                             <td className="px-4 py-3 text-center font-bold text-slate-400 align-top">{eventNumberMap.get(evt.id!)}</td>
+                                             <td className="px-4 py-3 align-top">
+                                                <div className="flex gap-3 items-start">
+                                                   {evt.event_image
+                                                      ? <img src={gdriveUrl(evt.event_image)} alt="poster" className="w-10 h-14 object-cover rounded flex-shrink-0" referrerPolicy="no-referrer" />
+                                                      : <div className="w-10 h-14 bg-slate-100 rounded flex-shrink-0 flex items-center justify-center text-slate-300 text-xs">📷</div>
+                                                   }
+                                                   <div className="min-w-0">
+                                                      <p className="font-bold text-slate-900 leading-tight">{evt.event_title}</p>
+                                                      {evt.event_speaker && <p className="text-xs text-slate-500 mt-0.5">🎤 {evt.event_speaker}</p>}
+                                                   </div>
+                                                </div>
+                                             </td>
+                                             <td className="px-4 py-3 text-sm text-slate-700 align-top whitespace-nowrap">{evt.event_date}</td>
+                                             <td className="px-4 py-3 align-top">
+                                                <p className="font-bold text-slate-900 text-sm">{evt.event_price}</p>
+                                                <Badge variant={paymentVariant(evt.event_payment_tipe)} size="xs" uppercase className="mt-1">
+                                                   {evt.event_payment_tipe || 'regular'}
+                                                </Badge>
+                                                {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && (
+                                                   <p className="text-[11px] text-amber-700 mt-1">DP: {evt.deposit_amount}</p>
+                                                )}
+                                             </td>
+                                             <td className="px-4 py-3 align-top">
+                                                <p className="text-sm font-bold text-slate-900">{peserta} <span className="text-slate-400 font-normal">/ {kuota}</span></p>
+                                                <div className="w-24 h-1.5 bg-slate-200 rounded-full mt-1.5 overflow-hidden">
+                                                   <div className={`h-full ${pct >= 100 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                                                </div>
+                                             </td>
+                                             <td className="px-4 py-3 align-top">
+                                                <Badge variant={closed ? 'danger' : 'success'} size="xs" uppercase>{reason}</Badge>
+                                             </td>
+                                             <td className="px-4 py-3 align-top text-right whitespace-nowrap">
+                                                <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'event', evt)}>Edit</Button>
+                                                <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('events', evt.id!)}>Hapus</Button>
+                                             </td>
+                                          </tr>
+                                       );
+                                    })}
+                                 </tbody>
+                              </table>
+                           </div>
+                        </Card>
+                     ) : (
+                        /* CARD VIEW — full detail per card */
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                           {sortedEvents.map((evt: EventData) => {
+                              const descPreview = evt.event_description ? (evt.event_description.length > 100 ? evt.event_description.substring(0, 100) + '...' : evt.event_description) : '';
+                              const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.event_title] || 0);
+                              const proposal = budgets.find(b => b.id_budget === evt.proposal_event_id);
+                              const peserta = eventRegistrationsCount[evt.event_title] || 0;
+                              const kuota = evt.event_partisipant_stock || 0;
+                              const pct = kuota > 0 ? (peserta / kuota) * 100 : 0;
+                              return (
+                                 <Card key={evt.id} padding="none" className="overflow-hidden flex flex-col">
+                                    {/* Poster header */}
+                                    <div className="relative h-44 bg-slate-100 overflow-hidden">
+                                       {evt.event_image ? (
+                                          <img src={gdriveUrl(evt.event_image)} alt={evt.event_title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                       ) : (
+                                          <div className="w-full h-full flex items-center justify-center text-5xl text-slate-300">📷</div>
+                                       )}
+                                       {/* Number badge */}
+                                       <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded">#{eventNumberMap.get(evt.id!)}</div>
+                                       {/* Status badge */}
+                                       <div className="absolute top-2 right-2">
+                                          <Badge variant={closed ? 'danger' : 'success'} size="xs" uppercase>{reason}</Badge>
+                                       </div>
+                                       {/* Date overlay */}
+                                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                          <p className="text-yellow-400 text-xs font-bold uppercase tracking-wider">{evt.event_date}</p>
+                                       </div>
+                                    </div>
+
+                                    {/* Body */}
+                                    <div className="p-4 flex-1 flex flex-col">
+                                       <h3 className="font-bold text-base text-slate-900 leading-tight mb-1">{evt.event_title}</h3>
+                                       {evt.event_speaker && (
+                                          <p className="text-xs text-slate-500 mb-2">🎤 {evt.event_speaker}{evt.event_speaker_genre ? ` · ${evt.event_speaker_genre}` : ''}</p>
+                                       )}
+                                       {descPreview && <p className="text-xs text-slate-600 leading-relaxed mb-3 flex-1">{descPreview}</p>}
+
+                                       {/* Price + payment type row */}
+                                       <div className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 mb-2">
+                                          <div>
+                                             <p className="text-[10px] text-slate-500 uppercase tracking-wider">Harga</p>
+                                             <p className="font-bold text-sm text-slate-900">{evt.event_price}</p>
+                                             {evt.event_payment_tipe === 'deposit' && evt.deposit_amount && (
+                                                <p className="text-[11px] text-amber-700">DP: {evt.deposit_amount}</p>
+                                             )}
+                                          </div>
+                                          <Badge variant={paymentVariant(evt.event_payment_tipe)} size="xs" uppercase>{evt.event_payment_tipe || 'regular'}</Badge>
+                                       </div>
+
+                                       {/* Kuota progress */}
+                                       <div className="mb-2">
+                                          <div className="flex items-center justify-between text-xs mb-1">
+                                             <span className="text-slate-500">Kuota</span>
+                                             <span className="font-bold text-slate-900">{peserta} / {kuota} peserta</span>
+                                          </div>
+                                          <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                             <div className={`h-full ${pct >= 100 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                                          </div>
+                                       </div>
+
+                                       {/* Meta info */}
+                                       <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
+                                          {evt.bank_info && (
+                                             <span className="text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded inline-flex items-center gap-1" title={evt.bank_info}>
+                                                🏦 Bank
+                                             </span>
+                                          )}
+                                          {evt.event_upload_payment_screenshot && (
+                                             <a href={gdriveUrl(evt.event_upload_payment_screenshot)} target="_blank" rel="noopener noreferrer" className="text-[11px] bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded hover:bg-purple-100 inline-flex items-center gap-1">
+                                                📱 QR Bayar
+                                             </a>
+                                          )}
+                                          {proposal && (
+                                             <span className="text-[11px] bg-yellow-50 text-yellow-800 border border-yellow-200 px-2 py-0.5 rounded font-mono inline-flex items-center gap-1" title={proposal.title}>
+                                                📄 {proposal.proposal_no}
+                                             </span>
+                                          )}
+                                       </div>
+                                    </div>
+
+                                    {/* Footer actions */}
+                                    <div className="border-t border-slate-100 px-4 py-2 flex items-center justify-end gap-1 bg-slate-50/50">
+                                       <Button variant="ghost" size="sm" onClick={() => openModal('edit', 'event', evt)}>Edit</Button>
+                                       <Button variant="ghost" size="sm" className="!text-rose-600" onClick={() => handleDelete('events', evt.id!)}>Hapus</Button>
+                                    </div>
+                                 </Card>
+                              );
+                           })}
+                        </div>
+                     )}
+                  </div>
+                  );
+               })()}
 
                {/* ======================= BOT SETTINGS ======================= */}
                {activeTab === 'botsettings' && (
@@ -3104,11 +3954,493 @@ export default function NikonDashboard() {
                                  <input type="text" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({ ...karyawanForm, password: e.target.value })} className="input-form" />
                               </div>
                               <div>
+<<<<<<< HEAD
                                  <label className="label-form">Role</label>
                                  <select value={karyawanForm.role || 'Karyawan'} onChange={e => setKaryawanForm({ ...karyawanForm, role: e.target.value })} className="input-form">
                                     <option value="Admin">Admin</option>
                                     <option value="Karyawan">Karyawan</option>
                                     {/* Add other roles */}
+=======
+                                 <label className="flex items-center gap-2">
+                                    <input type="checkbox" checked={promoForm.status_aktif || false} onChange={e => setPromoForm({ ...promoForm, status_aktif: e.target.checked })} className="w-4 h-4 text-black border-gray-300 rounded focus:ring-black" />
+                                    <span className="text-sm font-bold text-gray-900">Promo Aktif</span>
+                                 </label>
+                              </div>
+
+                              <div className="mt-4 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
+                                 <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-sm font-bold text-gray-900">Tipe Produk yang Berlaku</label>
+                                    <button type="button" onClick={() => setPromoForm({ ...promoForm, tipe_produk: [...(promoForm.tipe_produk || []), { nama_produk: '' }] })} className="bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100 transition text-gray-900">+ Tambah Produk</button>
+                                 </div>
+                                 {promoForm.tipe_produk?.map((item, index) => (
+                                    <div key={index} className="flex gap-2 mb-2 items-center">
+                                       <div className="flex-1">
+                                          <input type="text" list="list-tipe-barang" required value={item.nama_produk} onChange={e => { const newItems = [...(promoForm.tipe_produk || [])]; newItems[index].nama_produk = e.target.value; setPromoForm({ ...promoForm, tipe_produk: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik nama produk..." />
+                                       </div>
+                                       <button type="button" onClick={() => { const newItems = [...(promoForm.tipe_produk || [])]; newItems.splice(index, 1); setPromoForm({ ...promoForm, tipe_produk: newItems }); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2 rounded text-sm transition border border-red-200">X</button>
+                                    </div>
+                                 ))}
+                                 {(!promoForm.tipe_produk || promoForm.tipe_produk.length === 0) && <p className="text-xs font-bold text-gray-500 italic mt-2">Belum ada produk ditambahkan</p>}
+                              </div>
+                           </form>
+                        )}
+
+                        {activeTab === 'services' && (
+                           <form id="serviceForm" onSubmit={handleSaveService} className="space-y-4">
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">Nomor Tanda Terima</label>
+                                 <input required type="text" value={serviceForm.nomor_tanda_terima || ''} onChange={e => setServiceForm({ ...serviceForm, nomor_tanda_terima: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Masukkan ID/Resi service" />
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">Nomor Seri</label>
+                                 <input required type="text" value={serviceForm.nomor_seri || ''} onChange={e => setServiceForm({ ...serviceForm, nomor_seri: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">Status Service</label>
+                                 <input required type="text" list="list-status-service" value={serviceForm.status_service || ''} onChange={e => setServiceForm({ ...serviceForm, status_service: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Contoh: Menunggu Sparepart / Selesai" />
+                              </div>
+                           </form>
+                        )}
+
+                        {activeTab === 'budgets' && (
+                           <form id="budgetForm" onSubmit={handleSaveBudget} className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Proposal No</label>
+                                    <input required type="text" value={budgetForm.proposal_no || ''} onChange={e => setBudgetForm({ ...budgetForm, proposal_no: e.target.value })} className="w-full border border-gray-300 bg-gray-100 text-gray-900 rounded-md px-3 py-2 text-sm font-mono" readOnly />
+                                 </div>
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Title</label>
+                                    <input required type="text" value={budgetForm.title || ''} onChange={e => setBudgetForm({ ...budgetForm, title: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Period (Tanggal)</label>
+                                    <input required type="date" value={budgetForm.period || ''} onChange={e => setBudgetForm({ ...budgetForm, period: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Budget Source</label>
+                                    <input required type="text" list="list-budget-source" value={budgetForm.budget_source || ''} onChange={e => setBudgetForm({ ...budgetForm, budget_source: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">Objectives</label>
+                                 <textarea required rows={2} value={budgetForm.objectives || ''} onChange={e => setBudgetForm({ ...budgetForm, objectives: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">Detail of Activity</label>
+                                 <textarea required rows={2} value={budgetForm.detail_activity || ''} onChange={e => setBudgetForm({ ...budgetForm, detail_activity: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">Expected Result</label>
+                                 <textarea required rows={2} value={budgetForm.expected_result || ''} onChange={e => setBudgetForm({ ...budgetForm, expected_result: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
+                              </div>
+
+                              <div className="bg-gray-50 border border-gray-100 p-4 rounded-md space-y-4">
+                                 <label className="block text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Nama Penandatangan (Approval)</label>
+                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    <div>
+                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Proposed By</label>
+                                       <input type="text" value={budgetForm.drafter_name || ''} onChange={e => setBudgetForm({ ...budgetForm, drafter_name: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Nama Pembuat" />
+                                    </div>
+                                    <div>
+                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Mgt. Comment 1</label>
+                                       <input type="text" value={budgetForm.mgt_comment_1 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_1: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Kosongkan jika tidak perlu" />
+                                    </div>
+                                    <div>
+                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Mgt. Comment 2</label>
+                                       <input type="text" value={budgetForm.mgt_comment_2 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_2: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Kosongkan jika tidak perlu" />
+                                    </div>
+                                    <div>
+                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Mgt. Consent</label>
+                                       <input type="text" value={budgetForm.mgt_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_consent: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Contoh: Larry Handra" />
+                                    </div>
+                                    <div>
+                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Finance Consent</label>
+                                       <input type="text" value={budgetForm.finance_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, finance_consent: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Nama Finance" />
+                                    </div>
+                                 </div>
+                              </div>
+
+                              <div>
+                                 <label className="block text-sm font-bold mb-2">Lampiran Poster (Maks 3 Gambar)</label>
+                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {[0, 1, 2].map((i) => (
+                                       <div key={i} className="space-y-2">
+                                          <div className="flex gap-2 items-center">
+                                             <input type="file" accept="image/*" onChange={e => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                   const newUrls = [...(budgetForm.attachment_urls || [null, null, null])];
+                                                   newUrls[i] = file;
+                                                   setBudgetForm({ ...budgetForm, attachment_urls: newUrls });
+                                                }
+                                             }} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-2 py-1 text-xs" />
+                                             {budgetForm.attachment_urls?.[i] && (
+                                                <button type="button" onClick={() => {
+                                                   const newUrls = [...(budgetForm.attachment_urls || [])];
+                                                   newUrls[i] = null;
+                                                   setBudgetForm({ ...budgetForm, attachment_urls: newUrls });
+                                                }} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-200 transition">×</button>
+                                             )}
+                                          </div>
+                                          {budgetForm.attachment_urls?.[i] && (
+                                             <div className="border rounded p-1 bg-gray-50 text-center">
+                                                <img
+                                                   src={budgetForm.attachment_urls[i] instanceof File
+                                                      ? URL.createObjectURL(budgetForm.attachment_urls[i] as File)
+                                                      : budgetForm.attachment_urls[i] as string}
+                                                   alt={`Preview ${i + 1}`}
+                                                   className="h-20 mx-auto object-contain cursor-pointer"
+                                                   onClick={() => openImageViewer(budgetForm.attachment_urls![i] as any)}
+                                                />
+                                             </div>
+                                          )}
+                                       </div>
+                                    ))}
+                                 </div>
+                              </div>
+                              <div className="mt-6 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
+                                 <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-sm font-bold text-gray-900">Rincian Budget (Items)</label>
+                                    <button type="button" onClick={() => setBudgetForm({ ...budgetForm, items: [...(budgetForm.items || []), { purpose: '', qty: 1, cost_unit: 0, value: 0 }] })} className="bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100 transition text-gray-900">+ Tambah Item</button>
+                                 </div>
+                                 {budgetForm.items?.map((item, index) => (
+                                    <div key={index} className="flex gap-2 mb-2 items-end">
+                                       <div className="flex-1">
+                                          <label className="text-xs font-bold text-gray-700">Purpose</label>
+                                          <input type="text" value={item.purpose} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].purpose = e.target.value; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
+                                       </div>
+                                       <div className="w-16">
+                                          <label className="text-xs font-bold text-gray-700">Qty</label>
+                                          <input type="number" value={item.qty} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].qty = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
+                                       </div>
+                                       <div className="w-32">
+                                          <label className="text-xs font-bold text-gray-700">Cost/Unit</label>
+                                          <input type="number" value={item.cost_unit} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].cost_unit = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
+                                       </div>
+                                       <div className="w-32">
+                                          <label className="text-xs font-bold text-gray-700">Value (Auto)</label>
+                                          <input type="number" readOnly value={item.value} className="w-full border border-gray-300 bg-gray-100 text-gray-600 rounded px-2 py-1 text-sm font-mono" />
+                                       </div>
+                                       <button type="button" onClick={() => { const newItems = [...(budgetForm.items || [])]; newItems.splice(index, 1); setBudgetForm({ ...budgetForm, items: newItems }); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2 py-1.5 rounded text-sm mb-0.5 transition border border-red-200">X</button>
+                                    </div>
+                                 ))}
+                                 <div className="flex justify-end items-center mt-4 gap-4">
+                                    <button type="button" onClick={() => { const total = (budgetForm.items || []).reduce((acc, curr) => acc + curr.value, 0); setBudgetForm({ ...budgetForm, total_cost: total }); }} className="text-xs font-bold text-black hover:text-blue-800 hover:underline transition">Hitung Ulang Total</button>
+                                    <div className="font-bold text-gray-900">Total Cost: Rp {Number(budgetForm.total_cost || 0).toLocaleString('id-ID')}</div>
+                                 </div>
+                              </div>
+                           </form>
+                        )}
+
+                        {activeTab === 'lending' && (
+                           <>
+                           <form id="lendingForm" onSubmit={handleSaveLending} className="space-y-4">
+                              {modalAction === 'return' && (
+                                 <div className="bg-blue-50 p-4 rounded-md border border-blue-200 text-blue-800 text-sm mb-4 font-medium">
+                                    Anda sedang memproses pengembalian barang untuk: <b className="text-blue-900 text-lg ml-1">{lendingForm.nama_peminjam}</b>
+                                 </div>
+                              )}
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Nama Peminjam</label>
+                                    <input required type="text" value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                 </div>
+                                 <div>
+                                    <label className="block text-sm font-bold mb-1">Nomor WhatsApp Peminjam</label>
+                                    <input required type="text" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                 </div>
+                              </div>
+
+                              {modalAction !== 'return' && (
+                                 <div className="bg-gray-50 border border-gray-100 p-3 rounded-md space-y-3">
+                                    <label className="block text-sm font-bold text-gray-900">Upload Foto KTP / ID Card</label>
+                                    <input type="file" accept="image/*,application/pdf" onChange={e => {
+                                       const file = e.target.files?.[0];
+                                       if (file) setLendingForm(prev => ({ ...prev, link_ktp_peminjam: file as any }));
+                                    }} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-1.5 text-sm" />
+                                    {lendingForm.link_ktp_peminjam && (
+                                       <div className="flex items-center gap-2 mt-2">
+                                          <span className="text-xs font-medium text-gray-600 truncate max-w-[200px]">
+                                             {lendingForm.link_ktp_peminjam instanceof File ? `File baru: ${lendingForm.link_ktp_peminjam.name}` : `URL: ${String(lendingForm.link_ktp_peminjam).substring(0, 30)}...`}
+                                          </span>
+                                          <button type="button" onClick={() => setLendingForm(prev => ({ ...prev, link_ktp_peminjam: null as any }))} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
+                                       </div>
+                                    )}
+                                    {lendingForm.link_ktp_peminjam && typeof lendingForm.link_ktp_peminjam === 'string' && (
+                                       <button type="button" onClick={() => openImageViewer(lendingForm.link_ktp_peminjam as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Lihat KTP Terunggah</button>
+                                    )}
+                                 </div>
+                              )}
+
+                              <div className="mt-4 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
+                                 <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-sm font-bold text-gray-900">Daftar Barang Dipinjam</label>
+                                    {modalAction !== 'return' && (
+                                       <button type="button" onClick={() => setLendingForm({ ...lendingForm, items_dipinjam: [...(lendingForm.items_dipinjam || []), { nama_barang: '', nomor_seri: '', catatan: '', catatan_pengembalian: '', status_pengembalian: 'dipinjam' }] })} className="bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100 transition text-gray-900">+ Tambah Barang</button>
+                                    )}
+                                 </div>
+                                 {lendingForm.items_dipinjam?.map((item, index) => (
+                                    <React.Fragment key={index}>
+                                       <div className="flex gap-2 mb-2 items-end p-2 border border-gray-100 rounded-md bg-white">
+                                          <div className="flex-1">
+                                             <label className="text-xs font-bold text-gray-700">Nama Barang</label>
+                                             <input type="text" list="list-nama-barang" required value={item.nama_barang} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].nama_barang = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                          </div>
+                                          <div className="flex-1">
+                                             <label className="text-xs font-bold text-gray-700">Nomor Seri</label>
+                                             <input type="text" required value={item.nomor_seri} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].nomor_seri = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                          </div>
+                                          <div className="flex-1">
+                                             <label className="text-xs font-bold text-gray-700">Catatan</label>
+                                             <input type="text" list="list-catatan-peminjaman" value={item.catatan || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
+                                          </div>
+                                          {modalAction === 'return' ? (
+                                             <div className="w-32">
+                                                <label className="text-xs font-bold text-gray-700">Status</label>
+                                                <select value={item.status_pengembalian} onChange={e => {
+                                                   const newItems = [...(lendingForm.items_dipinjam || [])];
+                                                   newItems[index].status_pengembalian = e.target.value as 'dipinjam' | 'dikembalikan';
+                                                   setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                                }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]">
+                                                   <option value="dipinjam">Dipinjam</option>
+                                                   <option value="dikembalikan">Dikembalikan</option>
+                                                </select>
+                                             </div>
+                                          ) : modalAction === 'edit' ? (
+                                             <div className="w-32">
+                                                <label className="text-xs font-bold text-gray-700">Status</label>
+                                                <select value={item.status_pengembalian} onChange={e => {
+                                                   const newItems = [...(lendingForm.items_dipinjam || [])];
+                                                   newItems[index].status_pengembalian = e.target.value as 'dipinjam' | 'dikembalikan';
+                                                   setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                                }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled>
+                                                   <option value="dipinjam">Dipinjam</option>
+                                                   <option value="dikembalikan">Dikembalikan</option>
+                                                </select>
+                                             </div>
+                                          ) : (
+                                             <button type="button" onClick={() => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems.splice(index, 1); setLendingForm({ ...lendingForm, items_dipinjam: newItems }); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2 py-1.5 rounded text-sm mb-0.5 transition border border-red-200">X</button>
+                                          )}
+                                       </div>
+                                       {modalAction === 'return' && item.status_pengembalian === 'dikembalikan' && (
+                                          <div className="flex gap-2 mb-2 items-end p-2 border border-gray-100 rounded-md bg-white -mt-1">
+                                             <div className="flex-1">
+                                                <label className="text-xs font-bold text-gray-700">Catatan Pengembalian (Opsional)</label>
+                                                <input type="text" list="list-catatan-pengembalian" value={item.catatan_pengembalian || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan_pengembalian = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" placeholder="Kondisi barang, dll." />
+                                             </div>
+                                             <div className="flex-1">
+                                                <label className="text-xs font-bold text-gray-700">Catatan Admin</label>
+                                                <input type="text" value={item.catatan_admin || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan_admin = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan internal admin" />
+                                             </div>
+                                          </div>
+                                       )}
+                                    </React.Fragment>
+                                 ))}
+                                 {(!lendingForm.items_dipinjam || lendingForm.items_dipinjam.length === 0) && modalAction !== 'return' && (
+                                    <p className="text-xs font-bold text-gray-500 italic mt-2">Belum ada barang ditambahkan</p>
+                                 )}
+                              </div>
+                           </form>
+                           <div className="flex justify-end gap-2 mt-4">
+                              <button type="button" onClick={() => setLendingForm({ ...lendingForm, status_wa: 'Dikirim' })} className="bg-green-500 hover:bg-green-600 text-white font-bold px-4 py-2 rounded-md text-sm transition flex items-center gap-2">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M.057 20l.667-6.017c.108-.178.84-.667 1.109-.834.269-.166.585-.166.854 0 .269.166.533.516.641.716l2.345 4.169c.173.31.433.56.729.716.296.156.633.166.942.033.309-.133.55-.416.7-.733l1.693-4.817c.1-.283.4-.516.733-.566.333-.05.683.066.933.316l3.483 3.367c.15.15.283.333.383.533.1.2.15.433.133.666-.017.233-.117.45-.283.616-.166.166-.383.283-.616.333-.233.05-.466.033-.683-.05l-4.417-2.483c-.133-.08-.266-.166-.4-.25-.133-.083-.283-.15-.433-.183-.15-.033-.316-.033-.466 0-.15.033-.283.1-.417.183l-4.416 2.483c-.217.1-.45.117-.683.05-.233-.05-.45-.166-.616-.333-.166-.166-.266-.383-.283-.616-.017-.233.033-.466.133-.666.1-.2.233-.383.383-.533l3.483-3.367c.25-.25.6-.366.933-.316.333.05.633.283.733.566l1.693 4.817c.15.316.393.599.7.733.309.133.65.123.942-.033.296-.156.556-.406.729-.716l2.345-4.169c.108-.199.372-.55.641-.716.269-.166.585-.166.854 0 .269.167.991.656 1.109.834l.667 6.017c.047.414-.296.777-.69.777h-11.834c-.394 0-.737-.363-.69-.777z"/></svg>
+                                 Kirim Status WA
+                              </button>
+                           </div>
+                           </>
+                        )}
+
+                        {activeTab === 'userrole' && (
+                           <form id="karyawanForm" onSubmit={modalAction === 'reset_pw' ? handleResetPwAdmin : handleSaveKaryawan} className="space-y-4">
+                              {modalAction === 'reset_pw' ? (
+                                 <>
+                                    <div className="bg-amber-50 p-4 rounded-md border border-amber-200 text-amber-800 text-sm mb-4 font-medium">
+                                       Anda sedang mengatur ulang kata sandi (Reset Password) untuk user: <b className="text-amber-900 text-lg ml-1">{karyawanForm.username}</b>
+                                    </div>
+                                    <div>
+                                       <label className="block text-sm font-bold mb-1">Ketik Password Baru</label>
+                                       <input required type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({ ...karyawanForm, password: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Minimal 6 karakter..." />
+                                    </div>
+                                 </>
+                              ) : (
+                                 <>
+                                    <div className="grid grid-cols-2 gap-4">
+                                       <div>
+                                          <label className="block text-sm font-bold mb-1">Nama Karyawan</label>
+                                          <input required type="text" value={karyawanForm.nama_karyawan || ''} onChange={e => setKaryawanForm({ ...karyawanForm, nama_karyawan: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                       </div>
+                                       <div>
+                                          <label className="block text-sm font-bold mb-1">Nomor WhatsApp (Reset Pw)</label>
+                                          <input required type="text" placeholder="62812345..." value={karyawanForm.nomor_wa || ''} onChange={e => setKaryawanForm({ ...karyawanForm, nomor_wa: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                       </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                       <div>
+                                          <label className="block text-sm font-bold mb-1">Username Login</label>
+                                          <input required type="text" value={karyawanForm.username || ''} onChange={e => setKaryawanForm({ ...karyawanForm, username: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'} />
+                                       </div>
+                                       <div>
+                                          <label className="block text-sm font-bold mb-1">Password {modalAction === 'edit' && <span className="text-[10px] font-normal text-gray-500">(Kosongkan jika tidak diubah)</span>}</label>
+                                          <input type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({ ...karyawanForm, password: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                       </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                       <div>
+                                          <label className="block text-sm font-bold mb-1">Role Akun</label>
+                                          <input type="text" list="list-roles" value={karyawanForm.role || ''} onChange={e => setKaryawanForm({ ...karyawanForm, role: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'} placeholder="Ketik atau pilih role..." />
+                                       </div>
+                                       <div>
+                                          <label className="block text-sm font-bold mb-1">Status Akun</label>
+                                          <select value={karyawanForm.status_aktif ? 'true' : 'false'} onChange={e => setKaryawanForm({ ...karyawanForm, status_aktif: e.target.value === 'true' })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'}>
+                                             <option value="true">Aktif</option>
+                                             <option value="false">Tidak Aktif (Blokir)</option>
+                                          </select>
+                                       </div>
+                                    </div>
+                                    <div className="mt-4 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md space-y-4">
+                                       <div>
+                                          <label className="block text-sm font-bold text-gray-900 mb-2">Akses Halaman yang Diizinkan</label>
+                                          <p className="text-xs font-bold text-gray-500 mb-3">Pilih halaman/tab mana saja yang boleh diakses oleh karyawan ini.</p>
+                                       </div>
+
+                                       {/* Tab Dashboard */}
+                                       <div>
+                                          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">📋 Tab Dashboard</p>
+                                          <div className="grid grid-cols-2 gap-2">
+                                             {[
+                                                { id: 'messages', label: 'Pesan' },
+                                                { id: 'konsumen', label: 'Konsumen' },
+                                                { id: 'promos', label: 'Promo' },
+                                                { id: 'claims', label: 'Claim' },
+                                                { id: 'warranties', label: 'Garansi' },
+                                                { id: 'services', label: 'Service' },
+                                                { id: 'budgets', label: 'ProposalEvent' },
+                                                { id: 'lending', label: 'Peminjaman' },
+                                                { id: 'import', label: 'Import Data' },
+                                                { id: 'botsettings', label: 'Bot Settings' },
+                                             ].map(tab => {
+                                                const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
+                                                return (
+                                                   <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'} cursor-pointer`}>
+                                                      <input type="checkbox" checked={isChecked} disabled={karyawanForm.role === 'Admin'} onChange={() => {
+                                                         const current = karyawanForm.akses_halaman || [];
+                                                         if (current.includes(tab.id)) setKaryawanForm({ ...karyawanForm, akses_halaman: current.filter(x => x !== tab.id) });
+                                                         else setKaryawanForm({ ...karyawanForm, akses_halaman: [...current, tab.id] });
+                                                      }} className="w-4 h-4 text-black rounded focus:ring-black" />
+                                                      <span className="text-sm font-bold text-gray-700">{tab.label}</span>
+                                                   </label>
+                                                );
+                                             })}
+                                          </div>
+                                       </div>
+
+                                       {/* Tab Event */}
+                                       <div>
+                                          <p className="text-[10px] font-bold text-yellow-600 uppercase tracking-wider mb-2">📅 Tab Event</p>
+                                          <div className="grid grid-cols-2 gap-2">
+                                             {[
+                                                { id: 'events', label: 'Master Event' },
+                                                { id: 'eventregistrations', label: 'Data Peserta' },
+                                             ].map(tab => {
+                                                const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
+                                                return (
+                                                   <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-100'} cursor-pointer`}>
+                                                      <input type="checkbox" checked={isChecked} disabled={karyawanForm.role === 'Admin'} onChange={() => {
+                                                         const current = karyawanForm.akses_halaman || [];
+                                                         if (current.includes(tab.id)) setKaryawanForm({ ...karyawanForm, akses_halaman: current.filter(x => x !== tab.id) });
+                                                         else setKaryawanForm({ ...karyawanForm, akses_halaman: [...current, tab.id] });
+                                                      }} className="w-4 h-4 text-black rounded focus:ring-black" />
+                                                      <span className="text-sm font-bold text-gray-700">{tab.label}</span>
+                                                   </label>
+                                                );
+                                             })}
+                                          </div>
+                                       </div>
+
+                                       {/* Halaman Admin Event */}
+                                       <div>
+                                          <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-2">🛠️ Halaman Admin Event</p>
+                                          <div className="grid grid-cols-1 gap-2">
+                                             {[
+                                                { id: 'admin_validate_payment', label: '✅ Validasi Pembayaran (/admin/events)', desc: 'Setujui/tolak pendaftaran event' },
+                                                { id: 'admin_attendance', label: '📷 Absensi & Scan QR (/admin/events/attendance)', desc: 'Konfirmasi kehadiran peserta' },
+                                                { id: 'admin_deposit_refund', label: '💸 Kelola Deposit (/admin/events/deposit)', desc: 'Cek registrasi & proses refund' },
+                                             ].map(tab => {
+                                                const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
+                                                return (
+                                                   <label key={tab.id} className={`flex items-start gap-2 p-2 rounded border ${isChecked ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-100'} cursor-pointer`}>
+                                                      <input type="checkbox" checked={isChecked} disabled={karyawanForm.role === 'Admin'} onChange={() => {
+                                                         const current = karyawanForm.akses_halaman || [];
+                                                         if (current.includes(tab.id)) setKaryawanForm({ ...karyawanForm, akses_halaman: current.filter(x => x !== tab.id) });
+                                                         else setKaryawanForm({ ...karyawanForm, akses_halaman: [...current, tab.id] });
+                                                      }} className="w-4 h-4 mt-0.5 text-black rounded focus:ring-black flex-shrink-0" />
+                                                      <div className="flex-1 min-w-0">
+                                                         <p className="text-sm font-bold text-gray-700 leading-tight">{tab.label}</p>
+                                                         <p className="text-[11px] text-gray-500">{tab.desc}</p>
+                                                      </div>
+                                                   </label>
+                                                );
+                                             })}
+                                          </div>
+                                       </div>
+
+                                       {karyawanForm.role === 'Admin' && (
+                                          <p className="text-xs text-gray-600 italic bg-yellow-50 border border-yellow-200 rounded p-2">⚡ Role <strong>Admin</strong> otomatis punya akses penuh ke semua halaman.</p>
+                                       )}
+                                    </div>
+                                 </>
+                              )}
+                           </form>
+                        )}
+
+                        
+                        
+                        {activeTab === 'eventregistrations' && (
+                           <form id="registrationForm" onSubmit={handleSaveRegistration} className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nomor WhatsApp</label>
+                                    <input type="text" value={registrationForm.nomor_wa || ''} onChange={async e => {
+                                       const wa = e.target.value;
+                                       setRegistrationForm({ ...registrationForm, nomor_wa: wa });
+                                       if (wa.length >= 10) {
+                                          const { data } = await supabase.from('konsumen').select('nama_lengkap, kabupaten_kotamadya').eq('nomor_wa', wa).single();
+                                          if (data) setRegistrationForm(f => ({ ...f, nomor_wa: wa, nama_lengkap: data.nama_lengkap || '', kabupaten_kotamadya: data.kabupaten_kotamadya || '' }));
+                                       }
+                                    }} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Lengkap</label>
+                                    <input type="text" value={registrationForm.nama_lengkap || ''} onChange={e => setRegistrationForm({ ...registrationForm, nama_lengkap: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kabupaten / Kotamadya</label>
+                                    <input type="text" value={registrationForm.kabupaten_kotamadya || ''} onChange={e => setRegistrationForm({ ...registrationForm, kabupaten_kotamadya: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Auto-isi dari data konsumen" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tipe Kamera</label>
+                                    <input type="text" list="list-tipe-barang" value={registrationForm.tipe_kamera || ''} onChange={e => setRegistrationForm({ ...registrationForm, tipe_kamera: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" />
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Event</label>
+                                 <select value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required>
+                                    <option value="">Pilih event...</option>
+                                    {events.map(ev => <option key={ev.id} value={ev.event_title}>{ev.event_title}</option>)}
+                                 </select>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status Pendaftaran</label>
+                                 <select value={registrationForm.status_pendaftaran || 'menunggu_validasi'} onChange={e => setRegistrationForm({ ...registrationForm, status_pendaftaran: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
+                                    <option value="menunggu_validasi">Menunggu Validasi Pembayaran</option>
+                                    <option value="terdaftar">Terdaftar</option>
+                                    <option value="ditolak">Ditolak</option>
+>>>>>>> ba042d7285786bfa8ddec496196501d86ac318cf
                                  </select>
                               </div>
                               <div>
@@ -3118,6 +4450,216 @@ export default function NikonDashboard() {
                                     <option value="false">Nonaktif</option>
                                  </select>
                               </div>
+<<<<<<< HEAD
+=======
+                           </form>
+                        )}
+
+                        {activeTab === 'events' && (
+                           <form id="eventForm" onSubmit={handleSaveEvent} className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Judul Event</label>
+                                    <input type="text" value={eventForm.event_title || ''} onChange={e => setEventForm({ ...eventForm, event_title: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tanggal Acara</label>
+                                    <input type="date" value={idDateToIso(eventForm.event_date)} onChange={e => setEventForm({ ...eventForm, event_date: isoToIdDate(e.target.value) })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                    {eventForm.event_date && <p className="text-[10px] text-gray-400 mt-1">Tersimpan sebagai: <span className="font-mono">{eventForm.event_date}</span></p>}
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Speaker</label>
+                                    <input type="text" value={eventForm.event_speaker || ''} onChange={e => setEventForm({ ...eventForm, event_speaker: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Nama pembicara / instruktur" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Genre / Spesialisasi Speaker</label>
+                                    <input type="text" value={eventForm.event_speaker_genre || ''} onChange={e => setEventForm({ ...eventForm, event_speaker_genre: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Contoh: Wildlife Photographer" />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Harga</label>
+                                    <input type="text" value={eventForm.event_price || ''} onChange={e => setEventForm({ ...eventForm, event_price: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tipe Pembayaran</label>
+                                    <select value={eventForm.event_payment_tipe || 'regular'} onChange={e => setEventForm({ ...eventForm, event_payment_tipe: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="regular">Regular (Lunas)</option>
+                                       <option value="deposit">Deposit</option>
+                                       <option value="gratis">Gratis</option>
+                                    </select>
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Jumlah Deposit</label>
+                                    <input type="text" value={eventForm.deposit_amount || ''} onChange={e => setEventForm({ ...eventForm, deposit_amount: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Isi jika tipe deposit" disabled={eventForm.event_payment_tipe !== 'deposit'} />
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kuota Slot (Peserta)</label>
+                                    <input type="number" value={eventForm.event_partisipant_stock || 0} onChange={e => setEventForm({ ...eventForm, event_partisipant_stock: Number(e.target.value) })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status</label>
+                                    <select value={eventForm.event_status || 'In stock'} onChange={e => setEventForm({ ...eventForm, event_status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="In stock">In stock (Available)</option>
+                                       <option value="Sold Out">Sold Out</option>
+                                       <option value="Close">Close</option>
+                                    </select>
+                                 </div>
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Proposal Event</label>
+                                    <select value={eventForm.proposal_event_id || ''} onChange={e => setEventForm({ ...eventForm, proposal_event_id: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
+                                       <option value="">Tanpa proposal</option>
+                                       {budgets.map(b => <option key={b.id_budget} value={b.id_budget}>{b.proposal_no} — {b.title}</option>)}
+                                    </select>
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Info Rekening Bank</label>
+                                    <input type="text" value={eventForm.bank_info || ''} onChange={e => setEventForm({ ...eventForm, bank_info: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Contoh: BCA 1234567890 a.n Nikon" />
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Foto / Poster Acara</label>
+                                 {(eventImageFile || eventForm.event_image) && (
+                                    <div className="mb-2 relative w-24 h-32 rounded overflow-hidden border border-gray-100">
+                                       <img src={eventImageFile ? URL.createObjectURL(eventImageFile) : gdriveUrl(eventForm.event_image)} alt="preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                       <button type="button" onClick={() => { setEventImageFile(null); setEventForm({ ...eventForm, event_image: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
+                                    </div>
+                                 )}
+                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventImageFile(e.target.files[0]); }} className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 transition-all cursor-pointer" />
+                                 <p className="text-xs text-gray-400 mt-1">Format: JPG, PNG, WEBP. Rasio 3:4 disarankan.</p>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Screenshot / QR Pembayaran</label>
+                                 {(eventPaymentScreenshotFile || eventForm.event_upload_payment_screenshot) && (
+                                    <div className="mb-2 relative w-32 h-32 rounded overflow-hidden border border-gray-100">
+                                       <img src={eventPaymentScreenshotFile ? URL.createObjectURL(eventPaymentScreenshotFile) : gdriveUrl(eventForm.event_upload_payment_screenshot)} alt="payment qr" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                       <button type="button" onClick={() => { setEventPaymentScreenshotFile(null); setEventForm({ ...eventForm, event_upload_payment_screenshot: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
+                                    </div>
+                                 )}
+                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventPaymentScreenshotFile(e.target.files[0]); }} className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 transition-all cursor-pointer" />
+                                 <p className="text-xs text-gray-400 mt-1">Upload gambar QR atau screenshot info pembayaran (JPG, PNG, WEBP).</p>
+                              </div>
+                              <div>
+                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Deskripsi Event</label>
+                                 <textarea rows={5} value={eventForm.event_description || ''} onChange={e => setEventForm({ ...eventForm, event_description: e.target.value })} className="w-full p-3 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan deskripsi acara lengkap..."></textarea>
+                              </div>
+                           </form>
+                        )}
+
+                        {activeTab === 'botsettings' && (
+                           <form id="botSettingsForm" onSubmit={handleSaveBotSettings} className="space-y-4">
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">Nama Pengaturan</label>
+                                 <input required type="text" value={botSettingsForm.nama_pengaturan || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, nama_pengaturan: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Contoh: LINK_SYARAT_KETENTUAN" />
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">URL / Value</label>
+                                 <input type="text" value={botSettingsForm.url_file || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, url_file: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="https://..." />
+                              </div>
+                              <div>
+                                 <label className="block text-sm font-bold mb-1">Deskripsi</label>
+                                 <textarea value={botSettingsForm.description || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, description: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500] h-24" placeholder="Deskripsi atau kegunaan dari pengaturan ini..." />
+                              </div>
+                           </form>
+                        )}
+                     </div>
+                     <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+                        <button onClick={closeModal} className="px-4 py-2 border border-gray-300 bg-white text-gray-900 hover:bg-gray-100 rounded-md text-sm font-bold transition">Batal</button>
+                        {/* Logic for form ID */}
+                        {(() => { // This IIFE calculates and returns the submit button
+                           const formId = (() => {
+                              if (activeTab === 'claims') return 'claimForm';
+                              if (activeTab === 'warranties') return 'warrantyForm';
+                              if (activeTab === 'services') return 'serviceForm';
+                              if (activeTab === 'promos') return 'promoForm';
+                              if (activeTab === 'konsumen') return 'konsumenForm';
+                              if (activeTab === 'userrole') return 'karyawanForm';
+                              if (activeTab === 'botsettings') return 'botSettingsForm';
+                             if (activeTab === 'events') return 'eventForm';
+                             if (activeTab === 'eventregistrations') return 'registrationForm';
+                              if (activeTab === 'lending') return 'lendingForm'; // Both 'return' and 'create/edit' use 'lendingForm'
+                              return 'budgetForm';
+                           })();
+                           const submitButtonText = isSubmitting ? 'Memproses...' : modalAction === 'return' ? 'Proses Pengembalian' : 'Simpan Data';
+                           const submitButtonOnClick = activeTab === 'lending' && modalAction === 'return' ? () => handleReturnItems(lendingForm as PeminjamanBarang) : undefined;
+
+                           return <button type="submit" form={formId} disabled={isSubmitting} onClick={submitButtonOnClick} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black rounded-md text-sm font-bold transition disabled:opacity-50">{submitButtonText}</button>;
+                        })()}
+                     </div>
+                  </div>
+               </div>
+            )}
+         {/* =========================================================
+          PRINT AREA (FORMAT PERSIS PDF MKTG)
+      ========================================================= */}
+         {printData && (
+            <div className="flex flex-col absolute top-0 left-0 w-full bg-white text-black font-sans z-[100] min-h-screen pb-10 pt-6" style={{ fontSize: '13px', lineHeight: '1.4' }}>
+
+               {/* PRINT CONTROL BAR */}
+               <div className="print:hidden fixed top-4 right-4 flex flex-col gap-3 z-50 bg-white p-3 rounded-lg shadow-xl border border-gray-100">
+                  <div className="flex gap-3 justify-end">
+                     <button onClick={() => setPrintData(null)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-md transition text-sm">Kembali</button>
+                     <button onClick={handlePrintDocument} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black font-bold rounded-md transition shadow-md text-sm flex items-center gap-2">🖨️ Cetak PDF</button>
+                  </div>
+                  {printData.attachment_urls && printData.attachment_urls.some(u => u) && (
+                     <div className="flex items-center gap-2 border-t border-gray-100 pt-2 mt-1">
+                        <label className="text-xs font-bold text-gray-600">Ukuran Gambar:</label>
+                        <input type="range" min="100" max="800" value={printImageSize} onChange={(e) => setPrintImageSize(Number(e.target.value))} className="w-32 accent-[#FFE500]" />
+                        <span className="text-xs font-mono bg-gray-100 px-1 rounded">{printImageSize}px</span>
+                     </div>
+                  )}
+               </div>
+
+               <div className="px-4 max-w-[800px] mx-auto w-full">
+                  {/* HEADER */}
+                  <div className="flex justify-between items-start border-b-2 border-black pb-3 mb-5">
+                     <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-black text-white flex flex-col items-center justify-center font-bold text-[10px] uppercase text-center p-1 leading-none shadow-sm">
+                           <span>ALTA</span>
+                           <span>NIKINDO</span>
+                        </div>
+                        <div className="font-extrabold text-2xl tracking-tight leading-tight">
+                           BUDGET APPROVAL <br />
+                           <span className="font-normal text-sm tracking-normal">(SALES / MARKETING / SERVICE)</span>
+                        </div>
+                     </div>
+                     <div className="border-2 border-black bg-white">
+                        <div className="flex border-b border-black">
+                           <div className="w-20 p-1 border-r border-black font-bold text-xs bg-gray-50">Section:</div>
+                           <div className="w-36 p-1 font-bold text-xs uppercase">{printData.budget_source || 'MARKETING'}</div>
+                        </div>
+                        <div className="flex">
+                           <div className="w-20 p-1 border-r border-black font-bold text-xs bg-gray-50">Page(s):</div>
+                           <div className="w-36 p-1 text-xs">1</div>
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* SIGNATURE GRID */}
+                  <div className="flex gap-2 mb-5 text-center">
+                     <div className="border-2 border-black w-48 flex flex-col bg-white">
+                        <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Proposed / Prepared by</div>
+                        <div className="flex-1 flex flex-col justify-end p-2 relative pt-8">
+                           <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.drafter_name || ''} placeholder="Ketik nama..." />
+                        </div>
+                        <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
+                           <div className="p-1 w-1/2 text-left">Sign</div>
+                           <div className="p-1 w-1/2 text-left">Date:</div>
+                        </div>
+                     </div>
+                     <div className="border-2 border-black flex-1 flex flex-col relative bg-white">
+                        <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Management Approval</div>
+                        <div className="flex-1 flex divide-x divide-black min-h-[60px]">
+                           <div className="flex-1 flex flex-col justify-end p-2 relative">
+                              <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-xs z-10" defaultValue={printData.mgt_comment_1 || ''} placeholder="Nama Comment 1..." />
+
+>>>>>>> ba042d7285786bfa8ddec496196501d86ac318cf
                            </div>
                            <div className="mt-4">
                               <label className="label-form">Akses Halaman</label>
