@@ -3036,7 +3036,7 @@ export default function NikonDashboard() {
                                        <td className="px-6 py-3 flex gap-3">
                                           <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                           <button onClick={() => openModal('reset_pw', 'karyawan', k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
-                                          <button onClick={() => handleDelete('karyawan', k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline" disabled={k.username === 'admin'}>Hapus</button>
+                                          <button onClick={() => handleDelete('karyawan', k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                        </td>
                                     </tr>
                                  ))}
@@ -3048,23 +3048,18 @@ export default function NikonDashboard() {
                            {sortedKaryawans.map((k: Karyawan) => (
                               <div key={k.id_karyawan} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
                                  <div className="border-b border-gray-100 pb-3 mb-3">
-                                    <div className="flex justify-between items-start">
-                                       <div>
-                                          <h3 className="font-bold text-base text-slate-800">{k.nama_karyawan}</h3>
-                                          <p className="text-xs text-gray-500">{k.username}</p>
-                                       </div>
-                                       <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
-                                    </div>
-                                    <p className="text-sm font-bold text-black mt-2">{k.role}</p>
+                                    <h3 className="font-bold text-base text-slate-800">{k.nama_karyawan}</h3>
+                                    <p className="text-xs text-gray-500">{k.username}</p>
                                  </div>
-                                 <div className="space-y-1 text-xs flex-1">
-                                    <p className="font-bold">Akses:</p>
-                                    <p className="font-mono text-gray-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</p>
+                                 <div className="space-y-2 text-xs flex-1">
+                                    <p><span className="font-bold w-20 inline-block">Role:</span> {k.role}</p>
+                                    <p><span className="font-bold w-20 inline-block">Status:</span> <span className={`px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span></p>
+                                    <p><span className="font-bold w-20 inline-block">Akses:</span> {k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</p>
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                     <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => openModal('reset_pw', 'karyawan', k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
-                                    <button onClick={() => handleDelete('karyawan', k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline" disabled={k.username === 'admin'}>Hapus</button>
+                                    <button onClick={() => handleDelete('karyawan', k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                  </div>
                               </div>
                            ))}
@@ -3072,1052 +3067,158 @@ export default function NikonDashboard() {
                      )}
                   </div>
                )}
+
                </main>
             </div>
          </div>
 
-         {/* --- MODALS NEW CHAT --- */}
-            {isNewChatModalOpen && (
-               <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 text-gray-900">
-                  <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-                     <h2 className="text-lg font-bold">Pesan Baru</h2>
-                     <input type="text" value={newChatWa} onChange={e => setNewChatWa(e.target.value)} placeholder="No WA (Contoh: 0812...)" className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                     <textarea rows={4} value={newChatMsg} onChange={e => setNewChatMsg(e.target.value)} placeholder="Isi pesan..." className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]"></textarea>
-                     <div className="flex justify-end gap-3">
-                        <button onClick={() => setIsNewChatModalOpen(false)} className="px-4 py-2 border border-gray-300 bg-white text-gray-900 hover:bg-gray-100 rounded-md text-sm font-bold transition">Batal</button>
-                        <button onClick={handleSendNewChat} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black rounded-md text-sm font-bold transition disabled:opacity-50" disabled={!newChatWa || !newChatMsg}>Kirim</button>
-                     </div>
+         {/* MODALS */}
+         {isModalOpen && (
+            <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4 animate-fade-in">
+               <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                  <div className="p-5 border-b border-gray-200">
+                     <h2 className="text-lg font-bold text-gray-900">
+                        {modalAction === 'create' ? 'Tambah' : modalAction === 'edit' ? 'Edit' : modalAction === 'reset_pw' ? 'Reset Password' : 'Pengembalian'} Data
+                     </h2>
                   </div>
-               </div>
-            )}
-
-            {/* --- MODALS CREATE / EDIT --- */}
-            {isModalOpen && (
-               <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 p-4 text-gray-900">
-                  <div className={`bg-white rounded-xl shadow-2xl w-full ${activeTab === 'budgets' ? 'max-w-4xl' : 'max-w-2xl'} overflow-hidden flex flex-col max-h-[90vh]`}>
-                     <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                        <h2 className="text-lg font-bold">{modalAction === 'create' ? 'Tambah' : modalAction === 'reset_pw' ? 'Reset Password' : 'Edit'} Data</h2>
-                        <button onClick={closeModal} className="text-2xl text-gray-400 hover:text-gray-700 leading-none transition">×</button>
-                     </div>
-
-                     <div className="p-6 overflow-y-auto">
-
-                        {activeTab === 'claims' && (
-                           <form id="claimForm" onSubmit={handleSaveClaim} className="space-y-4">
+                  <div className="p-6 space-y-4 overflow-y-auto">
+                     {/* Karyawan Form */}
+                     {activeTab === 'userrole' && (
+                        <form onSubmit={modalAction === 'reset_pw' ? handleResetPwAdmin : handleSaveKaryawan}>
+                           {/* ... form fields for Karyawan ... */}
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
-                                 <label className="block text-sm font-bold mb-1">Nomor WA</label>
-                                 <input required type="text" value={claimForm.nomor_wa || ''} onChange={e => setClaimForm({ ...claimForm, nomor_wa: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 <label className="label-form">Username</label>
+                                 <input type="text" value={karyawanForm.username || ''} onChange={e => setKaryawanForm({ ...karyawanForm, username: e.target.value })} className="input-form" required />
                               </div>
                               <div>
-                                 <label className="block text-sm font-bold mb-1">Nomor Seri</label>
-                                 <input required type="text" value={claimForm.nomor_seri || ''} onChange={e => setClaimForm({ ...claimForm, nomor_seri: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Tipe Barang</label>
-                                    <input type="text" list="list-tipe-barang" value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({ ...claimForm, tipe_barang: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Tgl Pembelian</label>
-                                    <input type="date" value={claimForm.tanggal_pembelian || ''} onChange={e => setClaimForm({ ...claimForm, tanggal_pembelian: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                 </div>
-                              </div>
-
-                              {(modalAction === 'edit' && (claimForm.link_kartu_garansi || claimForm.link_nota_pembelian)) && (
-                                 <div className="bg-blue-50 p-3 rounded-md border border-blue-100 flex flex-col gap-2">
-                                    <span className="text-xs font-bold text-blue-800">Dokumen Lampiran (Klik untuk Buka):</span>
-                                    {claimForm.link_nota_pembelian ? (
-                                       <button type="button" onClick={() => openImageViewer(claimForm.link_nota_pembelian as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Link Nota Pembelian</button>
-                                    ) : (
-                                       <span className="text-xs font-bold text-gray-500 italic">Tidak ada link Nota Pembelian</span>
-                                    )}
-                                    {claimForm.link_kartu_garansi ? (
-                                       <button type="button" onClick={() => openImageViewer(claimForm.link_kartu_garansi as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Link Kartu Garansi</button>
-                                    ) : (
-                                       <span className="text-xs font-bold text-gray-500 italic">Tidak ada link Kartu Garansi</span>
-                                    )}
-                                 </div>
-                              )}
-
-                              {/* New file upload section for ClaimForm */}
-                              <div className="bg-gray-50 border border-gray-100 p-3 rounded-md space-y-3">
-                                 <div className="space-y-1">
-                                    <label className="block text-sm font-bold text-gray-900">Nota Pembelian (Upload atau Link)</label>
-                                    <input type="text" value={typeof claimForm.link_nota_pembelian === 'string' ? claimForm.link_nota_pembelian : ''} onChange={e => setClaimForm({ ...claimForm, link_nota_pembelian: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
-                                    <div className="flex items-center gap-2">
-                                       <span className="text-[10px] font-bold text-gray-500">ATAU UPLOAD:</span>
-                                       <input type="file" accept="image/*,application/pdf" onChange={e => {
-                                          const file = e.target.files?.[0];
-                                          if (file) setClaimForm(prev => ({ ...prev, link_nota_pembelian: file as any }));
-                                       }} className="flex-1 border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-1 text-[10px]" />
-                                    </div>
-                                 </div>
-
-                                 {claimForm.link_nota_pembelian && (
-                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-gray-100">
-                                       <span className="text-xs font-medium text-gray-600 truncate flex-1">
-                                          {claimForm.link_nota_pembelian instanceof File ? `📄 File: ${claimForm.link_nota_pembelian.name}` : `${isGoogleDriveLink(claimForm.link_nota_pembelian) ? '🔗📂' : '🔗'} URL: ${String(claimForm.link_nota_pembelian).substring(0, 40)}...`}
-                                       </span>
-                                       <button type="button" onClick={() => setClaimForm(prev => ({ ...prev, link_nota_pembelian: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
-                                    </div>
-                                 )}
-
-                                 <div className="space-y-1 mt-4">
-                                    <label className="block text-sm font-bold text-gray-900">Kartu Garansi (Upload atau Link)</label>
-                                    <input type="text" value={typeof claimForm.link_kartu_garansi === 'string' ? claimForm.link_kartu_garansi : ''} onChange={e => setClaimForm({ ...claimForm, link_kartu_garansi: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
-                                    <div className="flex items-center gap-2">
-                                       <span className="text-[10px] font-bold text-gray-500">ATAU UPLOAD:</span>
-                                       <input type="file" accept="image/*,application/pdf" onChange={e => {
-                                          const file = e.target.files?.[0];
-                                          if (file) setClaimForm(prev => ({ ...prev, link_kartu_garansi: file as any }));
-                                       }} className="flex-1 border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-1 text-[10px]" />
-                                    </div>
-                                 </div>
-
-                                 {claimForm.link_kartu_garansi && (
-                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-gray-100">
-                                       <span className="text-xs font-medium text-gray-600 truncate flex-1">
-                                          {claimForm.link_kartu_garansi instanceof File ? `📄 File: ${claimForm.link_kartu_garansi.name}` : `${isGoogleDriveLink(claimForm.link_kartu_garansi) ? '🔗📂' : '🔗'} URL: ${String(claimForm.link_kartu_garansi).substring(0, 40)}...`}
-                                       </span>
-                                       <button type="button" onClick={() => setClaimForm(prev => ({ ...prev, link_kartu_garansi: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
-                                    </div>
-                                 )}
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Validasi MKT</label>
-                                    <select value={claimForm.validasi_by_mkt || ''} onChange={e => setClaimForm({ ...claimForm, validasi_by_mkt: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
-                                       <option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option>
-                                       <option value="Valid">Valid</option>
-                                       <option value="Tidak Valid">Tidak Valid</option>
-                                       <option value="HOLD">HOLD</option>
-                                       <option value="Double Input">Double Input</option>
-                                    </select>
-                                    <label className="block text-sm font-bold mt-3 mb-1">Catatan MKT</label>
-                                    <textarea rows={2} value={claimForm.catatan_mkt || ''} onChange={e => setClaimForm({ ...claimForm, catatan_mkt: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan tambahan MKT..."></textarea>
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Validasi FA</label>
-                                    <select value={claimForm.validasi_by_fa || ''} onChange={e => setClaimForm({ ...claimForm, validasi_by_fa: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
-                                       <option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option>
-                                       <option value="Valid">Valid</option>
-                                       <option value="Tidak Valid">Tidak Valid</option>
-                                    </select>
-                                    <label className="block text-sm font-bold mt-3 mb-1">Catatan FA</label>
-                                    <textarea rows={2} value={claimForm.catatan_fa || ''} onChange={e => setClaimForm({ ...claimForm, catatan_fa: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan tambahan FA..."></textarea>
-                                 </div>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-4 bg-gray-50 border border-gray-100 p-3 rounded-md">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Nama Toko</label>
-                                    <input type="text" list="list-nama-toko" value={claimForm.nama_toko || ''} onChange={e => setClaimForm({ ...claimForm, nama_toko: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik nama toko..." />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Jenis Promosi</label>
-                                    <input type="text" list="list-jenis-promo" value={claimForm.jenis_promosi || ''} onChange={e => setClaimForm({ ...claimForm, jenis_promosi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik jenis promo..." />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Jasa Pengiriman</label>
-                                    <input type="text" list="list-jasa-kirim" value={claimForm.nama_jasa_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, nama_jasa_pengiriman: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="JNE / J&T / dll" />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Nomor Resi</label>
-                                    <input type="text" value={claimForm.nomor_resi || ''} onChange={e => setClaimForm({ ...claimForm, nomor_resi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Masukkan nomor resi..." />
-                                 </div>
-                              </div>
-                           </form>
-                        )}
-
-                        {activeTab === 'konsumen' && (
-                           <form id="konsumenForm" onSubmit={handleSaveKonsumen} className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Nama Lengkap</label>
-                                    <input required type="text" value={konsumenForm.nama_lengkap || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nama_lengkap: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Nomor WhatsApp</label>
-                                    <input required type="text" value={konsumenForm.nomor_wa || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nomor_wa: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'edit'} />
-                                 </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">NIK</label>
-                                    <input type="text" value={konsumenForm.nik || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nik: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Kode Pos</label>
-                                    <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                 </div>
+                                 <label className="label-form">Nama Karyawan</label>
+                                 <input type="text" value={karyawanForm.nama_karyawan || ''} onChange={e => setKaryawanForm({ ...karyawanForm, nama_karyawan: e.target.value })} className="input-form" required />
                               </div>
                               <div>
-                                 <label className="block text-sm font-bold mb-1">Alamat Rumah</label>
-                                 <textarea rows={2} value={konsumenForm.alamat_rumah || ''} onChange={e => setKonsumenForm({ ...konsumenForm, alamat_rumah: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]"></textarea>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Kelurahan</label>
-                                    <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Kecamatan</label>
-                                    <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                 </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Kabupaten / Kotamadya</label>
-                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Provinsi</label>
-                                    <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                 </div>
-                              </div>
-                           </form>
-                        )}
-
-                        {activeTab === 'warranties' && (
-                           <form id="warrantyForm" onSubmit={handleSaveWarranty} className="space-y-4">
-                              <div>
-                                 <label className="block text-sm font-bold mb-1">Nomor Seri</label>
-                                 <input required type="text" value={warrantyForm.nomor_seri || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_seri: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
+                                 <label className="label-form">Nomor WhatsApp</label>
+                                 <input type="text" value={karyawanForm.nomor_wa || ''} onChange={e => setKaryawanForm({ ...karyawanForm, nomor_wa: e.target.value })} className="input-form" required />
                               </div>
                               <div>
-                                 <label className="block text-sm font-bold mb-1">Tipe Barang</label>
-                                 <input required type="text" list="list-tipe-barang" value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({ ...warrantyForm, tipe_barang: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                              </div>
-
-                              {(modalAction === 'edit') && (
-                                 <div className="bg-blue-50 p-3 rounded-md border border-blue-100 flex flex-col gap-2">
-                                    <span className="text-xs font-bold text-blue-800">Dokumen Lampiran Garansi/Nota:</span>
-                                    {(() => {
-                                       const linked = claims.find(c => c.nomor_seri === warrantyForm.nomor_seri);
-                                       const n = warrantyForm.link_nota_pembelian || linked?.link_nota_pembelian;
-                                       const g = warrantyForm.link_kartu_garansi || linked?.link_kartu_garansi;
-                                       return (
-                                          <>
-                                             {n ? <button type="button" onClick={() => openImageViewer(n as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Lihat Bukti Nota</button> : <span className="text-xs font-bold text-gray-500 italic">Tidak ada link Nota</span>}
-                                             {g ? <button type="button" onClick={() => openImageViewer(g as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Lihat Bukti Kartu Garansi</button> : <span className="text-xs font-bold text-gray-500 italic">Tidak ada link Kartu Garansi</span>}
-                                          </>
-                                       );
-                                    })()}
-                                 </div>
-                              )}
-
-                              {/* New file upload section for WarrantyForm */}
-                              <div className="bg-gray-50 border border-gray-100 p-3 rounded-md space-y-3">
-                                 <div className="space-y-1">
-                                    <label className="block text-sm font-bold text-gray-900">Nota Pembelian (Upload atau Link)</label>
-                                    <input type="text" value={typeof warrantyForm.link_nota_pembelian === 'string' ? warrantyForm.link_nota_pembelian : ''} onChange={e => setWarrantyForm({ ...warrantyForm, link_nota_pembelian: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
-                                    <div className="flex items-center gap-2">
-                                       <span className="text-[10px] font-bold text-gray-500">ATAU UPLOAD:</span>
-                                       <input type="file" accept="image/*,application/pdf" onChange={e => {
-                                          const file = e.target.files?.[0];
-                                          if (file) setWarrantyForm(prev => ({ ...prev, link_nota_pembelian: file as any }));
-                                       }} className="flex-1 border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-1 text-[10px]" />
-                                    </div>
-                                 </div>
-
-                                 {warrantyForm.link_nota_pembelian && (
-                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-gray-100">
-                                       <span className="text-xs font-medium text-gray-600 truncate flex-1">
-                                          {warrantyForm.link_nota_pembelian instanceof File ? `📄 File: ${warrantyForm.link_nota_pembelian.name}` : `${isGoogleDriveLink(warrantyForm.link_nota_pembelian) ? '🔗📂' : '🔗'} URL: ${String(warrantyForm.link_nota_pembelian).substring(0, 40)}...`}
-                                       </span>
-                                       <button type="button" onClick={() => setWarrantyForm(prev => ({ ...prev, link_nota_pembelian: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
-                                    </div>
-                                 )}
-
-                                 <div className="space-y-1 mt-4">
-                                    <label className="block text-sm font-bold text-gray-900">Kartu Garansi (Upload atau Link)</label>
-                                    <input type="text" value={typeof warrantyForm.link_kartu_garansi === 'string' ? warrantyForm.link_kartu_garansi : ''} onChange={e => setWarrantyForm({ ...warrantyForm, link_kartu_garansi: e.target.value })} placeholder="Tempel link Google Drive atau URL lainnya di sini..." className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-xs outline-none focus:border-[#FFE500]" />
-                                    <div className="flex items-center gap-2">
-                                       <span className="text-[10px] font-bold text-gray-500">ATAU UPLOAD:</span>
-                                       <input type="file" accept="image/*,application/pdf" onChange={e => {
-                                          const file = e.target.files?.[0];
-                                          if (file) setWarrantyForm(prev => ({ ...prev, link_kartu_garansi: file as any }));
-                                       }} className="flex-1 border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-1 text-[10px]" />
-                                    </div>
-                                 </div>
-
-                                 {warrantyForm.link_kartu_garansi && (
-                                    <div className="flex items-center gap-2 bg-white p-2 rounded border border-gray-100">
-                                       <span className="text-xs font-medium text-gray-600 truncate flex-1">
-                                          {warrantyForm.link_kartu_garansi instanceof File ? `📄 File: ${warrantyForm.link_kartu_garansi.name}` : `${isGoogleDriveLink(warrantyForm.link_kartu_garansi) ? '🔗📂' : '🔗'} URL: ${String(warrantyForm.link_kartu_garansi).substring(0, 40)}...`}
-                                       </span>
-                                       <button type="button" onClick={() => setWarrantyForm(prev => ({ ...prev, link_kartu_garansi: null as any }))} className="bg-red-50 text-red-600 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-100 transition">Hapus</button>
-                                    </div>
-                                 )}
-                              </div>
-                              <div className="grid grid-cols-3 gap-4">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Status Validasi</label>
-                                    <select value={warrantyForm.status_validasi || ''} onChange={e => setWarrantyForm({ ...warrantyForm, status_validasi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
-                                       <option value="Menunggu">Menunggu</option>
-                                       <option value="Valid">Valid</option>
-                                       <option value="Tidak Valid">Tidak Valid</option>
-                                    </select>
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Jenis Garansi</label>
-                                    <select value={warrantyForm.jenis_garansi || ''} onChange={e => setWarrantyForm({ ...warrantyForm, jenis_garansi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
-                                       <option value="Jasa 30%">Jasa 30%</option>
-                                       <option value="Extended to 2 Year">Extended to 2 Year</option>
-                                    </select>
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Lama Garansi</label>
-                                    <select value={warrantyForm.lama_garansi || ''} onChange={e => setWarrantyForm({ ...warrantyForm, lama_garansi: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]">
-                                       <option value="1 Tahun">1 Tahun</option>
-                                       <option value="2 Tahun">2 Tahun</option>
-                                       <option value="Tidak Garansi">Tidak Garansi</option>
-                                    </select>
-                                 </div>
-                              </div>
-                           </form>
-                        )}
-
-                        {activeTab === 'promos' && (
-                           <form id="promoForm" onSubmit={handleSavePromo} className="space-y-4">
-                              <div>
-                                 <label className="block text-sm font-bold mb-1">Nama Promo</label>
-                                 <input required type="text" list="list-jenis-promo" value={promoForm.nama_promo || ''} onChange={e => setPromoForm({ ...promoForm, nama_promo: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Tgl Mulai</label>
-                                    <input required type="date" value={promoForm.tanggal_mulai || ''} onChange={e => setPromoForm({ ...promoForm, tanggal_mulai: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Tgl Selesai</label>
-                                    <input required type="date" value={promoForm.tanggal_selesai || ''} onChange={e => setPromoForm({ ...promoForm, tanggal_selesai: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                 </div>
+                                 <label className="label-form">Password {modalAction === 'create' ? '(Otomatis jika kosong)' : ''}</label>
+                                 <input type="text" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({ ...karyawanForm, password: e.target.value })} className="input-form" />
                               </div>
                               <div>
-                                 <label className="flex items-center gap-2">
-                                    <input type="checkbox" checked={promoForm.status_aktif || false} onChange={e => setPromoForm({ ...promoForm, status_aktif: e.target.checked })} className="w-4 h-4 text-black border-gray-300 rounded focus:ring-black" />
-                                    <span className="text-sm font-bold text-gray-900">Promo Aktif</span>
-                                 </label>
-                              </div>
-
-                              <div className="mt-4 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
-                                 <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-bold text-gray-900">Tipe Produk yang Berlaku</label>
-                                    <button type="button" onClick={() => setPromoForm({ ...promoForm, tipe_produk: [...(promoForm.tipe_produk || []), { nama_produk: '' }] })} className="bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100 transition text-gray-900">+ Tambah Produk</button>
-                                 </div>
-                                 {promoForm.tipe_produk?.map((item, index) => (
-                                    <div key={index} className="flex gap-2 mb-2 items-center">
-                                       <div className="flex-1">
-                                          <input type="text" list="list-tipe-barang" required value={item.nama_produk} onChange={e => { const newItems = [...(promoForm.tipe_produk || [])]; newItems[index].nama_produk = e.target.value; setPromoForm({ ...promoForm, tipe_produk: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Ketik nama produk..." />
-                                       </div>
-                                       <button type="button" onClick={() => { const newItems = [...(promoForm.tipe_produk || [])]; newItems.splice(index, 1); setPromoForm({ ...promoForm, tipe_produk: newItems }); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2 rounded text-sm transition border border-red-200">X</button>
-                                    </div>
-                                 ))}
-                                 {(!promoForm.tipe_produk || promoForm.tipe_produk.length === 0) && <p className="text-xs font-bold text-gray-500 italic mt-2">Belum ada produk ditambahkan</p>}
-                              </div>
-                           </form>
-                        )}
-
-                        {activeTab === 'services' && (
-                           <form id="serviceForm" onSubmit={handleSaveService} className="space-y-4">
-                              <div>
-                                 <label className="block text-sm font-bold mb-1">Nomor Tanda Terima</label>
-                                 <input required type="text" value={serviceForm.nomor_tanda_terima || ''} onChange={e => setServiceForm({ ...serviceForm, nomor_tanda_terima: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Masukkan ID/Resi service" />
-                              </div>
-                              <div>
-                                 <label className="block text-sm font-bold mb-1">Nomor Seri</label>
-                                 <input required type="text" value={serviceForm.nomor_seri || ''} onChange={e => setServiceForm({ ...serviceForm, nomor_seri: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                              </div>
-                              <div>
-                                 <label className="block text-sm font-bold mb-1">Status Service</label>
-                                 <input required type="text" list="list-status-service" value={serviceForm.status_service || ''} onChange={e => setServiceForm({ ...serviceForm, status_service: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Contoh: Menunggu Sparepart / Selesai" />
-                              </div>
-                           </form>
-                        )}
-
-                        {activeTab === 'budgets' && (
-                           <form id="budgetForm" onSubmit={handleSaveBudget} className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Proposal No</label>
-                                    <input required type="text" value={budgetForm.proposal_no || ''} onChange={e => setBudgetForm({ ...budgetForm, proposal_no: e.target.value })} className="w-full border border-gray-300 bg-gray-100 text-gray-900 rounded-md px-3 py-2 text-sm font-mono" readOnly />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Title</label>
-                                    <input required type="text" value={budgetForm.title || ''} onChange={e => setBudgetForm({ ...budgetForm, title: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
-                                 </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Period (Tanggal)</label>
-                                    <input required type="date" value={budgetForm.period || ''} onChange={e => setBudgetForm({ ...budgetForm, period: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Budget Source</label>
-                                    <input required type="text" list="list-budget-source" value={budgetForm.budget_source || ''} onChange={e => setBudgetForm({ ...budgetForm, budget_source: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
-                                 </div>
-                              </div>
-                              <div>
-                                 <label className="block text-sm font-bold mb-1">Objectives</label>
-                                 <textarea required rows={2} value={budgetForm.objectives || ''} onChange={e => setBudgetForm({ ...budgetForm, objectives: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
-                              </div>
-                              <div>
-                                 <label className="block text-sm font-bold mb-1">Detail of Activity</label>
-                                 <textarea required rows={2} value={budgetForm.detail_activity || ''} onChange={e => setBudgetForm({ ...budgetForm, detail_activity: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
-                              </div>
-                              <div>
-                                 <label className="block text-sm font-bold mb-1">Expected Result</label>
-                                 <textarea required rows={2} value={budgetForm.expected_result || ''} onChange={e => setBudgetForm({ ...budgetForm, expected_result: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" />
-                              </div>
-
-                              <div className="bg-gray-50 border border-gray-100 p-4 rounded-md space-y-4">
-                                 <label className="block text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Nama Penandatangan (Approval)</label>
-                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                    <div>
-                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Proposed By</label>
-                                       <input type="text" value={budgetForm.drafter_name || ''} onChange={e => setBudgetForm({ ...budgetForm, drafter_name: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Nama Pembuat" />
-                                    </div>
-                                    <div>
-                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Mgt. Comment 1</label>
-                                       <input type="text" value={budgetForm.mgt_comment_1 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_1: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Kosongkan jika tidak perlu" />
-                                    </div>
-                                    <div>
-                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Mgt. Comment 2</label>
-                                       <input type="text" value={budgetForm.mgt_comment_2 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_2: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Kosongkan jika tidak perlu" />
-                                    </div>
-                                    <div>
-                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Mgt. Consent</label>
-                                       <input type="text" value={budgetForm.mgt_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_consent: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Contoh: Larry Handra" />
-                                    </div>
-                                    <div>
-                                       <label className="block text-[11px] font-bold text-gray-600 mb-1">Finance Consent</label>
-                                       <input type="text" value={budgetForm.finance_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, finance_consent: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm" placeholder="Nama Finance" />
-                                    </div>
-                                 </div>
-                              </div>
-
-                              <div>
-                                 <label className="block text-sm font-bold mb-2">Lampiran Poster (Maks 3 Gambar)</label>
-                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {[0, 1, 2].map((i) => (
-                                       <div key={i} className="space-y-2">
-                                          <div className="flex gap-2 items-center">
-                                             <input type="file" accept="image/*" onChange={e => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                   const newUrls = [...(budgetForm.attachment_urls || [null, null, null])];
-                                                   newUrls[i] = file;
-                                                   setBudgetForm({ ...budgetForm, attachment_urls: newUrls });
-                                                }
-                                             }} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-2 py-1 text-xs" />
-                                             {budgetForm.attachment_urls?.[i] && (
-                                                <button type="button" onClick={() => {
-                                                   const newUrls = [...(budgetForm.attachment_urls || [])];
-                                                   newUrls[i] = null;
-                                                   setBudgetForm({ ...budgetForm, attachment_urls: newUrls });
-                                                }} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-[10px] hover:bg-red-200 transition">×</button>
-                                             )}
-                                          </div>
-                                          {budgetForm.attachment_urls?.[i] && (
-                                             <div className="border rounded p-1 bg-gray-50 text-center">
-                                                <img
-                                                   src={budgetForm.attachment_urls[i] instanceof File
-                                                      ? URL.createObjectURL(budgetForm.attachment_urls[i] as File)
-                                                      : budgetForm.attachment_urls[i] as string}
-                                                   alt={`Preview ${i + 1}`}
-                                                   className="h-20 mx-auto object-contain cursor-pointer"
-                                                   onClick={() => openImageViewer(budgetForm.attachment_urls![i] as any)}
-                                                />
-                                             </div>
-                                          )}
-                                       </div>
-                                    ))}
-                                 </div>
-                              </div>
-                              <div className="mt-6 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
-                                 <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-bold text-gray-900">Rincian Budget (Items)</label>
-                                    <button type="button" onClick={() => setBudgetForm({ ...budgetForm, items: [...(budgetForm.items || []), { purpose: '', qty: 1, cost_unit: 0, value: 0 }] })} className="bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100 transition text-gray-900">+ Tambah Item</button>
-                                 </div>
-                                 {budgetForm.items?.map((item, index) => (
-                                    <div key={index} className="flex gap-2 mb-2 items-end">
-                                       <div className="flex-1">
-                                          <label className="text-xs font-bold text-gray-700">Purpose</label>
-                                          <input type="text" value={item.purpose} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].purpose = e.target.value; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
-                                       </div>
-                                       <div className="w-16">
-                                          <label className="text-xs font-bold text-gray-700">Qty</label>
-                                          <input type="number" value={item.qty} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].qty = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
-                                       </div>
-                                       <div className="w-32">
-                                          <label className="text-xs font-bold text-gray-700">Cost/Unit</label>
-                                          <input type="number" value={item.cost_unit} onChange={e => { const newItems = [...(budgetForm.items || [])]; newItems[index].cost_unit = Number(e.target.value); newItems[index].value = newItems[index].qty * newItems[index].cost_unit; setBudgetForm({ ...budgetForm, items: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" />
-                                       </div>
-                                       <div className="w-32">
-                                          <label className="text-xs font-bold text-gray-700">Value (Auto)</label>
-                                          <input type="number" readOnly value={item.value} className="w-full border border-gray-300 bg-gray-100 text-gray-600 rounded px-2 py-1 text-sm font-mono" />
-                                       </div>
-                                       <button type="button" onClick={() => { const newItems = [...(budgetForm.items || [])]; newItems.splice(index, 1); setBudgetForm({ ...budgetForm, items: newItems }); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2 py-1.5 rounded text-sm mb-0.5 transition border border-red-200">X</button>
-                                    </div>
-                                 ))}
-                                 <div className="flex justify-end items-center mt-4 gap-4">
-                                    <button type="button" onClick={() => { const total = (budgetForm.items || []).reduce((acc, curr) => acc + curr.value, 0); setBudgetForm({ ...budgetForm, total_cost: total }); }} className="text-xs font-bold text-black hover:text-blue-800 hover:underline transition">Hitung Ulang Total</button>
-                                    <div className="font-bold text-gray-900">Total Cost: Rp {Number(budgetForm.total_cost || 0).toLocaleString('id-ID')}</div>
-                                 </div>
-                              </div>
-                           </form>
-                        )}
-
-                        {activeTab === 'lending' && (
-                           <>
-                           <form id="lendingForm" onSubmit={handleSaveLending} className="space-y-4">
-                              {modalAction === 'return' && (
-                                 <div className="bg-blue-50 p-4 rounded-md border border-blue-200 text-blue-800 text-sm mb-4 font-medium">
-                                    Anda sedang memproses pengembalian barang untuk: <b className="text-blue-900 text-lg ml-1">{lendingForm.nama_peminjam}</b>
-                                 </div>
-                              )}
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Nama Peminjam</label>
-                                    <input required type="text" value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
-                                 </div>
-                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Nomor WhatsApp Peminjam</label>
-                                    <input required type="text" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
-                                 </div>
-                              </div>
-
-                              {modalAction !== 'return' && (
-                                 <div className="bg-gray-50 border border-gray-100 p-3 rounded-md space-y-3">
-                                    <label className="block text-sm font-bold text-gray-900">Upload Foto KTP / ID Card</label>
-                                    <input type="file" accept="image/*,application/pdf" onChange={e => {
-                                       const file = e.target.files?.[0];
-                                       if (file) setLendingForm(prev => ({ ...prev, link_ktp_peminjam: file as any }));
-                                    }} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-1.5 text-sm" />
-                                    {lendingForm.link_ktp_peminjam && (
-                                       <div className="flex items-center gap-2 mt-2">
-                                          <span className="text-xs font-medium text-gray-600 truncate max-w-[200px]">
-                                             {lendingForm.link_ktp_peminjam instanceof File ? `File baru: ${lendingForm.link_ktp_peminjam.name}` : `URL: ${String(lendingForm.link_ktp_peminjam).substring(0, 30)}...`}
-                                          </span>
-                                          <button type="button" onClick={() => setLendingForm(prev => ({ ...prev, link_ktp_peminjam: null as any }))} className="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-xs hover:bg-red-200 transition">Hapus</button>
-                                       </div>
-                                    )}
-                                    {lendingForm.link_ktp_peminjam && typeof lendingForm.link_ktp_peminjam === 'string' && (
-                                       <button type="button" onClick={() => openImageViewer(lendingForm.link_ktp_peminjam as string)} className="text-sm font-bold text-black hover:text-blue-800 hover:underline break-all text-left">🔗 Lihat KTP Terunggah</button>
-                                    )}
-                                 </div>
-                              )}
-
-                              <div className="mt-4 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
-                                 <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-bold text-gray-900">Daftar Barang Dipinjam</label>
-                                    {modalAction !== 'return' && (
-                                       <button type="button" onClick={() => setLendingForm({ ...lendingForm, items_dipinjam: [...(lendingForm.items_dipinjam || []), { nama_barang: '', nomor_seri: '', catatan: '', catatan_pengembalian: '', status_pengembalian: 'dipinjam' }] })} className="bg-white border border-gray-300 px-3 py-1 rounded text-xs font-bold hover:bg-gray-100 transition text-gray-900">+ Tambah Barang</button>
-                                    )}
-                                 </div>
-                                 {lendingForm.items_dipinjam?.map((item, index) => (
-                                    <React.Fragment key={index}>
-                                       <div className="flex gap-2 mb-2 items-end p-2 border border-gray-100 rounded-md bg-white">
-                                          <div className="flex-1">
-                                             <label className="text-xs font-bold text-gray-700">Nama Barang</label>
-                                             <input type="text" list="list-nama-barang" required value={item.nama_barang} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].nama_barang = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
-                                          </div>
-                                          <div className="flex-1">
-                                             <label className="text-xs font-bold text-gray-700">Nomor Seri</label>
-                                             <input type="text" required value={item.nomor_seri} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].nomor_seri = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
-                                          </div>
-                                          <div className="flex-1">
-                                             <label className="text-xs font-bold text-gray-700">Catatan</label>
-                                             <input type="text" list="list-catatan-peminjaman" value={item.catatan || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled={modalAction === 'return'} />
-                                          </div>
-                                          {modalAction === 'return' ? (
-                                             <div className="w-32">
-                                                <label className="text-xs font-bold text-gray-700">Status</label>
-                                                <select value={item.status_pengembalian} onChange={e => {
-                                                   const newItems = [...(lendingForm.items_dipinjam || [])];
-                                                   newItems[index].status_pengembalian = e.target.value as 'dipinjam' | 'dikembalikan';
-                                                   setLendingForm({ ...lendingForm, items_dipinjam: newItems });
-                                                }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]">
-                                                   <option value="dipinjam">Dipinjam</option>
-                                                   <option value="dikembalikan">Dikembalikan</option>
-                                                </select>
-                                             </div>
-                                          ) : modalAction === 'edit' ? (
-                                             <div className="w-32">
-                                                <label className="text-xs font-bold text-gray-700">Status</label>
-                                                <select value={item.status_pengembalian} onChange={e => {
-                                                   const newItems = [...(lendingForm.items_dipinjam || [])];
-                                                   newItems[index].status_pengembalian = e.target.value as 'dipinjam' | 'dikembalikan';
-                                                   setLendingForm({ ...lendingForm, items_dipinjam: newItems });
-                                                }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" disabled>
-                                                   <option value="dipinjam">Dipinjam</option>
-                                                   <option value="dikembalikan">Dikembalikan</option>
-                                                </select>
-                                             </div>
-                                          ) : (
-                                             <button type="button" onClick={() => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems.splice(index, 1); setLendingForm({ ...lendingForm, items_dipinjam: newItems }); }} className="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-2 py-1.5 rounded text-sm mb-0.5 transition border border-red-200">X</button>
-                                          )}
-                                       </div>
-                                       {modalAction === 'return' && item.status_pengembalian === 'dikembalikan' && (
-                                          <div className="flex gap-2 mb-2 items-end p-2 border border-gray-100 rounded-md bg-white -mt-1">
-                                             <div className="flex-1">
-                                                <label className="text-xs font-bold text-gray-700">Catatan Pengembalian (Opsional)</label>
-                                                <input type="text" list="list-catatan-pengembalian" value={item.catatan_pengembalian || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan_pengembalian = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" placeholder="Kondisi barang, dll." />
-                                             </div>
-                                             <div className="flex-1">
-                                                <label className="text-xs font-bold text-gray-700">Catatan Admin</label>
-                                                <input type="text" value={item.catatan_admin || ''} onChange={e => { const newItems = [...(lendingForm.items_dipinjam || [])]; newItems[index].catatan_admin = e.target.value; setLendingForm({ ...lendingForm, items_dipinjam: newItems }) }} className="w-full border border-gray-300 bg-white text-gray-900 rounded px-2 py-1 text-sm outline-none focus:border-[#FFE500]" placeholder="Catatan internal admin" />
-                                             </div>
-                                          </div>
-                                       )}
-                                    </React.Fragment>
-                                 ))}
-                                 {(!lendingForm.items_dipinjam || lendingForm.items_dipinjam.length === 0) && modalAction !== 'return' && (
-                                    <p className="text-xs font-bold text-gray-500 italic mt-2">Belum ada barang ditambahkan</p>
-                                 )}
-                              </div>
-                           </form>
-                           <div className="flex justify-end gap-2 mt-4">
-                              <button type="button" onClick={() => setLendingForm({ ...lendingForm, status_wa: 'Dikirim' })} className="bg-green-500 hover:bg-green-600 text-white font-bold px-4 py-2 rounded-md text-sm transition flex items-center gap-2">
-                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M.057 20l.667-6.017c.108-.178.84-.667 1.109-.834.269-.166.585-.166.854 0 .269.166.533.516.641.716l2.345 4.169c.173.31.433.56.729.716.296.156.633.166.942.033.309-.133.55-.416.7-.733l1.693-4.817c.1-.283.4-.516.733-.566.333-.05.683.066.933.316l3.483 3.367c.15.15.283.333.383.533.1.2.15.433.133.666-.017.233-.117.45-.283.616-.166.166-.383.283-.616.333-.233.05-.466.033-.683-.05l-4.417-2.483c-.133-.08-.266-.166-.4-.25-.133-.083-.283-.15-.433-.183-.15-.033-.316-.033-.466 0-.15.033-.283.1-.417.183l-4.416 2.483c-.217.1-.45.117-.683.05-.233-.05-.45-.166-.616-.333-.166-.166-.266-.383-.283-.616-.017-.233.033-.466.133-.666.1-.2.233-.383.383-.533l3.483-3.367c.25-.25.6-.366.933-.316.333.05.633.283.733.566l1.693 4.817c.15.316.393.599.7.733.309.133.65.123.942-.033.296-.156.556-.406.729-.716l2.345-4.169c.108-.199.372-.55.641-.716.269-.166.585-.166.854 0 .269.167.991.656 1.109.834l.667 6.017c.047.414-.296.777-.69.777h-11.834c-.394 0-.737-.363-.69-.777z"/></svg>
-                                 Kirim Status WA
-                              </button>
-                           </div>
-                           </>
-                        )}
-
-                        {activeTab === 'userrole' && (
-                           <form id="karyawanForm" onSubmit={modalAction === 'reset_pw' ? handleResetPwAdmin : handleSaveKaryawan} className="space-y-4">
-                              {modalAction === 'reset_pw' ? (
-                                 <>
-                                    <div className="bg-amber-50 p-4 rounded-md border border-amber-200 text-amber-800 text-sm mb-4 font-medium">
-                                       Anda sedang mengatur ulang kata sandi (Reset Password) untuk user: <b className="text-amber-900 text-lg ml-1">{karyawanForm.username}</b>
-                                    </div>
-                                    <div>
-                                       <label className="block text-sm font-bold mb-1">Ketik Password Baru</label>
-                                       <input required type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({ ...karyawanForm, password: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Minimal 6 karakter..." />
-                                    </div>
-                                 </>
-                              ) : (
-                                 <>
-                                    <div className="grid grid-cols-2 gap-4">
-                                       <div>
-                                          <label className="block text-sm font-bold mb-1">Nama Karyawan</label>
-                                          <input required type="text" value={karyawanForm.nama_karyawan || ''} onChange={e => setKaryawanForm({ ...karyawanForm, nama_karyawan: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                       </div>
-                                       <div>
-                                          <label className="block text-sm font-bold mb-1">Nomor WhatsApp (Reset Pw)</label>
-                                          <input required type="text" placeholder="62812345..." value={karyawanForm.nomor_wa || ''} onChange={e => setKaryawanForm({ ...karyawanForm, nomor_wa: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                       </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                       <div>
-                                          <label className="block text-sm font-bold mb-1">Username Login</label>
-                                          <input required type="text" value={karyawanForm.username || ''} onChange={e => setKaryawanForm({ ...karyawanForm, username: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'} />
-                                       </div>
-                                       <div>
-                                          <label className="block text-sm font-bold mb-1">Password {modalAction === 'edit' && <span className="text-[10px] font-normal text-gray-500">(Kosongkan jika tidak diubah)</span>}</label>
-                                          <input type="password" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({ ...karyawanForm, password: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" />
-                                       </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                       <div>
-                                          <label className="block text-sm font-bold mb-1">Role Akun</label>
-                                          <input type="text" list="list-roles" value={karyawanForm.role || ''} onChange={e => setKaryawanForm({ ...karyawanForm, role: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'} placeholder="Ketik atau pilih role..." />
-                                       </div>
-                                       <div>
-                                          <label className="block text-sm font-bold mb-1">Status Akun</label>
-                                          <select value={karyawanForm.status_aktif ? 'true' : 'false'} onChange={e => setKaryawanForm({ ...karyawanForm, status_aktif: e.target.value === 'true' })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" disabled={karyawanForm.username === 'admin'}>
-                                             <option value="true">Aktif</option>
-                                             <option value="false">Tidak Aktif (Blokir)</option>
-                                          </select>
-                                       </div>
-                                    </div>
-                                    <div className="mt-4 border-t border-gray-100 pt-4 bg-gray-50 p-4 rounded-md">
-                                       <label className="block text-sm font-bold text-gray-900 mb-2">Akses Halaman yang Diizinkan</label>
-                                       <p className="text-xs font-bold text-gray-500 mb-3">Pilih tab mana saja yang boleh dilihat oleh karyawan ini.</p>
-                                       <div className="grid grid-cols-2 gap-2">
-                                          {[{ id: 'messages', label: 'Pesan' }, { id: 'konsumen', label: 'Konsumen' }, { id: 'promos', label: 'Promo' }, { id: 'claims', label: 'Claim' }, { id: 'warranties', label: 'Garansi' }, { id: 'services', label: 'Service' }, { id: 'budgets', label: 'ProposalEvent' }, { id: 'import', label: 'Import Data' }, { id: 'lending', label: 'Peminjaman' }].map(tab => {
-                                             const isChecked = (karyawanForm.akses_halaman || []).includes(tab.id) || karyawanForm.role === 'Admin';
-                                             return (
-                                                <label key={tab.id} className={`flex items-center gap-2 p-2 rounded border ${isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'} cursor-pointer`}>
-                                                   <input type="checkbox" checked={isChecked} disabled={karyawanForm.role === 'Admin'} onChange={() => {
-                                                      const current = karyawanForm.akses_halaman || [];
-                                                      if (current.includes(tab.id)) setKaryawanForm({ ...karyawanForm, akses_halaman: current.filter(x => x !== tab.id) });
-                                                      else setKaryawanForm({ ...karyawanForm, akses_halaman: [...current, tab.id] });
-                                                   }} className="w-4 h-4 text-black rounded focus:ring-black" />
-                                                   <span className="text-sm font-bold text-gray-700">{tab.label}</span>
-                                                </label>
-                                             )
-                                          })}
-                                       </div>
-                                    </div>
-                                 </>
-                              )}
-                           </form>
-                        )}
-
-                        
-                        
-                        {activeTab === 'eventregistrations' && (
-                           <form id="registrationForm" onSubmit={handleSaveRegistration} className="space-y-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nama Lengkap</label>
-                                    <input type="text" value={registrationForm.full_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, full_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Event</label>
-                                    <input type="text" value={registrationForm.event_name || ''} onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Nomor WhatsApp</label>
-                                    <input type="text" value={registrationForm.wa_number || ''} onChange={e => setRegistrationForm({ ...registrationForm, wa_number: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Email</label>
-                                    <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                              </div>
-                              <div>
-                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status Pendaftaran</label>
-                                 <select value={registrationForm.status || 'Pending Payment'} onChange={e => setRegistrationForm({ ...registrationForm, status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
-                                    <option value="Pending Payment">Pending Payment</option>
-                                    <option value="Confirmed">Confirmed</option>
-                                    <option value="Cancelled">Cancelled</option>
+                                 <label className="label-form">Role</label>
+                                 <select value={karyawanForm.role || 'Karyawan'} onChange={e => setKaryawanForm({ ...karyawanForm, role: e.target.value })} className="input-form">
+                                    <option value="Admin">Admin</option>
+                                    <option value="Karyawan">Karyawan</option>
+                                    {/* Add other roles */}
                                  </select>
                               </div>
                               <div>
-                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Link Bukti Transfer</label>
-                                 <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" placeholder="Opsional" />
+                                 <label className="label-form">Status</label>
+                                 <select value={karyawanForm.status_aktif ? 'true' : 'false'} onChange={e => setKaryawanForm({ ...karyawanForm, status_aktif: e.target.value === 'true' })} className="input-form">
+                                    <option value="true">Aktif</option>
+                                    <option value="false">Nonaktif</option>
+                                 </select>
                               </div>
-                           </form>
-                        )}
-
-                        {activeTab === 'events' && (
-                           <form id="eventForm" onSubmit={handleSaveEvent} className="space-y-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Judul Event</label>
-                                    <input type="text" value={eventForm.title || ''} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Tanggal & Waktu</label>
-                                    <input type="text" value={eventForm.date || ''} onChange={e => setEventForm({ ...eventForm, date: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Harga</label>
-                                    <input type="text" value={eventForm.price || ''} onChange={e => setEventForm({ ...eventForm, price: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Rp 750.000 atau Gratis" />
-                                 </div>
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Kuota Slot (Stock)</label>
-                                    <input type="number" value={eventForm.stock || 0} onChange={e => setEventForm({ ...eventForm, stock: Number(e.target.value) })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required />
-                                 </div>
-                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Status Ketersediaan</label>
-                                    <select value={eventForm.status || 'aktif'} onChange={e => setEventForm({ ...eventForm, status: e.target.value })} className="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#FFE500]">
-                                       <option value="aktif">Aktif</option>
-                                       <option value="close">Close</option>
-                                    </select>
-                                 </div>
-                              </div>
-                              <div>
-                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Foto / Poster Acara</label>
-                                 {(eventImageFile || eventForm.image) && (
-                                    <div className="mb-2 relative w-24 h-32 rounded overflow-hidden border border-gray-100">
-                                       <img src={eventImageFile ? URL.createObjectURL(eventImageFile) : eventForm.image} alt="preview" className="w-full h-full object-cover" />
-                                       <button type="button" onClick={() => { setEventImageFile(null); setEventForm({ ...eventForm, image: '' }); }} className="absolute top-0 right-0 bg-red-500 text-white text-xs px-1 py-0.5 leading-tight">✕</button>
-                                    </div>
-                                 )}
-                                 <input type="file" accept="image/*" onChange={e => { if (e.target.files?.[0]) setEventImageFile(e.target.files[0]); }} className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 transition-all cursor-pointer" />
-                                 <p className="text-xs text-gray-400 mt-1">Format: JPG, PNG, WEBP. Tampil sebagai poster (rasio 3:4 disarankan).</p>
-                              </div>
-                              <div>
-                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Detail Acara (Teks Panjang)</label>
-                                 <textarea rows={6} value={eventForm.detail_acara || ''} onChange={e => setEventForm({ ...eventForm, detail_acara: e.target.value })} className="w-full p-3 border border-gray-300 rounded text-sm focus:border-[#FFE500]" required placeholder="Masukkan detail acara lengkap..."></textarea>
-                              </div>
-                           </form>
-                        )}
-
-                        {activeTab === 'botsettings' && (
-                           <form id="botSettingsForm" onSubmit={handleSaveBotSettings} className="space-y-4">
-                              <div>
-                                 <label className="block text-sm font-bold mb-1">Nama Pengaturan</label>
-                                 <input required type="text" value={botSettingsForm.nama_pengaturan || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, nama_pengaturan: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="Contoh: LINK_SYARAT_KETENTUAN" />
-                              </div>
-                              <div>
-                                 <label className="block text-sm font-bold mb-1">URL / Value</label>
-                                 <input type="text" value={botSettingsForm.url_file || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, url_file: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500]" placeholder="https://..." />
-                              </div>
-                              <div>
-                                 <label className="block text-sm font-bold mb-1">Deskripsi</label>
-                                 <textarea value={botSettingsForm.description || ''} onChange={e => setBotSettingsForm({ ...botSettingsForm, description: e.target.value })} className="w-full border border-gray-300 bg-white text-gray-900 rounded-md px-3 py-2 text-sm outline-none focus:border-[#FFE500] h-24" placeholder="Deskripsi atau kegunaan dari pengaturan ini..." />
-                              </div>
-                           </form>
-                        )}
-                     </div>
-                     <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-                        <button onClick={closeModal} className="px-4 py-2 border border-gray-300 bg-white text-gray-900 hover:bg-gray-100 rounded-md text-sm font-bold transition">Batal</button>
-                        {/* Logic for form ID */}
-                        {(() => { // This IIFE calculates and returns the submit button
-                           const formId = (() => {
-                              if (activeTab === 'claims') return 'claimForm';
-                              if (activeTab === 'warranties') return 'warrantyForm';
-                              if (activeTab === 'services') return 'serviceForm';
-                              if (activeTab === 'promos') return 'promoForm';
-                              if (activeTab === 'konsumen') return 'konsumenForm';
-                              if (activeTab === 'userrole') return 'karyawanForm';
-                              if (activeTab === 'botsettings') return 'botSettingsForm';
-                             if (activeTab === 'events') return 'eventForm';
-                             if (activeTab === 'eventregistrations') return 'registrationForm';
-                              if (activeTab === 'lending') return 'lendingForm'; // Both 'return' and 'create/edit' use 'lendingForm'
-                              return 'budgetForm';
-                           })();
-                           const submitButtonText = isSubmitting ? 'Memproses...' : modalAction === 'return' ? 'Proses Pengembalian' : 'Simpan Data';
-                           const submitButtonOnClick = activeTab === 'lending' && modalAction === 'return' ? () => handleReturnItems(lendingForm as PeminjamanBarang) : undefined;
-
-                           return <button type="submit" form={formId} disabled={isSubmitting} onClick={submitButtonOnClick} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black rounded-md text-sm font-bold transition disabled:opacity-50">{submitButtonText}</button>;
-                        })()}
-                     </div>
-                  </div>
-               </div>
-            )}
-         {/* =========================================================
-          PRINT AREA (FORMAT PERSIS PDF MKTG)
-      ========================================================= */}
-         {printData && (
-            <div className="flex flex-col absolute top-0 left-0 w-full bg-white text-black font-sans z-[100] min-h-screen pb-10 pt-6" style={{ fontSize: '13px', lineHeight: '1.4' }}>
-
-               {/* PRINT CONTROL BAR */}
-               <div className="print:hidden fixed top-4 right-4 flex flex-col gap-3 z-50 bg-white p-3 rounded-lg shadow-xl border border-gray-100">
-                  <div className="flex gap-3 justify-end">
-                     <button onClick={() => setPrintData(null)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-md transition text-sm">Kembali</button>
-                     <button onClick={handlePrintDocument} className="px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black font-bold rounded-md transition shadow-md text-sm flex items-center gap-2">🖨️ Cetak PDF</button>
-                  </div>
-                  {printData.attachment_urls && printData.attachment_urls.some(u => u) && (
-                     <div className="flex items-center gap-2 border-t border-gray-100 pt-2 mt-1">
-                        <label className="text-xs font-bold text-gray-600">Ukuran Gambar:</label>
-                        <input type="range" min="100" max="800" value={printImageSize} onChange={(e) => setPrintImageSize(Number(e.target.value))} className="w-32 accent-[#FFE500]" />
-                        <span className="text-xs font-mono bg-gray-100 px-1 rounded">{printImageSize}px</span>
-                     </div>
-                  )}
-               </div>
-
-               <div className="px-4 max-w-[800px] mx-auto w-full">
-                  {/* HEADER */}
-                  <div className="flex justify-between items-start border-b-2 border-black pb-3 mb-5">
-                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-black text-white flex flex-col items-center justify-center font-bold text-[10px] uppercase text-center p-1 leading-none shadow-sm">
-                           <span>ALTA</span>
-                           <span>NIKINDO</span>
-                        </div>
-                        <div className="font-extrabold text-2xl tracking-tight leading-tight">
-                           BUDGET APPROVAL <br />
-                           <span className="font-normal text-sm tracking-normal">(SALES / MARKETING / SERVICE)</span>
-                        </div>
-                     </div>
-                     <div className="border-2 border-black bg-white">
-                        <div className="flex border-b border-black">
-                           <div className="w-20 p-1 border-r border-black font-bold text-xs bg-gray-50">Section:</div>
-                           <div className="w-36 p-1 font-bold text-xs uppercase">{printData.budget_source || 'MARKETING'}</div>
-                        </div>
-                        <div className="flex">
-                           <div className="w-20 p-1 border-r border-black font-bold text-xs bg-gray-50">Page(s):</div>
-                           <div className="w-36 p-1 text-xs">1</div>
-                        </div>
-                     </div>
-                  </div>
-
-                  {/* SIGNATURE GRID */}
-                  <div className="flex gap-2 mb-5 text-center">
-                     <div className="border-2 border-black w-48 flex flex-col bg-white">
-                        <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Proposed / Prepared by</div>
-                        <div className="flex-1 flex flex-col justify-end p-2 relative pt-8">
-                           <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-sm z-10" defaultValue={printData.drafter_name || ''} placeholder="Ketik nama..." />
-                        </div>
-                        <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
-                           <div className="p-1 w-1/2 text-left">Sign</div>
-                           <div className="p-1 w-1/2 text-left">Date:</div>
-                        </div>
-                     </div>
-                     <div className="border-2 border-black flex-1 flex flex-col relative bg-white">
-                        <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Management Approval</div>
-                        <div className="flex-1 flex divide-x divide-black min-h-[60px]">
-                           <div className="flex-1 flex flex-col justify-end p-2 relative">
-                              <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-xs z-10" defaultValue={printData.mgt_comment_1 || ''} placeholder="Nama Comment 1..." />
-
                            </div>
-                           <div className="flex-1 flex flex-col justify-end p-2 relative">
-                              <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-xs z-10" defaultValue={printData.mgt_comment_2 || ''} placeholder="Nama Comment 2..." />
-
-                           </div>
-                           <div className="flex-1 flex flex-col justify-end p-2 relative">
-                              <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-xs z-10" defaultValue={printData.mgt_consent || ''} placeholder="Nama Consent..." />
-
-                           </div>
-                        </div>
-                        <div className="border-t border-black flex text-[10px] divide-x divide-black bg-gray-50 text-black uppercase font-bold">
-                           <div className="p-1 w-1/3 text-left border-b border-black">Comment</div>
-                           <div className="p-1 w-1/3 text-left border-b border-black">Comment</div>
-                           <div className="p-1 w-1/3 text-left border-b border-black">Consent</div>
-                        </div>
-                        <div className="flex text-[10px] divide-x divide-black bg-white">
-                           <div className="p-1 w-1/3 text-right">Date:</div>
-                           <div className="p-1 w-1/3 text-right">Date:</div>
-                           <div className="p-1 w-1/3 text-right">Date:</div>
-                        </div>
-                     </div>
-                     <div className="border-2 border-black w-48 flex flex-col bg-white">
-                        <div className="border-b-2 border-black p-1.5 font-bold bg-gray-100 text-black text-xs uppercase tracking-wide">Finance & Accounting</div>
-                        <div className="flex-1 flex flex-col justify-end p-2 relative pt-8 min-h-[60px]">
-                           <input type="text" className="w-full text-center outline-none bg-transparent font-bold text-xs z-10" defaultValue={printData.finance_consent || ''} placeholder="Ketik nama..." />
-
-                        </div>
-                        <div className="border-t border-black text-[10px] p-1 text-left font-bold border-b border-black bg-gray-50 text-black uppercase">Consent</div>
-                        <div className="text-[10px] p-1 text-right bg-white uppercase font-bold">Date:</div>
-                     </div>
-                  </div>
-
-                  {/* MAIN DETAILS */}
-                  <div className="border-2 border-black mb-5 bg-white">
-                     <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Title</div><div className="p-1.5 flex-1 font-bold uppercase text-sm">{printData.title}</div></div>
-                     <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Proposal No.</div><div className="p-1.5 flex-1 font-mono font-bold">{printData.proposal_no}</div></div>
-                     <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Period</div><div className="p-1.5 flex-1 font-bold">{printData.period}</div></div>
-                     <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Objectives</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.objectives}</div></div>
-                     <div className="flex border-b border-black"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Detail of Activity</div><div className="p-1.5 flex-1 whitespace-pre-wrap min-h-[40px]">{printData.detail_activity}</div></div>
-                     <div className="flex"><div className="w-40 font-bold p-1.5 border-r border-black bg-gray-50">Expected Result</div><div className="p-1.5 flex-1 whitespace-pre-wrap">{printData.expected_result}</div></div>
-                  </div>
-
-                  {/* ITEMS TABLE */}
-                  <div className="mb-5 flex-1">
-                     <table className="w-full border-collapse border-2 border-black text-black bg-white">
-                        <thead>
-                           <tr className="bg-gray-100 uppercase text-[11px] tracking-wide">
-                              <th className="border border-black p-1.5 w-10 text-center font-bold">No</th>
-                              <th className="border border-black p-1.5 text-center font-bold">Purpose / Item Description</th>
-                              <th className="border border-black p-1.5 w-16 text-center font-bold">Qty</th>
-                              <th className="border border-black p-1.5 w-32 text-center font-bold">Cost / Unit</th>
-                              <th className="border border-black p-1.5 w-32 text-center font-bold">Petty Cash</th>
-                              <th className="border border-black p-1.5 w-32 text-center font-bold">Total Value</th>
-                           </tr>
-                        </thead>
-                        <tbody>
-                           {printData.items && printData.items.length > 0 ? (
-                              printData.items.map((item, idx) => (
-                                 <tr key={idx}>
-                                    <td className="border border-black p-1.5 text-center font-medium">{idx + 1}</td>
-                                    <td className="border border-black p-1.5 text-left font-medium">{item.purpose}</td>
-                                    <td className="border border-black p-1.5 text-center font-medium">{item.qty}</td>
-                                    <td className="border border-black p-1.5 text-right font-medium">{Number(item.cost_unit).toLocaleString('id-ID')}</td>
-                                    <td className="border border-black p-1.5 text-center bg-gray-50"></td>
-                                    <td className="border border-black p-1.5 text-right font-bold">{Number(item.value).toLocaleString('id-ID')}</td>
-                                 </tr>
-                              ))
-                           ) : (
-                              <tr><td colSpan={6} className="border border-black py-6 text-center text-gray-500 italic">Tidak ada rincian item</td></tr>
-                           )}
-                           <tr className="border-t-2 border-black">
-                              <td colSpan={3} className="border-l border-b border-black bg-white"></td>
-                              <td colSpan={2} className="border border-black p-1.5 text-right font-bold pr-4 bg-gray-100 uppercase text-xs">Subtotal</td>
-                              <td className="border border-black p-1.5 text-right font-extrabold bg-gray-100">{Number(printData.total_cost).toLocaleString('id-ID')}</td>
-                           </tr>
-                           <tr><td colSpan={3} className="border-l border-b border-transparent bg-white"></td>
-                              <td colSpan={2} className="border border-black p-1.5 text-right font-extrabold pr-4 bg-gray-200 uppercase text-xs text-black">Grand Total</td>
-                              <td className="border border-black p-1.5 text-right font-extrabold bg-gray-200 text-black text-sm">Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
-                           </tr>
-                           <tr><td colSpan={3} className="border-l border-b border-transparent bg-white"></td>
-                              <td colSpan={2} className="border-2 border-black p-2 text-right font-bold pr-4 bg-black text-white uppercase text-sm" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>TOTAL COST</td>
-                              <td className="border-2 border-black p-1.5 text-right font-bold bg-black text-white text-sm" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>Rp {Number(printData.total_cost).toLocaleString('id-ID')}</td>
-                           </tr>
-                        </tbody>
-                     </table>
-                  </div>
-
-                  {/* ATTACHMENT */}
-                  {printData.attachment_urls && printData.attachment_urls.some(u => u) && (
-                     <div className="mt-4 pt-4 border-t-2 border-dashed border-gray-400 page-break-inside-avoid">
-                        <div className="font-bold text-xs uppercase tracking-wide mb-2">Lampiran (Attachments):</div>
-                        <div className="grid grid-cols-2 gap-4">
-                           {printData.attachment_urls.map((url, i) => url && (
-                              <div key={i} className="flex justify-center w-full border border-gray-300 p-2 bg-gray-50">
-                                 <img src={url} alt={`Lampiran ${i + 1}`} className="object-contain drop-shadow-sm" style={{ maxHeight: `${printImageSize}px` }} />
+                           <div className="mt-4">
+                              <label className="label-form">Akses Halaman</label>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                                 {ALL_TABS.filter(t => t.id !== 'dashboard' && t.id !== 'userrole').map(tab => (
+                                    <label key={tab.id} className="flex items-center gap-2 text-sm">
+                                       <input
+                                          type="checkbox"
+                                          checked={(karyawanForm.akses_halaman || []).includes(tab.id)}
+                                          onChange={e => {
+                                             const currentAkses = karyawanForm.akses_halaman || [];
+                                             const newAkses = e.target.checked
+                                                ? [...currentAkses, tab.id]
+                                                : currentAkses.filter(id => id !== tab.id);
+                                             setKaryawanForm({ ...karyawanForm, akses_halaman: newAkses });
+                                          }}
+                                       />
+                                       {tab.label}
+                                    </label>
+                                 ))}
                               </div>
-                           ))}
-                        </div>
-                     </div>
-                  )}
+                           </div>
+                           <div className="mt-6 flex justify-end gap-3">
+                              <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan'}</button>
+                           </div>
+                        </form>
+                     )}
+                     {/* Other forms would go here */}
+                  </div>
                </div>
             </div>
          )}
 
-         {/* --- IMAGE VIEWER MODAL --- */}
+         {/* IMAGE VIEWER */}
          {isImageViewerOpen && (
-            <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-[150] overflow-hidden"
-               onWheel={handleWheel}
-               onMouseUp={handleMouseUp}
-               onMouseLeave={handleMouseUp}
-               onMouseMove={handleMouseMove}>
-
-               <div className="absolute top-4 right-4 z-50 flex gap-3 bg-black/50 p-2 rounded-lg border border-white/10 backdrop-blur-sm shadow-xl">
-                  <div className="text-white flex items-center gap-3 px-3 text-sm font-bold">
-                     <button onClick={() => setImageScale(p => Math.max(0.1, p - 0.2))} className="hover:text-[#FFE500] text-xl leading-none w-6 h-6 flex items-center justify-center">-</button>
-                     <span className="w-10 text-center">{Math.round(imageScale * 100)}%</span>
-                     <button onClick={() => setImageScale(p => Math.min(5, p + 0.2))} className="hover:text-[#FFE500] text-xl leading-none w-6 h-6 flex items-center justify-center">+</button>
-                     <button onClick={() => { setImageScale(1); setImageTranslate({ x: 0, y: 0 }) }} className="ml-2 hover:text-[#FFE500] text-xs underline text-gray-300">Reset</button>
-                  </div>
-                  <div className="w-px h-6 bg-white/20"></div>
-                  <button onClick={closeImageViewer} className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full font-bold flex items-center justify-center shadow-lg transition leading-none text-lg">×</button>
-               </div>
-
-               <div className="flex-1 w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing relative overflow-hidden"
-                  onMouseDown={handleMouseDown}>
-                  {(currentImageUrl.toLowerCase().endsWith('.pdf') || currentImageUrl.startsWith('data:application/pdf')) ? (
-                     <iframe src={currentImageUrl} className="w-full h-full border-none bg-white" title="PDF Viewer" />
+            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center animate-fade-in" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+               <button onClick={closeImageViewer} className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-10">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+               </button>
+               <div className="absolute inset-0 flex items-center justify-center overflow-hidden" onWheel={handleWheel} onMouseMove={handleMouseMove} onMouseDown={handleMouseDown}>
+                  {currentImageUrl.toLowerCase().endsWith('.pdf') || currentImageUrl.startsWith('data:application/pdf') ? (
+                     <iframe src={currentImageUrl} className="w-full h-full border-none" title="PDF Viewer" />
                   ) : (
                      <img
                         src={currentImageUrl}
                         alt="Viewer"
-                        draggable={false}
-                        className="max-w-full max-h-full object-contain transition-transform duration-75 ease-out select-none pointer-events-none"
-                        style={{
-                           transform: `translate(${imageTranslate.x}px, ${imageTranslate.y}px) scale(${imageScale})`,
-                        }}
+                        className="max-w-full max-h-full object-contain cursor-grab"
+                        style={{ transform: `scale(${imageScale}) translate(${imageTranslate.x}px, ${imageTranslate.y}px)`, transition: isDragging ? 'none' : 'transform 0.1s ease-out' }}
                      />
                   )}
-               </div>
-               <div className="text-white/50 text-[10px] mb-4 select-none font-medium text-center z-50 pointer-events-none drop-shadow-md">
-                  {(currentImageUrl.toLowerCase().endsWith('.pdf') || currentImageUrl.startsWith('data:application/pdf')) ? 'Scroll untuk navigasi PDF' : 'Scroll (Mouse Wheel) untuk Zoom In/Out | Klik dan Tahan (Drag) untuk Menggeser'}
                </div>
             </div>
          )}
 
-         <datalist id="list-tipe-barang">{dynamicOptions.tipeBarang.map(opt => <option key={opt} value={opt} />)}</datalist>
-         <datalist id="list-nama-toko">{dynamicOptions.namaToko.map(opt => <option key={opt} value={opt} />)}</datalist>
-         <datalist id="list-jenis-promo">{dynamicOptions.jenisPromo.map(opt => <option key={opt} value={opt} />)}</datalist>
-         <datalist id="list-jasa-kirim">{dynamicOptions.jasaKirim.map(opt => <option key={opt} value={opt} />)}</datalist>
-         <datalist id="list-status-service">{dynamicOptions.statusService.map(opt => <option key={opt} value={opt} />)}</datalist>
-         <datalist id="list-nama-barang">{dynamicOptions.tipeBarang.map(opt => <option key={opt} value={opt} />)}</datalist>
-         <datalist id="list-roles">{dynamicOptions.roles.map(opt => <option key={opt} value={opt} />)}</datalist>
-         <datalist id="list-budget-source">{dynamicOptions.budgetSource.map(opt => <option key={opt} value={opt} />)}</datalist>
-         <datalist id="list-catatan-peminjaman">{dynamicOptions.catatanPeminjaman.map(opt => <option key={opt} value={opt} />)}</datalist>
-         <datalist id="list-catatan-pengembalian">{dynamicOptions.catatanPengembalian.map(opt => <option key={opt} value={opt} />)}</datalist>
+         {/* NEW CHAT MODAL */}
+         {isNewChatModalOpen && (
+            <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4 animate-fade-in">
+               <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+                  <div className="p-5 border-b border-gray-200">
+                     <h2 className="text-lg font-bold text-gray-900">Kirim Pesan Baru</h2>
+                  </div>
+                  <form onSubmit={handleSendNewChat} className="p-6 space-y-4">
+                     <div>
+                        <label className="label-form">Nomor WhatsApp Tujuan</label>
+                        <input type="text" value={newChatWa} onChange={e => setNewChatWa(e.target.value)} className="input-form" placeholder="Contoh: 628123456789" required />
+                     </div>
+                     <div>
+                        <label className="label-form">Isi Pesan</label>
+                        <textarea value={newChatMsg} onChange={e => setNewChatMsg(e.target.value)} className="input-form" rows={4} required />
+                     </div>
+                     <div className="flex justify-end gap-3">
+                        <button type="button" onClick={() => setIsNewChatModalOpen(false)} className="btn-secondary">Batal</button>
+                        <button type="submit" className="btn-primary">Kirim</button>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         )}
 
-         {/* CONNECTION INDICATOR */}
-         <div className="fixed bottom-4 right-4 z-[100] flex items-center gap-2 px-3 py-1.5 rounded-full bg-white shadow-lg border text-[10px] font-bold transition-all print:hidden">
-            <div className={`w-2 h-2 rounded-full ${dbStatus.connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-            <span className={dbStatus.connected ? 'text-gray-600' : 'text-red-600'}>
-               Database: {dbStatus.message}
-            </span>
-            {!dbStatus.connected && (
-               <button onClick={() => window.location.reload()} className="ml-1 text-blue-600 hover:underline">Refresh</button>
-            )}
-         </div>
+         {/* SCANNER MODAL */}
+         {isScannerOpen && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
+               <div className="bg-white rounded-xl shadow-2xl w-full max-w-md relative">
+                  <button onClick={() => setIsScannerOpen(false)} className="absolute -top-3 -right-3 bg-white rounded-full p-1 shadow-lg z-10">
+                     <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                  <div className="p-5 border-b border-gray-200">
+                     <h2 className="text-lg font-bold text-gray-900">Scan QR Code Kehadiran</h2>
+                  </div>
+                  <div id="reader" className="p-4"></div>
+               </div>
+            </div>
+         )}
 
+         {/* PRINT VIEW */}
+         {printData && (
+            <div className="hidden print:block p-8 font-sans">
+               {/* ... Print layout for budget approval ... */}
+            </div>
+         )}
       </>
    );
 }

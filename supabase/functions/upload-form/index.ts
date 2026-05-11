@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const FONNTE_TOKEN = Deno.env.get("FONNTE_TOKEN") || "xYsGrYetdkLXoK72dDtc";
@@ -112,11 +112,11 @@ serve(async (req) => {
     }
     else if (statusUpload === 'MENUNGGU_UPLOAD_WEB_FOR_OTHER') {
         // Sender mengupload atas nama orang lain
-        // Nomor WA orang lain disimpan di kolom kodepos sender oleh fonnte-bot
-        const { data: senderData, error: errSender } = await supabase.from('konsumen').select('kodepos').eq('nomor_wa', matchedPhone).single();
-        if (errSender || !senderData?.kodepos) throw new Error("Data penerima claim tidak ditemukan.");
+        // Data orang lain disimpan di kolom temp_state sender
+        const { data: senderData, error: errSender } = await supabase.from('konsumen').select('temp_state').eq('nomor_wa', matchedPhone).single();
+        if (errSender || !senderData?.temp_state?.target_wa) throw new Error("Data penerima claim (temp_state) tidak ditemukan.");
 
-        const otherWa = senderData.kodepos;
+        const otherWa = senderData.temp_state.target_wa;
         const { data: dataKlaim, error: errKlaim } = await supabase.from('claim_promo').select('id_claim, nomor_seri, tipe_barang').eq('nomor_wa', otherWa).order('created_at', { ascending: false }).limit(1).single();
         if (errKlaim || !dataKlaim) throw new Error("Data klaim orang lain tidak ditemukan.");
 

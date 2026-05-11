@@ -55,7 +55,7 @@ serve(async (req) => {
     if (diffInMinutes >= 60) {
       console.log(`[TIMEOUT] Menutup sesi ${user.nomor_wa} (Inaktif: ${diffInMinutes.toFixed(0)}m)`);
       
-      const closingMsg = "Terima Kasih telah menghubungi Nikon Indonesia. Silakan ketik *MENU* kapan saja untuk memulai chat dengan kami.";
+      const closingMsg = responses['SESSION_TIMEOUT'] || "Terima Kasih telah menghubungi Nikon Indonesia. Sesi Anda telah berakhir karena tidak ada aktivitas. Silakan ketik *MENU* kapan saja untuk memulai chat dengan kami.";
       await balasKeWA(user.nomor_wa, closingMsg);
 
       // Reset status ke START dan matikan flag CS jika ada
@@ -88,7 +88,7 @@ serve(async (req) => {
           case 'MENUNGGU_UPLOAD_WEB': nudgeMsg = responses['CLAIM_WAIT_UPLOAD']; break;
           // Tambahkan mapping status lainnya sesuai kebutuhan...
           default:
-            nudgeMsg = `Halo *${user.nama_lengkap}*, Anda belum menyelesaikan pengisian data sebelumnya. Silakan lanjutkan atau ketik *MENU* untuk kembali ke menu utama.`;
+            nudgeMsg = responses['GENERIC_NUDGE'] || `Halo *{{nama}}*, Anda belum menyelesaikan pengisian data sebelumnya. Silakan lanjutkan atau ketik *MENU* untuk kembali ke menu utama.`;
         }
 
         if (nudgeMsg) {
