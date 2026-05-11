@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { whatsappMessages } from '@/app/whatsappMessages';
+import { chatbotTexts } from '@/app/chatbotTexts';
 import { generateTicket } from '@/app/lib/generate-ticket';
 
 const supabase = createClient(
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       try {
         await sendWhatsApp(
           reg.nomor_wa,
-          whatsappMessages.eventRegistrationRejected(reg.nama_lengkap, reg.event_name, rejectionReason)
+          chatbotTexts.eventRegistrationRejected(reg.nama_lengkap, reg.event_name, rejectionReason)
         );
       } catch (waErr) {
         console.error('WA notify (reject) failed:', waErr);
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     try {
       await sendWhatsApp(
         reg.nomor_wa,
-        whatsappMessages.eventRegistrationApproved(reg.nama_lengkap, reg.event_name, ticketUrl)
+        chatbotTexts.eventRegistrationApproved(reg.nama_lengkap, reg.event_name, ticketUrl)
       );
     } catch (waErr) {
       console.error('WA notify (approve) failed:', waErr);

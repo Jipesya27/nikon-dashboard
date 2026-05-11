@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 
-<<<<<<< HEAD
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 const GOOGLE_REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN || "";
 const FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || "";
+
+// Sanitasi nama file: hapus karakter yang bermasalah di filesystem/Drive
+function sanitizeFileName(name: string): string {
+  return name.replace(/[\/\\:*?"<>|]/g, '-').replace(/\s+/g, '_').trim().substring(0, 200);
+}
 
 async function getAccessToken() {
   const res = await fetch("https://oauth2.googleapis.com/token", {
@@ -62,48 +66,23 @@ async function deleteFromGoogleDrive(fileId: string, accessToken: string) {
 
 
 export async function POST(req: Request) {
-=======
-// Sanitasi nama file: hapus karakter yang bermasalah di filesystem/Drive
-function sanitizeFileName(name: string): string {
-  return name
-    .replace(/[\/\\:*?"<>|]/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .substring(0, 200);
-}
-
-export async function POST(request: NextRequest) {
->>>>>>> ba042d7285786bfa8ddec496196501d86ac318cf
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
-<<<<<<< HEAD
     const prefix = formData.get('prefix') as string;
     const serial = formData.get('serial') as string;
-=======
-    const prefix = formData.get('prefix') as string || 'file';
-    const serial = formData.get('serial') as string || 'unknown';
-    const customFileName = formData.get('filename') as string | null;
-    const folder = formData.get('folder') as string | null;
->>>>>>> ba042d7285786bfa8ddec496196501d86ac318cf
 
     if (!file || !prefix || !serial) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
     const accessToken = await getAccessToken();
-    const ext = file.name.split('.').pop();
-<<<<<<< HEAD
-    const fileName = `${prefix}_${serial}_${Date.now()}.${ext}`;
+    const originalName = file.name.split('.');
+    const ext = originalName.length > 1 ? originalName.pop() : '';
+    const cleanBaseName = sanitizeFileName(originalName.join('.'));
+    
+    const fileName = `${prefix}_${serial}_${cleanBaseName}_${Date.now()}.${ext}`;
     const url = await uploadToGoogleDrive(file, fileName, accessToken);
-=======
-    const fileName = customFileName
-      ? `${sanitizeFileName(customFileName)}.${ext}`
-      : `${serial}_${prefix}_${Date.now()}.${ext}`;
-
-    const fileId = await uploadToGoogleDrive(file, fileName, folder ? { folderName: folder } : undefined);
-    const publicUrl = `https://lh3.googleusercontent.com/d/${fileId}=w2000`;
->>>>>>> ba042d7285786bfa8ddec496196501d86ac318cf
 
     return NextResponse.json({ success: true, url });
   } catch (error: any) {

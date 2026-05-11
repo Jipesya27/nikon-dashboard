@@ -43,3 +43,4 @@ export const chatbotTexts = {
   depositRefundReady: (nama: string, eventTitle: string, refundLink: string) =>
     `Halo *${nama}*,\n\nDeposit Anda untuk acara *${eventTitle}* telah diproses dan siap dikembalikan 🎉\n\nLihat bukti pengembalian deposit di link berikut:\n${refundLink}\n\nTerima kasih telah berpartisipasi!`,
 };
+
