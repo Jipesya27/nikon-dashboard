@@ -3212,6 +3212,137 @@ export default function NikonDashboard() {
                            </div>
                         </form>
                      )}
+                     {/* ============ KONSUMEN FORM ============ */}
+                     {activeTab === 'konsumen' && (
+                        <form onSubmit={handleSaveKonsumen} className="space-y-4">
+                           {/* Section: Identitas */}
+                           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Identitas</h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="label-form">Nomor WhatsApp *</label>
+                                    <input
+                                       type="text"
+                                       required
+                                       disabled={modalAction === 'edit'}
+                                       value={konsumenForm.nomor_wa || ''}
+                                       onChange={e => setKonsumenForm({ ...konsumenForm, nomor_wa: e.target.value })}
+                                       className="input-form disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                       placeholder="6281234567890 / 081234567890"
+                                    />
+                                    {modalAction === 'edit' && (
+                                       <p className="text-[10px] text-gray-500 mt-1 italic">Nomor WA adalah primary key, tidak bisa diubah saat edit</p>
+                                    )}
+                                 </div>
+                                 <div>
+                                    <label className="label-form">ID Konsumen</label>
+                                    <input
+                                       type="text"
+                                       value={konsumenForm.id_konsumen || ''}
+                                       onChange={e => setKonsumenForm({ ...konsumenForm, id_konsumen: e.target.value })}
+                                       className="input-form"
+                                       placeholder="Auto-generate (AN######) jika kosong"
+                                    />
+                                 </div>
+                                 <div className="md:col-span-2">
+                                    <label className="label-form">Nama Lengkap *</label>
+                                    <input
+                                       type="text"
+                                       required
+                                       value={konsumenForm.nama_lengkap || ''}
+                                       onChange={e => setKonsumenForm({ ...konsumenForm, nama_lengkap: e.target.value })}
+                                       className="input-form"
+                                    />
+                                 </div>
+                                 <div className="md:col-span-2">
+                                    <label className="label-form">NIK (Nomor KTP)</label>
+                                    <input
+                                       type="text"
+                                       value={konsumenForm.nik || ''}
+                                       onChange={e => setKonsumenForm({ ...konsumenForm, nik: e.target.value })}
+                                       className="input-form"
+                                       pattern="[0-9]{16}|BELUM_DIISI"
+                                       title="16 digit angka atau BELUM_DIISI"
+                                       placeholder="16 digit (atau BELUM_DIISI jika belum tahu)"
+                                    />
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Section: Alamat */}
+                           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Alamat</h3>
+                              <div className="space-y-3">
+                                 <div>
+                                    <label className="label-form">Alamat Rumah</label>
+                                    <textarea
+                                       rows={2}
+                                       value={konsumenForm.alamat_rumah || ''}
+                                       onChange={e => setKonsumenForm({ ...konsumenForm, alamat_rumah: e.target.value })}
+                                       className="input-form resize-none"
+                                       placeholder="Jalan, nomor rumah, RT/RW"
+                                    />
+                                 </div>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                       <label className="label-form">Kelurahan</label>
+                                       <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="input-form" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Kecamatan</label>
+                                       <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="input-form" />
+                                    </div>
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Kabupaten / Kotamadya</label>
+                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="input-form" />
+                                 </div>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                       <label className="label-form">Provinsi</label>
+                                       <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="input-form" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Kode Pos</label>
+                                       <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="input-form" pattern="[0-9]{5}|BELUM_DIISI" title="5 digit angka" />
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Section: Status Bot */}
+                           <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Status Chatbot</h3>
+                              <div>
+                                 <label className="label-form">Status Langkah Bot</label>
+                                 <select
+                                    aria-label="Status langkah bot"
+                                    value={konsumenForm.status_langkah || 'START'}
+                                    onChange={e => setKonsumenForm({ ...konsumenForm, status_langkah: e.target.value })}
+                                    className="input-form"
+                                 >
+                                    <option value="START">START (Menu Utama)</option>
+                                    <option value="TALKING_TO_CS">TALKING_TO_CS (Bicara dgn CS)</option>
+                                    <option value="MENUNGGU_UPLOAD_WEB">MENUNGGU_UPLOAD_WEB</option>
+                                    <option value="MENUNGGU_UPLOAD_GARANSI_WEB">MENUNGGU_UPLOAD_GARANSI_WEB</option>
+                                    <option value="TANYA_UPDATE_WA">TANYA_UPDATE_WA</option>
+                                    <option value="TANYA_UPDATE_WA_INPUT">TANYA_UPDATE_WA_INPUT</option>
+                                    <option value="OFFER_GARANSI_AFTER_CLAIM">OFFER_GARANSI_AFTER_CLAIM</option>
+                                    <option value="MENUNGGU_SERI_CLAIM">MENUNGGU_SERI_CLAIM</option>
+                                    <option value="MENUNGGU_SERI_GARANSI">MENUNGGU_SERI_GARANSI</option>
+                                    <option value="MENUNGGU_RESI_SERVICE">MENUNGGU_RESI_SERVICE</option>
+                                 </select>
+                                 <p className="text-[11px] text-gray-600 mt-1">💡 Reset ke <strong>START</strong> kalau konsumen stuck di tengah flow chatbot.</p>
+                              </div>
+                           </div>
+
+                           <div className="mt-6 flex justify-end gap-3">
+                              <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan Konsumen'}</button>
+                           </div>
+                        </form>
+                     )}
+
                      {/* ============ CLAIM FORM ============ */}
                      {activeTab === 'claims' && (
                         <form onSubmit={handleSaveClaim} className="space-y-4">
@@ -3543,7 +3674,7 @@ export default function NikonDashboard() {
                      )}
 
                      {/* ============ FORM TAB LAIN: placeholder info ============ */}
-                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && (
+                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && (
                         <div className="text-center py-12">
                            <div className="text-5xl mb-3">🚧</div>
                            <p className="text-gray-700 font-semibold mb-1">Form untuk tab ini belum tersedia</p>
