@@ -3212,6 +3212,171 @@ export default function NikonDashboard() {
                            </div>
                         </form>
                      )}
+                     {/* ============ WARRANTY FORM ============ */}
+                     {activeTab === 'warranties' && (
+                        <form onSubmit={handleSaveWarranty} className="space-y-4">
+                           {/* Section: Identitas Pemilik */}
+                           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Identitas Pemilik</h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="label-form">Nomor WhatsApp Pemilik</label>
+                                    <input type="text" value={warrantyForm.nomor_wa || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_wa: e.target.value })} className="input-form" placeholder="62812345678 / 081234567890" />
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Nomor WA Notifikasi Update</label>
+                                    <input type="text" value={warrantyForm.nomor_wa_update || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_wa_update: e.target.value })} className="input-form" placeholder="Kosongkan = pakai nomor pemilik" />
+                                 </div>
+                                 <div className="md:col-span-2">
+                                    <label className="label-form">Nama Pendaftar</label>
+                                    <input type="text" value={warrantyForm.nama_pendaftar || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nama_pendaftar: e.target.value })} className="input-form" />
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Section: Data Produk */}
+                           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Data Produk & Pembelian</h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="label-form">Nomor Seri *</label>
+                                    <input type="text" required value={warrantyForm.nomor_seri || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_seri: e.target.value })} className="input-form" />
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Tipe Barang *</label>
+                                    <input type="text" required value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({ ...warrantyForm, tipe_barang: e.target.value })} className="input-form" placeholder="Contoh: Nikon Z50 Kit 16-50mm" />
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Tanggal Pembelian</label>
+                                    <input type="date" aria-label="Tanggal pembelian" title="Tanggal pembelian" value={warrantyForm.tanggal_pembelian?.substring(0, 10) || ''} onChange={e => setWarrantyForm({ ...warrantyForm, tanggal_pembelian: e.target.value })} className="input-form" />
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Nama Toko</label>
+                                    <input type="text" value={warrantyForm.nama_toko || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nama_toko: e.target.value })} className="input-form" />
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Section: Spesifikasi Garansi */}
+                           <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Spesifikasi Garansi</h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="label-form">Jenis Garansi *</label>
+                                    <select aria-label="Jenis garansi" required value={warrantyForm.jenis_garansi || 'Jasa 30%'} onChange={e => setWarrantyForm({ ...warrantyForm, jenis_garansi: e.target.value })} className="input-form">
+                                       <option value="Jasa 30%">Jasa 30%</option>
+                                       <option value="Jasa 50%">Jasa 50%</option>
+                                       <option value="Jasa 100%">Jasa 100%</option>
+                                       <option value="Sparepart 30%">Sparepart 30%</option>
+                                       <option value="Sparepart 50%">Sparepart 50%</option>
+                                       <option value="Sparepart 100%">Sparepart 100%</option>
+                                       <option value="Full">Full</option>
+                                    </select>
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Lama Garansi *</label>
+                                    <select aria-label="Lama garansi" required value={warrantyForm.lama_garansi || '1 Tahun'} onChange={e => setWarrantyForm({ ...warrantyForm, lama_garansi: e.target.value })} className="input-form">
+                                       <option value="6 Bulan">6 Bulan</option>
+                                       <option value="1 Tahun">1 Tahun</option>
+                                       <option value="2 Tahun">2 Tahun</option>
+                                       <option value="3 Tahun">3 Tahun</option>
+                                    </select>
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Section: Validasi */}
+                           <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Status Validasi</h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div className="md:col-span-2">
+                                    <label className="label-form">Status Validasi (Utama) *</label>
+                                    <select aria-label="Status validasi" required value={warrantyForm.status_validasi || 'Menunggu'} onChange={e => setWarrantyForm({ ...warrantyForm, status_validasi: e.target.value })} className="input-form">
+                                       <option value="Menunggu">Menunggu</option>
+                                       <option value="Proses Validasi">Proses Validasi</option>
+                                       <option value="Valid">Valid</option>
+                                       <option value="Ditolak">Ditolak</option>
+                                    </select>
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Validasi Marketing (MKT)</label>
+                                    <select aria-label="Validasi MKT" value={warrantyForm.validasi_by_mkt || ''} onChange={e => setWarrantyForm({ ...warrantyForm, validasi_by_mkt: e.target.value || null })} className="input-form">
+                                       <option value="">-- belum diisi --</option>
+                                       <option value="Proses Validasi">Proses Validasi</option>
+                                       <option value="Valid">Valid</option>
+                                       <option value="Ditolak">Ditolak</option>
+                                    </select>
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Validasi Finance (FA)</label>
+                                    <select aria-label="Validasi FA" value={warrantyForm.validasi_by_fa || ''} onChange={e => setWarrantyForm({ ...warrantyForm, validasi_by_fa: e.target.value || null })} className="input-form">
+                                       <option value="">-- belum diisi --</option>
+                                       <option value="Proses Validasi">Proses Validasi</option>
+                                       <option value="Valid">Valid</option>
+                                       <option value="Ditolak">Ditolak</option>
+                                    </select>
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Catatan MKT</label>
+                                    <textarea rows={2} value={warrantyForm.catatan_mkt || ''} onChange={e => setWarrantyForm({ ...warrantyForm, catatan_mkt: e.target.value })} className="input-form resize-none" />
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Catatan FA</label>
+                                    <textarea rows={2} value={warrantyForm.catatan_fa || ''} onChange={e => setWarrantyForm({ ...warrantyForm, catatan_fa: e.target.value })} className="input-form resize-none" />
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Section: Relasi Claim */}
+                           <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Relasi Claim Promo (Opsional)</h3>
+                              <div>
+                                 <label className="label-form">ID Claim Terkait</label>
+                                 <input type="text" value={warrantyForm.id_claim || ''} onChange={e => setWarrantyForm({ ...warrantyForm, id_claim: e.target.value || null })} className="input-form" placeholder="UUID dari claim_promo (auto saat submit via web /garansi?from_claim=1)" />
+                                 <p className="text-[11px] text-gray-600 mt-1">💡 Jika diisi, status garansi akan ikut Valid saat claim terkait Valid (di bot cek status).</p>
+                              </div>
+                           </div>
+
+                           {/* Section: Dokumen */}
+                           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Dokumen Pendukung</h3>
+                              <div className="space-y-3">
+                                 <div>
+                                    <label className="label-form">Kartu Garansi</label>
+                                    {typeof warrantyForm.link_kartu_garansi === 'string' && warrantyForm.link_kartu_garansi && (
+                                       <button type="button" onClick={() => openImageViewer(warrantyForm.link_kartu_garansi as string)} className="block text-xs text-blue-600 font-bold hover:underline mb-2">🔗 Lihat dokumen saat ini</button>
+                                    )}
+                                    <input type="file" accept="image/*,application/pdf" aria-label="Upload kartu garansi" title="Upload kartu garansi" onChange={e => setWarrantyForm({ ...warrantyForm, link_kartu_garansi: e.target.files?.[0] || null })} className="input-form" />
+                                    {warrantyForm.link_kartu_garansi instanceof File && (
+                                       <p className="text-xs text-green-600 mt-1">File baru: {warrantyForm.link_kartu_garansi.name}</p>
+                                    )}
+                                    {typeof warrantyForm.link_kartu_garansi === 'string' && warrantyForm.link_kartu_garansi && (
+                                       <button type="button" onClick={() => setWarrantyForm({ ...warrantyForm, link_kartu_garansi: null })} className="text-[11px] text-red-600 font-bold mt-1 hover:underline">Hapus dokumen ini</button>
+                                    )}
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Nota Pembelian</label>
+                                    {typeof warrantyForm.link_nota_pembelian === 'string' && warrantyForm.link_nota_pembelian && (
+                                       <button type="button" onClick={() => openImageViewer(warrantyForm.link_nota_pembelian as string)} className="block text-xs text-blue-600 font-bold hover:underline mb-2">🔗 Lihat dokumen saat ini</button>
+                                    )}
+                                    <input type="file" accept="image/*,application/pdf" aria-label="Upload nota pembelian" title="Upload nota pembelian" onChange={e => setWarrantyForm({ ...warrantyForm, link_nota_pembelian: e.target.files?.[0] || null })} className="input-form" />
+                                    {warrantyForm.link_nota_pembelian instanceof File && (
+                                       <p className="text-xs text-green-600 mt-1">File baru: {warrantyForm.link_nota_pembelian.name}</p>
+                                    )}
+                                    {typeof warrantyForm.link_nota_pembelian === 'string' && warrantyForm.link_nota_pembelian && (
+                                       <button type="button" onClick={() => setWarrantyForm({ ...warrantyForm, link_nota_pembelian: null })} className="text-[11px] text-red-600 font-bold mt-1 hover:underline">Hapus dokumen ini</button>
+                                    )}
+                                 </div>
+                              </div>
+                           </div>
+
+                           <div className="mt-6 flex justify-end gap-3">
+                              <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan Garansi'}</button>
+                           </div>
+                        </form>
+                     )}
+
                      {/* ============ KONSUMEN FORM ============ */}
                      {activeTab === 'konsumen' && (
                         <form onSubmit={handleSaveKonsumen} className="space-y-4">
@@ -3674,7 +3839,7 @@ export default function NikonDashboard() {
                      )}
 
                      {/* ============ FORM TAB LAIN: placeholder info ============ */}
-                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && (
+                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && activeTab !== 'warranties' && (
                         <div className="text-center py-12">
                            <div className="text-5xl mb-3">🚧</div>
                            <p className="text-gray-700 font-semibold mb-1">Form untuk tab ini belum tersedia</p>
