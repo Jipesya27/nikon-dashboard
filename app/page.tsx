@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { chatbotTexts } from './chatbotTexts';
 import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, EventData, EventRegistration, PeminjamanBarang } from './index';
@@ -1853,6 +1854,36 @@ export default function NikonDashboard() {
                            </div>
                         </div>
                      ))}
+
+                     {/* ===== HALAMAN EKSTERNAL ===== */}
+                     <div className="mb-4 mt-2 pt-3 border-t border-gray-200">
+                        <h3 className="px-4 pt-2 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                           Halaman Lain
+                        </h3>
+                        <div className="space-y-1">
+                           <Link href="/admin/events" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
+                              <span>📅 Admin Events</span>
+                              <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                           </Link>
+                           <Link href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
+                              <span>📋 Kehadiran Event</span>
+                              <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                           </Link>
+                           <Link href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
+                              <span>💰 Deposit & Refund</span>
+                              <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                           </Link>
+                           <Link href="/claim" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
+                              <span>🎫 Form Claim (Publik)</span>
+                              <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                           </Link>
+                           <Link href="/garansi" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
+                              <span>🛡️ Form Garansi (Publik)</span>
+                              <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                           </Link>
+                        </div>
+                     </div>
                   </div>
                </div>
 
