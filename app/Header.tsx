@@ -18,6 +18,7 @@ const EXTERNAL_PAGES = [
    { href: '/admin/events/deposit', label: 'Deposit & Refund', icon: '💰' },
    { href: '/claim', label: 'Form Claim (Publik)', icon: '🎫' },
    { href: '/garansi', label: 'Form Garansi (Publik)', icon: '🛡️' },
+   { href: '/events/register', label: 'Daftar Event (Publik)', icon: '🎟️' },
 ];
 
 export default function Header({ sidebarOpen, setSidebarOpen, currentUser, handleLogout }: HeaderProps) {
