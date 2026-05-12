@@ -28,8 +28,23 @@ export interface PeminjamanBarang {
    items_dipinjam: PeminjamanItem[];
    tanggal_peminjaman?: string;
    tanggal_pengembalian?: string | null;
+   tanggal_estimasi_pengembalian?: string | null;
+   reminder_sent_at?: string | null;
    status_peminjaman: 'aktif' | 'selesai';
    status_wa?: string;
    created_at?: string;
    updated_at?: string;
+}
+export interface EventDataExtended extends EventData {
+   event_title?: string;
+   event_date?: string;
+   event_price?: string;
+   event_image?: string;
+   event_partisipant_stock?: number;
+   event_status?: string;
+   event_description?: string;
+   event_payment_tipe?: 'regular' | 'deposit';
+   event_speaker?: string;
+   event_speaker_genre?: string;
+   deposit_amount?: string;
 }
