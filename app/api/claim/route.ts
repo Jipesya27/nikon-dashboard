@@ -169,8 +169,8 @@ export async function POST(req: Request) {
     const fileGaransi = formData.get('foto_kartu_garansi') as File | null;
     const fileNota    = formData.get('foto_nota_pembelian') as File | null;
 
-    // Validasi field wajib
-    const required = { phone, nama_lengkap, nik, alamat_rumah, kelurahan, kecamatan, kabupaten_kotamadya, provinsi, kodepos, nomor_seri, tipe_barang, nama_toko, alamat_pengiriman };
+    // Validasi field wajib (NIK opsional)
+    const required = { phone, nama_lengkap, alamat_rumah, kelurahan, kecamatan, kabupaten_kotamadya, provinsi, kodepos, nomor_seri, tipe_barang, nama_toko, alamat_pengiriman };
     for (const [k, v] of Object.entries(required)) {
       if (!v) return NextResponse.json({ error: `Field '${k}' wajib diisi.` }, { status: 400 });
     }
@@ -185,19 +185,22 @@ export async function POST(req: Request) {
     }
 
     // 1. UPDATE tabel konsumen dengan data diri terbaru
+    //    NIK opsional: hanya update kalau diisi, supaya tidak menimpa NIK lama dengan kosong
+    const konsumenUpdate: Record<string, string> = {
+      nama_lengkap,
+      alamat_rumah,
+      kelurahan,
+      kecamatan,
+      kabupaten_kotamadya,
+      provinsi,
+      kodepos,
+      updated_at: new Date().toISOString(),
+    };
+    if (nik) konsumenUpdate.nik = nik;
+
     const { error: updateKonsumenError } = await supabase
       .from('konsumen')
-      .update({
-        nama_lengkap,
-        nik,
-        alamat_rumah,
-        kelurahan,
-        kecamatan,
-        kabupaten_kotamadya,
-        provinsi,
-        kodepos,
-        updated_at: new Date().toISOString(),
-      })
+      .update(konsumenUpdate)
       .eq('nomor_wa', matchedPhone);
 
     if (updateKonsumenError) {

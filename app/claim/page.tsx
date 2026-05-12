@@ -230,8 +230,11 @@ function ClaimForm() {
             </div>
 
             <div>
-              <label className={labelCls}>NIK (Nomor KTP) {req}</label>
-              <input type="text" name="nik" value={formData.nik} onChange={handleChange} required pattern="[0-9]{16}" title="NIK harus 16 digit" placeholder="16 digit angka" className={inputCls} />
+              <label className={labelCls}>
+                NIK (Nomor KTP)
+                <span className="text-gray-400 text-xs font-normal ml-1">(opsional)</span>
+              </label>
+              <input type="text" name="nik" value={formData.nik} onChange={handleChange} pattern="[0-9]{16}" title="NIK harus 16 digit" placeholder="16 digit angka (boleh dikosongkan)" className={inputCls} />
             </div>
 
             <div>
