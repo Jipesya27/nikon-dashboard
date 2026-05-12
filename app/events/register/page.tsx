@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 
 type EventItem = {
   id: string;
@@ -17,6 +17,24 @@ type EventItem = {
   event_partisipant_stock: number;
   registered_count: number;
 };
+
+const ID_MONTHS: Record<string, number> = {
+  januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
+  juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
+};
+function parseIdDate(str: string): Date | null {
+  if (!str) return null;
+  const p = str.trim().toLowerCase().split(/\s+/);
+  if (p.length < 3) return null;
+  const d = parseInt(p[0]), m = ID_MONTHS[p[1]], y = parseInt(p[2]);
+  if (isNaN(d) || m === undefined || isNaN(y)) return null;
+  return new Date(y, m, d);
+}
+function daysUntil(dateStr: string): number | null {
+  const d = parseIdDate(dateStr);
+  if (!d) return null;
+  return Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
 
 type FormState = {
   nama_lengkap: string;
@@ -46,6 +64,12 @@ export default function EventRegisterPage() {
   const [fileBukti, setFileBukti] = useState<File | null>(null);
   const [previewBukti, setPreviewBukti] = useState<string | null>(null);
   const refBukti = useRef<HTMLInputElement>(null);
+
+  // Marketplace filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterPayment, setFilterPayment] = useState<'all' | 'regular' | 'deposit'>('all');
+  const [filterGenre, setFilterGenre] = useState<string>('Semua');
+  const [sortBy, setSortBy] = useState<'newest' | 'soonest' | 'price_asc' | 'price_desc'>('soonest');
 
   useEffect(() => {
     (async () => {
@@ -81,6 +105,40 @@ export default function EventRegisterPage() {
     setFileBukti(null);
     setPreviewBukti(null);
   }
+
+  // Daftar genre unik dari events
+  const allGenres = useMemo(() => {
+    const g = new Set<string>();
+    events.forEach(e => { if (e.event_speaker_genre) g.add(e.event_speaker_genre); });
+    return ['Semua', ...Array.from(g)];
+  }, [events]);
+
+  // Apply search/filter/sort
+  const visibleEvents = useMemo(() => {
+    const parsePrice = (s: string) => parseInt((s || '').replace(/[^0-9]/g, '')) || 0;
+    let list = events.filter(e => {
+      if (filterPayment !== 'all' && e.event_payment_tipe !== filterPayment) return false;
+      if (filterGenre !== 'Semua' && e.event_speaker_genre !== filterGenre) return false;
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        const blob = `${e.event_title} ${e.event_speaker || ''} ${e.event_speaker_genre || ''} ${e.event_description || ''}`.toLowerCase();
+        if (!blob.includes(q)) return false;
+      }
+      return true;
+    });
+    list = [...list].sort((a, b) => {
+      if (sortBy === 'newest') return 0; // sudah urut dari API
+      if (sortBy === 'soonest') {
+        const da = parseIdDate(a.event_date)?.getTime() ?? Infinity;
+        const db = parseIdDate(b.event_date)?.getTime() ?? Infinity;
+        return da - db;
+      }
+      if (sortBy === 'price_asc') return parsePrice(a.event_price) - parsePrice(b.event_price);
+      if (sortBy === 'price_desc') return parsePrice(b.event_price) - parsePrice(a.event_price);
+      return 0;
+    });
+    return list;
+  }, [events, filterPayment, filterGenre, searchTerm, sortBy]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -150,6 +208,208 @@ export default function EventRegisterPage() {
   const labelCls = "block text-sm font-semibold text-gray-900 mb-1";
   const req = <span className="text-red-600">*</span>;
 
+  // ========== MARKETPLACE LIST VIEW ==========
+  if (step === 'list') {
+    return (
+      <div className="min-h-screen bg-gray-50 text-gray-900" style={{ colorScheme: 'light' }}>
+        {/* HERO / TOP BAR — black bg + nikon yellow accent */}
+        <header className="bg-linear-to-r from-gray-900 via-black to-gray-900 border-b-4 border-[#FFE500] sticky top-0 z-30 shadow-lg">
+          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center gap-3 md:gap-5">
+            <div className="bg-[#FFE500] rounded-lg w-10 h-10 flex items-center justify-center shadow-md shrink-0">
+              <span className="text-black font-black text-lg">N</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base md:text-xl font-bold text-white truncate">Nikon Event</h1>
+              <p className="text-xs text-gray-400 hidden md:block">Daftar event fotografi & workshop resmi Nikon Indonesia</p>
+            </div>
+            <div className="hidden md:flex items-center gap-1.5 text-[#FFE500] text-xs font-bold uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 bg-[#FFE500] rounded-full animate-pulse" /> {events.length} Event Tersedia
+            </div>
+          </div>
+
+          {/* Search bar */}
+          <div className="max-w-6xl mx-auto px-4 pb-4">
+            <div className="relative">
+              <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Cari event, speaker, atau topik..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white text-sm text-gray-900 placeholder:text-gray-500 shadow-md focus:outline-none focus:ring-2 focus:ring-[#FFE500]"
+              />
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-6xl mx-auto px-4 py-5 space-y-5">
+
+          {errorMsg && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm text-red-700">{errorMsg}</p>
+            </div>
+          )}
+
+          {/* CATEGORY FILTER PILLS */}
+          <div className="overflow-x-auto -mx-4 px-4 scrollbar-none">
+            <div className="flex gap-2 min-w-max pb-1">
+              {allGenres.map(g => {
+                const active = filterGenre === g;
+                return (
+                  <button
+                    key={g}
+                    onClick={() => setFilterGenre(g)}
+                    className={`px-4 py-1.5 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-all border-2 ${active ? 'bg-black text-[#FFE500] border-black shadow-md' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'}`}
+                  >
+                    {g === 'Semua' ? '⭐ Semua' : `📷 ${g}`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* PAYMENT FILTER + SORT */}
+          <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+            <div className="flex gap-2">
+              {([
+                { v: 'all',     l: 'Semua Tipe', i: '🎟️' },
+                { v: 'regular', l: 'Regular',    i: '🎫' },
+                { v: 'deposit', l: 'Deposit',    i: '💎' },
+              ] as const).map(opt => {
+                const active = filterPayment === opt.v;
+                return (
+                  <button
+                    key={opt.v}
+                    onClick={() => setFilterPayment(opt.v)}
+                    className={`flex-1 md:flex-none px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-all border ${active ? 'bg-[#FFE500] text-black border-[#FFE500] shadow-md' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    {opt.i} {opt.l}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-gray-700">Urutkan:</label>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                className="px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold bg-white border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-black"
+              >
+                <option value="soonest">📆 Terdekat</option>
+                <option value="newest">✨ Terbaru</option>
+                <option value="price_asc">💸 Harga Terendah</option>
+                <option value="price_desc">💰 Harga Tertinggi</option>
+              </select>
+            </div>
+          </div>
+
+          {/* RESULT COUNT */}
+          <p className="text-xs text-gray-600 font-medium">
+            Menampilkan <span className="font-bold text-gray-900">{visibleEvents.length}</span> dari {events.length} event
+          </p>
+
+          {/* EMPTY STATE */}
+          {visibleEvents.length === 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+              <div className="text-5xl mb-3">🔍</div>
+              <p className="text-gray-800 font-semibold mb-1">Tidak ada event ditemukan</p>
+              <p className="text-sm text-gray-600">Coba ubah filter atau kata kunci pencarian Anda.</p>
+            </div>
+          )}
+
+          {/* GRID OF EVENTS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {visibleEvents.map(evt => {
+              const totalStock = evt.event_partisipant_stock;
+              const sisa = totalStock > 0 ? totalStock - evt.registered_count : null;
+              const persenTerisi = totalStock > 0 ? (evt.registered_count / totalStock) : 0;
+              const tampilSisa = sisa !== null && sisa > 0 && persenTerisi >= 0.7;
+              const sisaHari = daysUntil(evt.event_date);
+              const isHot = (tampilSisa && sisa! <= 3) || (sisaHari !== null && sisaHari <= 7 && sisaHari >= 0);
+
+              return (
+                <div key={evt.id} className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
+                  <div className="relative bg-linear-to-br from-gray-100 to-gray-200">
+                    {evt.event_image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={evt.event_image}
+                        alt={evt.event_title}
+                        className="w-full aspect-[3/4] object-contain group-hover:scale-[1.02] transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full aspect-[3/4] bg-linear-to-br from-gray-800 to-black flex items-center justify-center">
+                        <span className="text-[#FFE500] font-black text-5xl">N</span>
+                      </div>
+                    )}
+                    {/* badges overlay */}
+                    <div className="absolute top-2 left-2 flex flex-col gap-1.5">
+                      {isHot && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500 text-white text-[10px] font-bold uppercase shadow-md">
+                          🔥 Hot
+                        </span>
+                      )}
+                      {evt.event_payment_tipe === 'deposit' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FFE500] text-black text-[10px] font-bold uppercase shadow-md">
+                          💎 Refundable
+                        </span>
+                      )}
+                    </div>
+                    {tampilSisa && (
+                      <span className={`absolute top-2 right-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold shadow-md ${sisa! <= 3 ? 'bg-red-500 text-white' : 'bg-orange-500 text-white'}`}>
+                        Sisa {sisa} kursi
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-4 flex flex-col flex-1">
+                    {evt.event_speaker_genre && (
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">{evt.event_speaker_genre}</p>
+                    )}
+                    <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-[2.5rem]">{evt.event_title}</h3>
+                    <div className="mt-2 space-y-0.5">
+                      <p className="text-xs text-gray-700 flex items-center gap-1">
+                        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        {evt.event_date}
+                        {sisaHari !== null && sisaHari >= 0 && sisaHari <= 30 && (
+                          <span className="ml-1 text-[10px] text-red-600 font-bold">· {sisaHari === 0 ? 'Hari ini' : `${sisaHari}h lagi`}</span>
+                        )}
+                      </p>
+                      {evt.event_speaker && (
+                        <p className="text-xs text-gray-700 flex items-center gap-1 truncate">
+                          <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                          <span className="truncate">{evt.event_speaker}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-end justify-between gap-2">
+                      <div>
+                        <p className="text-[10px] text-gray-500 font-semibold uppercase">Harga</p>
+                        <p className="text-base font-black text-gray-900 leading-tight">{evt.event_price}</p>
+                      </div>
+                      <button
+                        onClick={() => pilihEvent(evt)}
+                        className="bg-black text-[#FFE500] px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-gray-800 transition shadow-md whitespace-nowrap"
+                      >
+                        Daftar →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-center text-xs text-gray-500 pt-6">
+            Nikon Indonesia · Powered by Alta Nikindo
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== FORM & SUCCESS VIEWS ==========
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4 text-gray-900" style={{ colorScheme: 'light' }}>
       <div className="max-w-2xl mx-auto">
@@ -164,64 +424,6 @@ export default function EventRegisterPage() {
         {errorMsg && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
             <p className="text-sm text-red-600">{errorMsg}</p>
-          </div>
-        )}
-
-        {step === 'list' && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-              <h2 className="text-base font-semibold text-gray-800 mb-1">Pilih Event yang Ingin Diikuti</h2>
-              <p className="text-xs text-gray-700">Berikut adalah event Nikon yang masih membuka pendaftaran.</p>
-            </div>
-
-            {events.length === 0 && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-                <p className="text-gray-700 font-medium">Saat ini belum ada event aktif. Silakan cek kembali nanti.</p>
-              </div>
-            )}
-
-            {events.map(evt => {
-              const sisa = evt.event_partisipant_stock > 0 ? evt.event_partisipant_stock - evt.registered_count : null;
-              return (
-                <div key={evt.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                  {evt.event_image && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={evt.event_image} alt={evt.event_title} className="w-full h-44 object-cover" />
-                  )}
-                  <div className="p-5 space-y-3">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">{evt.event_title}</h3>
-                      <p className="text-sm text-gray-700 mt-0.5">📅 {evt.event_date}</p>
-                      {evt.event_speaker && (
-                        <p className="text-xs text-gray-700 mt-0.5">🎤 {evt.event_speaker}{evt.event_speaker_genre ? ` (${evt.event_speaker_genre})` : ''}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-xs font-semibold text-gray-800">
-                        💰 {evt.event_price}
-                      </span>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${evt.event_payment_tipe === 'deposit' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
-                        {evt.event_payment_tipe === 'deposit' ? '🎫 Deposit (Refundable)' : '🎫 Regular'}
-                      </span>
-                      {sisa !== null && (
-                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${sisa <= 3 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                          Sisa kuota: {sisa}
-                        </span>
-                      )}
-                    </div>
-                    {evt.event_description && (
-                      <p className="text-xs text-gray-700 line-clamp-3">{evt.event_description}</p>
-                    )}
-                    <button
-                      onClick={() => pilihEvent(evt)}
-                      className="w-full bg-black text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-800 transition"
-                    >
-                      Daftar Event Ini →
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         )}
 
