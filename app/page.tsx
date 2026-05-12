@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { chatbotTexts } from './chatbotTexts';
-import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, EventData, EventRegistration, PeminjamanBarang } from './index';
+import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang } from './index';
 import Header from './Header';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
@@ -3212,6 +3212,250 @@ export default function NikonDashboard() {
                            </div>
                         </form>
                      )}
+                     {/* ============ BUDGET APPROVAL FORM ============ */}
+                     {activeTab === 'budgets' && (
+                        <form onSubmit={handleSaveBudget} className="space-y-4">
+                           {(() => {
+                              const items = budgetForm.items || [];
+                              const totalCost = items.reduce((sum, it) => sum + (Number(it.value) || 0), 0);
+                              const fmtRp = (n: number) => 'Rp ' + n.toLocaleString('id-ID');
+                              const updateItem = (idx: number, patch: Partial<BudgetItem>) => {
+                                 const newItems = [...items];
+                                 const merged = { ...newItems[idx], ...patch };
+                                 // Auto-calc value = qty * cost_unit
+                                 if ('qty' in patch || 'cost_unit' in patch) {
+                                    merged.value = (Number(merged.qty) || 0) * (Number(merged.cost_unit) || 0);
+                                 }
+                                 newItems[idx] = merged;
+                                 // Auto-update total_cost
+                                 const newTotal = newItems.reduce((s, it) => s + (Number(it.value) || 0), 0);
+                                 setBudgetForm({ ...budgetForm, items: newItems, total_cost: newTotal });
+                              };
+                              return (
+                                 <>
+                                    {/* Section: Header Proposal */}
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Header Proposal</h3>
+                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          <div>
+                                             <label className="label-form">Nomor Proposal *</label>
+                                             <input type="text" required value={budgetForm.proposal_no || ''} onChange={e => setBudgetForm({ ...budgetForm, proposal_no: e.target.value })} className="input-form font-mono" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Drafter</label>
+                                             <input type="text" value={budgetForm.drafter_name || ''} onChange={e => setBudgetForm({ ...budgetForm, drafter_name: e.target.value })} className="input-form" />
+                                          </div>
+                                          <div className="md:col-span-2">
+                                             <label className="label-form">Judul Proposal *</label>
+                                             <input type="text" required value={budgetForm.title || ''} onChange={e => setBudgetForm({ ...budgetForm, title: e.target.value })} className="input-form" placeholder="Contoh: Anggaran Event Photo Walk Q3 2026" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Periode</label>
+                                             <input type="text" value={budgetForm.period || ''} onChange={e => setBudgetForm({ ...budgetForm, period: e.target.value })} className="input-form" placeholder="Contoh: Juli 2026 atau Q3 2026" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Sumber Dana</label>
+                                             <select aria-label="Sumber dana" value={budgetForm.budget_source || 'Marketing Budget'} onChange={e => setBudgetForm({ ...budgetForm, budget_source: e.target.value })} className="input-form">
+                                                <option value="Marketing Budget">Marketing Budget</option>
+                                                <option value="Operational Budget">Operational Budget</option>
+                                                <option value="Event Budget">Event Budget</option>
+                                                <option value="Service Budget">Service Budget</option>
+                                                <option value="Other">Other</option>
+                                             </select>
+                                          </div>
+                                       </div>
+                                    </div>
+
+                                    {/* Section: Detail Aktivitas */}
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Detail Aktivitas</h3>
+                                       <div className="space-y-3">
+                                          <div>
+                                             <label className="label-form">Objectives (Tujuan)</label>
+                                             <textarea rows={2} value={budgetForm.objectives || ''} onChange={e => setBudgetForm({ ...budgetForm, objectives: e.target.value })} className="input-form resize-none" placeholder="Apa tujuan dari kegiatan/anggaran ini" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Detail Activity (Rincian Kegiatan)</label>
+                                             <textarea rows={3} value={budgetForm.detail_activity || ''} onChange={e => setBudgetForm({ ...budgetForm, detail_activity: e.target.value })} className="input-form resize-none" placeholder="Jelaskan detail kegiatan: agenda, lokasi, jumlah peserta, dll." />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Expected Result (Hasil yang Diharapkan)</label>
+                                             <textarea rows={2} value={budgetForm.expected_result || ''} onChange={e => setBudgetForm({ ...budgetForm, expected_result: e.target.value })} className="input-form resize-none" placeholder="KPI / hasil yang ingin dicapai" />
+                                          </div>
+                                       </div>
+                                    </div>
+
+                                    {/* Section: Item Budget (auto-calc) */}
+                                    <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                                       <div className="flex items-center justify-between mb-3">
+                                          <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Detail Item Anggaran</h3>
+                                          <span className="text-[10px] text-gray-600 font-medium">{items.length} item · auto-calc</span>
+                                       </div>
+                                       <div className="space-y-3">
+                                          {items.map((item, idx) => (
+                                             <div key={idx} className="bg-white border border-gray-200 rounded-lg p-3 space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                   <span className="text-xs font-bold text-gray-600">Item #{idx + 1}</span>
+                                                   <button type="button" onClick={() => {
+                                                      const newItems = [...items];
+                                                      newItems.splice(idx, 1);
+                                                      const newTotal = newItems.reduce((s, it) => s + (Number(it.value) || 0), 0);
+                                                      setBudgetForm({ ...budgetForm, items: newItems, total_cost: newTotal });
+                                                   }} className="text-red-600 text-xs font-bold hover:underline">✕ Hapus</button>
+                                                </div>
+                                                <input
+                                                   type="text"
+                                                   required
+                                                   placeholder="Purpose / Keperluan (cth: Sewa venue, Konsumsi)"
+                                                   value={item.purpose}
+                                                   onChange={e => updateItem(idx, { purpose: e.target.value })}
+                                                   className="input-form"
+                                                />
+                                                <div className="grid grid-cols-3 gap-2">
+                                                   <div>
+                                                      <label className="text-[10px] font-bold text-gray-600 uppercase block mb-1">Qty</label>
+                                                      <input
+                                                         type="number"
+                                                         min={0}
+                                                         step={1}
+                                                         aria-label="Qty"
+                                                         title="Quantity"
+                                                         value={item.qty || ''}
+                                                         onChange={e => updateItem(idx, { qty: parseInt(e.target.value) || 0 })}
+                                                         className="input-form"
+                                                      />
+                                                   </div>
+                                                   <div>
+                                                      <label className="text-[10px] font-bold text-gray-600 uppercase block mb-1">Cost/Unit</label>
+                                                      <input
+                                                         type="number"
+                                                         min={0}
+                                                         step={1000}
+                                                         aria-label="Cost per unit"
+                                                         title="Cost per unit"
+                                                         value={item.cost_unit || ''}
+                                                         onChange={e => updateItem(idx, { cost_unit: parseFloat(e.target.value) || 0 })}
+                                                         className="input-form"
+                                                      />
+                                                   </div>
+                                                   <div>
+                                                      <label className="text-[10px] font-bold text-gray-600 uppercase block mb-1">Value (auto)</label>
+                                                      <div className="px-3 py-2.5 rounded-lg border-2 border-gray-200 bg-gray-100 text-sm font-bold text-gray-900">
+                                                         {fmtRp(Number(item.value) || 0)}
+                                                      </div>
+                                                   </div>
+                                                </div>
+                                                <input
+                                                   type="text"
+                                                   placeholder="Petty cash / nomor referensi (opsional)"
+                                                   value={item.petty_cash || ''}
+                                                   onChange={e => updateItem(idx, { petty_cash: e.target.value })}
+                                                   className="input-form"
+                                                />
+                                             </div>
+                                          ))}
+                                          <button
+                                             type="button"
+                                             onClick={() => {
+                                                const newItems = [...items, { purpose: '', qty: 0, cost_unit: 0, value: 0, petty_cash: '' }];
+                                                setBudgetForm({ ...budgetForm, items: newItems });
+                                             }}
+                                             className="w-full py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-bold border-2 border-dashed border-yellow-300"
+                                          >
+                                             + Tambah Item Anggaran
+                                          </button>
+                                       </div>
+
+                                       {/* Total */}
+                                       <div className="mt-3 pt-3 border-t-2 border-yellow-300 flex items-center justify-between">
+                                          <span className="text-sm font-bold text-gray-700">TOTAL COST</span>
+                                          <span className="text-xl font-black text-gray-900">{fmtRp(totalCost)}</span>
+                                       </div>
+                                    </div>
+
+                                    {/* Section: Approval & Comments */}
+                                    <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Komentar Management & Persetujuan</h3>
+                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          <div>
+                                             <label className="label-form">Mgt Comment 1</label>
+                                             <textarea rows={2} value={budgetForm.mgt_comment_1 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_1: e.target.value })} className="input-form resize-none" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Mgt Comment 2</label>
+                                             <textarea rows={2} value={budgetForm.mgt_comment_2 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_2: e.target.value })} className="input-form resize-none" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Persetujuan Management</label>
+                                             <select aria-label="Persetujuan management" value={budgetForm.mgt_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_consent: e.target.value })} className="input-form">
+                                                <option value="">-- Belum diisi --</option>
+                                                <option value="Approved">Approved</option>
+                                                <option value="Rejected">Rejected</option>
+                                                <option value="Pending Review">Pending Review</option>
+                                                <option value="Need Revision">Need Revision</option>
+                                             </select>
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Persetujuan Finance</label>
+                                             <select aria-label="Persetujuan finance" value={budgetForm.finance_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, finance_consent: e.target.value })} className="input-form">
+                                                <option value="">-- Belum diisi --</option>
+                                                <option value="Approved">Approved</option>
+                                                <option value="Rejected">Rejected</option>
+                                                <option value="Pending Review">Pending Review</option>
+                                                <option value="Need Revision">Need Revision</option>
+                                             </select>
+                                          </div>
+                                       </div>
+                                    </div>
+
+                                    {/* Section: Lampiran */}
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Lampiran (Maks 3 file)</h3>
+                                       <div className="space-y-3">
+                                          {[0, 1, 2].map(slotIdx => {
+                                             const url = budgetForm.attachment_urls?.[slotIdx];
+                                             return (
+                                                <div key={slotIdx} className="bg-white border border-gray-200 rounded-lg p-3">
+                                                   <label className="label-form">Lampiran #{slotIdx + 1}</label>
+                                                   {typeof url === 'string' && url && (
+                                                      <button type="button" onClick={() => openImageViewer(url)} className="block text-xs text-blue-600 font-bold hover:underline mb-2">🔗 Lihat lampiran saat ini</button>
+                                                   )}
+                                                   <input
+                                                      type="file"
+                                                      accept="image/*,application/pdf"
+                                                      aria-label={`Upload lampiran ${slotIdx + 1}`}
+                                                      title={`Upload lampiran ${slotIdx + 1}`}
+                                                      onChange={e => {
+                                                         const newUrls = [...(budgetForm.attachment_urls || [null, null, null])];
+                                                         newUrls[slotIdx] = e.target.files?.[0] || null;
+                                                         setBudgetForm({ ...budgetForm, attachment_urls: newUrls });
+                                                      }}
+                                                      className="input-form"
+                                                   />
+                                                   {url instanceof File && <p className="text-xs text-green-600 mt-1">File baru: {url.name}</p>}
+                                                   {typeof url === 'string' && url && (
+                                                      <button type="button" onClick={() => {
+                                                         const newUrls = [...(budgetForm.attachment_urls || [null, null, null])];
+                                                         newUrls[slotIdx] = null;
+                                                         setBudgetForm({ ...budgetForm, attachment_urls: newUrls });
+                                                      }} className="text-[11px] text-red-600 font-bold mt-1 hover:underline">Hapus lampiran ini</button>
+                                                   )}
+                                                </div>
+                                             );
+                                          })}
+                                       </div>
+                                    </div>
+
+                                    <div className="mt-6 flex justify-end gap-3">
+                                       <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                                       <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan Proposal'}</button>
+                                    </div>
+                                 </>
+                              );
+                           })()}
+                        </form>
+                     )}
+
                      {/* ============ BOT SETTINGS FORM ============ */}
                      {activeTab === 'botsettings' && (
                         <form onSubmit={handleSaveBotSettings} className="space-y-4">
@@ -4064,7 +4308,7 @@ export default function NikonDashboard() {
                      )}
 
                      {/* ============ FORM TAB LAIN: placeholder info ============ */}
-                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && activeTab !== 'warranties' && activeTab !== 'promos' && activeTab !== 'botsettings' && (
+                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && activeTab !== 'warranties' && activeTab !== 'promos' && activeTab !== 'botsettings' && activeTab !== 'budgets' && (
                         <div className="text-center py-12">
                            <div className="text-5xl mb-3">🚧</div>
                            <p className="text-gray-700 font-semibold mb-1">Form untuk tab ini belum tersedia</p>
