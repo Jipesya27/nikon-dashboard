@@ -3212,6 +3212,141 @@ export default function NikonDashboard() {
                            </div>
                         </form>
                      )}
+                     {/* ============ PROMO FORM ============ */}
+                     {activeTab === 'promos' && (
+                        <form onSubmit={handleSavePromo} className="space-y-4">
+                           {/* Section: Info Dasar */}
+                           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Info Promo</h3>
+                              <div className="space-y-3">
+                                 <div>
+                                    <label className="label-form">Nama Promo *</label>
+                                    <input
+                                       type="text"
+                                       required
+                                       value={promoForm.nama_promo || ''}
+                                       onChange={e => setPromoForm({ ...promoForm, nama_promo: e.target.value })}
+                                       className="input-form"
+                                       placeholder="Contoh: Free Battery Nikon EN-EL25a"
+                                    />
+                                 </div>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                       <label className="label-form">Tanggal Mulai *</label>
+                                       <input
+                                          type="date"
+                                          aria-label="Tanggal mulai promo"
+                                          title="Tanggal mulai promo"
+                                          required
+                                          value={promoForm.tanggal_mulai?.substring(0, 10) || ''}
+                                          onChange={e => setPromoForm({ ...promoForm, tanggal_mulai: e.target.value })}
+                                          className="input-form"
+                                       />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Tanggal Selesai *</label>
+                                       <input
+                                          type="date"
+                                          aria-label="Tanggal selesai promo"
+                                          title="Tanggal selesai promo"
+                                          required
+                                          value={promoForm.tanggal_selesai?.substring(0, 10) || ''}
+                                          onChange={e => setPromoForm({ ...promoForm, tanggal_selesai: e.target.value })}
+                                          className="input-form"
+                                       />
+                                    </div>
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Status Aktif</label>
+                                    <div className="flex items-center gap-3 mt-1">
+                                       <label className={`flex-1 cursor-pointer rounded-lg border-2 p-3 text-center transition-all ${promoForm.status_aktif ? 'border-green-500 bg-green-50 text-green-800' : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'}`}>
+                                          <input
+                                             type="radio"
+                                             name="promo-status"
+                                             checked={promoForm.status_aktif === true}
+                                             onChange={() => setPromoForm({ ...promoForm, status_aktif: true })}
+                                             className="sr-only"
+                                          />
+                                          <div className="text-lg mb-0.5">✅</div>
+                                          <div className="text-xs font-bold">Aktif</div>
+                                       </label>
+                                       <label className={`flex-1 cursor-pointer rounded-lg border-2 p-3 text-center transition-all ${promoForm.status_aktif === false ? 'border-red-500 bg-red-50 text-red-800' : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'}`}>
+                                          <input
+                                             type="radio"
+                                             name="promo-status"
+                                             checked={promoForm.status_aktif === false}
+                                             onChange={() => setPromoForm({ ...promoForm, status_aktif: false })}
+                                             className="sr-only"
+                                          />
+                                          <div className="text-lg mb-0.5">⏸️</div>
+                                          <div className="text-xs font-bold">Nonaktif</div>
+                                       </label>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Section: Produk yang Berlaku */}
+                           <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                              <div className="flex items-center justify-between mb-3">
+                                 <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Produk yang Berlaku</h3>
+                                 <span className="text-[10px] text-gray-600 font-medium">{(promoForm.tipe_produk || []).length} produk</span>
+                              </div>
+                              <p className="text-[11px] text-gray-700 mb-3">Daftar tipe produk Nikon yang mendapatkan promo ini.</p>
+                              <div className="space-y-2">
+                                 {(promoForm.tipe_produk || []).map((item, idx) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                       <span className="text-xs font-bold text-gray-500 w-6">#{idx + 1}</span>
+                                       <input
+                                          type="text"
+                                          required
+                                          placeholder="Contoh: Nikon Z50 II Body Only"
+                                          value={item.nama_produk}
+                                          onChange={e => {
+                                             const newProducts = [...(promoForm.tipe_produk || [])];
+                                             newProducts[idx] = { nama_produk: e.target.value };
+                                             setPromoForm({ ...promoForm, tipe_produk: newProducts });
+                                          }}
+                                          className="input-form flex-1"
+                                       />
+                                       <button
+                                          type="button"
+                                          onClick={() => {
+                                             const newProducts = [...(promoForm.tipe_produk || [])];
+                                             newProducts.splice(idx, 1);
+                                             setPromoForm({ ...promoForm, tipe_produk: newProducts });
+                                          }}
+                                          className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+                                          title="Hapus produk"
+                                          aria-label="Hapus produk"
+                                       >
+                                          ✕
+                                       </button>
+                                    </div>
+                                 ))}
+                                 <button
+                                    type="button"
+                                    onClick={() => {
+                                       const newProducts = [...(promoForm.tipe_produk || []), { nama_produk: '' }];
+                                       setPromoForm({ ...promoForm, tipe_produk: newProducts });
+                                    }}
+                                    className="w-full py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-bold border-2 border-dashed border-blue-300"
+                                 >
+                                    + Tambah Produk
+                                 </button>
+                              </div>
+                              {(promoForm.tipe_produk || []).length === 0 && (
+                                 <p className="text-[11px] text-amber-700 mt-2 font-medium">⚠️ Promo tanpa produk akan dianggap berlaku untuk semua produk.</p>
+                              )}
+                           </div>
+
+                           <div className="mt-6 flex justify-end gap-3">
+                              <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan Promo'}</button>
+                           </div>
+                        </form>
+                     )}
+
                      {/* ============ WARRANTY FORM ============ */}
                      {activeTab === 'warranties' && (
                         <form onSubmit={handleSaveWarranty} className="space-y-4">
@@ -3839,7 +3974,7 @@ export default function NikonDashboard() {
                      )}
 
                      {/* ============ FORM TAB LAIN: placeholder info ============ */}
-                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && activeTab !== 'warranties' && (
+                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && activeTab !== 'warranties' && activeTab !== 'promos' && (
                         <div className="text-center py-12">
                            <div className="text-5xl mb-3">🚧</div>
                            <p className="text-gray-700 font-semibold mb-1">Form untuk tab ini belum tersedia</p>
