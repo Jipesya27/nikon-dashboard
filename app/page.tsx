@@ -467,7 +467,19 @@ export default function NikonDashboard() {
    const fetchEventRegistrations = useCallback(async () => { const { data } = await supabase.from('event_registrations').select('*').order('created_at', { ascending: false }); setEventRegistrations(data || []); }, []);
    const fetchEvents = async () => {
       const { data } = await supabase.from('events').select('*').order('created_at', { ascending: false });
-      setEvents(data || []);
+      // Alias DB columns (event_*) ke field lama yang dipakai display dashboard
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (data || []).map((e: any) => ({
+         ...e,
+         title: e.event_title ?? e.title,
+         date: e.event_date ?? e.date,
+         price: e.event_price ?? e.price,
+         image: e.event_image ?? e.image,
+         stock: e.event_partisipant_stock ?? e.stock ?? 0,
+         status: e.event_status ?? e.status,
+         detail_acara: e.event_description ?? e.detail_acara,
+      }));
+      setEvents(mapped);
       try {
          const { data: regData } = await supabase.from('event_registrations').select('event_name');
          if (regData) {
@@ -1137,6 +1149,13 @@ export default function NikonDashboard() {
             dataToSave.tanggal_peminjaman = new Date().toISOString();
             dataToSave.status_peminjaman = 'aktif';
          }
+         // Saat edit, kalau tanggal estimasi diubah, reset reminder_sent_at agar reminder bisa dikirim ulang
+         if (modalAction === 'edit' && editingId) {
+            const { data: prev } = await supabase.from('peminjaman_barang').select('tanggal_estimasi_pengembalian').eq('id_peminjaman', editingId).single();
+            if (prev && prev.tanggal_estimasi_pengembalian !== lendingForm.tanggal_estimasi_pengembalian) {
+               dataToSave.reminder_sent_at = null;
+            }
+         }
          if (modalAction === 'create') await supabase.from('peminjaman_barang').insert([dataToSave]);
          else await supabase.from('peminjaman_barang').update(dataToSave).eq('id_peminjaman', editingId);
 
@@ -1183,11 +1202,28 @@ export default function NikonDashboard() {
    // eslint-disable-next-line @typescript-eslint/no-unused-vars
    const handleSaveEvent = async (e: React.FormEvent) => {
       e.preventDefault();
+      setIsSubmitting(true);
       try {
-         const payload = { ...eventForm };
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         const ef = eventForm as any;
+         // Build payload dgn nama kolom DB sebenarnya (event_*)
+         const payload: Record<string, unknown> = {
+            event_title: ef.event_title ?? ef.title,
+            event_date: ef.event_date ?? ef.date,
+            event_price: ef.event_price ?? ef.price,
+            event_image: ef.event_image ?? ef.image,
+            event_description: ef.event_description ?? ef.detail_acara,
+            event_partisipant_stock: parseInt(ef.event_partisipant_stock ?? ef.stock ?? 0) || 0,
+            event_status: ef.event_status ?? ef.status ?? 'In stock',
+            bank_info: ef.bank_info ?? null,
+            event_payment_tipe: ef.event_payment_tipe ?? 'regular',
+            event_speaker: ef.event_speaker ?? null,
+            event_speaker_genre: ef.event_speaker_genre ?? null,
+            deposit_amount: ef.deposit_amount ?? null,
+         };
          if (eventImageFile) {
-            const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', eventForm.title?.replace(/\s+/g, '_') || 'poster');
-            payload.image = imageUrl;
+            const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', String(payload.event_title || 'poster').replace(/\s+/g, '_'));
+            payload.event_image = imageUrl;
          }
          if (modalAction === 'create') {
             const { error } = await supabase.from('events').insert([payload]);
@@ -1200,7 +1236,10 @@ export default function NikonDashboard() {
          closeModal();
       } catch (err: unknown) {
          const message = err instanceof Error ? err.message : String(err);
-         alert(message); }
+         alert('Gagal menyimpan event: ' + message);
+      } finally {
+         setIsSubmitting(false);
+      }
    };
 
    // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -2788,7 +2827,7 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal wrap-break-word">
                               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">KTP</th>{/* Not sortable as it's a button */}<th className="px-4 py-3 text-left font-bold">Barang Dipinjam</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_peminjaman')}>Tgl Pinjam {sortConfigLending.column === 'tanggal_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_pengembalian')}>Tgl Kembali {sortConfigLending.column === 'tanggal_pengembalian' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'status_peminjaman')}>Status {sortConfigLending.column === 'status_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
+                                 <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">KTP</th>{/* Not sortable as it's a button */}<th className="px-4 py-3 text-left font-bold">Barang Dipinjam</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_peminjaman')}>Tgl Pinjam {sortConfigLending.column === 'tanggal_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_estimasi_pengembalian')}>Estimasi Kembali</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_pengembalian')}>Tgl Kembali {sortConfigLending.column === 'tanggal_pengembalian' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'status_peminjaman')}>Status {sortConfigLending.column === 'status_peminjaman' && (<span>{sortConfigLending.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedLendingRecords.map((l: PeminjamanBarang) => (
@@ -2816,6 +2855,14 @@ export default function NikonDashboard() {
                                           </ul>
                                        </td>
                                        <td className="px-4 py-3 font-bold text-gray-700">{l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</td>
+                                       <td className="px-4 py-3 font-bold text-gray-700">
+                                          {l.tanggal_estimasi_pengembalian ? (
+                                             <>
+                                                {new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID')}
+                                                {l.reminder_sent_at && <div className="text-[10px] text-green-600 font-bold mt-0.5">✓ Reminder terkirim</div>}
+                                             </>
+                                          ) : <span className="text-gray-400 italic">-</span>}
+                                       </td>
                                        <td className="px-4 py-3 font-bold text-gray-700">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</td>
                                        <td className="px-4 py-3">
                                           <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
@@ -3165,7 +3212,202 @@ export default function NikonDashboard() {
                            </div>
                         </form>
                      )}
-                     {/* Other forms would go here */}
+                     {/* ============ EVENT FORM ============ */}
+                     {activeTab === 'events' && (
+                        <form onSubmit={handleSaveEvent} className="space-y-4">
+                           {(() => {
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              const ef = eventForm as any;
+                              const getVal = (k: string, alt?: string) => ef[k] ?? (alt ? ef[alt] : '') ?? '';
+                              const setField = (k: string, v: unknown) => setEventForm({ ...eventForm, [k]: v });
+                              return (
+                                 <>
+                                    <div>
+                                       <label className="label-form">Judul Event *</label>
+                                       <input type="text" required value={getVal('event_title', 'title')} onChange={e => setField('event_title', e.target.value)} className="input-form" placeholder="Contoh: Nikon On The Sport" />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                       <div>
+                                          <label className="label-form">Tanggal *</label>
+                                          <input type="text" required value={getVal('event_date', 'date')} onChange={e => setField('event_date', e.target.value)} className="input-form" placeholder="Contoh: 1 Juli 2026" />
+                                          <p className="text-[10px] text-gray-500 mt-1">Format: D Bulan YYYY (Bahasa Indonesia)</p>
+                                       </div>
+                                       <div>
+                                          <label className="label-form">Harga *</label>
+                                          <input type="text" required value={getVal('event_price', 'price')} onChange={e => setField('event_price', e.target.value)} className="input-form" placeholder="Contoh: Rp 50.000" />
+                                       </div>
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Deskripsi Event *</label>
+                                       <textarea required rows={4} value={getVal('event_description', 'detail_acara')} onChange={e => setField('event_description', e.target.value)} className="input-form resize-none" placeholder="Detail acara, agenda, dll." />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                       <div>
+                                          <label className="label-form">Kuota Peserta *</label>
+                                          <input type="number" required min={0} value={getVal('event_partisipant_stock', 'stock')} onChange={e => setField('event_partisipant_stock', parseInt(e.target.value) || 0)} className="input-form" />
+                                       </div>
+                                       <div>
+                                          <label className="label-form">Status</label>
+                                          <select value={getVal('event_status', 'status') || 'In stock'} onChange={e => setField('event_status', e.target.value)} className="input-form">
+                                             <option value="In stock">Aktif (In stock)</option>
+                                             <option value="Out of stock">Habis (Out of stock)</option>
+                                             <option value="close">Tutup (close)</option>
+                                          </select>
+                                       </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                       <div>
+                                          <label className="label-form">Speaker</label>
+                                          <input type="text" value={getVal('event_speaker')} onChange={e => setField('event_speaker', e.target.value)} className="input-form" placeholder="Nama pembicara" />
+                                       </div>
+                                       <div>
+                                          <label className="label-form">Genre Speaker</label>
+                                          <input type="text" value={getVal('event_speaker_genre')} onChange={e => setField('event_speaker_genre', e.target.value)} className="input-form" placeholder="Wildlife, Landscape, dll." />
+                                       </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                       <div>
+                                          <label className="label-form">Tipe Pembayaran</label>
+                                          <select value={getVal('event_payment_tipe') || 'regular'} onChange={e => setField('event_payment_tipe', e.target.value)} className="input-form">
+                                             <option value="regular">Regular (Non-refundable)</option>
+                                             <option value="deposit">Deposit (Refundable setelah hadir)</option>
+                                          </select>
+                                       </div>
+                                       <div>
+                                          <label className="label-form">Jumlah Deposit (jika deposit)</label>
+                                          <input type="text" value={getVal('deposit_amount')} onChange={e => setField('deposit_amount', e.target.value)} className="input-form" placeholder="Contoh: 50000" />
+                                       </div>
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Info Rekening Pembayaran</label>
+                                       <input type="text" value={getVal('bank_info')} onChange={e => setField('bank_info', e.target.value)} className="input-form" placeholder="Contoh: BCA 123456789 a.n. Nikon Indonesia" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Poster Event {getVal('event_image', 'image') ? '(Upload ulang akan mengganti)' : ''}</label>
+                                       {getVal('event_image', 'image') && !eventImageFile && (
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          <img src={getVal('event_image', 'image')} alt="Poster saat ini" className="w-32 h-44 object-cover rounded-lg border border-gray-200 mb-2" />
+                                       )}
+                                       <input
+                                          type="file"
+                                          accept="image/*"
+                                          aria-label="Upload poster event"
+                                          title="Upload poster event"
+                                          onChange={e => setEventImageFile(e.target.files?.[0] || null)}
+                                          className="input-form"
+                                       />
+                                       {eventImageFile && <p className="text-xs text-green-600 mt-1">File baru: {eventImageFile.name}</p>}
+                                    </div>
+                                    <div className="mt-6 flex justify-end gap-3">
+                                       <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                                       <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan Event'}</button>
+                                    </div>
+                                 </>
+                              );
+                           })()}
+                        </form>
+                     )}
+
+                     {/* ============ LENDING FORM (Create & Edit) ============ */}
+                     {activeTab === 'lending' && modalAction !== 'return' && (
+                        <form onSubmit={handleSaveLending} className="space-y-4">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                 <label className="label-form">Nama Peminjam *</label>
+                                 <input type="text" required value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="input-form" />
+                              </div>
+                              <div>
+                                 <label className="label-form">Nomor WhatsApp *</label>
+                                 <input type="text" required value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="input-form" placeholder="Contoh: 6281234567890" />
+                              </div>
+                           </div>
+                           <div>
+                              <label className="label-form">Estimasi Tanggal Pengembalian</label>
+                              <input
+                                 type="date"
+                                 aria-label="Estimasi tanggal pengembalian"
+                                 title="Estimasi tanggal pengembalian"
+                                 value={lendingForm.tanggal_estimasi_pengembalian ? lendingForm.tanggal_estimasi_pengembalian.substring(0, 10) : ''}
+                                 onChange={e => setLendingForm({ ...lendingForm, tanggal_estimasi_pengembalian: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                                 className="input-form"
+                              />
+                              <p className="text-[11px] text-gray-600 mt-1">📅 Reminder WhatsApp akan otomatis dikirim ke peminjam <strong>3 hari sebelum</strong> tanggal ini.</p>
+                              {lendingForm.reminder_sent_at && (
+                                 <p className="text-[11px] text-green-700 font-bold mt-1">✓ Reminder sudah terkirim pada {new Date(lendingForm.reminder_sent_at).toLocaleString('id-ID')}</p>
+                              )}
+                           </div>
+                           <div>
+                              <label className="label-form">KTP Peminjam (Foto)</label>
+                              {typeof lendingForm.link_ktp_peminjam === 'string' && lendingForm.link_ktp_peminjam && (
+                                 // eslint-disable-next-line @next/next/no-img-element
+                                 <img src={lendingForm.link_ktp_peminjam} alt="KTP saat ini" className="w-32 h-20 object-cover rounded-lg border border-gray-200 mb-2" />
+                              )}
+                              <input
+                                 type="file"
+                                 accept="image/*"
+                                 aria-label="Upload foto KTP"
+                                 title="Upload foto KTP"
+                                 onChange={e => setLendingForm({ ...lendingForm, link_ktp_peminjam: e.target.files?.[0] || null })}
+                                 className="input-form"
+                              />
+                              {lendingForm.link_ktp_peminjam instanceof File && (
+                                 <p className="text-xs text-green-600 mt-1">File baru: {lendingForm.link_ktp_peminjam.name}</p>
+                              )}
+                           </div>
+                           <div>
+                              <label className="label-form">Barang yang Dipinjam *</label>
+                              <div className="space-y-3">
+                                 {(lendingForm.items_dipinjam || []).map((item, idx) => (
+                                    <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                                       <div className="flex items-center justify-between">
+                                          <span className="text-xs font-bold text-gray-600">Barang #{idx + 1}</span>
+                                          {(lendingForm.items_dipinjam?.length || 0) > 1 && (
+                                             <button type="button" onClick={() => {
+                                                const newItems = [...(lendingForm.items_dipinjam || [])];
+                                                newItems.splice(idx, 1);
+                                                setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                             }} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                          )}
+                                       </div>
+                                       <input type="text" required placeholder="Nama Barang (cth: Nikon Z50 II Body Only)" value={item.nama_barang} onChange={e => {
+                                          const newItems = [...(lendingForm.items_dipinjam || [])];
+                                          newItems[idx] = { ...newItems[idx], nama_barang: e.target.value };
+                                          setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                       }} className="input-form" />
+                                       <input type="text" required placeholder="Nomor Seri" value={item.nomor_seri} onChange={e => {
+                                          const newItems = [...(lendingForm.items_dipinjam || [])];
+                                          newItems[idx] = { ...newItems[idx], nomor_seri: e.target.value };
+                                          setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                       }} className="input-form" />
+                                       <input type="text" placeholder="Catatan (opsional)" value={item.catatan || ''} onChange={e => {
+                                          const newItems = [...(lendingForm.items_dipinjam || [])];
+                                          newItems[idx] = { ...newItems[idx], catatan: e.target.value };
+                                          setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                       }} className="input-form" />
+                                    </div>
+                                 ))}
+                                 <button type="button" onClick={() => {
+                                    const newItems = [...(lendingForm.items_dipinjam || []), { nama_barang: '', nomor_seri: '', catatan: '', catatan_pengembalian: '', status_pengembalian: 'dipinjam' as const }];
+                                    setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                 }} className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold border-2 border-dashed border-gray-300">+ Tambah Barang</button>
+                              </div>
+                           </div>
+                           <div className="mt-6 flex justify-end gap-3">
+                              <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan Peminjaman'}</button>
+                           </div>
+                        </form>
+                     )}
+
+                     {/* ============ FORM TAB LAIN: placeholder info ============ */}
+                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && (
+                        <div className="text-center py-12">
+                           <div className="text-5xl mb-3">🚧</div>
+                           <p className="text-gray-700 font-semibold mb-1">Form untuk tab ini belum tersedia</p>
+                           <p className="text-sm text-gray-600 mb-4">Hubungi developer untuk implementasi form Create/Edit tab <span className="font-bold">{activeTab}</span>.</p>
+                           <button onClick={closeModal} className="btn-secondary">Tutup</button>
+                        </div>
+                     )}
                   </div>
                </div>
             </div>
