@@ -3212,6 +3212,96 @@ export default function NikonDashboard() {
                            </div>
                         </form>
                      )}
+                     {/* ============ BOT SETTINGS FORM ============ */}
+                     {activeTab === 'botsettings' && (
+                        <form onSubmit={handleSaveBotSettings} className="space-y-4">
+                           <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                              <p className="text-xs text-gray-700">
+                                 💡 Bot Settings adalah <strong>konfigurasi key-value</strong> yang dibaca oleh chatbot. Misalnya <code className="bg-white px-1 py-0.5 rounded text-[11px]">promo_nikon</code> berisi URL file PDF promo terbaru. Bot akan kirim file/link saat user pilih menu yang relevan.
+                              </p>
+                           </div>
+
+                           {/* Section: Identifier */}
+                           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Identifier</h3>
+                              <div className="space-y-3">
+                                 <div>
+                                    <label className="label-form">Nama Pengaturan (Key) *</label>
+                                    <input
+                                       type="text"
+                                       required
+                                       disabled={modalAction === 'edit'}
+                                       value={botSettingsForm.nama_pengaturan || ''}
+                                       onChange={e => setBotSettingsForm({ ...botSettingsForm, nama_pengaturan: e.target.value })}
+                                       className="input-form disabled:bg-gray-100 disabled:cursor-not-allowed font-mono"
+                                       placeholder="contoh: promo_nikon, dealer_resmi"
+                                       pattern="[a-z0-9_]+"
+                                       title="Hanya huruf kecil, angka, dan underscore"
+                                       list="pengaturan-suggestions"
+                                    />
+                                    <datalist id="pengaturan-suggestions">
+                                       <option value="promo_nikon" />
+                                       <option value="dealer_resmi" />
+                                       <option value="alamat_service_center" />
+                                       <option value="syarat_klaim" />
+                                       <option value="cara_pengembalian" />
+                                       <option value="jadwal_event" />
+                                    </datalist>
+                                    <p className="text-[11px] text-gray-600 mt-1">
+                                       {modalAction === 'edit'
+                                          ? '🔒 Key tidak bisa diubah saat edit (mencegah broken reference dari kode bot)'
+                                          : '⚠️ Pakai snake_case (huruf kecil + underscore). Harus unik & cocok dengan referensi di kode bot.'}
+                                    </p>
+                                 </div>
+
+                                 <div>
+                                    <label className="label-form">Deskripsi</label>
+                                    <input
+                                       type="text"
+                                       value={botSettingsForm.description || ''}
+                                       onChange={e => setBotSettingsForm({ ...botSettingsForm, description: e.target.value })}
+                                       className="input-form"
+                                       placeholder="Penjelasan singkat untuk admin lain"
+                                    />
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Section: Konten */}
+                           <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Konten / Value</h3>
+                              <div>
+                                 <label className="label-form">URL File / Link</label>
+                                 <input
+                                    type="url"
+                                    value={botSettingsForm.url_file || ''}
+                                    onChange={e => setBotSettingsForm({ ...botSettingsForm, url_file: e.target.value })}
+                                    className="input-form"
+                                    placeholder="https://drive.google.com/file/d/... atau URL lainnya"
+                                 />
+                                 <p className="text-[11px] text-gray-600 mt-1">
+                                    💡 Untuk Google Drive: pastikan file di-set <strong>&quot;Anyone with the link&quot;</strong> agar bisa diakses bot.
+                                 </p>
+                                 {botSettingsForm.url_file && (
+                                    <a
+                                       href={botSettingsForm.url_file}
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       className="inline-flex items-center gap-1 text-xs text-blue-600 font-bold hover:underline mt-2"
+                                    >
+                                       🔗 Buka link di tab baru
+                                    </a>
+                                 )}
+                              </div>
+                           </div>
+
+                           <div className="mt-6 flex justify-end gap-3">
+                              <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan Pengaturan'}</button>
+                           </div>
+                        </form>
+                     )}
+
                      {/* ============ PROMO FORM ============ */}
                      {activeTab === 'promos' && (
                         <form onSubmit={handleSavePromo} className="space-y-4">
@@ -3974,7 +4064,7 @@ export default function NikonDashboard() {
                      )}
 
                      {/* ============ FORM TAB LAIN: placeholder info ============ */}
-                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && activeTab !== 'warranties' && activeTab !== 'promos' && (
+                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && activeTab !== 'warranties' && activeTab !== 'promos' && activeTab !== 'botsettings' && (
                         <div className="text-center py-12">
                            <div className="text-5xl mb-3">🚧</div>
                            <p className="text-gray-700 font-semibold mb-1">Form untuk tab ini belum tersedia</p>
