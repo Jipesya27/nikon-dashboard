@@ -210,22 +210,12 @@ serve(async (req)=>{
               }).eq('nomor_wa', nomorPengirim);
               break;
             case "3":
-              if (user.nik && user.nik !== "BELUM_DIISI" && user.nama_lengkap) {
-                const konfirmasiGaransi = getMsg('GARANSI_KONFIRMASI_DATA', `Sistem mengenali Anda ${sapaanID}.\nNama: ${user.nama_lengkap}\nNIK: ${user.nik}\n\nApakah Anda ingin sekaligus mengisi data *Garansi Nikon* menggunakan data pembelian ini? Pengisian data Garansi Nikon akan mempermudah anda melakukan service di Nikon Pusat Service dan mendapatkan benefit service\nBalas *YA* atau *TIDAK*.`, {
-                  id_sapaan: sapaanID,
-                  nama: user.nama_lengkap,
-                  nik: user.nik
-                });
-                await supabase.from('konsumen').update({
-                  status_langkah: 'GARANSI_CONFIRM_DATA'
-                }).eq('nomor_wa', nomorPengirim);
-                balasanBot = konfirmasiGaransi;
-              } else {
-                balasanBot = getMsg('GARANSI_PROMPT_NIK', "Silakan isi Data Diri Anda untuk Garansi.\nMohon ketikkan *Nomor KTP (NIK)* Anda:");
-                await supabase.from('konsumen').update({
-                  status_langkah: 'MENU3_INPUT_NIK'
-                }).eq('nomor_wa', nomorPengirim);
-              }
+              balasanBot = getMsg('GARANSI_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pendaftaran *Garansi Nikon* dan unggah dokumen Anda melalui tautan aman berikut:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/garansi?phone={{phone}}\n\nPengisian data Garansi akan mempermudah Anda saat melakukan service di Nikon Pusat Service dan mendapatkan benefit service.', {
+                phone: nomorPengirim
+              });
+              await supabase.from('konsumen').update({
+                status_langkah: 'MENUNGGU_UPLOAD_GARANSI_WEB'
+              }).eq('nomor_wa', nomorPengirim);
               break;
             case "4":
               balasanBot = getMsg('GARANSI_CHECK_STATUS_PROMPT', "Silakan masukkan *Nomor Seri* barang Anda untuk mengecek Status Garansi:");
@@ -286,9 +276,9 @@ serve(async (req)=>{
             }).eq('nomor_wa', nomorPengirim).order('created_at', {
               ascending: false
             }).limit(1);
-            balasanBot = getMsg('CLAIM_NOTIF_INI_OK', "Baik, notifikasi update status Claim akan kami kirim ke nomor WhatsApp ini ✅\n\nProses verifikasi memerlukan waktu maksimal 14 hari kerja. Terima kasih atas kesabaran Anda.\n\nKetik *MENU* untuk kembali ke menu utama.");
+            balasanBot = `Baik, notifikasi update status Claim akan kami kirim ke nomor WhatsApp ini ✅\n\nProses verifikasi Claim memerlukan waktu maksimal 14 hari kerja.\n\n━━━━━━━━━━━━━━━━━━━━\n*Sekalian daftarkan Garansi Nikon?*\nData pembelian Anda akan otomatis terisi dari Claim. Anda tinggal melengkapi NIK dan upload ulang dokumen.\n\nBalas *YA* atau *TIDAK*.`;
             await supabase.from('konsumen').update({
-              status_langkah: 'START'
+              status_langkah: 'OFFER_GARANSI_AFTER_CLAIM'
             }).eq('nomor_wa', nomorPengirim);
           } else if (isiPesanWA.toUpperCase() === "NOMOR LAIN") {
             balasanBot = getMsg('CLAIM_NOTIF_PROMPT_NOMOR', "Silakan masukkan *Nomor WhatsApp* yang akan menerima notifikasi update status Claim (contoh: 6281234567890):");
@@ -311,15 +301,29 @@ serve(async (req)=>{
               }).eq('nomor_wa', nomorPengirim).order('created_at', {
                 ascending: false
               }).limit(1);
-              balasanBot = getMsg('CLAIM_NOTIF_LAIN_OK', `Baik, notifikasi update status Claim akan kami kirim ke nomor *${nomorUpdate}* ✅\n\nProses verifikasi memerlukan waktu maksimal 14 hari kerja. Terima kasih.\n\nKetik *MENU* untuk kembali ke menu utama.`, {
-                nomor_update: nomorUpdate
-              });
+              balasanBot = `Baik, notifikasi update status Claim akan kami kirim ke nomor *${nomorUpdate}* ✅\n\nProses verifikasi memerlukan waktu maksimal 14 hari kerja.\n\n━━━━━━━━━━━━━━━━━━━━\n*Sekalian daftarkan Garansi Nikon?*\nData pembelian Anda akan otomatis terisi dari Claim. Anda tinggal melengkapi NIK dan upload ulang dokumen.\n\nBalas *YA* atau *TIDAK*.`;
               await supabase.from('konsumen').update({
-                status_langkah: 'START'
+                status_langkah: 'OFFER_GARANSI_AFTER_CLAIM'
               }).eq('nomor_wa', nomorPengirim);
             }
             break;
           }
+        // Setelah submit claim, tawarkan ke konsumen untuk sekalian isi form garansi
+        case 'OFFER_GARANSI_AFTER_CLAIM':
+          if (isiPesanWA.toUpperCase() === "YA") {
+            balasanBot = `Bagus! Silakan lanjutkan pendaftaran Garansi Nikon melalui tautan berikut. Data produk Anda sudah otomatis terisi dari Claim — Anda tinggal melengkapi NIK dan upload ulang dokumen:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/garansi?phone=${nomorPengirim}&from_claim=1\n\nKetik *MENU* kapan saja untuk kembali ke menu utama.`;
+            await supabase.from('konsumen').update({
+              status_langkah: 'MENUNGGU_UPLOAD_GARANSI_WEB'
+            }).eq('nomor_wa', nomorPengirim);
+          } else if (isiPesanWA.toUpperCase() === "TIDAK") {
+            balasanBot = `Baik, terima kasih. Pendaftaran Claim Anda sudah lengkap. 🙏\n\nKetik *MENU* untuk kembali ke menu utama.`;
+            await supabase.from('konsumen').update({
+              status_langkah: 'START'
+            }).eq('nomor_wa', nomorPengirim);
+          } else {
+            balasanBot = `Mohon balas dengan *YA* atau *TIDAK*.`;
+          }
+          break;
         case 'MENUNGGU_SERI_CLAIM': {
           const nomorSeriInput = isiPesanWA.trim();
           console.log(`[CLAIM_STATUS] Cari nomor seri: "${nomorSeriInput}", WA: ${nomorPengirim}`);
@@ -380,12 +384,93 @@ serve(async (req)=>{
           break;
         }
 
+        case 'MENUNGGU_SERI_GARANSI': {
+          const nomorSeriInput = isiPesanWA.trim();
+          console.log(`[GARANSI_STATUS] Cari nomor seri: "${nomorSeriInput}", WA: ${nomorPengirim}`);
+
+          // Cari garansi by seri + nomor_wa
+          let { data: garansiFound } = await supabase
+            .from('garansi')
+            .select('id_claim, nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, status_validasi, jenis_garansi, lama_garansi, catatan_mkt')
+            .ilike('nomor_seri', nomorSeriInput)
+            .eq('nomor_wa', nomorPengirim)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          // Fallback by nomor_wa_update
+          if (!garansiFound) {
+            const { data: g2 } = await supabase
+              .from('garansi')
+              .select('id_claim, nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, status_validasi, jenis_garansi, lama_garansi, catatan_mkt')
+              .ilike('nomor_seri', nomorSeriInput)
+              .eq('nomor_wa_update', nomorPengirim)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            garansiFound = g2;
+          }
+
+          // Fallback nomor seri saja
+          if (!garansiFound) {
+            const { data: g3 } = await supabase
+              .from('garansi')
+              .select('id_claim, nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, status_validasi, jenis_garansi, lama_garansi, catatan_mkt')
+              .ilike('nomor_seri', nomorSeriInput)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            garansiFound = g3;
+          }
+
+          console.log(`[GARANSI_STATUS] Hasil:`, JSON.stringify(garansiFound));
+
+          if (garansiFound) {
+            const g = garansiFound;
+            // Relasi dengan claim — kalau claim valid, garansi juga dianggap valid
+            let claimMkt: string | null = null;
+            let claimFa: string | null = null;
+            if (g.id_claim) {
+              const { data: claimRel } = await supabase
+                .from('claim_promo')
+                .select('validasi_by_mkt, validasi_by_fa')
+                .eq('id_claim', g.id_claim)
+                .maybeSingle();
+              if (claimRel) {
+                claimMkt = claimRel.validasi_by_mkt;
+                claimFa = claimRel.validasi_by_fa;
+              }
+            }
+            // Status final: kalau salah satu sumber (claim/garansi) Valid → tampilkan Valid
+            const statusMkt = (claimMkt === 'Valid' || g.validasi_by_mkt === 'Valid') ? 'Valid' : (g.validasi_by_mkt || 'Menunggu Verifikasi');
+            const statusFa = (claimFa === 'Valid' || g.validasi_by_fa === 'Valid') ? 'Valid' : (g.validasi_by_fa || 'Menunggu Verifikasi');
+
+            let msg = `Status Garansi Anda:\n\n`;
+            msg += `*No Seri:* ${g.nomor_seri || nomorSeriInput}\n`;
+            msg += `*Barang:* ${g.tipe_barang || '-'}\n`;
+            msg += `*Status MKT:* ${statusMkt}\n`;
+            msg += `*Status FA:* ${statusFa}\n`;
+            if (g.jenis_garansi) msg += `*Jenis Garansi:* ${g.jenis_garansi}\n`;
+            if (g.lama_garansi) msg += `*Durasi:* ${g.lama_garansi}\n`;
+            if (g.catatan_mkt) msg += `*Catatan:* ${g.catatan_mkt}\n`;
+            if (g.id_claim) msg += `\n_Terhubung dengan pengajuan Claim Promo._\n`;
+            msg += `\nKetik *MENU* untuk kembali ke menu utama.`;
+            balasanBot = msg;
+          } else {
+            balasanBot = `Maaf, kami tidak menemukan data garansi dengan Nomor Seri *${nomorSeriInput}*.\n\nPastikan nomor seri yang Anda masukkan sudah benar, atau daftarkan garansi Anda terlebih dahulu via menu *3*.\n\nKetik *MENU* untuk kembali ke menu utama.`;
+          }
+          await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomorPengirim);
+          break;
+        }
+
         // ... [SISA LOGIKA NORMAL] ...
         default:
           if (statusSaatIni === 'MENUNGGU_UPLOAD_WEB') {
             balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Silakan klik tautan yang telah diberikan untuk melanjutkan pengisian data claim Anda:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/claim?phone={{phone}}', {
               phone: nomorPengirim
             });
+          } else if (statusSaatIni === 'MENUNGGU_UPLOAD_GARANSI_WEB') {
+            balasanBot = `Silakan klik tautan yang telah diberikan untuk melanjutkan pendaftaran Garansi Anda:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/garansi?phone=${nomorPengirim}\n\nKetik *MENU* kapan saja untuk kembali ke menu utama.`;
           }
           break;
       }
