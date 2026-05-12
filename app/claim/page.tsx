@@ -150,36 +150,37 @@ function ClaimForm() {
 
   if (step === 'success') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 text-gray-900" style={{ colorScheme: 'light' }}>
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-8 h-8 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Claim Berhasil Dikirim!</h2>
-          <p className="text-gray-600 mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Claim Berhasil Dikirim!</h2>
+          <p className="text-gray-800 mb-4 font-medium">
             Data dan dokumen Anda telah kami terima. Silakan cek WhatsApp Anda untuk konfirmasi dan langkah selanjutnya.
           </p>
-          <p className="text-sm text-gray-400">Anda bisa menutup halaman ini.</p>
+          <p className="text-sm text-gray-700 font-medium">Anda bisa menutup halaman ini.</p>
         </div>
       </div>
     );
   }
 
-  const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent";
-  const labelCls = "block text-sm font-medium text-gray-700 mb-1";
-  const req = <span className="text-red-500">*</span>;
+  // Warna solid (tebal & jelas), force light scheme via wrapper agar tidak ikut dark mode browser
+  const inputCls = "w-full px-3 py-2.5 border border-gray-400 rounded-lg text-sm text-gray-900 bg-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent";
+  const labelCls = "block text-sm font-semibold text-gray-900 mb-1";
+  const req = <span className="text-red-600">*</span>;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-100 py-8 px-4 text-gray-900" style={{ colorScheme: 'light' }}>
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-black rounded-xl mb-3">
             <span className="text-white font-bold text-xl">N</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Form Claim Promo</h1>
-          <p className="text-gray-500 text-sm mt-1">Nikon Indonesia</p>
+          <p className="text-gray-700 text-sm mt-1 font-medium">Nikon Indonesia</p>
         </div>
 
         {errorMsg && (
@@ -201,13 +202,13 @@ function ClaimForm() {
                 <input type="radio" name="recipient" value="sendiri" checked={recipient === 'sendiri'} onChange={() => setRecipient('sendiri')} className="hidden" />
                 <div className="text-2xl mb-1">🙋</div>
                 <div className="font-semibold text-sm text-gray-900">Diri Sendiri</div>
-                <div className="text-xs text-gray-500 mt-0.5">Saya yang menerima hadiah</div>
+                <div className="text-xs text-gray-700 mt-0.5 font-medium">Saya yang menerima hadiah</div>
               </label>
               <label className={`cursor-pointer rounded-xl border-2 p-4 text-center transition-all ${recipient === 'orang_lain' ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
                 <input type="radio" name="recipient" value="orang_lain" checked={recipient === 'orang_lain'} onChange={() => setRecipient('orang_lain')} className="hidden" />
                 <div className="text-2xl mb-1">🎁</div>
                 <div className="font-semibold text-sm text-gray-900">Orang Lain</div>
-                <div className="text-xs text-gray-500 mt-0.5">Hadiah untuk orang lain</div>
+                <div className="text-xs text-gray-700 mt-0.5 font-medium">Hadiah untuk orang lain</div>
               </label>
             </div>
           </div>
@@ -221,7 +222,7 @@ function ClaimForm() {
 
             <div>
               <label className={labelCls}>Nomor WhatsApp Pendaftar</label>
-              <input type="text" value={phone} readOnly className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 text-sm" />
+              <input type="text" value={phone} readOnly className="w-full px-3 py-2.5 border border-gray-400 rounded-lg bg-gray-100 text-gray-800 font-medium text-sm" />
             </div>
 
             <div>
@@ -232,7 +233,7 @@ function ClaimForm() {
             <div>
               <label className={labelCls}>
                 NIK (Nomor KTP)
-                <span className="text-gray-400 text-xs font-normal ml-1">(opsional)</span>
+                <span className="text-gray-700 text-xs font-normal ml-1">(opsional)</span>
               </label>
               <input type="text" name="nik" value={formData.nik} onChange={handleChange} pattern="[0-9]{16}" title="NIK harus 16 digit" placeholder="16 digit angka (boleh dikosongkan)" className={inputCls} />
             </div>
@@ -294,7 +295,7 @@ function ClaimForm() {
               <div>
                 <label className={labelCls}>
                   Nomor WA Penerima
-                  <span className="text-gray-400 text-xs font-normal ml-1">(opsional — untuk notifikasi update status)</span>
+                  <span className="text-gray-700 text-xs font-normal ml-1">(opsional — untuk notifikasi update status)</span>
                 </label>
                 <input
                   type="text"
@@ -306,7 +307,7 @@ function ClaimForm() {
                   title="Nomor WA dalam format angka"
                   className={inputCls}
                 />
-                <p className="text-xs text-gray-400 mt-1">Kosongkan jika notifikasi tetap ke nomor Anda.</p>
+                <p className="text-xs text-gray-700 mt-1">Kosongkan jika notifikasi tetap ke nomor Anda.</p>
               </div>
             </div>
           )}
@@ -352,7 +353,7 @@ function ClaimForm() {
                   onChange={e => setAlamatKirimSamaRumah(e.target.checked)}
                   className="w-4 h-4 accent-black"
                 />
-                <span className="text-xs text-gray-600">
+                <span className="text-xs text-gray-800 font-medium">
                   {recipient === 'sendiri' ? 'Sama dengan alamat rumah saya' : 'Kirim ke alamat rumah pendaftar (bukan penerima)'}
                 </span>
               </label>
@@ -364,7 +365,7 @@ function ClaimForm() {
                 rows={3}
                 disabled={alamatKirimSamaRumah}
                 placeholder="Alamat lengkap tujuan pengiriman hadiah"
-                className={inputCls + " resize-none disabled:bg-gray-50 disabled:text-gray-500"}
+                className={inputCls + " resize-none disabled:bg-gray-200 disabled:text-gray-700 disabled:font-medium"}
               />
             </div>
           </div>
@@ -388,19 +389,19 @@ function ClaimForm() {
                   <div className="flex flex-col items-center gap-2">
                     <img src={previewGaransi} alt="preview" className="h-24 object-contain rounded" />
                     <span className="text-xs text-green-600 font-medium">{fileGaransi.name}</span>
-                    <span className="text-xs text-gray-400">Ketuk untuk ganti</span>
+                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
                   </div>
                 ) : fileGaransi ? (
                   <div className="flex flex-col items-center gap-1">
                     <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     <span className="text-xs text-green-600 font-medium">{fileGaransi.name}</span>
-                    <span className="text-xs text-gray-400">Ketuk untuk ganti</span>
+                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-1">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    <span className="text-sm text-gray-500">Ketuk untuk upload foto/PDF</span>
-                    <span className="text-xs text-gray-400">Kartu Garansi dari dalam kotak produk</span>
+                    <svg className="w-8 h-8 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <span className="text-sm text-gray-800 font-medium">Ketuk untuk upload foto/PDF</span>
+                    <span className="text-xs text-gray-700">Kartu Garansi dari dalam kotak produk</span>
                   </div>
                 )}
               </button>
@@ -418,19 +419,19 @@ function ClaimForm() {
                   <div className="flex flex-col items-center gap-2">
                     <img src={previewNota} alt="preview" className="h-24 object-contain rounded" />
                     <span className="text-xs text-green-600 font-medium">{fileNota.name}</span>
-                    <span className="text-xs text-gray-400">Ketuk untuk ganti</span>
+                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
                   </div>
                 ) : fileNota ? (
                   <div className="flex flex-col items-center gap-1">
                     <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     <span className="text-xs text-green-600 font-medium">{fileNota.name}</span>
-                    <span className="text-xs text-gray-400">Ketuk untuk ganti</span>
+                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-1">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    <span className="text-sm text-gray-500">Ketuk untuk upload foto/PDF</span>
-                    <span className="text-xs text-gray-400">Nota atau struk pembelian dari toko</span>
+                    <svg className="w-8 h-8 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <span className="text-sm text-gray-800 font-medium">Ketuk untuk upload foto/PDF</span>
+                    <span className="text-xs text-gray-700">Nota atau struk pembelian dari toko</span>
                   </div>
                 )}
               </button>
@@ -453,7 +454,7 @@ function ClaimForm() {
             ) : 'Kirim Claim Promo'}
           </button>
 
-          <p className="text-xs text-gray-400 text-center pb-4">
+          <p className="text-xs text-gray-700 text-center pb-4">
             Data Anda aman dan hanya digunakan untuk keperluan promo Nikon Indonesia.
           </p>
         </form>
