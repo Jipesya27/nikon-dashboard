@@ -188,8 +188,9 @@ serve(async (req) => {
         case 'START':
           switch (isiPesanWA) {
             case "1":
-              balasanBot = getMsg('CLAIM_CHOOSE_RECIPIENT_PROMPT', "Untuk melanjutkan proses Pengiriman Barang Promo, Apakah claim ini untuk diri Anda sendiri atau orang lain? Balas *SENDIRI* atau *ORANG LAIN*.");
-              await supabase.from('konsumen').update({ status_langkah: 'CLAIM_CHOOSE_RECIPIENT' }).eq('nomor_wa', nomorPengirim);
+              // Langsung kirim link form web (penerima ditentukan di dalam form)
+              balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data Claim Promo dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://nikon-dashboard.vercel.app/claim?phone={{phone}}\n\nDi dalam form Anda dapat memilih apakah claim untuk *diri sendiri* atau *orang lain*. Setelah selesai, Anda akan menerima konfirmasi melalui WhatsApp.', { phone: nomorPengirim });
+              await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_UPLOAD_WEB' }).eq('nomor_wa', nomorPengirim);
               break;
             case "2":
               balasanBot = getMsg('CLAIM_CHECK_STATUS_PROMPT', "Silakan masukkan *Nomor Seri* barang Anda untuk mengecek Status Claim Anda :");
@@ -243,35 +244,53 @@ serve(async (req) => {
           }
           break;
 
-        // LOGIKA CLAIM CHOOSE RECIPIENT
+        // Legacy state: redirect ke web form (sudah tidak ditanyakan via chat)
         case 'CLAIM_CHOOSE_RECIPIENT':
-          if (isiPesanWA.toUpperCase() === "SENDIRI") {
-            balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data claim dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://nikon-dashboard.vercel.app/claim?phone={{phone}}\n\nSetelah selesai, Anda akan menerima konfirmasi lebih lanjut melalui WhatsApp.', { phone: nomorPengirim });
-            await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_UPLOAD_WEB' }).eq('nomor_wa', nomorPengirim);
-          } else if (isiPesanWA.toUpperCase() === "ORANG LAIN") {
-            balasanBot = getMsg('CLAIM_OTHER_WA_PROMPT', "Langkah 1 dari 12:\nSilakan masukkan *Nomor WhatsApp* orang lain yang akan melakukan claim (contoh: 6281234567890):");
-            await supabase.from('konsumen').update({ status_langkah: 'CLAIM_OTHER_WA' }).eq('nomor_wa', nomorPengirim);
+          balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data Claim Promo dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://nikon-dashboard.vercel.app/claim?phone={{phone}}\n\nDi dalam form Anda dapat memilih apakah claim untuk *diri sendiri* atau *orang lain*.', { phone: nomorPengirim });
+          await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_UPLOAD_WEB' }).eq('nomor_wa', nomorPengirim);
+          break;
+
+        // Setelah submit form, bot tanya nomor WA mana yang dipakai untuk notifikasi update
+        case 'TANYA_UPDATE_WA':
+          if (isiPesanWA.toUpperCase() === "INI") {
+            // Pakai nomor WA pengirim sebagai nomor update
+            await supabase.from('claim_promo')
+              .update({ nomor_wa_update: nomorPengirim })
+              .eq('nomor_wa', nomorPengirim)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            balasanBot = getMsg('CLAIM_NOTIF_INI_OK', "Baik, notifikasi update status Claim akan kami kirim ke nomor WhatsApp ini ✅\n\nProses verifikasi memerlukan waktu maksimal 14 hari kerja. Terima kasih atas kesabaran Anda.\n\nKetik *MENU* untuk kembali ke menu utama.");
+            await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomorPengirim);
+          } else if (isiPesanWA.toUpperCase() === "NOMOR LAIN") {
+            balasanBot = getMsg('CLAIM_NOTIF_PROMPT_NOMOR', "Silakan masukkan *Nomor WhatsApp* yang akan menerima notifikasi update status Claim (contoh: 6281234567890):");
+            await supabase.from('konsumen').update({ status_langkah: 'TANYA_UPDATE_WA_INPUT' }).eq('nomor_wa', nomorPengirim);
           } else {
-            balasanBot = getMsg('CLAIM_CHOOSE_RECIPIENT_ERROR', "Mohon balas dengan *SENDIRI* atau *ORANG LAIN*.");
+            balasanBot = getMsg('CLAIM_NOTIF_ERROR', "Mohon balas dengan *INI* atau *NOMOR LAIN*.");
           }
           break;
 
+        // Konsumen ketik nomor WA tujuan notifikasi
+        case 'TANYA_UPDATE_WA_INPUT': {
+          const nomorUpdate = isiPesanWA.replace(/[^0-9]/g, '');
+          if (nomorUpdate.length < 10 || nomorUpdate.length > 15) {
+            balasanBot = getMsg('CLAIM_NOTIF_INVALID', "Format nomor tidak valid. Silakan masukkan nomor WhatsApp dengan format angka (contoh: 6281234567890):");
+          } else {
+            await supabase.from('claim_promo')
+              .update({ nomor_wa_update: nomorUpdate })
+              .eq('nomor_wa', nomorPengirim)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            balasanBot = getMsg('CLAIM_NOTIF_LAIN_OK', `Baik, notifikasi update status Claim akan kami kirim ke nomor *${nomorUpdate}* ✅\n\nProses verifikasi memerlukan waktu maksimal 14 hari kerja. Terima kasih.\n\nKetik *MENU* untuk kembali ke menu utama.`, { nomor_update: nomorUpdate });
+            await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomorPengirim);
+          }
+          break;
+        }
+
         // ... [SISA LOGIKA NORMAL] ...
         default:
-          // Taruh sisa logika if-else di sini atau ubah menjadi case juga
-          if (statusSaatIni === 'CLAIM_CONFIRM_ALAMAT') {
-             if (isiPesanWA.toUpperCase() === "YA") {
-                 balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data claim dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://nikon-dashboard.vercel.app/claim?phone={{phone}}\n\nSetelah selesai, Anda akan menerima konfirmasi lebih lanjut melalui WhatsApp.', { phone: nomorPengirim });
-                 await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_UPLOAD_WEB' }).eq('nomor_wa', nomorPengirim);
-             } else if (isiPesanWA.toUpperCase() === "TIDAK") {
-                 balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data claim dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://nikon-dashboard.vercel.app/claim?phone={{phone}}\n\nSetelah selesai, Anda akan menerima konfirmasi lebih lanjut melalui WhatsApp.', { phone: nomorPengirim });
-                 await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_UPLOAD_WEB' }).eq('nomor_wa', nomorPengirim);
-             } else { balasanBot = getMsg('YA_TIDAK_ERROR', "Mohon balas dengan *YA* atau *TIDAK*."); }
+          if (statusSaatIni === 'MENUNGGU_UPLOAD_WEB') {
+            balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Silakan klik tautan yang telah diberikan untuk melanjutkan pengisian data claim Anda:\n\n👉 https://nikon-dashboard.vercel.app/claim?phone={{phone}}', { phone: nomorPengirim });
           }
-          // The old claim flow steps are now obsolete and handled by the web page.
-          // We can add a generic handler here or just let it fall through.
-          else if (statusSaatIni === 'MENUNGGU_UPLOAD_WEB') { balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Silakan klik tautan yang telah diberikan untuk melanjutkan pengisian data claim Anda:\n\n👉 https://nikon-dashboard.vercel.app/claim?phone={{phone}}', { phone: nomorPengirim }); }
-          // ... dan seterusnya untuk sisa logika
           break;
       }
     }
