@@ -189,7 +189,7 @@ serve(async (req) => {
           switch (isiPesanWA) {
             case "1":
               // Langsung kirim link form web (penerima ditentukan di dalam form)
-              balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data Claim Promo dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://nikon-dashboard.vercel.app/claim?phone={{phone}}\n\nDi dalam form Anda dapat memilih apakah claim untuk *diri sendiri* atau *orang lain*. Setelah selesai, Anda akan menerima konfirmasi melalui WhatsApp.', { phone: nomorPengirim });
+              balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data Claim Promo dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://nikon-dashboard-nikon-indonesia.vercel.app/claim?phone={{phone}}\n\nDi dalam form Anda dapat memilih apakah claim untuk *diri sendiri* atau *orang lain*. Setelah selesai, Anda akan menerima konfirmasi melalui WhatsApp.', { phone: nomorPengirim });
               await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_UPLOAD_WEB' }).eq('nomor_wa', nomorPengirim);
               break;
             case "2":
@@ -246,7 +246,7 @@ serve(async (req) => {
 
         // Legacy state: redirect ke web form (sudah tidak ditanyakan via chat)
         case 'CLAIM_CHOOSE_RECIPIENT':
-          balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data Claim Promo dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://nikon-dashboard.vercel.app/claim?phone={{phone}}\n\nDi dalam form Anda dapat memilih apakah claim untuk *diri sendiri* atau *orang lain*.', { phone: nomorPengirim });
+          balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data Claim Promo dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://nikon-dashboard-nikon-indonesia.vercel.app/claim?phone={{phone}}\n\nDi dalam form Anda dapat memilih apakah claim untuk *diri sendiri* atau *orang lain*.', { phone: nomorPengirim });
           await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_UPLOAD_WEB' }).eq('nomor_wa', nomorPengirim);
           break;
 
@@ -289,7 +289,7 @@ serve(async (req) => {
         // ... [SISA LOGIKA NORMAL] ...
         default:
           if (statusSaatIni === 'MENUNGGU_UPLOAD_WEB') {
-            balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Silakan klik tautan yang telah diberikan untuk melanjutkan pengisian data claim Anda:\n\n👉 https://nikon-dashboard.vercel.app/claim?phone={{phone}}', { phone: nomorPengirim });
+            balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Silakan klik tautan yang telah diberikan untuk melanjutkan pengisian data claim Anda:\n\n👉 https://nikon-dashboard-nikon-indonesia.vercel.app/claim?phone={{phone}}', { phone: nomorPengirim });
           }
           break;
       }
