@@ -1182,8 +1182,15 @@ export default function NikonDashboard() {
    // eslint-disable-next-line @typescript-eslint/no-unused-vars
    const handleSaveRegistration = async (e: React.FormEvent) => {
       e.preventDefault();
+      setIsSubmitting(true);
       try {
          const payload = { ...registrationForm };
+         // Auto-sync event_name dari event_id kalau dipilih dari list
+         if (payload.event_id) {
+            const evt = events.find(ev => ev.id === payload.event_id);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (evt) payload.event_name = (evt as any).event_title || (evt as any).title || payload.event_name;
+         }
          if (modalAction === 'create') {
             const { error } = await supabase.from('event_registrations').insert([payload]);
             if (error) throw error;
@@ -1196,7 +1203,10 @@ export default function NikonDashboard() {
          closeModal();
       } catch (err: unknown) {
          const message = err instanceof Error ? err.message : String(err);
-         alert(message); }
+         alert('Gagal: ' + message);
+      } finally {
+         setIsSubmitting(false);
+      }
    };
 
    // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1333,13 +1343,15 @@ export default function NikonDashboard() {
    const handleSendEventSuccessWA = async (reg: EventRegistration) => {
       if (!window.confirm(`Kirim notifikasi konfirmasi pembayaran ke ${reg.full_name}?`)) return;
       
-      const message = `Halo *${reg.full_name}*,\n\nPembayaran Anda untuk event *${reg.event_name}* telah kami validasi. ✅\n\nSilakan simpan pesan ini sebagai bukti pendaftaran resmi. Sampai jumpa di lokasi acara!\n\nSalam,\nNikon Indonesia`;
+      const namaReg = reg.full_name || reg.nama_lengkap || '';
+      const waReg = reg.wa_number || reg.nomor_wa || '';
+      const message = `Halo *${namaReg}*,\n\nPembayaran Anda untuk event *${reg.event_name}* telah kami validasi. ✅\n\nSilakan simpan pesan ini sebagai bukti pendaftaran resmi. Sampai jumpa di lokasi acara!\n\nSalam,\nNikon Indonesia`;
 
       try {
-         await sendWhatsAppMessageViaFonnte(reg.wa_number, message);
-         await supabase.from('riwayat_pesan').insert([{ 
-            nomor_wa: reg.wa_number, 
-            nama_profil_wa: reg.full_name, 
+         await sendWhatsAppMessageViaFonnte(waReg, message);
+         await supabase.from('riwayat_pesan').insert([{
+            nomor_wa: waReg,
+            nama_profil_wa: namaReg,
             arah_pesan: 'OUT', 
             isi_pesan: message, 
             waktu_pesan: new Date().toISOString(), 
@@ -2924,10 +2936,15 @@ export default function NikonDashboard() {
                                  <tr><th className="px-6 py-3 text-left font-bold">Nama Lengkap</th><th className="px-6 py-3 text-left font-bold">Kontak (WA/Email)</th><th className="px-6 py-3 text-left font-bold">Event</th><th className="px-6 py-3 text-left font-bold">Status</th><th className="px-6 py-3 text-left font-bold">Kehadiran</th><th className="px-6 py-3 text-left font-bold">Bukti TF</th><th className="px-6 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
-                                 {eventRegistrations.filter(r => r.full_name.toLowerCase().includes(searchRegistration.toLowerCase()) || r.event_name.toLowerCase().includes(searchRegistration.toLowerCase())).map((reg: EventRegistration) => (
+                                 {eventRegistrations.filter(r => {
+                                    const q = searchRegistration.toLowerCase();
+                                    const nama = (r.full_name || r.nama_lengkap || '').toLowerCase();
+                                    const evt = (r.event_name || '').toLowerCase();
+                                    return nama.includes(q) || evt.includes(q);
+                                 }).map((reg: EventRegistration) => (
                                     <tr key={reg.id} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-6 py-3 font-bold text-slate-800">{reg.full_name}<br /><span className="text-[10px] text-gray-500">{reg.camera_model || '-'}</span></td>
-                                       <td className="px-6 py-3">{reg.wa_number}<br/><span className="text-xs text-gray-500">{reg.email}</span></td>
+                                       <td className="px-6 py-3 font-bold text-slate-800">{reg.full_name || reg.nama_lengkap || '-'}<br /><span className="text-[10px] text-gray-500">{reg.camera_model || reg.tipe_kamera || '-'}</span></td>
+                                       <td className="px-6 py-3">{reg.wa_number || reg.nomor_wa || '-'}<br/><span className="text-xs text-gray-500">{reg.email}</span></td>
                                        <td className="px-6 py-3 text-amber-600 font-bold">{reg.event_name}</td>
                                        <td className="px-6 py-3">
                                           <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${reg.status === 'Confirmed' ? 'bg-green-100 text-green-700' : reg.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{reg.status}</span>
@@ -3212,6 +3229,190 @@ export default function NikonDashboard() {
                            </div>
                         </form>
                      )}
+                     {/* ============ EVENT REGISTRATION FORM ============ */}
+                     {activeTab === 'eventregistrations' && (
+                        <form onSubmit={handleSaveRegistration} className="space-y-4">
+                           {(() => {
+                              const isDeposit = registrationForm.payment_type === 'deposit';
+                              return (
+                                 <>
+                                    {/* Section: Pilih Event */}
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Event yang Didaftarkan</h3>
+                                       <div className="space-y-3">
+                                          <div>
+                                             <label className="label-form">Pilih Event *</label>
+                                             <select
+                                                aria-label="Pilih event"
+                                                required
+                                                value={registrationForm.event_id || ''}
+                                                onChange={e => {
+                                                   const selected = events.find(ev => ev.id === e.target.value);
+                                                   setRegistrationForm({
+                                                      ...registrationForm,
+                                                      event_id: e.target.value,
+                                                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                      event_name: selected ? ((selected as any).event_title || (selected as any).title || '') : '',
+                                                   });
+                                                }}
+                                                className="input-form"
+                                             >
+                                                <option value="">-- Pilih event dari daftar --</option>
+                                                {events.map(evt => (
+                                                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                   <option key={evt.id} value={evt.id}>{(evt as any).event_title || (evt as any).title} — {(evt as any).event_date || (evt as any).date}</option>
+                                                ))}
+                                             </select>
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Nama Event (Manual)</label>
+                                             <input
+                                                type="text"
+                                                value={registrationForm.event_name || ''}
+                                                onChange={e => setRegistrationForm({ ...registrationForm, event_name: e.target.value })}
+                                                className="input-form"
+                                                placeholder="Auto-terisi saat pilih event di atas"
+                                             />
+                                          </div>
+                                       </div>
+                                    </div>
+
+                                    {/* Section: Data Peserta */}
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Data Peserta</h3>
+                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          <div className="md:col-span-2">
+                                             <label className="label-form">Nama Lengkap *</label>
+                                             <input type="text" required value={registrationForm.nama_lengkap || ''} onChange={e => setRegistrationForm({ ...registrationForm, nama_lengkap: e.target.value })} className="input-form" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Nomor WhatsApp *</label>
+                                             <input type="text" required value={registrationForm.nomor_wa || ''} onChange={e => setRegistrationForm({ ...registrationForm, nomor_wa: e.target.value })} className="input-form" placeholder="081234567890" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Email</label>
+                                             <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="input-form" placeholder="nama@email.com" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Tipe Kamera</label>
+                                             <input type="text" value={registrationForm.tipe_kamera || ''} onChange={e => setRegistrationForm({ ...registrationForm, tipe_kamera: e.target.value })} className="input-form" placeholder="Contoh: Nikon Z50 II" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Kabupaten / Kota</label>
+                                             <input type="text" value={registrationForm.kabupaten_kotamadya || ''} onChange={e => setRegistrationForm({ ...registrationForm, kabupaten_kotamadya: e.target.value })} className="input-form" />
+                                          </div>
+                                       </div>
+                                    </div>
+
+                                    {/* Section: Pembayaran & Status */}
+                                    <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Pembayaran & Status Pendaftaran</h3>
+                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          <div>
+                                             <label className="label-form">Tipe Pembayaran</label>
+                                             <select aria-label="Tipe pembayaran" value={registrationForm.payment_type || 'regular'} onChange={e => setRegistrationForm({ ...registrationForm, payment_type: e.target.value as 'regular' | 'deposit' })} className="input-form">
+                                                <option value="regular">Regular (Non-refundable)</option>
+                                                <option value="deposit">Deposit (Refundable)</option>
+                                             </select>
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Status Pendaftaran *</label>
+                                             <select aria-label="Status pendaftaran" required value={registrationForm.status_pendaftaran || 'menunggu_validasi'} onChange={e => setRegistrationForm({ ...registrationForm, status_pendaftaran: e.target.value as 'menunggu_validasi' | 'terdaftar' | 'ditolak' })} className="input-form">
+                                                <option value="menunggu_validasi">Menunggu Validasi</option>
+                                                <option value="terdaftar">Terdaftar (Approved)</option>
+                                                <option value="ditolak">Ditolak</option>
+                                             </select>
+                                          </div>
+                                          <div className="md:col-span-2">
+                                             <label className="label-form">Bukti Transfer URL</label>
+                                             <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="input-form" placeholder="https://..." />
+                                             {registrationForm.bukti_transfer_url && (
+                                                <button type="button" onClick={() => openImageViewer(registrationForm.bukti_transfer_url!)} className="text-xs text-blue-600 font-bold hover:underline mt-1">🔗 Lihat bukti transfer</button>
+                                             )}
+                                          </div>
+                                          {registrationForm.status_pendaftaran === 'ditolak' && (
+                                             <div className="md:col-span-2">
+                                                <label className="label-form">Alasan Penolakan</label>
+                                                <textarea rows={2} value={registrationForm.rejection_reason || ''} onChange={e => setRegistrationForm({ ...registrationForm, rejection_reason: e.target.value })} className="input-form resize-none" placeholder="Jelaskan alasan penolakan untuk dikirim via WA ke peserta" />
+                                             </div>
+                                          )}
+                                          {registrationForm.status_pendaftaran === 'terdaftar' && (
+                                             <div className="md:col-span-2">
+                                                <label className="label-form">Ticket URL</label>
+                                                <input type="url" value={registrationForm.ticket_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, ticket_url: e.target.value })} className="input-form" placeholder="https://... (auto-generate via /api/generate-ticket)" />
+                                             </div>
+                                          )}
+                                       </div>
+                                    </div>
+
+                                    {/* Section: Kehadiran */}
+                                    <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Kehadiran di Acara</h3>
+                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          <div>
+                                             <label className="label-form">Sudah Hadir?</label>
+                                             <select aria-label="Status hadir" value={registrationForm.is_attended ? 'true' : 'false'} onChange={e => setRegistrationForm({ ...registrationForm, is_attended: e.target.value === 'true', attended_at: e.target.value === 'true' && !registrationForm.attended_at ? new Date().toISOString() : registrationForm.attended_at })} className="input-form">
+                                                <option value="false">Belum Hadir</option>
+                                                <option value="true">Sudah Hadir ✓</option>
+                                             </select>
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Dicatat Oleh (Admin)</label>
+                                             <input type="text" value={registrationForm.attended_by || ''} onChange={e => setRegistrationForm({ ...registrationForm, attended_by: e.target.value })} className="input-form" placeholder="Nama admin pencatat" />
+                                          </div>
+                                          {registrationForm.is_attended && registrationForm.attended_at && (
+                                             <div className="md:col-span-2">
+                                                <p className="text-[11px] text-green-700 font-bold">✓ Tercatat hadir pada: {new Date(registrationForm.attended_at).toLocaleString('id-ID')}</p>
+                                             </div>
+                                          )}
+                                       </div>
+                                    </div>
+
+                                    {/* Section: Refund Deposit (hanya kalau deposit) */}
+                                    {isDeposit && (
+                                       <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                                          <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Refund Deposit (untuk Tipe Deposit)</h3>
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                             <div>
+                                                <label className="label-form">Nama Bank</label>
+                                                <input type="text" value={registrationForm.nama_bank || ''} onChange={e => setRegistrationForm({ ...registrationForm, nama_bank: e.target.value })} className="input-form" />
+                                             </div>
+                                             <div>
+                                                <label className="label-form">Nomor Rekening</label>
+                                                <input type="text" value={registrationForm.no_rekening || ''} onChange={e => setRegistrationForm({ ...registrationForm, no_rekening: e.target.value })} className="input-form" />
+                                             </div>
+                                             <div className="md:col-span-2">
+                                                <label className="label-form">Nama Pemilik Rekening</label>
+                                                <input type="text" value={registrationForm.nama_pemilik_rekening || ''} onChange={e => setRegistrationForm({ ...registrationForm, nama_pemilik_rekening: e.target.value })} className="input-form" />
+                                             </div>
+                                             <div>
+                                                <label className="label-form">Status Refund</label>
+                                                <select aria-label="Status refund" value={registrationForm.status_pengembalian_deposit || ''} onChange={e => setRegistrationForm({ ...registrationForm, status_pengembalian_deposit: e.target.value || null })} className="input-form">
+                                                   <option value="">-- belum diproses --</option>
+                                                   <option value="Diminta">Diminta Peserta</option>
+                                                   <option value="Diproses">Sedang Diproses</option>
+                                                   <option value="Sudah Dikembalikan">Sudah Dikembalikan</option>
+                                                   <option value="Ditolak">Ditolak (Tidak hadir)</option>
+                                                </select>
+                                             </div>
+                                             <div>
+                                                <label className="label-form">URL Bukti Pengembalian</label>
+                                                <input type="url" value={registrationForm.bukti_pengembalian_deposit || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_pengembalian_deposit: e.target.value })} className="input-form" placeholder="https://..." />
+                                             </div>
+                                          </div>
+                                       </div>
+                                    )}
+
+                                    <div className="mt-6 flex justify-end gap-3">
+                                       <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                                       <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan Pendaftaran'}</button>
+                                    </div>
+                                 </>
+                              );
+                           })()}
+                        </form>
+                     )}
+
                      {/* ============ BUDGET APPROVAL FORM ============ */}
                      {activeTab === 'budgets' && (
                         <form onSubmit={handleSaveBudget} className="space-y-4">
@@ -4308,7 +4509,7 @@ export default function NikonDashboard() {
                      )}
 
                      {/* ============ FORM TAB LAIN: placeholder info ============ */}
-                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && activeTab !== 'warranties' && activeTab !== 'promos' && activeTab !== 'botsettings' && activeTab !== 'budgets' && (
+                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && activeTab !== 'warranties' && activeTab !== 'promos' && activeTab !== 'botsettings' && activeTab !== 'budgets' && activeTab !== 'eventregistrations' && (
                         <div className="text-center py-12">
                            <div className="text-5xl mb-3">🚧</div>
                            <p className="text-gray-700 font-semibold mb-1">Form untuk tab ini belum tersedia</p>
