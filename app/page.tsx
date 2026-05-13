@@ -3240,7 +3240,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Identitas Service */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Identitas Service</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Identitas Service</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Nomor Tanda Terima *</label>
@@ -3252,7 +3252,7 @@ export default function NikonDashboard() {
                                        className="input-form font-mono"
                                        placeholder="Contoh: 00123456"
                                     />
-                                    <p className="text-[11px] text-gray-600 mt-1">Nomor unik yang diberikan ke konsumen saat menyerahkan barang.</p>
+                                    <p className="text-[11px] text-gray-800 mt-1 font-medium">Nomor unik yang diberikan ke konsumen saat menyerahkan barang.</p>
                                  </div>
                                  <div>
                                     <label className="label-form">Nomor Seri Barang *</label>
@@ -3270,7 +3270,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Status Progres */}
                            <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Status Progres Service</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Status Progres Service</h3>
                               <div>
                                  <label className="label-form">Status Service *</label>
                                  <select
@@ -3290,7 +3290,7 @@ export default function NikonDashboard() {
                                     <option value="Tidak Bisa Diperbaiki">Tidak Bisa Diperbaiki</option>
                                     <option value="Dibatalkan">Dibatalkan</option>
                                  </select>
-                                 <p className="text-[11px] text-gray-600 mt-1">💬 Pesan status ini akan ditampilkan ke konsumen via chatbot saat cek status.</p>
+                                 <p className="text-[11px] text-gray-800 mt-1 font-medium">💬 Pesan status ini akan ditampilkan ke konsumen via chatbot saat cek status.</p>
                               </div>
                            </div>
 
@@ -3310,7 +3310,7 @@ export default function NikonDashboard() {
                                  <>
                                     {/* Section: Pilih Event */}
                                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Event yang Didaftarkan</h3>
+                                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Event yang Didaftarkan</h3>
                                        <div className="space-y-3">
                                           <div>
                                              <label className="label-form">Pilih Event *</label>
@@ -3351,7 +3351,7 @@ export default function NikonDashboard() {
 
                                     {/* Section: Data Peserta */}
                                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Data Peserta</h3>
+                                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Data Peserta</h3>
                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div className="md:col-span-2">
                                              <label className="label-form">Nama Lengkap *</label>
@@ -3378,7 +3378,7 @@ export default function NikonDashboard() {
 
                                     {/* Section: Pembayaran & Status */}
                                     <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Pembayaran & Status Pendaftaran</h3>
+                                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Pembayaran & Status Pendaftaran</h3>
                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div>
                                              <label className="label-form">Tipe Pembayaran</label>
@@ -3419,7 +3419,7 @@ export default function NikonDashboard() {
 
                                     {/* Section: Kehadiran */}
                                     <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Kehadiran di Acara</h3>
+                                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Kehadiran di Acara</h3>
                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div>
                                              <label className="label-form">Sudah Hadir?</label>
@@ -3443,7 +3443,7 @@ export default function NikonDashboard() {
                                     {/* Section: Refund Deposit (hanya kalau deposit) */}
                                     {isDeposit && (
                                        <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-                                          <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Refund Deposit (untuk Tipe Deposit)</h3>
+                                          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Refund Deposit (untuk Tipe Deposit)</h3>
                                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                              <div>
                                                 <label className="label-form">Nama Bank</label>
@@ -3508,7 +3508,7 @@ export default function NikonDashboard() {
                                  <>
                                     {/* Section: Header Proposal */}
                                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Header Proposal</h3>
+                                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Header Proposal</h3>
                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div>
                                              <label className="label-form">Nomor Proposal *</label>
@@ -3541,7 +3541,7 @@ export default function NikonDashboard() {
 
                                     {/* Section: Detail Aktivitas */}
                                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Detail Aktivitas</h3>
+                                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Detail Aktivitas</h3>
                                        <div className="space-y-3">
                                           <div>
                                              <label className="label-form">Objectives (Tujuan)</label>
@@ -3561,7 +3561,7 @@ export default function NikonDashboard() {
                                     {/* Section: Item Budget (auto-calc) */}
                                     <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
                                        <div className="flex items-center justify-between mb-3">
-                                          <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Detail Item Anggaran</h3>
+                                          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Detail Item Anggaran</h3>
                                           <span className="text-[10px] text-gray-600 font-medium">{items.length} item · auto-calc</span>
                                        </div>
                                        <div className="space-y-3">
@@ -3648,7 +3648,7 @@ export default function NikonDashboard() {
 
                                     {/* Section: Approval & Comments */}
                                     <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Komentar Management & Persetujuan</h3>
+                                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Komentar Management & Persetujuan</h3>
                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div>
                                              <label className="label-form">Mgt Comment 1</label>
@@ -3683,7 +3683,7 @@ export default function NikonDashboard() {
 
                                     {/* Section: Lampiran */}
                                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                       <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Lampiran (Maks 3 file)</h3>
+                                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Lampiran (Maks 3 file)</h3>
                                        <div className="space-y-3">
                                           {[0, 1, 2].map(slotIdx => {
                                              const url = budgetForm.attachment_urls?.[slotIdx];
@@ -3740,7 +3740,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Identifier */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Identifier</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Identifier</h3>
                               <div className="space-y-3">
                                  <div>
                                     <label className="label-form">Nama Pengaturan (Key) *</label>
@@ -3764,7 +3764,7 @@ export default function NikonDashboard() {
                                        <option value="cara_pengembalian" />
                                        <option value="jadwal_event" />
                                     </datalist>
-                                    <p className="text-[11px] text-gray-600 mt-1">
+                                    <p className="text-[11px] text-gray-800 mt-1 font-medium">
                                        {modalAction === 'edit'
                                           ? '🔒 Key tidak bisa diubah saat edit (mencegah broken reference dari kode bot)'
                                           : '⚠️ Pakai snake_case (huruf kecil + underscore). Harus unik & cocok dengan referensi di kode bot.'}
@@ -3786,7 +3786,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Konten */}
                            <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Konten / Value</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Konten / Value</h3>
                               <div>
                                  <label className="label-form">URL File / Link</label>
                                  <input
@@ -3796,7 +3796,7 @@ export default function NikonDashboard() {
                                     className="input-form"
                                     placeholder="https://drive.google.com/file/d/... atau URL lainnya"
                                  />
-                                 <p className="text-[11px] text-gray-600 mt-1">
+                                 <p className="text-[11px] text-gray-800 mt-1 font-medium">
                                     💡 Untuk Google Drive: pastikan file di-set <strong>&quot;Anyone with the link&quot;</strong> agar bisa diakses bot.
                                  </p>
                                  {botSettingsForm.url_file && (
@@ -3824,7 +3824,7 @@ export default function NikonDashboard() {
                         <form onSubmit={handleSavePromo} className="space-y-4">
                            {/* Section: Info Dasar */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Info Promo</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Info Promo</h3>
                               <div className="space-y-3">
                                  <div>
                                     <label className="label-form">Nama Promo *</label>
@@ -3896,7 +3896,7 @@ export default function NikonDashboard() {
                            {/* Section: Produk yang Berlaku */}
                            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                               <div className="flex items-center justify-between mb-3">
-                                 <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Produk yang Berlaku</h3>
+                                 <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Produk yang Berlaku</h3>
                                  <span className="text-[10px] text-gray-600 font-medium">{(promoForm.tipe_produk || []).length} produk</span>
                               </div>
                               <p className="text-[11px] text-gray-700 mb-3">Daftar tipe produk Nikon yang mendapatkan promo ini.</p>
@@ -3959,7 +3959,7 @@ export default function NikonDashboard() {
                         <form onSubmit={handleSaveWarranty} className="space-y-4">
                            {/* Section: Identitas Pemilik */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Identitas Pemilik</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Identitas Pemilik</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Nomor WhatsApp Pemilik</label>
@@ -3978,7 +3978,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Data Produk */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Data Produk & Pembelian</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Data Produk & Pembelian</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Nomor Seri *</label>
@@ -4001,7 +4001,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Spesifikasi Garansi */}
                            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Spesifikasi Garansi</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Spesifikasi Garansi</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Jenis Garansi *</label>
@@ -4029,7 +4029,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Validasi */}
                            <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Status Validasi</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Status Validasi</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div className="md:col-span-2">
                                     <label className="label-form">Status Validasi (Utama) *</label>
@@ -4071,17 +4071,17 @@ export default function NikonDashboard() {
 
                            {/* Section: Relasi Claim */}
                            <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Relasi Claim Promo (Opsional)</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Relasi Claim Promo (Opsional)</h3>
                               <div>
                                  <label className="label-form">ID Claim Terkait</label>
                                  <input type="text" value={warrantyForm.id_claim || ''} onChange={e => setWarrantyForm({ ...warrantyForm, id_claim: e.target.value || null })} className="input-form" placeholder="UUID dari claim_promo (auto saat submit via web /garansi?from_claim=1)" />
-                                 <p className="text-[11px] text-gray-600 mt-1">💡 Jika diisi, status garansi akan ikut Valid saat claim terkait Valid (di bot cek status).</p>
+                                 <p className="text-[11px] text-gray-800 mt-1 font-medium">💡 Jika diisi, status garansi akan ikut Valid saat claim terkait Valid (di bot cek status).</p>
                               </div>
                            </div>
 
                            {/* Section: Dokumen */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Dokumen Pendukung</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Dokumen Pendukung</h3>
                               <div className="space-y-3">
                                  <div>
                                     <label className="label-form">Kartu Garansi</label>
@@ -4124,7 +4124,7 @@ export default function NikonDashboard() {
                         <form onSubmit={handleSaveKonsumen} className="space-y-4">
                            {/* Section: Identitas */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Identitas</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Identitas</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Nomor WhatsApp *</label>
@@ -4178,7 +4178,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Alamat */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Alamat</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Alamat</h3>
                               <div className="space-y-3">
                                  <div>
                                     <label className="label-form">Alamat Rumah</label>
@@ -4219,7 +4219,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Status Bot */}
                            <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Status Chatbot</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Status Chatbot</h3>
                               <div>
                                  <label className="label-form">Status Langkah Bot</label>
                                  <select
@@ -4239,7 +4239,7 @@ export default function NikonDashboard() {
                                     <option value="MENUNGGU_SERI_GARANSI">MENUNGGU_SERI_GARANSI</option>
                                     <option value="MENUNGGU_RESI_SERVICE">MENUNGGU_RESI_SERVICE</option>
                                  </select>
-                                 <p className="text-[11px] text-gray-600 mt-1">💡 Reset ke <strong>START</strong> kalau konsumen stuck di tengah flow chatbot.</p>
+                                 <p className="text-[11px] text-gray-800 mt-1 font-medium">💡 Reset ke <strong>START</strong> kalau konsumen stuck di tengah flow chatbot.</p>
                               </div>
                            </div>
 
@@ -4255,7 +4255,7 @@ export default function NikonDashboard() {
                         <form onSubmit={handleSaveClaim} className="space-y-4">
                            {/* Section: Identitas Pendaftar */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Identitas Pendaftar & Penerima</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Identitas Pendaftar & Penerima</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Nomor WhatsApp Pendaftar *</label>
@@ -4282,7 +4282,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Data Produk */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Data Produk & Pembelian</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Data Produk & Pembelian</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Nomor Seri *</label>
@@ -4309,7 +4309,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Validasi & Status */}
                            <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Status Validasi</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Status Validasi</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Validasi Marketing (MKT) *</label>
@@ -4340,7 +4340,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Pengiriman Hadiah */}
                            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Pengiriman Hadiah</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Pengiriman Hadiah</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Jasa Pengiriman</label>
@@ -4355,7 +4355,7 @@ export default function NikonDashboard() {
 
                            {/* Section: Dokumen */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Dokumen Pendukung</h3>
+                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Dokumen Pendukung</h3>
                               <div className="space-y-3">
                                  <div>
                                     <label className="label-form">Kartu Garansi</label>
@@ -4512,7 +4512,7 @@ export default function NikonDashboard() {
                                  onChange={e => setLendingForm({ ...lendingForm, tanggal_estimasi_pengembalian: e.target.value ? new Date(e.target.value).toISOString() : null })}
                                  className="input-form"
                               />
-                              <p className="text-[11px] text-gray-600 mt-1">📅 Reminder WhatsApp akan otomatis dikirim ke peminjam <strong>3 hari sebelum</strong> tanggal ini.</p>
+                              <p className="text-[11px] text-gray-800 mt-1 font-medium">📅 Reminder WhatsApp akan otomatis dikirim ke peminjam <strong>3 hari sebelum</strong> tanggal ini.</p>
                               {lendingForm.reminder_sent_at && (
                                  <p className="text-[11px] text-green-700 font-bold mt-1">✓ Reminder sudah terkirim pada {new Date(lendingForm.reminder_sent_at).toLocaleString('id-ID')}</p>
                               )}
