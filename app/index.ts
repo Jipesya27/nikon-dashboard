@@ -10,7 +10,37 @@ export interface BudgetItem { purpose: string; qty: number; cost_unit: number; v
 export interface BudgetApproval { id_budget?: string; proposal_no: string; title: string; period: string; objectives: string; detail_activity: string; expected_result: string; total_cost: number; budget_source: string; drafter_name: string; mgt_comment_1?: string; mgt_comment_2?: string; mgt_consent?: string; finance_consent?: string; items: BudgetItem[]; created_at?: string; attachment_urls?: (string | File | null)[]; }
 export interface DataLog { id?: string; created_at?: string; user_name: string; action: string; table_name: string; record_id: string; old_values: Record<string, unknown>; new_values: Record<string, unknown>; }
 export interface EventData { id?: string; title: string; date: string; price: string; image: string; stock: number; status: string; detail_acara: string; created_at?: string; bank_info?: string; }
-export interface EventRegistration { id?: string; full_name: string; wa_number: string; email: string; camera_model: string; event_name: string; bukti_transfer_url: string; status: string; created_at?: string; is_attended?: boolean; }
+export interface EventRegistration {
+   id?: string;
+   event_id?: string | null;
+   event_name: string;
+   nama_lengkap?: string;
+   nomor_wa?: string;
+   email?: string | null;
+   tipe_kamera?: string | null;
+   kabupaten_kotamadya?: string | null;
+   payment_type?: 'regular' | 'deposit';
+   status_pendaftaran?: 'menunggu_validasi' | 'terdaftar' | 'ditolak';
+   rejection_reason?: string | null;
+   bukti_transfer_url?: string | null;
+   ticket_url?: string | null;
+   is_attended?: boolean;
+   attended_at?: string | null;
+   attended_by?: string | null;
+   nama_bank?: string | null;
+   no_rekening?: string | null;
+   nama_pemilik_rekening?: string | null;
+   status_pengembalian_deposit?: string | null;
+   bukti_pengembalian_deposit?: string | null;
+   refund_requested_at?: string | null;
+   created_at?: string;
+
+   // Legacy fields (deprecated, kept for compat)
+   full_name?: string;
+   wa_number?: string;
+   camera_model?: string;
+   status?: string;
+}
 
 export interface PeminjamanItem {
    nama_barang: string;
