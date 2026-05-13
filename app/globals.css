@@ -109,9 +109,15 @@ html {
 /* Textarea variant: tinggi minimal lebih besar */
 textarea.input-form { @apply min-h-[80px]; }
 
-/* Untuk select supaya panah dropdown tetap kelihatan */
+/* Untuk select supaya panah dropdown tetap kelihatan
+ * Pakai raw CSS (bukan @apply) karena Tailwind v4 tidak bisa parse SVG URL
+ * dengan spasi di dalam @apply arbitrary value */
 select.input-form {
-  @apply appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2214%22 height=%2214%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23111%22 stroke-width=%223%22><polyline points=%226 9 12 15 18 9%22/></svg>')] bg-no-repeat bg-[right_0.85rem_center] pr-10;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  padding-right: 2.5rem;
 }
 
 /* File input style */
