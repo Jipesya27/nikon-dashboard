@@ -3229,6 +3229,78 @@ export default function NikonDashboard() {
                            </div>
                         </form>
                      )}
+                     {/* ============ SERVICE FORM ============ */}
+                     {activeTab === 'services' && (
+                        <form onSubmit={handleSaveService} className="space-y-4">
+                           <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                              <p className="text-xs text-gray-700">
+                                 💡 Data service ini ditampilkan ke konsumen via chatbot saat mereka pilih menu <strong>5. Service - Cek Status</strong>.
+                              </p>
+                           </div>
+
+                           {/* Section: Identitas Service */}
+                           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Identitas Service</h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                    <label className="label-form">Nomor Tanda Terima *</label>
+                                    <input
+                                       type="text"
+                                       required
+                                       value={serviceForm.nomor_tanda_terima || ''}
+                                       onChange={e => setServiceForm({ ...serviceForm, nomor_tanda_terima: e.target.value })}
+                                       className="input-form font-mono"
+                                       placeholder="Contoh: 00123456"
+                                    />
+                                    <p className="text-[11px] text-gray-600 mt-1">Nomor unik yang diberikan ke konsumen saat menyerahkan barang.</p>
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Nomor Seri Barang *</label>
+                                    <input
+                                       type="text"
+                                       required
+                                       value={serviceForm.nomor_seri || ''}
+                                       onChange={e => setServiceForm({ ...serviceForm, nomor_seri: e.target.value })}
+                                       className="input-form"
+                                       placeholder="Nomor seri produk Nikon"
+                                    />
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Section: Status Progres */}
+                           <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Status Progres Service</h3>
+                              <div>
+                                 <label className="label-form">Status Service *</label>
+                                 <select
+                                    aria-label="Status service"
+                                    required
+                                    value={serviceForm.status_service || 'Diterima'}
+                                    onChange={e => setServiceForm({ ...serviceForm, status_service: e.target.value })}
+                                    className="input-form"
+                                 >
+                                    <option value="Diterima">Diterima — Barang sudah diterima Pusat Service</option>
+                                    <option value="Pengecekan oleh Teknisi">Pengecekan oleh Teknisi</option>
+                                    <option value="Menunggu Sparepart">Menunggu Sparepart</option>
+                                    <option value="Dalam Pengerjaan">Dalam Pengerjaan</option>
+                                    <option value="Quality Check">Quality Check</option>
+                                    <option value="Siap Diambil">Siap Diambil — Konsumen bisa ambil barang</option>
+                                    <option value="Selesai">Selesai — Sudah diambil konsumen</option>
+                                    <option value="Tidak Bisa Diperbaiki">Tidak Bisa Diperbaiki</option>
+                                    <option value="Dibatalkan">Dibatalkan</option>
+                                 </select>
+                                 <p className="text-[11px] text-gray-600 mt-1">💬 Pesan status ini akan ditampilkan ke konsumen via chatbot saat cek status.</p>
+                              </div>
+                           </div>
+
+                           <div className="mt-6 flex justify-end gap-3">
+                              <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan Status Service'}</button>
+                           </div>
+                        </form>
+                     )}
+
                      {/* ============ EVENT REGISTRATION FORM ============ */}
                      {activeTab === 'eventregistrations' && (
                         <form onSubmit={handleSaveRegistration} className="space-y-4">
@@ -4508,8 +4580,8 @@ export default function NikonDashboard() {
                         </form>
                      )}
 
-                     {/* ============ FORM TAB LAIN: placeholder info ============ */}
-                     {activeTab !== 'userrole' && activeTab !== 'events' && activeTab !== 'lending' && activeTab !== 'claims' && activeTab !== 'konsumen' && activeTab !== 'warranties' && activeTab !== 'promos' && activeTab !== 'botsettings' && activeTab !== 'budgets' && activeTab !== 'eventregistrations' && (
+                     {/* ============ FORM TAB LAIN: placeholder info (jika ada tab baru) ============ */}
+                     {!['userrole', 'events', 'lending', 'claims', 'konsumen', 'warranties', 'promos', 'botsettings', 'budgets', 'eventregistrations', 'services'].includes(activeTab) && (
                         <div className="text-center py-12">
                            <div className="text-5xl mb-3">🚧</div>
                            <p className="text-gray-700 font-semibold mb-1">Form untuk tab ini belum tersedia</p>
