@@ -1971,7 +1971,7 @@ export default function NikonDashboard() {
 
    return (
       <>
-         <div className={`min-h-screen bg-gray-50 flex flex-col relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
+         <div className={`h-screen bg-gray-50 flex flex-col relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
 
                <Header
                   sidebarOpen={sidebarOpen}
