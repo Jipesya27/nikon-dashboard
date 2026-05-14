@@ -5372,151 +5372,280 @@ export default function NikonDashboard() {
             </div>
          )}
 
-         {/* PRINT VIEW - Budget Approval Proposal */}
+         {/* PRINT VIEW - Budget Approval Proposal (sesuai template Alta Nikindo) */}
          {printData && (
-            <div className="hidden print:block p-8 font-sans text-black bg-white">
+            <div className="hidden print:block font-sans text-black bg-white text-[11px]">
                {(() => {
-                  const fmtRp = (n: number) => 'Rp ' + n.toLocaleString('id-ID');
-                  const total = (printData.items || []).reduce((s, it) => s + (Number(it.value) || 0), 0);
+                  const fmtNum = (n: number) => n.toLocaleString('id-ID');
+                  const items = printData.items || [];
+                  const subtotal = items.reduce((s, it) => s + (Number(it.value) || 0), 0);
+                  const grandTotal = subtotal; // tidak ada pajak/discount untuk saat ini
+                  // Management names (hardcoded sesuai template; admin bisa edit di sini)
+                  const MGT_NAMES = { col1: 'Jamal', col2: 'Eko', col3: 'Larry' };
+                  const FINANCE_NAME = 'Merry';
+                  // Section dynamic dari budget_source
+                  const sectionLabel = printData.budget_source?.toUpperCase() || 'MARKETING BUDGET';
+                  const drafterDisplay = printData.drafter_name || 'Firza';
+                  const attachments = (printData.attachment_urls || []).filter((u): u is string => typeof u === 'string' && Boolean(u));
+                  // Split items utk pagination: max ~12 item per halaman
+                  const ITEMS_PER_PAGE = 12;
+                  const firstPageItems = items.slice(0, ITEMS_PER_PAGE);
+                  const overflowItems = items.slice(ITEMS_PER_PAGE);
+                  const totalPages = 1 + (overflowItems.length > 0 ? 1 : 0) + (attachments.length > 0 ? 1 : 0);
                   return (
                      <>
-                        {/* HEADER */}
-                        <div className="flex items-start justify-between border-b-4 border-black pb-4 mb-6">
-                           <div className="flex items-center gap-3">
-                              <div className="bg-[#FFE500] w-14 h-14 rounded-md flex items-center justify-center">
-                                 <span className="text-black font-black text-2xl">N</span>
+                        {/* ============ PAGE 1 ============ */}
+                        <div className="p-8 print:p-6 page-break-after">
+                           {/* HEADER */}
+                           <div className="flex items-start justify-between mb-5">
+                              <div className="flex items-center gap-4">
+                                 <div className="border-2 border-black w-16 h-16 flex items-center justify-center text-center">
+                                    <div>
+                                       <p className="text-[9px] font-black leading-none">ALTA</p>
+                                       <p className="text-[9px] font-black leading-none">NIKINDO</p>
+                                    </div>
+                                 </div>
+                                 <div>
+                                    <h1 className="text-3xl font-black tracking-tight">BUDGET APPROVAL</h1>
+                                    <p className="text-[10px] tracking-wider text-gray-800">(SALES / MARKETING / SERVICE)</p>
+                                 </div>
                               </div>
-                              <div>
-                                 <h1 className="text-2xl font-black uppercase tracking-wider">Nikon Indonesia</h1>
-                                 <p className="text-xs text-gray-700">Alta Nikindo · Marketing Department</p>
-                              </div>
-                           </div>
-                           <div className="text-right">
-                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Budget Approval Proposal</p>
-                              <p className="text-base font-bold font-mono mt-1">{printData.proposal_no}</p>
-                              <p className="text-[10px] text-gray-600 mt-1">Dicetak: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                           </div>
-                        </div>
-
-                        {/* TITLE */}
-                        <div className="mb-6">
-                           <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Judul Proposal</p>
-                           <h2 className="text-xl font-bold mt-1">{printData.title || '-'}</h2>
-                        </div>
-
-                        {/* META */}
-                        <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
-                           <div>
-                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Periode</p>
-                              <p className="font-semibold">{printData.period || '-'}</p>
-                           </div>
-                           <div>
-                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Drafter</p>
-                              <p className="font-semibold">{printData.drafter_name || '-'}</p>
-                           </div>
-                           <div>
-                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Sumber Dana</p>
-                              <p className="font-semibold">{printData.budget_source || '-'}</p>
-                           </div>
-                        </div>
-
-                        {/* OBJECTIVES & DETAIL */}
-                        <div className="space-y-4 mb-6">
-                           <div>
-                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold mb-1">Objectives (Tujuan)</p>
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap border border-gray-300 rounded p-3 bg-gray-50">{printData.objectives || '-'}</p>
-                           </div>
-                           <div>
-                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold mb-1">Detail Activity</p>
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap border border-gray-300 rounded p-3 bg-gray-50">{printData.detail_activity || '-'}</p>
-                           </div>
-                           <div>
-                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold mb-1">Expected Result</p>
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap border border-gray-300 rounded p-3 bg-gray-50">{printData.expected_result || '-'}</p>
-                           </div>
-                        </div>
-
-                        {/* ITEMS TABLE */}
-                        <div className="mb-6">
-                           <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold mb-2">Rincian Anggaran</p>
-                           <table className="w-full border-collapse border border-black text-sm">
-                              <thead className="bg-gray-200">
-                                 <tr>
-                                    <th className="border border-black p-2 text-center w-10">No</th>
-                                    <th className="border border-black p-2 text-left">Purpose / Keperluan</th>
-                                    <th className="border border-black p-2 text-center w-16">Qty</th>
-                                    <th className="border border-black p-2 text-right w-32">Cost/Unit</th>
-                                    <th className="border border-black p-2 text-right w-36">Total</th>
-                                    <th className="border border-black p-2 text-center w-24">Petty Cash</th>
-                                 </tr>
-                              </thead>
-                              <tbody>
-                                 {(printData.items || []).map((it, idx) => (
-                                    <tr key={idx}>
-                                       <td className="border border-black p-2 text-center">{idx + 1}</td>
-                                       <td className="border border-black p-2">{it.purpose || '-'}</td>
-                                       <td className="border border-black p-2 text-center">{it.qty || 0}</td>
-                                       <td className="border border-black p-2 text-right font-mono">{fmtRp(Number(it.cost_unit) || 0)}</td>
-                                       <td className="border border-black p-2 text-right font-mono font-bold">{fmtRp(Number(it.value) || 0)}</td>
-                                       <td className="border border-black p-2 text-center text-xs">{it.petty_cash || '-'}</td>
+                              <table className="border-collapse text-[10px]">
+                                 <tbody>
+                                    <tr>
+                                       <td className="border border-black px-3 py-1 font-bold bg-gray-100">Section:</td>
+                                       <td className="border border-black px-3 py-1 font-bold">{sectionLabel}</td>
                                     </tr>
-                                 ))}
-                                 <tr className="bg-yellow-100">
-                                    <td colSpan={4} className="border border-black p-2 text-right font-black uppercase">TOTAL</td>
-                                    <td className="border border-black p-2 text-right font-black font-mono text-base">{fmtRp(total)}</td>
-                                    <td className="border border-black p-2"></td>
+                                    <tr>
+                                       <td className="border border-black px-3 py-1 font-bold bg-gray-100">Page(s):</td>
+                                       <td className="border border-black px-3 py-1 font-bold">{totalPages}</td>
+                                    </tr>
+                                 </tbody>
+                              </table>
+                           </div>
+
+                           {/* APPROVAL ROW: 3 boxes */}
+                           <div className="grid grid-cols-12 gap-2 mb-5">
+                              {/* PROPOSED / PREPARED BY */}
+                              <div className="col-span-3 border border-black">
+                                 <div className="border-b border-black bg-gray-100 px-2 py-1.5 text-center">
+                                    <p className="text-[10px] font-bold tracking-wider">PROPOSED / PREPARED BY</p>
+                                 </div>
+                                 <div className="px-2 py-4 text-center min-h-[80px] flex items-center justify-center">
+                                    <p className="text-base font-bold">{drafterDisplay}</p>
+                                 </div>
+                                 <div className="grid grid-cols-2 border-t border-black text-[9px]">
+                                    <div className="border-r border-black px-2 py-2">
+                                       <p className="font-bold tracking-wider">SIGN</p>
+                                    </div>
+                                    <div className="px-2 py-2">
+                                       <p className="font-bold tracking-wider">DATE:</p>
+                                    </div>
+                                 </div>
+                              </div>
+
+                              {/* MANAGEMENT APPROVAL — 3 columns */}
+                              <div className="col-span-6 border border-black">
+                                 <div className="border-b border-black bg-gray-100 px-2 py-1.5 text-center">
+                                    <p className="text-[10px] font-bold tracking-wider">MANAGEMENT APPROVAL</p>
+                                 </div>
+                                 <div className="grid grid-cols-3 min-h-[80px]">
+                                    <div className="border-r border-black px-2 py-4 text-center flex items-center justify-center">
+                                       <p className="text-sm font-bold">{MGT_NAMES.col1}</p>
+                                    </div>
+                                    <div className="border-r border-black px-2 py-4 text-center flex items-center justify-center">
+                                       <p className="text-sm font-bold">{MGT_NAMES.col2}</p>
+                                    </div>
+                                    <div className="px-2 py-4 text-center flex items-center justify-center">
+                                       <p className="text-sm font-bold">{MGT_NAMES.col3}</p>
+                                    </div>
+                                 </div>
+                                 <div className="grid grid-cols-3 border-t border-black text-[9px]">
+                                    <div className="border-r border-black px-2 py-2">
+                                       <p className="font-bold tracking-wider">COMMENT</p>
+                                       <p className="text-right text-[8px] mt-3">Date:</p>
+                                    </div>
+                                    <div className="border-r border-black px-2 py-2">
+                                       <p className="font-bold tracking-wider">COMMENT</p>
+                                       <p className="text-right text-[8px] mt-3">Date:</p>
+                                    </div>
+                                    <div className="px-2 py-2">
+                                       <p className="font-bold tracking-wider">CONSENT</p>
+                                       <p className="text-right text-[8px] mt-3">Date:</p>
+                                    </div>
+                                 </div>
+                              </div>
+
+                              {/* FINANCE & ACCOUNTING */}
+                              <div className="col-span-3 border border-black">
+                                 <div className="border-b border-black bg-gray-100 px-2 py-1.5 text-center">
+                                    <p className="text-[10px] font-bold tracking-wider">FINANCE & ACCOUNTING</p>
+                                 </div>
+                                 <div className="px-2 py-4 text-center min-h-[80px] flex items-center justify-center">
+                                    <p className="text-base font-bold">{FINANCE_NAME}</p>
+                                 </div>
+                                 <div className="grid grid-cols-2 border-t border-black text-[9px]">
+                                    <div className="border-r border-black px-2 py-2">
+                                       <p className="font-bold tracking-wider">CONSENT</p>
+                                    </div>
+                                    <div className="px-2 py-2 text-right">
+                                       <p className="font-bold tracking-wider">DATE:</p>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* DETAIL TABLE */}
+                           <table className="w-full border-collapse border border-black text-[11px] mb-4">
+                              <tbody>
+                                 <tr>
+                                    <td className="border border-black px-3 py-2 bg-gray-50 font-bold align-top w-40">Title</td>
+                                    <td className="border border-black px-3 py-2 font-bold uppercase">{printData.title || '-'}</td>
+                                 </tr>
+                                 <tr>
+                                    <td className="border border-black px-3 py-2 bg-gray-50 font-bold align-top">Proposal No.</td>
+                                    <td className="border border-black px-3 py-2 font-bold">{printData.proposal_no || '-'}</td>
+                                 </tr>
+                                 <tr>
+                                    <td className="border border-black px-3 py-2 bg-gray-50 font-bold align-top">Period</td>
+                                    <td className="border border-black px-3 py-2 font-bold">{printData.period || '-'}</td>
+                                 </tr>
+                                 <tr>
+                                    <td className="border border-black px-3 py-2 bg-gray-50 font-bold align-top">Objectives</td>
+                                    <td className="border border-black px-3 py-2 whitespace-pre-wrap leading-relaxed">{printData.objectives || '-'}</td>
+                                 </tr>
+                                 <tr>
+                                    <td className="border border-black px-3 py-2 bg-gray-50 font-bold align-top">Detail of Activity</td>
+                                    <td className="border border-black px-3 py-2 whitespace-pre-wrap leading-relaxed">{printData.detail_activity || '-'}</td>
+                                 </tr>
+                                 <tr>
+                                    <td className="border border-black px-3 py-2 bg-gray-50 font-bold align-top">Expected Result</td>
+                                    <td className="border border-black px-3 py-2 whitespace-pre-wrap leading-relaxed">{printData.expected_result || '-'}</td>
                                  </tr>
                               </tbody>
                            </table>
+
+                           {/* ITEMS TABLE */}
+                           <table className="w-full border-collapse border border-black text-[11px]">
+                              <thead>
+                                 <tr className="bg-gray-100">
+                                    <th className="border border-black px-2 py-2 w-10 text-center font-bold">NO</th>
+                                    <th className="border border-black px-2 py-2 text-center font-bold">PURPOSE / ITEM DESCRIPTION</th>
+                                    <th className="border border-black px-2 py-2 w-16 text-center font-bold">QTY</th>
+                                    <th className="border border-black px-2 py-2 w-32 text-center font-bold">COST / UNIT</th>
+                                    <th className="border border-black px-2 py-2 w-28 text-center font-bold">PETTY CASH</th>
+                                    <th className="border border-black px-2 py-2 w-36 text-center font-bold">TOTAL VALUE</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {firstPageItems.length === 0 ? (
+                                    <tr>
+                                       <td colSpan={6} className="border border-black px-2 py-6 text-center text-gray-500 italic">Belum ada item anggaran.</td>
+                                    </tr>
+                                 ) : firstPageItems.map((it, idx) => (
+                                    <tr key={idx}>
+                                       <td className="border border-black px-2 py-1.5 text-center">{idx + 1}</td>
+                                       <td className="border border-black px-2 py-1.5">{it.purpose || '-'}</td>
+                                       <td className="border border-black px-2 py-1.5 text-center">{it.qty || 0}</td>
+                                       <td className="border border-black px-2 py-1.5 text-right font-mono">{fmtNum(Number(it.cost_unit) || 0)}</td>
+                                       <td className="border border-black px-2 py-1.5 text-center text-[10px]">{it.petty_cash || ''}</td>
+                                       <td className="border border-black px-2 py-1.5 text-right font-bold font-mono">{fmtNum(Number(it.value) || 0)}</td>
+                                    </tr>
+                                 ))}
+                                 {overflowItems.length === 0 && (
+                                    <>
+                                       <tr>
+                                          <td colSpan={4}></td>
+                                          <td className="border border-black px-2 py-2 text-right font-bold bg-gray-50">SUBTOTAL</td>
+                                          <td className="border border-black px-2 py-2 text-right font-bold font-mono">{fmtNum(subtotal)}</td>
+                                       </tr>
+                                       <tr>
+                                          <td colSpan={4}></td>
+                                          <td className="border border-black px-2 py-3 text-right font-black text-base bg-black text-white">GRAND TOTAL</td>
+                                          <td className="border border-black px-2 py-3 text-right font-black font-mono text-base bg-black text-white">Rp {fmtNum(grandTotal)}</td>
+                                       </tr>
+                                    </>
+                                 )}
+                              </tbody>
+                           </table>
+
+                           <div className="text-[9px] text-gray-600 mt-4 flex justify-between">
+                              <span>https://nikonindonesia-altanikindo.vercel.app</span>
+                              <span>1/{totalPages}</span>
+                           </div>
                         </div>
 
-                        {/* MGT COMMENTS */}
-                        {(printData.mgt_comment_1 || printData.mgt_comment_2) && (
-                           <div className="mb-6 space-y-2">
-                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Komentar Management</p>
-                              {printData.mgt_comment_1 && <p className="text-sm border border-gray-300 rounded p-2 bg-gray-50">{printData.mgt_comment_1}</p>}
-                              {printData.mgt_comment_2 && <p className="text-sm border border-gray-300 rounded p-2 bg-gray-50">{printData.mgt_comment_2}</p>}
+                        {/* ============ PAGE 2 - Overflow items + TOTAL COST + Attachments ============ */}
+                        {(overflowItems.length > 0 || attachments.length > 0) && (
+                           <div className="p-8 print:p-6 page-break-before">
+                              {/* Items header tetap muncul */}
+                              <table className="w-full border-collapse border border-black text-[11px]">
+                                 <thead>
+                                    <tr className="bg-gray-100">
+                                       <th className="border border-black px-2 py-2 w-10 text-center font-bold">NO</th>
+                                       <th className="border border-black px-2 py-2 text-center font-bold">PURPOSE / ITEM DESCRIPTION</th>
+                                       <th className="border border-black px-2 py-2 w-16 text-center font-bold">QTY</th>
+                                       <th className="border border-black px-2 py-2 w-32 text-center font-bold">COST / UNIT</th>
+                                       <th className="border border-black px-2 py-2 w-28 text-center font-bold">PETTY CASH</th>
+                                       <th className="border border-black px-2 py-2 w-36 text-center font-bold">TOTAL VALUE</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody>
+                                    {overflowItems.map((it, idx) => (
+                                       <tr key={idx}>
+                                          <td className="border border-black px-2 py-1.5 text-center">{ITEMS_PER_PAGE + idx + 1}</td>
+                                          <td className="border border-black px-2 py-1.5">{it.purpose || '-'}</td>
+                                          <td className="border border-black px-2 py-1.5 text-center">{it.qty || 0}</td>
+                                          <td className="border border-black px-2 py-1.5 text-right font-mono">{fmtNum(Number(it.cost_unit) || 0)}</td>
+                                          <td className="border border-black px-2 py-1.5 text-center text-[10px]">{it.petty_cash || ''}</td>
+                                          <td className="border border-black px-2 py-1.5 text-right font-bold font-mono">{fmtNum(Number(it.value) || 0)}</td>
+                                       </tr>
+                                    ))}
+                                    {overflowItems.length > 0 && (
+                                       <tr>
+                                          <td colSpan={4}></td>
+                                          <td className="border border-black px-2 py-3 text-right font-black text-base bg-black text-white">TOTAL COST</td>
+                                          <td className="border border-black px-2 py-3 text-right font-black font-mono text-base bg-black text-white">Rp {fmtNum(grandTotal)}</td>
+                                       </tr>
+                                    )}
+                                 </tbody>
+                              </table>
+
+                              {/* DASHED SEPARATOR */}
+                              <div className="my-6 border-t-2 border-dashed border-gray-400"></div>
+
+                              {/* ATTACHMENTS */}
+                              {attachments.length > 0 && (
+                                 <>
+                                    <h3 className="font-bold text-base mb-3 tracking-wider">LAMPIRAN (ATTACHMENTS):</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                       {attachments.map((url, idx) => (
+                                          <div key={idx} className="border border-gray-300 p-2">
+                                             {/* eslint-disable-next-line @next/next/no-img-element */}
+                                             <img src={url} alt={`Lampiran ${idx + 1}`} className="w-full h-auto object-contain" style={{ maxHeight: '300px' }} />
+                                             <p className="text-[9px] text-gray-600 mt-1 text-center">Lampiran #{idx + 1}</p>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 </>
+                              )}
+
+                              <div className="text-[9px] text-gray-600 mt-6 flex justify-between">
+                                 <span>https://nikonindonesia-altanikindo.vercel.app</span>
+                                 <span>{totalPages}/{totalPages}</span>
+                              </div>
                            </div>
                         )}
 
-                        {/* APPROVAL SIGNATURES */}
-                        <div className="grid grid-cols-3 gap-6 mt-12 pt-4">
-                           <div className="text-center">
-                              <p className="text-xs font-bold uppercase tracking-wider">Drafter</p>
-                              <div className="h-20"></div>
-                              <div className="border-t-2 border-black pt-1">
-                                 <p className="text-sm font-bold">{printData.drafter_name || '___________'}</p>
-                                 <p className="text-[10px] text-gray-600">Marketing</p>
-                              </div>
-                           </div>
-                           <div className="text-center">
-                              <p className="text-xs font-bold uppercase tracking-wider">Management Approval</p>
-                              <div className="h-20 flex items-center justify-center">
-                                 {printData.mgt_consent === 'Approved' && <span className="text-green-700 text-3xl font-black">✓ APPROVED</span>}
-                                 {printData.mgt_consent === 'Rejected' && <span className="text-red-700 text-3xl font-black">✗ REJECTED</span>}
-                              </div>
-                              <div className="border-t-2 border-black pt-1">
-                                 <p className="text-sm font-bold">{printData.mgt_consent || 'Pending'}</p>
-                                 <p className="text-[10px] text-gray-600">Management</p>
-                              </div>
-                           </div>
-                           <div className="text-center">
-                              <p className="text-xs font-bold uppercase tracking-wider">Finance Approval</p>
-                              <div className="h-20 flex items-center justify-center">
-                                 {printData.finance_consent === 'Approved' && <span className="text-green-700 text-3xl font-black">✓ APPROVED</span>}
-                                 {printData.finance_consent === 'Rejected' && <span className="text-red-700 text-3xl font-black">✗ REJECTED</span>}
-                              </div>
-                              <div className="border-t-2 border-black pt-1">
-                                 <p className="text-sm font-bold">{printData.finance_consent || 'Pending'}</p>
-                                 <p className="text-[10px] text-gray-600">Finance</p>
-                              </div>
-                           </div>
-                        </div>
-
-                        {/* FOOTER */}
-                        <div className="mt-8 pt-3 border-t border-gray-300 text-[10px] text-center text-gray-600">
-                           Dokumen ini dihasilkan otomatis oleh Alta Nikindo Dashboard · Nikon Indonesia
-                        </div>
+                        {/* CSS untuk page break dan print options */}
+                        <style jsx global>{`
+                           @media print {
+                              @page { size: A4; margin: 0; }
+                              .page-break-after { page-break-after: always; }
+                              .page-break-before { page-break-before: always; }
+                              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                           }
+                        `}</style>
                      </>
                   );
                })()}
