@@ -1698,17 +1698,15 @@ export default function NikonDashboard() {
       const dateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
       ctx.fillText(dateStr, canvas.width - 30, 45);
       ctx.textAlign = 'left';
-      const nama = (c.nama_penerima_claim || consumer?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa).toUpperCase();
-      ctx.font = '13px Arial';
-      ctx.fillText('Nama Penerima Hadiah :', 40, 80);
+      const isUntukOrangLain = !!(c.nama_penerima_claim);
+      const nama = (isUntukOrangLain ? c.nama_penerima_claim! : (consumer?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa)).toUpperCase();
+      const noWa = isUntukOrangLain ? (c.nomor_wa_update || c.nomor_wa) : c.nomor_wa;
+      ctx.font = '14px Arial';
+      ctx.fillText('Kepada :', 40, 94);
+      ctx.font = 'bold 15px Arial';
+      ctx.fillText(`${nama} (${noWa})`, 130, 94);
       ctx.font = '15px Arial';
-      ctx.fillText(nama, 260, 80);
-      ctx.font = '13px Arial';
-      ctx.fillText('Nomor WA Notifikasi Update :', 40, 108);
-      ctx.font = '15px Arial';
-      ctx.fillText(c.nomor_wa, 260, 108);
-      ctx.font = '15px Arial';
-      let currentY = 135;
+      let currentY = 122;
       if (c.nama_penerima_claim && c.alamat_pengiriman) {
          // Claim untuk orang lain — pakai alamat_pengiriman (free-text)
          const alamatLines = wrapText(ctx, c.alamat_pengiriman.toUpperCase(), 590);
