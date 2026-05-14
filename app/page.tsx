@@ -1164,6 +1164,10 @@ export default function NikonDashboard() {
    const handleSaveBudget = async (e: React.FormEvent) => {
       e.preventDefault(); setIsSubmitting(true);
       try {
+         // Refresh proposal_no kalau create & belum di-set ATAU minta regenerate timestamp baru saat save
+         if (modalAction === 'create' && !budgetForm.proposal_no) {
+            budgetForm.proposal_no = generateProposalNo();
+         }
          const { data: original } = await supabase.from('budget_approval').select('attachment_urls').eq('id_budget', editingId).single();
          const finalUrls = [...(budgetForm.attachment_urls || [])];
 
@@ -4029,8 +4033,28 @@ export default function NikonDashboard() {
                                        <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Header Proposal</h3>
                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div>
-                                             <label className="label-form">Nomor Proposal *</label>
-                                             <input type="text" required value={budgetForm.proposal_no || ''} onChange={e => setBudgetForm({ ...budgetForm, proposal_no: e.target.value })} className="input-form font-mono" />
+                                             <label className="label-form">Nomor Proposal (auto) *</label>
+                                             <div className="flex items-stretch gap-2">
+                                                <input
+                                                   type="text"
+                                                   required
+                                                   readOnly
+                                                   value={budgetForm.proposal_no || ''}
+                                                   className="input-form font-mono bg-gray-100 cursor-not-allowed flex-1"
+                                                   aria-label="Nomor proposal"
+                                                />
+                                                <button
+                                                   type="button"
+                                                   onClick={() => setBudgetForm({ ...budgetForm, proposal_no: generateProposalNo() })}
+                                                   className="shrink-0 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold transition-all"
+                                                   title="Regenerate nomor proposal"
+                                                >
+                                                   🔄 Regenerate
+                                                </button>
+                                             </div>
+                                             <p className="text-[11px] text-gray-800 mt-1 font-medium">
+                                                Auto-generate dengan format: <code className="bg-gray-100 px-1 rounded">MKTG/BA + YYYYMMDDHHmmss</code>
+                                             </p>
                                           </div>
                                           <div>
                                              <label className="label-form">Proposed Name *</label>
