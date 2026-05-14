@@ -793,6 +793,31 @@ export default function NikonDashboard() {
       if (type === 'claim') {
          setClaimForm((item as ClaimPromo) || { validasi_by_mkt: 'Dalam Proses Verifikasi', validasi_by_fa: 'Dalam Proses Verifikasi' });
          setEditingId((item as ClaimPromo)?.id_claim || null);
+         // Reset konsumen extra fields - akan auto-fill saat WA onBlur
+         setKonsumenForm({});
+         // Kalau edit, auto-fetch konsumen utk prefill konsumen section
+         const itemAsClaim = item as ClaimPromo | undefined;
+         if (itemAsClaim?.nomor_wa) {
+            supabase.from('konsumen').select('*').eq('nomor_wa', itemAsClaim.nomor_wa).maybeSingle().then(({ data: kon }) => {
+               if (kon) {
+                  const clean = (v: string | null) => (!v || v === 'BELUM_DIISI') ? '' : v;
+                  setKonsumenForm({
+                     nomor_wa: kon.nomor_wa,
+                     nama_lengkap: kon.nama_lengkap || '',
+                     nik: clean(kon.nik),
+                     alamat_rumah: clean(kon.alamat_rumah),
+                     kelurahan: clean(kon.kelurahan),
+                     kecamatan: clean(kon.kecamatan),
+                     kabupaten_kotamadya: clean(kon.kabupaten_kotamadya),
+                     provinsi: clean(kon.provinsi),
+                     kodepos: clean(kon.kodepos),
+                     status_langkah: kon.status_langkah,
+                     id_konsumen: kon.id_konsumen,
+                     created_at: kon.created_at,
+                  });
+               }
+            });
+         }
       }
       else if (type === 'warranty') {
          setWarrantyForm((item as Garansi) || { status_validasi: 'Menunggu', jenis_garansi: 'Jasa 30%', lama_garansi: '1 Tahun' });
@@ -895,6 +920,47 @@ export default function NikonDashboard() {
       e.preventDefault();
       setIsSubmitting(true);
       try {
+         // 0. UPSERT konsumen dulu (claim_promo.nomor_wa FK ke konsumen)
+         if (claimForm.nomor_wa) {
+            const konsumenPayload: Record<string, unknown> = {
+               nomor_wa: claimForm.nomor_wa,
+               // dari claimForm
+               nama_lengkap: claimForm.nama_pendaftar || konsumenForm.nama_lengkap || 'Konsumen',
+               status_langkah: konsumenForm.status_langkah || 'START',
+            };
+            // Field opsional dari konsumenForm
+            const optFields = ['nik', 'alamat_rumah', 'kelurahan', 'kecamatan', 'kabupaten_kotamadya', 'provinsi', 'kodepos'] as const;
+            optFields.forEach(f => {
+               if (konsumenForm[f]) konsumenPayload[f] = konsumenForm[f];
+            });
+            // Cek apakah konsumen sudah ada
+            const { data: existKon } = await supabase.from('konsumen').select('nomor_wa, id_konsumen').eq('nomor_wa', claimForm.nomor_wa).maybeSingle();
+            if (existKon) {
+               // Update field non-null saja (jangan timpa data yang sudah ada dgn null)
+               const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+               Object.entries(konsumenPayload).forEach(([k, v]) => {
+                  if (v && k !== 'nomor_wa') updatePayload[k] = v;
+               });
+               await supabase.from('konsumen').update(updatePayload).eq('nomor_wa', claimForm.nomor_wa);
+            } else {
+               // Buat konsumen baru — generate id_konsumen
+               const newID = `AN${Math.floor(100000 + Math.random() * 900000)}`;
+               // Fill BELUM_DIISI untuk yang kosong (FK constraint)
+               const fullPayload: Record<string, unknown> = {
+                  ...konsumenPayload,
+                  id_konsumen: newID,
+                  nik: konsumenPayload.nik || 'BELUM_DIISI',
+                  alamat_rumah: konsumenPayload.alamat_rumah || 'BELUM_DIISI',
+                  kelurahan: konsumenPayload.kelurahan || 'BELUM_DIISI',
+                  kecamatan: konsumenPayload.kecamatan || 'BELUM_DIISI',
+                  kabupaten_kotamadya: konsumenPayload.kabupaten_kotamadya || 'BELUM_DIISI',
+                  provinsi: konsumenPayload.provinsi || 'BELUM_DIISI',
+                  kodepos: konsumenPayload.kodepos || 'BELUM_DIISI',
+               };
+               await supabase.from('konsumen').insert([fullPayload]);
+            }
+         }
+
          // 1. Ambil data asli sebelum diupdate untuk cek file yang perlu dihapus
          let original: Partial<ClaimPromo> | null = null;
          if (modalAction === 'edit' && editingId) {
@@ -946,6 +1012,7 @@ export default function NikonDashboard() {
          }
 
          fetchClaims();
+         fetchConsumers(); // refresh konsumen list karena claim form bisa upsert konsumen
          closeModal();
       } catch (err: unknown) {
          const message = err instanceof Error ? err.message : String(err);
@@ -2285,38 +2352,115 @@ export default function NikonDashboard() {
 
 
 
-               {activeTab === 'konsumen' && (
+               {activeTab === 'konsumen' && (() => {
+                  // Stats
+                  const totalKonsumen = consumersList.length;
+                  const konsumenWithClaim = consumersList.filter(k => claims.some(c => c.nomor_wa === k.nomor_wa)).length;
+                  const konsumenLengkap = consumersList.filter(k => k.nik && k.nik !== 'BELUM_DIISI' && k.alamat_rumah && k.alamat_rumah !== 'BELUM_DIISI').length;
+                  const initials = (name: string) => (name || '?').split(/\s+/).map(w => w[0] || '').filter(Boolean).slice(0, 2).join('').toUpperCase();
+                  const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500', 'bg-amber-500', 'bg-cyan-500', 'bg-rose-500', 'bg-indigo-500'];
+                  const colorFor = (s: string) => colors[s.charCodeAt(0) % colors.length] || 'bg-gray-500';
+                  return (
                   <div className="space-y-4 animate-fade-in text-gray-900">
-                     <div className="flex gap-3 items-center">
-                        <input type="text" title="Cari Konsumen" aria-label="Cari Konsumen" placeholder="🔍 Cari Nama, No. WA, atau NIK..." value={searchKonsumen} onChange={e => setSearchKonsumen(e.target.value)} className="flex-1 p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
-                        <button onClick={() => openModal('create', 'konsumen')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2.5 rounded-md font-bold text-sm transition shadow-sm whitespace-nowrap">+ Tambah Konsumen</button>
+                     {/* Stat cards */}
+                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                           <p className="text-[11px] uppercase tracking-wider font-bold text-gray-600">Total Konsumen</p>
+                           <p className="text-2xl font-black text-gray-900 mt-1">{totalKonsumen}</p>
+                        </div>
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                           <p className="text-[11px] uppercase tracking-wider font-bold text-gray-600">Punya Claim</p>
+                           <p className="text-2xl font-black text-green-700 mt-1">{konsumenWithClaim}</p>
+                           <p className="text-[10px] text-gray-700 font-medium">{totalKonsumen ? Math.round(konsumenWithClaim / totalKonsumen * 100) : 0}% dari total</p>
+                        </div>
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                           <p className="text-[11px] uppercase tracking-wider font-bold text-gray-600">Data Lengkap</p>
+                           <p className="text-2xl font-black text-blue-700 mt-1">{konsumenLengkap}</p>
+                           <p className="text-[10px] text-gray-700 font-medium">NIK + Alamat terisi</p>
+                        </div>
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                           <p className="text-[11px] uppercase tracking-wider font-bold text-gray-600">Total Claim</p>
+                           <p className="text-2xl font-black text-amber-700 mt-1">{claims.length}</p>
+                        </div>
                      </div>
-                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                        <table className="w-full text-sm whitespace-normal wrap-break-word">
-                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-4 py-3 text-center font-bold w-12">No</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>Nama {sortConfigKonsumen.column === 'nama_lengkap' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'id_konsumen')}>ID Konsumen {sortConfigKonsumen.column === 'id_konsumen' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nomor_wa')}>No. WhatsApp {sortConfigKonsumen.column === 'nomor_wa' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'alamat_rumah')}>Alamat {sortConfigKonsumen.column === 'alamat_rumah' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nik')}>NIK {sortConfigKonsumen.column === 'nik' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Riwayat Barang</th></tr>
+
+                     {/* Toolbar: search + view toggle + actions */}
+                     <div className="bg-white rounded-xl border border-gray-200 p-3 flex flex-wrap gap-3 items-center">
+                        <div className="relative flex-1 min-w-[200px]">
+                           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                           <input
+                              type="text"
+                              title="Cari Konsumen"
+                              aria-label="Cari Konsumen"
+                              placeholder="Cari Nama, No. WA, ID Konsumen, atau NIK..."
+                              value={searchKonsumen}
+                              onChange={e => setSearchKonsumen(e.target.value)}
+                              className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-300 bg-white text-gray-900 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-2 focus:ring-[#FFE500]/40 text-sm font-medium"
+                           />
+                        </div>
+                        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                           <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${viewMode === 'table' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}>📋 Tabel</button>
+                           <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${viewMode === 'card' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}>🪪 Kartu</button>
+                        </div>
+                        <button onClick={() => openModal('create', 'konsumen')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2.5 rounded-lg font-bold text-sm transition shadow-sm whitespace-nowrap">+ Tambah Konsumen</button>
+                        <button onClick={() => openModal('create', 'claim')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm transition shadow-sm whitespace-nowrap">+ Tambah Claim</button>
+                     </div>
+
+                     {/* Empty state */}
+                     {sortedConsumers.length === 0 && (
+                        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                           <div className="text-5xl mb-3">{searchKonsumen ? '🔍' : '👥'}</div>
+                           <p className="text-gray-900 font-bold mb-1">{searchKonsumen ? 'Tidak ada konsumen ditemukan' : 'Belum ada konsumen'}</p>
+                           <p className="text-sm text-gray-700">{searchKonsumen ? 'Coba ubah kata kunci pencarian.' : 'Klik tombol "+ Tambah Konsumen" untuk menambah konsumen baru.'}</p>
+                        </div>
+                     )}
+
+                     {/* TABLE VIEW */}
+                     {viewMode === 'table' && sortedConsumers.length > 0 && (
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal wrap-break-word">
+                              <thead className="bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 shadow-sm">
+                                 <tr>
+                                    <th className="px-4 py-3 text-center font-bold text-gray-900 w-12">#</th>
+                                    <th className="px-4 py-3 text-left font-bold text-gray-900 cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>Konsumen {sortConfigKonsumen.column === 'nama_lengkap' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
+                                    <th className="px-4 py-3 text-left font-bold text-gray-900">Kontak</th>
+                                    <th className="px-4 py-3 text-left font-bold text-gray-900">Alamat</th>
+                                    <th className="px-4 py-3 text-left font-bold text-gray-900">NIK</th>
+                                    <th className="px-4 py-3 text-left font-bold text-gray-900">Claim</th>
+                                    <th className="px-4 py-3 text-left font-bold text-gray-900">Aksi</th>
+                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-slate-200">
+                              <tbody className="divide-y divide-gray-100">
                                  {sortedConsumers.map((k: KonsumenData) => {
                                     const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
+                                    const alamatLengkap = [k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos].filter(v => v && v !== 'BELUM_DIISI').join(', ');
                                     return (
                                        <tr key={k.nomor_wa} className="hover:bg-gray-50 font-medium">
-                                          <td className="px-4 py-3 text-center font-bold text-gray-600">{konsumenNumberMap.get(k.nomor_wa)}</td>
-                                          <td className="px-4 py-3 text-slate-800 font-bold">{k.nama_lengkap || '-'}</td>
-                                          <td className="px-4 py-3 font-mono">{k.id_konsumen || '-'}</td>
-                                          <td className="px-4 py-3">{k.nomor_wa}</td>
-                                          <td className="px-4 py-3 whitespace-normal">{[k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos].filter(Boolean).join(', ')}</td>
-                                          <td className="px-4 py-3">{k.nik || '-'}</td>
-                                          <td className="px-4 py-3 text-xs">
-                                             <ul className="list-disc list-inside space-y-1">
-                                                {userClaims.length > 0 ? userClaims.map(c => (
-                                                   <li key={c.id_claim}>
-                                                      {c.tipe_barang} (SN: {c.nomor_seri})
-                                                   </li>
-                                                )) : (
-                                                   <li className="text-gray-500 italic">Tidak ada</li>
-                                                )}
-                                             </ul>
+                                          <td className="px-4 py-3 text-center text-xs font-bold text-gray-700">{konsumenNumberMap.get(k.nomor_wa)}</td>
+                                          <td className="px-4 py-3">
+                                             <div className="flex items-center gap-2.5">
+                                                <div className={`w-9 h-9 rounded-full ${colorFor(k.nama_lengkap || '?')} text-white font-bold text-sm flex items-center justify-center shrink-0`}>{initials(k.nama_lengkap || '?')}</div>
+                                                <div className="min-w-0">
+                                                   <p className="font-bold text-gray-900 truncate">{k.nama_lengkap || '-'}</p>
+                                                   <p className="text-[10px] font-mono text-gray-700">{k.id_konsumen || '—'}</p>
+                                                </div>
+                                             </div>
+                                          </td>
+                                          <td className="px-4 py-3">
+                                             <p className="text-gray-900 font-mono text-xs">{k.nomor_wa}</p>
+                                          </td>
+                                          <td className="px-4 py-3 text-xs text-gray-800 max-w-xs">
+                                             {alamatLengkap || <span className="text-gray-500 italic">Belum diisi</span>}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs text-gray-800 font-mono">{k.nik && k.nik !== 'BELUM_DIISI' ? k.nik : <span className="text-gray-500 italic font-sans">-</span>}</td>
+                                          <td className="px-4 py-3">
+                                             {userClaims.length > 0 ? (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-bold">
+                                                   {userClaims.length} claim
+                                                </span>
+                                             ) : (
+                                                <span className="text-gray-500 italic text-xs">-</span>
+                                             )}
                                           </td>
                                           <td className="px-4 py-3">
                                              <div className="flex gap-3 items-center">
@@ -2330,8 +2474,62 @@ export default function NikonDashboard() {
                               </tbody>
                            </table>
                         </div>
-                     </div>
-                  )}
+                     )}
+
+                     {/* CARD VIEW */}
+                     {viewMode === 'card' && sortedConsumers.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                           {sortedConsumers.map((k: KonsumenData) => {
+                              const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
+                              const alamatLengkap = [k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos].filter(v => v && v !== 'BELUM_DIISI').join(', ');
+                              return (
+                                 <div key={k.nomor_wa} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden">
+                                    <div className={`${colorFor(k.nama_lengkap || '?')} p-4 text-white`}>
+                                       <div className="flex items-center gap-3">
+                                          <div className="w-12 h-12 rounded-full bg-white/30 backdrop-blur text-white font-bold flex items-center justify-center text-lg shrink-0">{initials(k.nama_lengkap || '?')}</div>
+                                          <div className="min-w-0 flex-1">
+                                             <p className="font-bold text-base truncate">{k.nama_lengkap || '-'}</p>
+                                             <p className="text-[11px] font-mono opacity-90">{k.id_konsumen || '—'}</p>
+                                          </div>
+                                       </div>
+                                    </div>
+                                    <div className="p-4 space-y-2 text-xs">
+                                       <div>
+                                          <p className="text-[10px] uppercase tracking-wider font-bold text-gray-600">WhatsApp</p>
+                                          <p className="font-mono text-gray-900">{k.nomor_wa}</p>
+                                       </div>
+                                       <div>
+                                          <p className="text-[10px] uppercase tracking-wider font-bold text-gray-600">NIK</p>
+                                          <p className="font-mono text-gray-900">{k.nik && k.nik !== 'BELUM_DIISI' ? k.nik : <span className="text-gray-500 italic font-sans">Belum diisi</span>}</p>
+                                       </div>
+                                       <div>
+                                          <p className="text-[10px] uppercase tracking-wider font-bold text-gray-600">Alamat</p>
+                                          <p className="text-gray-900 leading-snug">{alamatLengkap || <span className="text-gray-500 italic">Belum diisi</span>}</p>
+                                       </div>
+                                       <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                                          <div>
+                                             {userClaims.length > 0 ? (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[11px] font-bold">
+                                                   ✓ {userClaims.length} claim
+                                                </span>
+                                             ) : (
+                                                <span className="text-gray-500 italic text-[11px]">Belum ada claim</span>
+                                             )}
+                                          </div>
+                                          <div className="flex gap-2">
+                                             <button onClick={() => openModal('edit', 'konsumen', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                             <button onClick={() => handleDelete('konsumen', k.nomor_wa)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                          </div>
+                                       </div>
+                                    </div>
+                                 </div>
+                              );
+                           })}
+                        </div>
+                     )}
+                  </div>
+                  );
+                  })()}
                {/* ======================= PROMOS ======================= */}
                {activeTab === 'promos' && (
                   <div className="space-y-4 animate-fade-in text-gray-900">
@@ -4259,21 +4457,62 @@ export default function NikonDashboard() {
                      {/* ============ CLAIM FORM ============ */}
                      {activeTab === 'claims' && (
                         <form onSubmit={handleSaveClaim} className="space-y-4">
+                           {/* Banner info combined form */}
+                           <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+                              <p className="text-xs text-gray-900 font-medium">
+                                 💡 Form ini akan otomatis <strong>menambah/update konsumen</strong> di tabel konsumen sekaligus membuat claim baru. Cukup isi nomor WA — kalau sudah ada di sistem, data konsumen akan otomatis terisi.
+                              </p>
+                           </div>
+
                            {/* Section: Identitas Pendaftar */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                               <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Identitas Pendaftar & Penerima</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Nomor WhatsApp Pendaftar *</label>
-                                    <input type="text" required value={claimForm.nomor_wa || ''} onChange={e => setClaimForm({ ...claimForm, nomor_wa: e.target.value })} className="input-form" placeholder="62812345678 / 081234567890" />
+                                    <input
+                                       type="text"
+                                       required
+                                       value={claimForm.nomor_wa || ''}
+                                       onChange={e => setClaimForm({ ...claimForm, nomor_wa: e.target.value })}
+                                       onBlur={async e => {
+                                          const wa = e.target.value.trim();
+                                          if (!wa) return;
+                                          // Auto-fetch konsumen by WA + prefill
+                                          const { data: kon } = await supabase.from('konsumen').select('*').eq('nomor_wa', wa).maybeSingle();
+                                          if (kon) {
+                                             const clean = (v: string | null) => (!v || v === 'BELUM_DIISI') ? '' : v;
+                                             setKonsumenForm({
+                                                nomor_wa: kon.nomor_wa,
+                                                nama_lengkap: kon.nama_lengkap || '',
+                                                nik: clean(kon.nik),
+                                                alamat_rumah: clean(kon.alamat_rumah),
+                                                kelurahan: clean(kon.kelurahan),
+                                                kecamatan: clean(kon.kecamatan),
+                                                kabupaten_kotamadya: clean(kon.kabupaten_kotamadya),
+                                                provinsi: clean(kon.provinsi),
+                                                kodepos: clean(kon.kodepos),
+                                                status_langkah: kon.status_langkah,
+                                                id_konsumen: kon.id_konsumen,
+                                                created_at: kon.created_at,
+                                             });
+                                             // Prefill nama_pendaftar kalau kosong
+                                             if (!claimForm.nama_pendaftar) {
+                                                setClaimForm(prev => ({ ...prev, nama_pendaftar: kon.nama_lengkap || '' }));
+                                             }
+                                          }
+                                       }}
+                                       className="input-form"
+                                       placeholder="62812345678 / 081234567890 (tab = auto-fill data konsumen)"
+                                    />
                                  </div>
                                  <div>
                                     <label className="label-form">Nomor WA Notifikasi Update</label>
                                     <input type="text" value={claimForm.nomor_wa_update || ''} onChange={e => setClaimForm({ ...claimForm, nomor_wa_update: e.target.value })} className="input-form" placeholder="Kosongkan = pakai nomor pendaftar" />
                                  </div>
                                  <div>
-                                    <label className="label-form">Nama Pendaftar</label>
-                                    <input type="text" value={claimForm.nama_pendaftar || ''} onChange={e => setClaimForm({ ...claimForm, nama_pendaftar: e.target.value })} className="input-form" />
+                                    <label className="label-form">Nama Pendaftar *</label>
+                                    <input type="text" required value={claimForm.nama_pendaftar || ''} onChange={e => setClaimForm({ ...claimForm, nama_pendaftar: e.target.value })} className="input-form" />
                                  </div>
                                  <div>
                                     <label className="label-form">Nama Penerima Hadiah</label>
@@ -4283,6 +4522,50 @@ export default function NikonDashboard() {
                               <div className="mt-3">
                                  <label className="label-form">Alamat Pengiriman Hadiah</label>
                                  <textarea rows={2} value={claimForm.alamat_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, alamat_pengiriman: e.target.value })} className="input-form resize-none" />
+                              </div>
+                           </div>
+
+                           {/* Section: Data Konsumen (auto-sync ke tabel konsumen) */}
+                           <div className="bg-purple-50 rounded-lg p-3 border-2 border-purple-200">
+                              <div className="flex items-center justify-between mb-3">
+                                 <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Data Konsumen (auto-sync)</h3>
+                                 {konsumenForm.id_konsumen && (
+                                    <span className="text-[10px] font-bold text-purple-800 bg-white px-2 py-0.5 rounded-md border border-purple-300">📌 {konsumenForm.id_konsumen}</span>
+                                 )}
+                              </div>
+                              <div className="space-y-3">
+                                 <div>
+                                    <label className="label-form">NIK (Nomor KTP)</label>
+                                    <input type="text" value={konsumenForm.nik || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nik: e.target.value })} className="input-form" placeholder="16 digit" pattern="[0-9]{16}" />
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Alamat Rumah</label>
+                                    <textarea rows={2} value={konsumenForm.alamat_rumah || ''} onChange={e => setKonsumenForm({ ...konsumenForm, alamat_rumah: e.target.value })} className="input-form resize-none" placeholder="Jalan, nomor, RT/RW" />
+                                 </div>
+                                 <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                       <label className="label-form">Kelurahan</label>
+                                       <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="input-form" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Kecamatan</label>
+                                       <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="input-form" />
+                                    </div>
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Kabupaten / Kotamadya</label>
+                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="input-form" />
+                                 </div>
+                                 <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                       <label className="label-form">Provinsi</label>
+                                       <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="input-form" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Kode Pos</label>
+                                       <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="input-form" pattern="[0-9]{5}" />
+                                    </div>
+                                 </div>
                               </div>
                            </div>
 
