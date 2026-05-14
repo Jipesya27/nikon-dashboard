@@ -7,6 +7,12 @@ import Link from 'next/link';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { chatbotTexts } from './chatbotTexts';
 import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang } from './index';
+import {
+   VALIDASI_OPTIONS, STATUS_VALIDASI_GARANSI_OPTIONS, JENIS_GARANSI_OPTIONS, LAMA_GARANSI_OPTIONS,
+   STATUS_SERVICE_OPTIONS, JENIS_PROMOSI_OPTIONS, JASA_PENGIRIMAN_OPTIONS, EVENT_STATUS_OPTIONS,
+   PAYMENT_TYPE_OPTIONS, STATUS_PENDAFTARAN_OPTIONS, STATUS_REFUND_DEPOSIT_OPTIONS,
+   ROLE_OPTIONS, CONSENT_OPTIONS, BUDGET_SOURCE_OPTIONS, STATUS_LANGKAH_OPTIONS
+} from './enums';
 import Header from './Header';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
@@ -3625,9 +3631,7 @@ export default function NikonDashboard() {
                               <div>
                                  <label htmlFor="karyawan-role" className="label-form">Role</label>
                                  <select id="karyawan-role" value={karyawanForm.role || 'Karyawan'} onChange={e => setKaryawanForm({ ...karyawanForm, role: e.target.value })} className="input-form">
-                                    <option value="Admin">Admin</option>
-                                    <option value="Karyawan">Karyawan</option>
-                                    {/* Add other roles */}
+                                    {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                  </select>
                               </div>
                               <div>
@@ -3718,15 +3722,7 @@ export default function NikonDashboard() {
                                     onChange={e => setServiceForm({ ...serviceForm, status_service: e.target.value })}
                                     className="input-form"
                                  >
-                                    <option value="Diterima">Diterima — Barang sudah diterima Pusat Service</option>
-                                    <option value="Pengecekan oleh Teknisi">Pengecekan oleh Teknisi</option>
-                                    <option value="Menunggu Sparepart">Menunggu Sparepart</option>
-                                    <option value="Dalam Pengerjaan">Dalam Pengerjaan</option>
-                                    <option value="Quality Check">Quality Check</option>
-                                    <option value="Siap Diambil">Siap Diambil — Konsumen bisa ambil barang</option>
-                                    <option value="Selesai">Selesai — Sudah diambil konsumen</option>
-                                    <option value="Tidak Bisa Diperbaiki">Tidak Bisa Diperbaiki</option>
-                                    <option value="Dibatalkan">Dibatalkan</option>
+                                    {STATUS_SERVICE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                  </select>
                                  <p className="text-[11px] text-gray-800 mt-1 font-medium">💬 Pesan status ini akan ditampilkan ke konsumen via chatbot saat cek status.</p>
                               </div>
@@ -3821,16 +3817,13 @@ export default function NikonDashboard() {
                                           <div>
                                              <label className="label-form">Tipe Pembayaran</label>
                                              <select aria-label="Tipe pembayaran" value={registrationForm.payment_type || 'regular'} onChange={e => setRegistrationForm({ ...registrationForm, payment_type: e.target.value as 'regular' | 'deposit' })} className="input-form">
-                                                <option value="regular">Regular (Non-refundable)</option>
-                                                <option value="deposit">Deposit (Refundable)</option>
+                                                {PAYMENT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                              </select>
                                           </div>
                                           <div>
                                              <label className="label-form">Status Pendaftaran *</label>
                                              <select aria-label="Status pendaftaran" required value={registrationForm.status_pendaftaran || 'menunggu_validasi'} onChange={e => setRegistrationForm({ ...registrationForm, status_pendaftaran: e.target.value as 'menunggu_validasi' | 'terdaftar' | 'ditolak' })} className="input-form">
-                                                <option value="menunggu_validasi">Menunggu Validasi</option>
-                                                <option value="terdaftar">Terdaftar (Approved)</option>
-                                                <option value="ditolak">Ditolak</option>
+                                                {STATUS_PENDAFTARAN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                              </select>
                                           </div>
                                           <div className="md:col-span-2">
@@ -3899,10 +3892,7 @@ export default function NikonDashboard() {
                                                 <label className="label-form">Status Refund</label>
                                                 <select aria-label="Status refund" value={registrationForm.status_pengembalian_deposit || ''} onChange={e => setRegistrationForm({ ...registrationForm, status_pengembalian_deposit: e.target.value || null })} className="input-form">
                                                    <option value="">-- belum diproses --</option>
-                                                   <option value="Diminta">Diminta Peserta</option>
-                                                   <option value="Diproses">Sedang Diproses</option>
-                                                   <option value="Sudah Dikembalikan">Sudah Dikembalikan</option>
-                                                   <option value="Ditolak">Ditolak (Tidak hadir)</option>
+                                                   {STATUS_REFUND_DEPOSIT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                                 </select>
                                              </div>
                                              <div>
@@ -3967,11 +3957,7 @@ export default function NikonDashboard() {
                                           <div>
                                              <label className="label-form">Sumber Dana</label>
                                              <select aria-label="Sumber dana" value={budgetForm.budget_source || 'Marketing Budget'} onChange={e => setBudgetForm({ ...budgetForm, budget_source: e.target.value })} className="input-form">
-                                                <option value="Marketing Budget">Marketing Budget</option>
-                                                <option value="Operational Budget">Operational Budget</option>
-                                                <option value="Event Budget">Event Budget</option>
-                                                <option value="Service Budget">Service Budget</option>
-                                                <option value="Other">Other</option>
+                                                {BUDGET_SOURCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                              </select>
                                           </div>
                                        </div>
@@ -4099,21 +4085,13 @@ export default function NikonDashboard() {
                                           <div>
                                              <label className="label-form">Persetujuan Management</label>
                                              <select aria-label="Persetujuan management" value={budgetForm.mgt_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_consent: e.target.value })} className="input-form">
-                                                <option value="">-- Belum diisi --</option>
-                                                <option value="Approved">Approved</option>
-                                                <option value="Rejected">Rejected</option>
-                                                <option value="Pending Review">Pending Review</option>
-                                                <option value="Need Revision">Need Revision</option>
+                                                {CONSENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                              </select>
                                           </div>
                                           <div>
                                              <label className="label-form">Persetujuan Finance</label>
                                              <select aria-label="Persetujuan finance" value={budgetForm.finance_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, finance_consent: e.target.value })} className="input-form">
-                                                <option value="">-- Belum diisi --</option>
-                                                <option value="Approved">Approved</option>
-                                                <option value="Rejected">Rejected</option>
-                                                <option value="Pending Review">Pending Review</option>
-                                                <option value="Need Revision">Need Revision</option>
+                                                {CONSENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                              </select>
                                           </div>
                                        </div>
@@ -4444,22 +4422,13 @@ export default function NikonDashboard() {
                                  <div>
                                     <label className="label-form">Jenis Garansi *</label>
                                     <select aria-label="Jenis garansi" required value={warrantyForm.jenis_garansi || 'Jasa 30%'} onChange={e => setWarrantyForm({ ...warrantyForm, jenis_garansi: e.target.value })} className="input-form">
-                                       <option value="Jasa 30%">Jasa 30%</option>
-                                       <option value="Jasa 50%">Jasa 50%</option>
-                                       <option value="Jasa 100%">Jasa 100%</option>
-                                       <option value="Sparepart 30%">Sparepart 30%</option>
-                                       <option value="Sparepart 50%">Sparepart 50%</option>
-                                       <option value="Sparepart 100%">Sparepart 100%</option>
-                                       <option value="Full">Full</option>
+                                       {JENIS_GARANSI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                  </div>
                                  <div>
                                     <label className="label-form">Lama Garansi *</label>
                                     <select aria-label="Lama garansi" required value={warrantyForm.lama_garansi || '1 Tahun'} onChange={e => setWarrantyForm({ ...warrantyForm, lama_garansi: e.target.value })} className="input-form">
-                                       <option value="6 Bulan">6 Bulan</option>
-                                       <option value="1 Tahun">1 Tahun</option>
-                                       <option value="2 Tahun">2 Tahun</option>
-                                       <option value="3 Tahun">3 Tahun</option>
+                                       {LAMA_GARANSI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                  </div>
                               </div>
@@ -4472,28 +4441,21 @@ export default function NikonDashboard() {
                                  <div className="md:col-span-2">
                                     <label className="label-form">Status Validasi (Utama) *</label>
                                     <select aria-label="Status validasi" required value={warrantyForm.status_validasi || 'Menunggu'} onChange={e => setWarrantyForm({ ...warrantyForm, status_validasi: e.target.value })} className="input-form">
-                                       <option value="Menunggu">Menunggu</option>
-                                       <option value="Proses Validasi">Proses Validasi</option>
-                                       <option value="Valid">Valid</option>
-                                       <option value="Ditolak">Ditolak</option>
+                                       {STATUS_VALIDASI_GARANSI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                  </div>
                                  <div>
                                     <label className="label-form">Validasi Marketing (MKT)</label>
                                     <select aria-label="Validasi MKT" value={warrantyForm.validasi_by_mkt || ''} onChange={e => setWarrantyForm({ ...warrantyForm, validasi_by_mkt: e.target.value || null })} className="input-form">
                                        <option value="">-- belum diisi --</option>
-                                       <option value="Proses Validasi">Proses Validasi</option>
-                                       <option value="Valid">Valid</option>
-                                       <option value="Ditolak">Ditolak</option>
+                                       {STATUS_VALIDASI_GARANSI_OPTIONS.filter(o => o.value !== 'Menunggu').map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                  </div>
                                  <div>
                                     <label className="label-form">Validasi Finance (FA)</label>
                                     <select aria-label="Validasi FA" value={warrantyForm.validasi_by_fa || ''} onChange={e => setWarrantyForm({ ...warrantyForm, validasi_by_fa: e.target.value || null })} className="input-form">
                                        <option value="">-- belum diisi --</option>
-                                       <option value="Proses Validasi">Proses Validasi</option>
-                                       <option value="Valid">Valid</option>
-                                       <option value="Ditolak">Ditolak</option>
+                                       {STATUS_VALIDASI_GARANSI_OPTIONS.filter(o => o.value !== 'Menunggu').map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                  </div>
                                  <div>
@@ -4666,16 +4628,7 @@ export default function NikonDashboard() {
                                     onChange={e => setKonsumenForm({ ...konsumenForm, status_langkah: e.target.value })}
                                     className="input-form"
                                  >
-                                    <option value="START">START (Menu Utama)</option>
-                                    <option value="TALKING_TO_CS">TALKING_TO_CS (Bicara dgn CS)</option>
-                                    <option value="MENUNGGU_UPLOAD_WEB">MENUNGGU_UPLOAD_WEB</option>
-                                    <option value="MENUNGGU_UPLOAD_GARANSI_WEB">MENUNGGU_UPLOAD_GARANSI_WEB</option>
-                                    <option value="TANYA_UPDATE_WA">TANYA_UPDATE_WA</option>
-                                    <option value="TANYA_UPDATE_WA_INPUT">TANYA_UPDATE_WA_INPUT</option>
-                                    <option value="OFFER_GARANSI_AFTER_CLAIM">OFFER_GARANSI_AFTER_CLAIM</option>
-                                    <option value="MENUNGGU_SERI_CLAIM">MENUNGGU_SERI_CLAIM</option>
-                                    <option value="MENUNGGU_SERI_GARANSI">MENUNGGU_SERI_GARANSI</option>
-                                    <option value="MENUNGGU_RESI_SERVICE">MENUNGGU_RESI_SERVICE</option>
+                                    {STATUS_LANGKAH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                  </select>
                                  <p className="text-[11px] text-gray-800 mt-1 font-medium">💡 Reset ke <strong>START</strong> kalau konsumen stuck di tengah flow chatbot.</p>
                               </div>
@@ -4825,7 +4778,10 @@ export default function NikonDashboard() {
                                  </div>
                                  <div className="md:col-span-2">
                                     <label className="label-form">Jenis Promosi</label>
-                                    <input type="text" value={claimForm.jenis_promosi || ''} onChange={e => setClaimForm({ ...claimForm, jenis_promosi: e.target.value })} className="input-form" placeholder="Contoh: Cashback, Free Aksesori" />
+                                    <select aria-label="Jenis promosi" value={claimForm.jenis_promosi || ''} onChange={e => setClaimForm({ ...claimForm, jenis_promosi: e.target.value })} className="input-form">
+                                       <option value="">-- Pilih jenis promosi --</option>
+                                       {JENIS_PROMOSI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
                                  </div>
                               </div>
                            </div>
@@ -4837,17 +4793,13 @@ export default function NikonDashboard() {
                                  <div>
                                     <label className="label-form">Validasi Marketing (MKT) *</label>
                                     <select aria-label="Validasi MKT" required value={claimForm.validasi_by_mkt || 'Dalam Proses Verifikasi'} onChange={e => setClaimForm({ ...claimForm, validasi_by_mkt: e.target.value })} className="input-form">
-                                       <option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option>
-                                       <option value="Valid">Valid</option>
-                                       <option value="Ditolak">Ditolak</option>
+                                       {VALIDASI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                  </div>
                                  <div>
                                     <label className="label-form">Validasi Finance (FA) *</label>
                                     <select aria-label="Validasi FA" required value={claimForm.validasi_by_fa || 'Dalam Proses Verifikasi'} onChange={e => setClaimForm({ ...claimForm, validasi_by_fa: e.target.value })} className="input-form">
-                                       <option value="Dalam Proses Verifikasi">Dalam Proses Verifikasi</option>
-                                       <option value="Valid">Valid</option>
-                                       <option value="Ditolak">Ditolak</option>
+                                       {VALIDASI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                  </div>
                                  <div>
@@ -4867,7 +4819,10 @@ export default function NikonDashboard() {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Jasa Pengiriman</label>
-                                    <input type="text" value={claimForm.nama_jasa_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, nama_jasa_pengiriman: e.target.value })} className="input-form" placeholder="Contoh: JNE, J&T, Sicepat" />
+                                    <select aria-label="Jasa pengiriman" value={claimForm.nama_jasa_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, nama_jasa_pengiriman: e.target.value })} className="input-form">
+                                       <option value="">-- Pilih jasa kirim --</option>
+                                       {JASA_PENGIRIMAN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
                                  </div>
                                  <div>
                                     <label className="label-form">Nomor Resi</label>
@@ -4953,9 +4908,7 @@ export default function NikonDashboard() {
                                        <div>
                                           <label className="label-form">Status</label>
                                           <select value={getVal('event_status', 'status') || 'In stock'} onChange={e => setField('event_status', e.target.value)} className="input-form">
-                                             <option value="In stock">Aktif (In stock)</option>
-                                             <option value="Out of stock">Habis (Out of stock)</option>
-                                             <option value="close">Tutup (close)</option>
+                                             {EVENT_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                           </select>
                                        </div>
                                     </div>
@@ -4973,8 +4926,7 @@ export default function NikonDashboard() {
                                        <div>
                                           <label className="label-form">Tipe Pembayaran</label>
                                           <select value={getVal('event_payment_tipe') || 'regular'} onChange={e => setField('event_payment_tipe', e.target.value)} className="input-form">
-                                             <option value="regular">Regular (Non-refundable)</option>
-                                             <option value="deposit">Deposit (Refundable setelah hadir)</option>
+                                             {PAYMENT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                           </select>
                                        </div>
                                        <div>
