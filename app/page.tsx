@@ -785,7 +785,7 @@ export default function NikonDashboard() {
       const csvRows = [headers.join(',')];
       selected.forEach((c: ClaimPromo, idx: number) => {
          const konsumen = consumersList.find(k => k.nomor_wa === c.nomor_wa);
-         const nama = konsumen?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa;
+         const nama = c.nama_penerima_claim || konsumen?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa;
          const namaWa = `${nama} (${c.nomor_wa})`;
          const parts: string[] = [];
          if (konsumen?.alamat_rumah) parts.push(konsumen.alamat_rumah.toUpperCase());
@@ -1668,7 +1668,7 @@ export default function NikonDashboard() {
       const consumer = consumersList.find(k => k.nomor_wa === c.nomor_wa);
       const canvas = document.createElement('canvas');
       canvas.width = 850;
-      canvas.height = 320;
+      canvas.height = 380;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.fillStyle = '#FFFFFF';
@@ -1698,35 +1698,52 @@ export default function NikonDashboard() {
       const dateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
       ctx.fillText(dateStr, canvas.width - 30, 45);
       ctx.textAlign = 'left';
-      ctx.font = '16px Arial';
-      ctx.fillText('Kepada :', 40, 80);
-      const nama = (consumer?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa).toUpperCase();
-      ctx.fillText(`${nama} (${c.nomor_wa})`, 160, 80);
-      const alamat = consumer?.alamat_rumah !== 'BELUM_DIISI' ? consumer?.alamat_rumah : '-';
-      const alamatLines = wrapText(ctx, (alamat || '-').toUpperCase(), 650);
-      let currentY = 110;
-      alamatLines.forEach((line) => {
-         ctx.fillText(line, 160, currentY);
-         currentY += 25;
-      });
-      const areaY = currentY;
-      const areaArr = [];
-      if (consumer?.kelurahan && consumer.kelurahan !== 'BELUM_DIISI') areaArr.push(`KEL. ${consumer.kelurahan}`);
-      if (consumer?.kecamatan && consumer.kecamatan !== 'BELUM_DIISI') areaArr.push(`KEC. ${consumer.kecamatan}`);
-      ctx.fillText(areaArr.length > 0 ? areaArr.join(', ').toUpperCase() : '-', 160, areaY);
-      const provArr = [];
-      if (consumer?.kabupaten_kotamadya && consumer.kabupaten_kotamadya !== 'BELUM_DIISI') provArr.push(`KAB/KOTA. ${consumer.kabupaten_kotamadya}`);
-      if (consumer?.provinsi && consumer.provinsi !== 'BELUM_DIISI') provArr.push(`PROV. ${consumer.provinsi}`);
-      if (consumer?.kodepos && consumer.kodepos !== 'BELUM_DIISI') provArr.push(`${consumer.kodepos}`);
-      ctx.fillText(provArr.length > 0 ? provArr.join(', ').toUpperCase() : '-', 160, areaY + 30);
-      ctx.fillText('From :', 40, 230);
-      ctx.fillText('Alta Nikindo', 160, 230);
-      ctx.fillText('Komp. Mangga Dua Square Blok H No.1-2, Jakarta - 14430', 160, 260);
-      ctx.fillText('Whatsapp : 08111877781', 160, 290);
+      const nama = (c.nama_penerima_claim || consumer?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa).toUpperCase();
+      ctx.font = '13px Arial';
+      ctx.fillText('Nama Penerima Hadiah :', 40, 80);
+      ctx.font = '15px Arial';
+      ctx.fillText(nama, 260, 80);
+      ctx.font = '13px Arial';
+      ctx.fillText('Nomor WA Notifikasi Update :', 40, 108);
+      ctx.font = '15px Arial';
+      ctx.fillText(c.nomor_wa, 260, 108);
+      ctx.font = '15px Arial';
+      let currentY = 135;
+      if (c.nama_penerima_claim && c.alamat_pengiriman) {
+         // Claim untuk orang lain — pakai alamat_pengiriman (free-text)
+         const alamatLines = wrapText(ctx, c.alamat_pengiriman.toUpperCase(), 590);
+         alamatLines.forEach((line) => {
+            ctx.fillText(line, 160, currentY);
+            currentY += 25;
+         });
+      } else {
+         // Claim untuk diri sendiri — pakai alamat terstruktur konsumen
+         const alamat = consumer?.alamat_rumah !== 'BELUM_DIISI' ? consumer?.alamat_rumah : '-';
+         const alamatLines = wrapText(ctx, (alamat || '-').toUpperCase(), 590);
+         alamatLines.forEach((line) => {
+            ctx.fillText(line, 160, currentY);
+            currentY += 25;
+         });
+         const areaY = currentY;
+         const areaArr = [];
+         if (consumer?.kelurahan && consumer.kelurahan !== 'BELUM_DIISI') areaArr.push(`KEL. ${consumer.kelurahan}`);
+         if (consumer?.kecamatan && consumer.kecamatan !== 'BELUM_DIISI') areaArr.push(`KEC. ${consumer.kecamatan}`);
+         ctx.fillText(areaArr.length > 0 ? areaArr.join(', ').toUpperCase() : '-', 160, areaY);
+         const provArr = [];
+         if (consumer?.kabupaten_kotamadya && consumer.kabupaten_kotamadya !== 'BELUM_DIISI') provArr.push(`KAB/KOTA. ${consumer.kabupaten_kotamadya}`);
+         if (consumer?.provinsi && consumer.provinsi !== 'BELUM_DIISI') provArr.push(`PROV. ${consumer.provinsi}`);
+         if (consumer?.kodepos && consumer.kodepos !== 'BELUM_DIISI') provArr.push(`${consumer.kodepos}`);
+         ctx.fillText(provArr.length > 0 ? provArr.join(', ').toUpperCase() : '-', 160, areaY + 30);
+         currentY = areaY + 55;
+      }
+      ctx.fillText('From :', 40, 265);
+      ctx.fillText('Alta Nikindo', 160, 265);
+      ctx.fillText('Komp. Mangga Dua Square Blok H No.1-2, Jakarta - 14430', 160, 295);
+      ctx.fillText('Whatsapp : 08111877781', 160, 325);
       ctx.textAlign = 'right';
       const sn = c.nomor_seri || '-';
       const promoName = c.jenis_promosi || getNamaPromo(c.tipe_barang);
-      ctx.fillText(`${sn} - ${promoName}`, canvas.width - 30, 290);
+      ctx.fillText(`${sn} - ${promoName}`, canvas.width - 30, 325);
       const imgURL = canvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = imgURL;
@@ -2992,7 +3009,10 @@ export default function NikonDashboard() {
                                              {getBadgeLabel(getClaimStatusColor(c))}
                                           </span>
                                        </td>
-                                       <td className="px-4 py-3 text-slate-800 font-bold">{consumers[c.nomor_wa] || c.nomor_wa}</td>
+                                       <td className="px-4 py-3 text-slate-800 font-bold">
+                                          {c.nama_penerima_claim || consumers[c.nomor_wa] || c.nomor_wa}
+                                          {c.nama_penerima_claim && <span className="ml-1 text-[10px] bg-purple-100 text-purple-700 px-1 rounded font-bold">Orang Lain</span>}
+                                       </td>
                                        <td className="px-4 py-3 font-mono">
                                           <div className="flex items-center gap-2">
                                              {c.nomor_seri}
@@ -3082,7 +3102,10 @@ export default function NikonDashboard() {
                                        <div className="flex items-center gap-2">
                                           <span className="font-bold text-lg text-gray-600 bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center text-center">{claimNumberMap.get(c.id_claim!)}</span>
                                           <div>
-                                             <h3 className="font-bold text-base text-slate-800">{consumers[c.nomor_wa] || c.nomor_wa}</h3>
+                                             <h3 className="font-bold text-base text-slate-800">
+                                                {c.nama_penerima_claim || consumers[c.nomor_wa] || c.nomor_wa}
+                                                {c.nama_penerima_claim && <span className="ml-1 text-[10px] bg-purple-100 text-purple-700 px-1 rounded font-bold">Orang Lain</span>}
+                                             </h3>
                                              <p className="text-xs text-gray-500 font-mono flex items-center gap-2">
                                                 {c.nomor_seri}
                                                 {isDuplicate && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap animate-pulse">⚠️ DUPLIKAT</span>}
