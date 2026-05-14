@@ -4495,6 +4495,127 @@ export default function NikonDashboard() {
                         </form>
                      )}
 
+                     {/* ============ LENDING RETURN FORM ============ */}
+                     {activeTab === 'lending' && modalAction === 'return' && (
+                        <div className="space-y-4">
+                           {/* Info Peminjam (read-only) */}
+                           <div className="bg-gray-900 text-white rounded-lg p-4">
+                              <div className="flex items-center justify-between gap-3">
+                                 <div>
+                                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Peminjam</p>
+                                    <h3 className="text-base font-bold mt-0.5">{lendingForm.nama_peminjam || '-'}</h3>
+                                    <p className="text-xs text-gray-300 mt-0.5">{lendingForm.nomor_wa_peminjam || '-'}</p>
+                                 </div>
+                                 <div className="text-right">
+                                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Tgl Pinjam</p>
+                                    <p className="text-xs text-white font-bold mt-0.5">{lendingForm.tanggal_peminjaman ? new Date(lendingForm.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</p>
+                                    {lendingForm.tanggal_estimasi_pengembalian && (
+                                       <>
+                                          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mt-2">Estimasi</p>
+                                          <p className="text-xs text-amber-300 font-bold mt-0.5">{new Date(lendingForm.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID')}</p>
+                                       </>
+                                    )}
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Banner instruksi */}
+                           <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+                              <p className="text-xs text-gray-900 font-medium">
+                                 💡 Centang barang yang dikembalikan + isi <strong>catatan kondisi</strong> (mis. &quot;Mulus&quot;, &quot;Lensa baret kecil&quot;). Jika semua barang dikembalikan, peminjaman akan otomatis ditutup (status: <code className="bg-white px-1 rounded">selesai</code>) dan notifikasi WA otomatis terkirim ke peminjam.
+                              </p>
+                           </div>
+
+                           {/* List Items */}
+                           <div className="space-y-3">
+                              {(lendingForm.items_dipinjam || []).map((item, idx) => {
+                                 const sudahKembali = item.status_pengembalian === 'dikembalikan';
+                                 return (
+                                    <div key={idx} className={`rounded-lg border-2 p-4 transition-all ${sudahKembali ? 'bg-green-50 border-green-400' : 'bg-white border-gray-300'}`}>
+                                       <div className="flex items-start gap-3">
+                                          <label className="flex items-center justify-center w-6 h-6 mt-0.5 cursor-pointer shrink-0">
+                                             <input
+                                                type="checkbox"
+                                                checked={sudahKembali}
+                                                onChange={e => {
+                                                   const newItems = [...(lendingForm.items_dipinjam || [])];
+                                                   newItems[idx] = {
+                                                      ...newItems[idx],
+                                                      status_pengembalian: e.target.checked ? 'dikembalikan' : 'dipinjam',
+                                                   };
+                                                   setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                                }}
+                                                className="w-5 h-5 accent-green-600 cursor-pointer"
+                                                aria-label={`Mark ${item.nama_barang} sebagai dikembalikan`}
+                                             />
+                                          </label>
+                                          <div className="flex-1 min-w-0">
+                                             <div className="flex items-center justify-between gap-2">
+                                                <div className="flex-1 min-w-0">
+                                                   <p className={`font-bold text-sm ${sudahKembali ? 'line-through text-gray-700' : 'text-gray-900'}`}>{item.nama_barang}</p>
+                                                   <p className="text-xs text-gray-800 font-mono mt-0.5">SN: {item.nomor_seri}</p>
+                                                   {item.catatan && (
+                                                      <p className="text-[11px] text-gray-700 italic mt-1">Catatan pinjam: {item.catatan}</p>
+                                                   )}
+                                                </div>
+                                                {sudahKembali && (
+                                                   <span className="px-2 py-1 rounded-md bg-green-600 text-white text-[10px] font-bold uppercase shrink-0">✓ Dikembalikan</span>
+                                                )}
+                                             </div>
+                                             {sudahKembali && (
+                                                <div className="mt-3">
+                                                   <label className="block text-[10px] font-bold text-gray-900 uppercase tracking-wider mb-1">Catatan Kondisi saat Kembali</label>
+                                                   <input
+                                                      type="text"
+                                                      value={item.catatan_pengembalian || ''}
+                                                      onChange={e => {
+                                                         const newItems = [...(lendingForm.items_dipinjam || [])];
+                                                         newItems[idx] = { ...newItems[idx], catatan_pengembalian: e.target.value };
+                                                         setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                                      }}
+                                                      placeholder="Contoh: Mulus / Lensa baret kecil / Body OK"
+                                                      className="w-full px-3 py-2 rounded-lg border-2 border-green-300 bg-white text-sm text-gray-900 font-medium placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:border-green-500"
+                                                      aria-label="Catatan kondisi pengembalian"
+                                                   />
+                                                </div>
+                                             )}
+                                          </div>
+                                       </div>
+                                    </div>
+                                 );
+                              })}
+                           </div>
+
+                           {/* Summary status */}
+                           {(() => {
+                              const total = lendingForm.items_dipinjam?.length || 0;
+                              const returned = lendingForm.items_dipinjam?.filter(i => i.status_pengembalian === 'dikembalikan').length || 0;
+                              const semua = total > 0 && total === returned;
+                              return (
+                                 <div className={`rounded-lg p-3 text-center border-2 ${semua ? 'bg-green-100 border-green-400' : 'bg-amber-50 border-amber-300'}`}>
+                                    <p className="text-sm font-bold text-gray-900">
+                                       {returned} dari {total} barang dikembalikan
+                                       {semua && <span className="ml-2 text-green-800">→ Peminjaman akan ditutup</span>}
+                                       {!semua && total > returned && returned > 0 && <span className="ml-2 text-amber-800">→ Peminjaman tetap aktif</span>}
+                                    </p>
+                                 </div>
+                              );
+                           })()}
+
+                           <div className="mt-6 flex justify-end gap-3">
+                              <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                              <button
+                                 type="button"
+                                 onClick={() => handleReturnItems(lendingForm as PeminjamanBarang)}
+                                 disabled={isSubmitting}
+                                 className="btn-primary"
+                              >
+                                 {isSubmitting ? 'Memproses...' : '✓ Konfirmasi Pengembalian'}
+                              </button>
+                           </div>
+                        </div>
+                     )}
+
                      {/* ============ LENDING FORM (Create & Edit) ============ */}
                      {activeTab === 'lending' && modalAction !== 'return' && (
                         <form onSubmit={handleSaveLending} className="space-y-4">

@@ -60,3 +60,4 @@ dev.log
 # Local artifacts
 ruvector.db
 *.db
+.claude/settings.local.json
