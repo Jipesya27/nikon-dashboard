@@ -168,6 +168,28 @@ export default function NikonDashboard() {
       }
       return {};
    });
+   // Tag system (WhatsApp Business style) — disimpan di localStorage per nomor_wa
+   const [chatTags, setChatTags] = useState<Record<string, string>>(() => {
+      if (typeof window !== 'undefined') {
+         try {
+            const saved = localStorage.getItem('nikon_chat_tags');
+            if (saved) return JSON.parse(saved);
+         } catch {}
+      }
+      return {};
+   });
+   // Pinned chats (localStorage)
+   const [pinnedChats, setPinnedChats] = useState<string[]>(() => {
+      if (typeof window !== 'undefined') {
+         try {
+            const saved = localStorage.getItem('nikon_chat_pinned');
+            if (saved) return JSON.parse(saved);
+         } catch {}
+      }
+      return [];
+   });
+   const [chatFilter, setChatFilter] = useState<'all' | 'unread' | 'cs' | 'tagged' | 'pinned'>('all');
+   const [tagMenuFor, setTagMenuFor] = useState<string | null>(null); // nomor_wa
    const [loading, setLoading] = useState(true);
    const [activeTab, setActiveTab] = useState('dashboard');
    const [returnTab, setReturnTab] = useState<string | null>(null);
@@ -392,6 +414,12 @@ export default function NikonDashboard() {
    useEffect(() => {
       localStorage.setItem('nikon_chat_read_status', JSON.stringify(readStatus));
    }, [readStatus]);
+   useEffect(() => {
+      if (typeof window !== 'undefined') localStorage.setItem('nikon_chat_tags', JSON.stringify(chatTags));
+   }, [chatTags]);
+   useEffect(() => {
+      if (typeof window !== 'undefined') localStorage.setItem('nikon_chat_pinned', JSON.stringify(pinnedChats));
+   }, [pinnedChats]);
    useEffect(() => {
       if (selectedWa && messages.length > 0) {
          const contactMessages = messages.filter(m => m.nomor_wa === selectedWa);
@@ -2016,7 +2044,7 @@ export default function NikonDashboard() {
                </div>
 
                {/* MAIN CONTENT */}
-               <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
+               <main className={activeTab === 'messages' ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto px-4 md:px-8 py-6 md:py-8 space-y-6"}>
 
                {/* ======================= DASHBOARD OVERVIEW ======================= */}
                {activeTab === 'dashboard' && (
@@ -2218,46 +2246,195 @@ export default function NikonDashboard() {
                )}
 
                {/* ======================= PESAN ======================= */}
-               {activeTab === 'messages' && (
-                  <div className="animate-fade-in text-gray-900 h-[calc(100vh-100px)] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex">
+               {activeTab === 'messages' && (() => {
+                  const TAG_PRESETS = [
+                     { key: '', label: '— Tidak ada —', dot: 'bg-gray-300', text: 'text-gray-700', bg: 'bg-gray-100' },
+                     { key: 'customer', label: 'Customer', dot: 'bg-green-500', text: 'text-green-800', bg: 'bg-green-100' },
+                     { key: 'lead', label: 'Lead', dot: 'bg-blue-500', text: 'text-blue-800', bg: 'bg-blue-100' },
+                     { key: 'vip', label: 'VIP', dot: 'bg-amber-500', text: 'text-amber-900', bg: 'bg-amber-100' },
+                     { key: 'support', label: 'Support', dot: 'bg-purple-500', text: 'text-purple-800', bg: 'bg-purple-100' },
+                     { key: 'followup', label: 'Follow-up', dot: 'bg-pink-500', text: 'text-pink-800', bg: 'bg-pink-100' },
+                     { key: 'resolved', label: 'Resolved', dot: 'bg-gray-400', text: 'text-gray-700', bg: 'bg-gray-200' },
+                  ];
+                  const findTag = (key: string) => TAG_PRESETS.find(t => t.key === key);
+                  const countUnread = (wa: string) => {
+                     const msgs = messages.filter(m => m.nomor_wa === wa && m.arah_pesan === 'IN');
+                     const lastRead = readStatus[wa] ? new Date(readStatus[wa]) : null;
+                     return msgs.filter(m => !lastRead || new Date(m.waktu_pesan || m.created_at!) > lastRead).length;
+                  };
+                  // Filter chats sesuai pilihan
+                  const filterApply = filteredContacts.filter(c => {
+                     if (chatFilter === 'all') return true;
+                     if (chatFilter === 'unread') return countUnread(c.nomor_wa) > 0;
+                     if (chatFilter === 'cs') return c.bicara_dengan_cs;
+                     if (chatFilter === 'tagged') return Boolean(chatTags[c.nomor_wa]);
+                     if (chatFilter === 'pinned') return pinnedChats.includes(c.nomor_wa);
+                     return true;
+                  });
+                  // Sort: pinned dulu, lalu urut waktu
+                  const sortedChats = [...filterApply].sort((a, b) => {
+                     const ap = pinnedChats.includes(a.nomor_wa) ? 1 : 0;
+                     const bp = pinnedChats.includes(b.nomor_wa) ? 1 : 0;
+                     if (ap !== bp) return bp - ap;
+                     return new Date(b.waktu_pesan || b.created_at || 0).getTime() - new Date(a.waktu_pesan || a.created_at || 0).getTime();
+                  });
+                  const togglePin = (wa: string) => setPinnedChats(prev => prev.includes(wa) ? prev.filter(w => w !== wa) : [...prev, wa]);
+                  const setTag = (wa: string, key: string) => {
+                     setChatTags(prev => {
+                        const next = { ...prev };
+                        if (!key) delete next[wa]; else next[wa] = key;
+                        return next;
+                     });
+                     setTagMenuFor(null);
+                  };
+                  const totalUnread = uniqueContacts.reduce((sum, c) => sum + countUnread(c.nomor_wa), 0);
+                  const totalCS = uniqueContacts.filter(c => c.bicara_dengan_cs).length;
+                  const totalTagged = uniqueContacts.filter(c => chatTags[c.nomor_wa]).length;
+
+                  return (
+                  <div className="animate-fade-in text-gray-900 h-full bg-white border-y border-gray-200 overflow-hidden flex">
                      {/* SIDEBAR: DAFTAR CHAT */}
-                     <div className={`w-full md:w-90 lg:w-105 border-r border-gray-100 flex flex-col bg-white shrink-0 ${selectedWa ? 'hidden md:flex' : 'flex'}`}>
-                        <div className="p-5 bg-linear-to-r from-gray-50 to-white border-b border-gray-100 flex justify-between items-center shrink-0">
-                           <h3 className="font-bold text-lg flex items-center gap-2">💬 Pesan</h3>
-                           <button onClick={handleRunCleanup} disabled={isSubmitting} className="ml-auto mr-3 p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Bersihkan Sesi Inaktif" aria-label="Bersihkan Sesi Inaktif">
-                              {isSubmitting ? '⏳' : '🧹'}
-                           </button>
-                           <button onClick={() => setIsNewChatModalOpen(true)} aria-label="Pesan Baru" className="w-10 h-10 flex items-center justify-center bg-[#FFE500] text-black rounded-lg shadow-md hover:bg-[#E5CE00] transition-all transform hover:scale-110">
-                              <span className="text-xl font-bold">+</span>
-                           </button>
-                        </div>
-                        <div className="p-4 bg-white shrink-0">
-                           <div className="relative">
-                              <input type="text" title="Cari chat" aria-label="Cari chat" placeholder="Cari chat..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border border-gray-200 bg-gray-50 rounded-lg px-10 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#FFE500] focus:border-transparent transition" />
-                              <span className="absolute left-3 top-3 text-gray-400">🔍</span>
+                     <div className={`w-full md:w-96 lg:w-[420px] border-r border-gray-200 flex flex-col bg-white shrink-0 ${selectedWa ? 'hidden md:flex' : 'flex'}`}>
+                        {/* Header */}
+                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center shrink-0">
+                           <div>
+                              <h3 className="font-bold text-base text-gray-900">💬 Pesan</h3>
+                              <p className="text-[10px] text-gray-600 font-medium">{uniqueContacts.length} chat • {totalUnread} belum dibaca</p>
+                           </div>
+                           <div className="flex items-center gap-1">
+                              <button onClick={handleRunCleanup} disabled={isSubmitting} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Bersihkan Sesi Inaktif" aria-label="Bersihkan Sesi Inaktif">
+                                 {isSubmitting ? '⏳' : '🧹'}
+                              </button>
+                              <button onClick={() => setIsNewChatModalOpen(true)} aria-label="Pesan Baru" title="Pesan Baru" className="w-9 h-9 flex items-center justify-center bg-[#FFE500] text-black rounded-lg shadow-sm hover:bg-[#E5CE00] transition">
+                                 <span className="text-lg font-bold">+</span>
+                              </button>
                            </div>
                         </div>
-                        <div className="overflow-y-auto flex-1 divide-y divide-gray-100">
-                           {filteredContacts.map((c: RiwayatPesan) => {
-                              const isNew = c.arah_pesan === 'IN' && (!readStatus[c.nomor_wa] || new Date(c.waktu_pesan || c.created_at!) > new Date(readStatus[c.nomor_wa]));
+
+                        {/* Search */}
+                        <div className="px-3 py-2.5 bg-white shrink-0 border-b border-gray-100">
+                           <div className="relative">
+                              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                              <input type="text" title="Cari chat" aria-label="Cari chat" placeholder="Cari nama atau nomor..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border border-gray-200 bg-gray-50 rounded-lg pl-10 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FFE500] focus:bg-white transition" />
+                           </div>
+                        </div>
+
+                        {/* Filter Pills */}
+                        <div className="px-2 py-2 bg-white border-b border-gray-100 shrink-0 overflow-x-auto">
+                           <div className="flex gap-1.5 min-w-max">
+                              {([
+                                 { k: 'all',     l: 'Semua',         n: uniqueContacts.length },
+                                 { k: 'unread',  l: 'Belum Dibaca',  n: totalUnread },
+                                 { k: 'cs',      l: '🔴 CS Aktif',   n: totalCS },
+                                 { k: 'tagged',  l: '🏷️ Bertag',     n: totalTagged },
+                                 { k: 'pinned',  l: '📌 Pinned',     n: pinnedChats.length },
+                              ] as const).map(opt => {
+                                 const active = chatFilter === opt.k;
+                                 return (
+                                    <button
+                                       key={opt.k}
+                                       onClick={() => setChatFilter(opt.k)}
+                                       className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all ${active ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                    >
+                                       {opt.l} {opt.n > 0 && <span className={`ml-1 px-1.5 rounded-full ${active ? 'bg-white/20' : 'bg-white text-gray-700'}`}>{opt.n}</span>}
+                                    </button>
+                                 );
+                              })}
+                           </div>
+                        </div>
+
+                        {/* Contact List */}
+                        <div className="overflow-y-auto flex-1">
+                           {sortedChats.length === 0 && (
+                              <div className="p-8 text-center text-gray-500">
+                                 <div className="text-4xl mb-2">📭</div>
+                                 <p className="text-sm font-bold">Tidak ada chat</p>
+                                 <p className="text-xs mt-1">Coba ubah filter atau search.</p>
+                              </div>
+                           )}
+                           {sortedChats.map((c: RiwayatPesan) => {
+                              const unread = countUnread(c.nomor_wa);
+                              const isNew = unread > 0;
                               const profileName = getRealProfileName(c.nomor_wa);
+                              const tag = chatTags[c.nomor_wa];
+                              const tagInfo = tag ? findTag(tag) : null;
+                              const isPinned = pinnedChats.includes(c.nomor_wa);
+                              const isSelected = selectedWa === c.nomor_wa;
                               return (
-                                 <div key={c.nomor_wa} onClick={() => setSelectedWa(c.nomor_wa)} className={`flex items-center gap-3 p-4 cursor-pointer transition-all hover:bg-gray-50 ${selectedWa === c.nomor_wa ? 'bg-yellow-50 border-l-4 border-[#FFE500]' : ''}`}>
-                                    <div className="w-12 h-12 rounded-full bg-linear-to-br from-[#FFE500] to-yellow-400 shrink-0 flex items-center justify-center font-bold text-black text-lg border border-yellow-200 uppercase shadow-sm">
-                                       {profileName.substring(0, 1)}
+                                 <div
+                                    key={c.nomor_wa}
+                                    onClick={() => setSelectedWa(c.nomor_wa)}
+                                    className={`group flex items-start gap-3 px-3 py-2.5 cursor-pointer transition-all border-b border-gray-50 hover:bg-gray-50 ${isSelected ? 'bg-[#fff7d6]' : ''}`}
+                                 >
+                                    <div className="relative shrink-0">
+                                       <div className="w-12 h-12 rounded-full bg-linear-to-br from-[#FFE500] to-yellow-400 flex items-center justify-center font-bold text-black text-lg uppercase shadow-sm">
+                                          {profileName.substring(0, 1)}
+                                       </div>
+                                       {isPinned && (
+                                          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-700 text-white text-[10px] flex items-center justify-center shadow-sm">📌</div>
+                                       )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                       <div className="flex justify-between items-baseline mb-0.5">
-                                          <h4 className={`text-sm truncate ${isNew ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>{profileName}</h4>
-                                          <span className="text-[10px] text-gray-400 font-medium">{new Date(c.waktu_pesan || c.created_at || 0).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} {new Date(c.waktu_pesan || c.created_at || 0).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                       <div className="flex justify-between items-baseline">
+                                          <h4 className={`text-sm truncate ${isNew ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>{profileName}</h4>
+                                          <span className={`text-[10px] font-medium shrink-0 ml-2 ${isNew ? 'text-green-600 font-bold' : 'text-gray-500'}`}>
+                                             {new Date(c.waktu_pesan || c.created_at || 0).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                          </span>
                                        </div>
-                                       <div className="flex justify-between items-center gap-2">
-                                          <p className={`text-xs truncate flex-1 ${isNew ? 'font-bold text-gray-900' : 'text-gray-500'}`}>{c.isi_pesan}</p>
+                                       <div className="flex justify-between items-center gap-2 mt-0.5">
+                                          <p className={`text-xs truncate flex-1 ${isNew ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
+                                             {c.arah_pesan === 'OUT' && <span className="text-gray-500 mr-1">↗</span>}
+                                             {c.isi_pesan}
+                                          </p>
                                           <div className="flex items-center gap-1.5 shrink-0">
-                                             {c.bicara_dengan_cs && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-sm shadow-red-200"></span>}
-                                             {isNew && <span className="bg-[#FFE500] text-black text-[9px] font-black px-1.5 py-0.5 rounded-full">BARU</span>}
+                                             {c.bicara_dengan_cs && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title="CS Aktif"></span>}
+                                             {isNew && (
+                                                <span className="bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{unread}</span>
+                                             )}
                                           </div>
                                        </div>
+                                       <div className="flex items-center gap-1 mt-1">
+                                          {tagInfo && tagInfo.key && (
+                                             <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${tagInfo.bg} ${tagInfo.text}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${tagInfo.dot}`}></span>
+                                                {tagInfo.label}
+                                             </span>
+                                          )}
+                                          <div className="ml-auto opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5">
+                                             <button
+                                                onClick={(e) => { e.stopPropagation(); togglePin(c.nomor_wa); }}
+                                                className="p-1 rounded hover:bg-gray-200"
+                                                title={isPinned ? 'Unpin' : 'Pin chat'}
+                                                aria-label="Pin"
+                                             >
+                                                <svg className={`w-3 h-3 ${isPinned ? 'text-amber-600' : 'text-gray-500'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.828.722a.5.5 0 01.354.146l4.95 4.95a.5.5 0 010 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 01.16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 01-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 010-.707c.688-.687 1.673-.766 2.375-.72a5.922 5.922 0 011.013.16l3.134-3.133a2.772 2.772 0 01-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 01.353-.146z"/></svg>
+                                             </button>
+                                             <button
+                                                onClick={(e) => { e.stopPropagation(); setTagMenuFor(tagMenuFor === c.nomor_wa ? null : c.nomor_wa); }}
+                                                className="p-1 rounded hover:bg-gray-200"
+                                                title="Beri tag"
+                                                aria-label="Beri tag"
+                                             >
+                                                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                                             </button>
+                                          </div>
+                                       </div>
+                                       {/* Tag menu inline */}
+                                       {tagMenuFor === c.nomor_wa && (
+                                          <div className="mt-2 bg-white border border-gray-300 rounded-lg shadow-lg p-1.5 space-y-0.5" onClick={e => e.stopPropagation()}>
+                                             {TAG_PRESETS.map(t => (
+                                                <button
+                                                   key={t.key}
+                                                   onClick={() => setTag(c.nomor_wa, t.key)}
+                                                   className={`w-full flex items-center gap-2 px-2 py-1 rounded text-xs hover:bg-gray-100 transition ${tag === t.key ? 'bg-gray-100 font-bold' : ''}`}
+                                                >
+                                                   <span className={`w-2 h-2 rounded-full ${t.dot}`}></span>
+                                                   <span className={t.text}>{t.label}</span>
+                                                   {tag === t.key && <span className="ml-auto text-gray-700">✓</span>}
+                                                </button>
+                                             ))}
+                                          </div>
+                                       )}
                                     </div>
                                  </div>
                               );
@@ -2267,24 +2444,71 @@ export default function NikonDashboard() {
 
                      {/* MAIN CHAT AREA */}
                      <div className={`flex-1 flex flex-col bg-[#efeae2] relative min-w-0 ${selectedWa ? 'flex' : 'hidden md:flex'}`}>
-                        {selectedWa ? (
+                        {selectedWa ? (() => {
+                           const selectedTag = chatTags[selectedWa];
+                           const tagInfo = selectedTag ? findTag(selectedTag) : null;
+                           const isPinned = pinnedChats.includes(selectedWa);
+                           return (
                            <>
-                              <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center shrink-0 shadow-sm z-10">
-                                 <div className="flex items-center gap-3">
-                                    <button aria-label="Kembali" onClick={() => setSelectedWa(null)} className="md:hidden p-1 -ml-2 text-gray-600 hover:bg-gray-200 rounded-full transition">
+                              <div className="px-4 py-2.5 bg-[#f0f2f5] border-b border-gray-300 flex justify-between items-center shrink-0 shadow-sm z-10">
+                                 <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <button aria-label="Kembali" onClick={() => setSelectedWa(null)} className="md:hidden p-1 -ml-2 text-gray-700 hover:bg-gray-200 rounded-full transition shrink-0">
                                        <span className="text-xl">←</span>
                                     </button>
-                                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500 uppercase">
+                                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-[#FFE500] to-yellow-400 flex items-center justify-center font-bold text-black uppercase shadow-sm shrink-0">
                                        {getRealProfileName(selectedWa).substring(0, 1)}
                                     </div>
-                                    <div>
-                                       <h3 className="font-bold text-gray-900 leading-tight">{getRealProfileName(selectedWa)}</h3>
-                                       <p className="text-[10px] font-bold text-gray-500">{selectedWa}</p>
+                                    <div className="min-w-0 flex-1">
+                                       <div className="flex items-center gap-2">
+                                          <h3 className="font-bold text-gray-900 leading-tight truncate">{getRealProfileName(selectedWa)}</h3>
+                                          {tagInfo && tagInfo.key && (
+                                             <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${tagInfo.bg} ${tagInfo.text} shrink-0`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${tagInfo.dot}`}></span>
+                                                {tagInfo.label}
+                                             </span>
+                                          )}
+                                       </div>
+                                       <p className="text-[11px] font-medium text-gray-600">{selectedWa}</p>
                                     </div>
                                  </div>
-                                 {uniqueContacts.find(c => c.nomor_wa === selectedWa)?.bicara_dengan_cs && (
-                                    <button onClick={() => handleSelesaiCS(selectedWa)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-md">Tandai Selesai</button>
-                                 )}
+                                 <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                       onClick={() => togglePin(selectedWa)}
+                                       title={isPinned ? 'Unpin chat' : 'Pin chat'}
+                                       aria-label="Pin"
+                                       className={`p-2 rounded-lg transition ${isPinned ? 'text-amber-600 bg-amber-100' : 'text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.828.722a.5.5 0 01.354.146l4.95 4.95a.5.5 0 010 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 01.16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 01-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 010-.707c.688-.687 1.673-.766 2.375-.72a5.922 5.922 0 011.013.16l3.134-3.133a2.772 2.772 0 01-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 01.353-.146z"/></svg>
+                                    </button>
+                                    <div className="relative">
+                                       <button
+                                          onClick={() => setTagMenuFor(tagMenuFor === selectedWa ? null : selectedWa)}
+                                          title="Atur tag"
+                                          aria-label="Atur tag"
+                                          className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 transition"
+                                       >
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                                       </button>
+                                       {tagMenuFor === selectedWa && (
+                                          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl p-1.5 space-y-0.5 z-20 min-w-[180px]">
+                                             {TAG_PRESETS.map(t => (
+                                                <button
+                                                   key={t.key}
+                                                   onClick={() => setTag(selectedWa, t.key)}
+                                                   className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-gray-100 transition ${selectedTag === t.key ? 'bg-gray-100 font-bold' : ''}`}
+                                                >
+                                                   <span className={`w-2 h-2 rounded-full ${t.dot}`}></span>
+                                                   <span className={t.text}>{t.label}</span>
+                                                   {selectedTag === t.key && <span className="ml-auto text-gray-700">✓</span>}
+                                                </button>
+                                             ))}
+                                          </div>
+                                       )}
+                                    </div>
+                                    {uniqueContacts.find(c => c.nomor_wa === selectedWa)?.bicara_dengan_cs && (
+                                       <button onClick={() => handleSelesaiCS(selectedWa)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm whitespace-nowrap">Tandai Selesai</button>
+                                    )}
+                                 </div>
                               </div>
                               <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto space-y-3 relative scroll-smooth bg-[url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')] bg-size-[400px] bg-repeat">
                                  {currentChatThread.map((msg: RiwayatPesan, index: number) => (
@@ -2339,16 +2563,26 @@ export default function NikonDashboard() {
                                  </form>
                               </div>
                            </>
-                        ) : (
-                           <div className="flex-1 flex flex-col justify-center items-center text-gray-500 bg-gray-50 p-10 text-center">
-                              <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center text-4xl mb-4">💬</div>
-                              <h3 className="text-xl font-bold text-gray-700">Pilih Percakapan</h3>
-                              <p className="text-sm max-w-xs mt-2">Pilih salah satu konsumen di sebelah kiri untuk mulai membalas pesan secara real-time.</p>
+                           );
+                        })() : (
+                           <div className="flex-1 flex flex-col justify-center items-center text-gray-500 bg-[#f0f2f5] p-10 text-center">
+                              <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center text-6xl mb-4 shadow-sm">💬</div>
+                              <h3 className="text-xl font-bold text-gray-800">Pilih Percakapan</h3>
+                              <p className="text-sm max-w-xs mt-2 text-gray-600">Pilih salah satu konsumen di sebelah kiri untuk mulai membalas pesan, beri tag, atau pin chat penting.</p>
+                              <div className="mt-6 flex flex-wrap gap-2 justify-center max-w-md">
+                                 {TAG_PRESETS.filter(t => t.key).map(t => (
+                                    <span key={t.key} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${t.bg} ${t.text}`}>
+                                       <span className={`w-1.5 h-1.5 rounded-full ${t.dot}`}></span>
+                                       {t.label}
+                                    </span>
+                                 ))}
+                              </div>
                            </div>
                         )}
                      </div>
                   </div>
-               )}
+                  );
+               })()}
 
 
 
