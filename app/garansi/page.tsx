@@ -2,6 +2,7 @@
 
 import { useState, useRef, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import AddressFields from '@/app/components/AddressFields';
 
 type FormState = {
   nama_lengkap: string;
@@ -203,32 +204,19 @@ function GaransiForm() {
               <textarea name="alamat_rumah" value={formData.alamat_rumah} onChange={handleChange} required rows={2} placeholder="Jalan, nomor rumah, RT/RW" className={inputCls + " resize-none"} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Kelurahan {req}</label>
-                <input type="text" name="kelurahan" value={formData.kelurahan} onChange={handleChange} required className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Kecamatan {req}</label>
-                <input type="text" name="kecamatan" value={formData.kecamatan} onChange={handleChange} required className={inputCls} />
-              </div>
-            </div>
-
-            <div>
-              <label className={labelCls}>Kabupaten / Kotamadya {req}</label>
-              <input type="text" name="kabupaten_kotamadya" value={formData.kabupaten_kotamadya} onChange={handleChange} required className={inputCls} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Provinsi {req}</label>
-                <input type="text" name="provinsi" value={formData.provinsi} onChange={handleChange} required className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Kode Pos {req}</label>
-                <input type="text" name="kodepos" value={formData.kodepos} onChange={handleChange} required pattern="[0-9]{5}" title="5 digit" placeholder="5 digit" className={inputCls} />
-              </div>
-            </div>
+            <AddressFields
+              values={{
+                kelurahan: formData.kelurahan,
+                kecamatan: formData.kecamatan,
+                kabupaten_kotamadya: formData.kabupaten_kotamadya,
+                provinsi: formData.provinsi,
+                kodepos: formData.kodepos,
+              }}
+              onChange={partial => setFormData(prev => ({ ...prev, ...partial }))}
+              required
+              inputClassName={inputCls}
+              labelClassName={labelCls}
+            />
           </div>
 
           {/* DATA PRODUK */}
