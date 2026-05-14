@@ -47,6 +47,8 @@ export interface BarangAset { id?: string; nama_barang_aset: string; no_seri_ase
 export interface PeminjamanItem {
    nama_barang: string;
    nomor_seri: string;
+   accs1?: string; accs2?: string; accs3?: string; accs4?: string;
+   accs5?: string; accs6?: string; accs7?: string;
    catatan?: string;
    catatan_pengembalian?: string;
    catatan_admin?: string;
