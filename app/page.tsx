@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { chatbotTexts } from './chatbotTexts';
-import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang } from './index';
+import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang, BarangAset } from './index';
 import {
    VALIDASI_OPTIONS, STATUS_VALIDASI_GARANSI_OPTIONS, JENIS_GARANSI_OPTIONS, LAMA_GARANSI_OPTIONS,
    STATUS_SERVICE_OPTIONS, JENIS_PROMOSI_OPTIONS, JASA_PENGIRIMAN_OPTIONS, EVENT_STATUS_OPTIONS,
@@ -83,6 +83,8 @@ export default function NikonDashboard() {
    const [consumers, setConsumers] = useState<Record<string, string>>({});
    const [botSettings, setBotSettings] = useState<PengaturanBot[]>([]);
    const [lendingRecords, setLendingRecords] = useState<PeminjamanBarang[]>([]);
+   const [assets, setAssets] = useState<BarangAset[]>([]);
+   const [searchAssets, setSearchAssets] = useState('');
    const [consumersList, setConsumersList] = useState<KonsumenData[]>([]);
    const [events, setEvents] = useState<EventData[]>([]);
    const [searchEvent, setSearchEvent] = useState('');
@@ -516,6 +518,7 @@ export default function NikonDashboard() {
       }
    };
 
+   const fetchAssets = () => fetchTable<BarangAset>('barang_aset', setAssets, { ascending: true });
    const fetchClaims = () => fetchTable<ClaimPromo>('claim_promo', setClaims, { dateFilter: true });
    const fetchWarranties = () => fetchTable<Garansi>('garansi', setWarranties, { dateFilter: true });
    const fetchPromos = () => fetchTable<Promosi>('promosi', setPromos);
@@ -605,6 +608,7 @@ export default function NikonDashboard() {
                fetchServices(),
                fetchBudgets(),
                fetchLendingRecords(),
+               fetchAssets(),
                fetchBotSettings(),
                fetchEvents(),
                fetchEventRegistrations(),
@@ -1986,6 +1990,7 @@ export default function NikonDashboard() {
             { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
             { id: 'services', label: '🔧 Service', count: services.length },
             { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
+            { id: 'assets', label: '🗄️ Barang Aset', count: assets.length },
          ]
       },
       {
@@ -3612,6 +3617,53 @@ export default function NikonDashboard() {
                      )}
                   </div>
                )}
+
+               {/* ======================= BARANG ASET ======================= */}
+               {activeTab === 'assets' && (() => {
+                  const filteredAssets = assets.filter(a =>
+                     a.nama_barang_aset?.toLowerCase().includes(searchAssets.toLowerCase()) ||
+                     a.no_seri_aset?.toLowerCase().includes(searchAssets.toLowerCase()) ||
+                     a.catatan?.toLowerCase().includes(searchAssets.toLowerCase())
+                  );
+                  return (
+                     <div className="space-y-4 animate-fade-in text-gray-900">
+                        <div className="flex flex-col md:flex-row gap-2 items-center">
+                           <input type="text" placeholder="🔍 Cari Nama Barang / No Seri / Catatan..." value={searchAssets} onChange={e => setSearchAssets(e.target.value)} className="flex-1 p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
+                           <span className="text-sm text-gray-500 font-medium whitespace-nowrap">{filteredAssets.length} barang</span>
+                        </div>
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+                                 <tr>
+                                    <th className="px-4 py-3 text-center font-bold w-12">No</th>
+                                    <th className="px-4 py-3 text-left font-bold">Nama Barang</th>
+                                    <th className="px-4 py-3 text-left font-bold">No. Seri</th>
+                                    <th className="px-4 py-3 text-left font-bold">Accessories</th>
+                                    <th className="px-4 py-3 text-left font-bold">Catatan</th>
+                                 </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {filteredAssets.map((a, idx) => {
+                                    const accs = [a.accs1, a.accs2, a.accs3, a.accs4, a.accs5, a.accs6, a.accs7].filter(Boolean);
+                                    return (
+                                       <tr key={a.id || idx} className="hover:bg-gray-50 font-medium">
+                                          <td className="px-4 py-3 text-center text-gray-500 font-bold">{idx + 1}</td>
+                                          <td className="px-4 py-3 font-bold text-slate-800">{a.nama_barang_aset}</td>
+                                          <td className="px-4 py-3 font-mono text-sm">{a.no_seri_aset || '-'}</td>
+                                          <td className="px-4 py-3 text-xs text-gray-600">{accs.length > 0 ? accs.join(', ') : '-'}</td>
+                                          <td className="px-4 py-3 text-xs text-gray-600">{a.catatan || '-'}</td>
+                                       </tr>
+                                    );
+                                 })}
+                                 {filteredAssets.length === 0 && (
+                                    <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Tidak ada data aset.</td></tr>
+                                 )}
+                              </tbody>
+                           </table>
+                        </div>
+                     </div>
+                  );
+               })()}
 
                {/* ======================= BOT SETTINGS ======================= */}
                {activeTab === 'botsettings' && (
