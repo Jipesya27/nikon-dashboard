@@ -1874,6 +1874,9 @@ export default function NikonDashboard() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      if (c.id_claim) {
+         setPrintedClaimIds(prev => new Set([...prev, c.id_claim!]));
+      }
    };
 
    const uniqueContacts = useMemo(() => {
@@ -3087,31 +3090,26 @@ export default function NikonDashboard() {
                            <option value="Hijau">Selesai (Hijau)</option>
                         </select>
                      </div>
-                     <div className="flex flex-wrap gap-2">
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-white border border-gray-300"></span>
-                           Belum Di Cek: {claimStatusCounts.Putih}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                           Tidak Valid: {claimStatusCounts.Merah}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-orange-500"></span>
-                           Hold: {claimStatusCounts.Orange}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                           Tunggu FA Cek: {claimStatusCounts.Biru}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-pink-500"></span>
-                           Tunggu Resi: {claimStatusCounts.Pink}
-                        </div>
-                        <div className="bg-white border border-gray-300 px-3 py-1.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-2">
-                           <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                           Selesai: {claimStatusCounts.Hijau}
-                        </div>
+                     <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
+                        {([
+                           { key: 'Semua', label: 'Semua', count: claims.length, color: 'text-gray-900', bar: 'bg-gray-400', ring: 'ring-gray-400' },
+                           { key: 'Putih', label: 'Belum Dicek', count: claimStatusCounts.Putih, color: 'text-gray-700', bar: 'bg-gray-300', ring: 'ring-gray-300' },
+                           { key: 'Merah', label: 'Tidak Valid', count: claimStatusCounts.Merah, color: 'text-red-700', bar: 'bg-red-500', ring: 'ring-red-400' },
+                           { key: 'Orange', label: 'Hold', count: claimStatusCounts.Orange, color: 'text-orange-700', bar: 'bg-orange-400', ring: 'ring-orange-400' },
+                           { key: 'Biru', label: 'Tunggu FA', count: claimStatusCounts.Biru, color: 'text-blue-700', bar: 'bg-blue-500', ring: 'ring-blue-400' },
+                           { key: 'Pink', label: 'Tunggu Resi', count: claimStatusCounts.Pink, color: 'text-pink-700', bar: 'bg-pink-400', ring: 'ring-pink-400' },
+                           { key: 'Hijau', label: 'Selesai', count: claimStatusCounts.Hijau, color: 'text-green-700', bar: 'bg-green-500', ring: 'ring-green-400' },
+                        ] as { key: string; label: string; count: number; color: string; bar: string; ring: string }[]).map(s => (
+                           <button
+                              key={s.key}
+                              onClick={() => setFilterStatusWarna(s.key)}
+                              className={`bg-white rounded-xl p-3 border-2 shadow-sm text-left transition hover:shadow-md ${filterStatusWarna === s.key ? `border-current ring-2 ${s.ring} ${s.color}` : 'border-gray-200 hover:border-gray-300'}`}
+                           >
+                              <div className={`w-full h-1 rounded-full mb-2 ${s.bar}`}></div>
+                              <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
+                              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mt-0.5 leading-tight">{s.label}</p>
+                           </button>
+                        ))}
                      </div>
                      {viewMode === 'table' ? (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
@@ -3179,8 +3177,8 @@ export default function NikonDashboard() {
                                              {getBadgeLabel(statusColor)}
                                           </span>
                                        </td>
-                                       <td className="px-3 py-2.5 max-w-[160px]">
-                                          <p className="font-bold text-slate-800 truncate">{c.nama_penerima_claim || consumers[c.nomor_wa] || c.nomor_wa}</p>
+                                       <td className="px-3 py-2.5">
+                                          <p className="font-bold text-slate-800">{c.nama_penerima_claim || consumers[c.nomor_wa] || c.nomor_wa}</p>
                                           {c.nama_penerima_claim && <span className="text-[9px] bg-purple-100 text-purple-700 px-1 rounded font-bold">Orang Lain</span>}
                                           <p className="text-[10px] text-gray-500 font-mono">{c.nomor_wa}</p>
                                        </td>
@@ -3188,14 +3186,14 @@ export default function NikonDashboard() {
                                           {c.nomor_seri}
                                           {isDuplicate && <div className="mt-0.5"><span className="bg-red-500 text-white text-[9px] px-1 py-0.5 rounded font-bold animate-pulse">⚠️ DUPLIKAT</span></div>}
                                        </td>
-                                       <td className="px-3 py-2.5 text-xs text-gray-700 max-w-[120px] truncate">{c.tipe_barang}</td>
-                                       <td className="px-3 py-2.5 text-xs font-bold text-black max-w-[120px] truncate">{c.jenis_promosi || getNamaPromo(c.tipe_barang)}</td>
+                                       <td className="px-3 py-2.5 text-xs text-gray-700">{c.tipe_barang}</td>
+                                       <td className="px-3 py-2.5 text-xs font-bold text-black">{c.jenis_promosi || getNamaPromo(c.tipe_barang)}</td>
                                        <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{c.tanggal_pembelian}</td>
                                        <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{formatSubmitDate(c.created_at)}</td>
                                        <td className="px-3 py-2.5 text-center">
                                           <span className="text-xs font-bold text-gray-700">{getClaimDurationDays(c.created_at)}</span>
                                        </td>
-                                       <td className="px-3 py-2.5 text-xs text-gray-700 max-w-[120px] truncate" title={c.nama_toko || '-'}>{c.nama_toko || '-'}</td>
+                                       <td className="px-3 py-2.5 text-xs text-gray-700">{c.nama_toko || '-'}</td>
                                        <td className="px-3 py-2.5">
                                           <div className="flex flex-col gap-1">
                                              {c.link_nota_pembelian ? (
@@ -3210,24 +3208,28 @@ export default function NikonDashboard() {
                                              ) : <span className="text-[11px] text-gray-400 italic">-Garansi</span>}
                                           </div>
                                        </td>
-                                       <td className="px-3 py-2.5 text-[11px] max-w-[150px]">
-                                          <div className="text-gray-700 font-medium truncate" title={c.validasi_by_mkt}>MKT: {c.validasi_by_mkt}</div>
-                                          <div className="text-gray-700 font-medium truncate" title={c.validasi_by_fa}>FA: {c.validasi_by_fa}</div>
+                                       <td className="px-3 py-2.5 text-[11px]">
+                                          <div className="text-gray-700 font-medium">MKT: {c.validasi_by_mkt}</div>
+                                          <div className="text-gray-700 font-medium">FA: {c.validasi_by_fa}</div>
                                        </td>
-                                       <td className="px-3 py-2.5 text-[11px] text-gray-600 max-w-[150px]">
-                                          <p className="truncate" title={c.catatan_mkt || '-'}>{c.catatan_mkt || '-'}</p>
-                                       </td>
+                                       <td className="px-3 py-2.5 text-[11px] text-gray-600">{c.catatan_mkt || '-'}</td>
                                        <td className="px-3 py-2.5">
                                           <div className="flex flex-col gap-1 min-w-[90px]">
-                                             <div className="flex items-center gap-1.5">
-                                                <button onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="text-blue-600 text-[11px] font-bold hover:underline">🏷️ Label</button>
-                                                <label className="flex items-center gap-1 cursor-pointer">
-                                                   <input type="checkbox" title="Sudah Print" aria-label="Sudah Print" className="w-3 h-3 cursor-pointer"
-                                                      checked={c.id_claim ? printedClaimIds.has(c.id_claim) : false}
-                                                      onChange={(e) => { if (c.id_claim) { const newSet = new Set(printedClaimIds); e.target.checked ? newSet.add(c.id_claim) : newSet.delete(c.id_claim); setPrintedClaimIds(newSet); } }} />
-                                                   <span className="text-[10px] text-gray-500">✓</span>
-                                                </label>
-                                             </div>
+                                             <button
+                                                onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))}
+                                                className="text-[11px] font-bold hover:underline text-left"
+                                             >
+                                                🏷️ Label
+                                             </button>
+                                             {c.id_claim && printedClaimIds.has(c.id_claim) && (
+                                                <button
+                                                   onClick={() => { if (c.id_claim) { const s = new Set(printedClaimIds); s.delete(c.id_claim); setPrintedClaimIds(s); } }}
+                                                   title="Klik untuk batalkan tanda"
+                                                   className="inline-flex items-center gap-1 bg-green-100 text-green-700 border border-green-400 text-[10px] font-extrabold px-1.5 py-0.5 rounded hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-colors w-fit"
+                                                >
+                                                   ✓ Tercetak
+                                                </button>
+                                             )}
                                              <button onClick={() => { const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa); if (consumerObj) { setReturnTab('claims'); setActiveTab('konsumen'); openModal('edit', 'konsumen', consumerObj); } else { alert('Data konsumen tidak ditemukan.'); } }} className="text-orange-600 text-[11px] font-bold hover:underline text-left">📍 Alamat</button>
                                              <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-[11px] font-bold hover:underline text-left">📨 Status</button>
                                              <div className="flex gap-2 pt-0.5 border-t border-gray-100">
