@@ -15,6 +15,7 @@ import {
    NAMA_BANK_OPTIONS
 } from './enums';
 import Header from './Header';
+import AddressFields from '@/app/components/AddressFields';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error'; // Akan diisi via .env.local
@@ -72,6 +73,7 @@ export default function NikonDashboard() {
 
    // DATA STATES
    const [messages, setMessages] = useState<RiwayatPesan[]>([]);
+   const [messagesCount, setMessagesCount] = useState<number>(0);
    const [claims, setClaims] = useState<ClaimPromo[]>([]);
    const [warranties, setWarranties] = useState<Garansi[]>([]);
    const [promos, setPromos] = useState<Promosi[]>([]);
@@ -108,6 +110,8 @@ export default function NikonDashboard() {
    useEffect(() => {
       localStorage.setItem('printedClaimIds', JSON.stringify([...printedClaimIds]));
    }, [printedClaimIds]);
+
+   const [selectedClaimIds, setSelectedClaimIds] = useState<Set<string>>(new Set());
 
    const getClaimStatusColor = useCallback((c: ClaimPromo) => {
       const mkt = (c.validasi_by_mkt || '').trim().toLowerCase();
@@ -482,12 +486,18 @@ export default function NikonDashboard() {
 
    const fetchMessages = async () => {
       try {
-         const { data, error } = await supabase.from('riwayat_pesan').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false });
+         const [{ data, error }, { count, error: countError }] = await Promise.all([
+            supabase.from('riwayat_pesan').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }),
+            supabase.from('riwayat_pesan').select('*', { count: 'exact', head: true }).gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`),
+         ]);
          if (error) console.error("fetchMessages error:", error.message);
+         if (countError) console.error("fetchMessages count error:", countError.message);
          setMessages(data || []);
+         setMessagesCount(count ?? data?.length ?? 0);
       } catch (err) {
          console.error("fetchMessages error:", err);
          setMessages([]);
+         setMessagesCount(0);
       }
    };
    const fetchTable = async <T,>(table: string, setter: (d: T[]) => void, options?: { dateFilter?: boolean; ascending?: boolean }) => {
@@ -759,6 +769,50 @@ export default function NikonDashboard() {
       const a = document.createElement('a');
       a.setAttribute('href', url);
       a.setAttribute('download', `Export_Claim_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+   };
+
+   const handleTandaTerimaCSV = () => {
+      if (selectedClaimIds.size === 0) {
+         alert('Pilih minimal 1 baris terlebih dahulu.');
+         return;
+      }
+      const selected = sortedClaims.filter((c: ClaimPromo) => c.id_claim && selectedClaimIds.has(c.id_claim));
+      const headers = ['No', 'Nama (No. WA)', 'Alamat', 'No. Seri', 'Barang', 'Promo'];
+      const csvRows = [headers.join(',')];
+      selected.forEach((c: ClaimPromo, idx: number) => {
+         const konsumen = consumersList.find(k => k.nomor_wa === c.nomor_wa);
+         const nama = konsumen?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa;
+         const namaWa = `${nama} (${c.nomor_wa})`;
+         const parts: string[] = [];
+         if (konsumen?.alamat_rumah) parts.push(konsumen.alamat_rumah.toUpperCase());
+         if (konsumen?.kelurahan) parts.push(`KEL. ${konsumen.kelurahan.toUpperCase()}`);
+         if (konsumen?.kecamatan) parts.push(`KEC. ${konsumen.kecamatan.toUpperCase()}`);
+         if (konsumen?.kabupaten_kotamadya) parts.push(`KAB/KOTA. ${konsumen.kabupaten_kotamadya.toUpperCase()}`);
+         if (konsumen?.provinsi) parts.push(`PROV. ${konsumen.provinsi.toUpperCase()}`);
+         const alamat = konsumen?.kodepos
+            ? `${parts.join(', ')} - ${konsumen.kodepos}`
+            : parts.join(', ');
+         const promo = c.jenis_promosi || getNamaPromo(c.tipe_barang);
+         const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
+         csvRows.push([
+            String(idx + 1),
+            esc(namaWa),
+            esc(alamat),
+            esc(c.nomor_seri || ''),
+            esc(c.tipe_barang || ''),
+            esc(promo || ''),
+         ].join(','));
+      });
+      const BOM = '﻿';
+      const blob = new Blob([BOM + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', `Tanda_Terima_${new Date().toISOString().split('T')[0]}.csv`);
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -2110,7 +2164,7 @@ export default function NikonDashboard() {
                            <div className="flex items-center justify-between mb-3">
                               <div>
                                  <p className="stat-label">Total Messages</p>
-                                 <p className="stat-value">{messages.length}</p>
+                                 <p className="stat-value">{messagesCount}</p>
                               </div>
                               <div className="text-4xl">💬</div>
                            </div>
@@ -2233,7 +2287,7 @@ export default function NikonDashboard() {
                            <button onClick={() => fileInputRef.current?.click()} disabled={isSubmitting} className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 disabled:bg-slate-300 transition shadow-md">
                               {isSubmitting ? 'Sedang Memproses...' : 'Pilih File & Upload'}
                            </button>
-                           <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleCentralUpload} />
+                           <input type="file" ref={fileInputRef} className="hidden" accept=".csv" aria-label="Upload file CSV" onChange={handleCentralUpload} />
                         </div>
                      </div>
 
@@ -2270,6 +2324,7 @@ export default function NikonDashboard() {
                         {activeTab === 'claims' && (
                            <>
                               <button onClick={handleExportCSVClaim} className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📥 Export CSV</button>
+                              <button onClick={handleTandaTerimaCSV} className="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📋 Tanda Terima CSV</button>
                               <button onClick={() => openModal('create', 'claim')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Claim</button>
                               </>
                         )}
@@ -2342,7 +2397,7 @@ export default function NikonDashboard() {
                   return (
                   <div className="animate-fade-in text-gray-900 h-full bg-white border-y border-gray-200 overflow-hidden flex">
                      {/* SIDEBAR: DAFTAR CHAT */}
-                     <div className={`w-full md:w-96 lg:w-[420px] border-r border-gray-200 flex flex-col bg-white shrink-0 ${selectedWa ? 'hidden md:flex' : 'flex'}`}>
+                     <div className={`w-full md:w-96 lg:w-105 border-r border-gray-200 flex flex-col bg-white shrink-0 ${selectedWa ? 'hidden md:flex' : 'flex'}`}>
                         {/* Header */}
                         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center shrink-0">
                            <div>
@@ -2437,7 +2492,7 @@ export default function NikonDashboard() {
                                           <div className="flex items-center gap-1.5 shrink-0">
                                              {c.bicara_dengan_cs && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title="CS Aktif"></span>}
                                              {isNew && (
-                                                <span className="bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{unread}</span>
+                                                <span className="bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-4.5 text-center">{unread}</span>
                                              )}
                                           </div>
                                        </div>
@@ -2539,7 +2594,7 @@ export default function NikonDashboard() {
                                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
                                        </button>
                                        {tagMenuFor === selectedWa && (
-                                          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl p-1.5 space-y-0.5 z-20 min-w-[180px]">
+                                          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl p-1.5 space-y-0.5 z-20 min-w-45">
                                              {TAG_PRESETS.map(t => (
                                                 <button
                                                    key={t.key}
@@ -2669,7 +2724,7 @@ export default function NikonDashboard() {
 
                      {/* Toolbar: search + view toggle + actions */}
                      <div className="bg-white rounded-xl border border-gray-200 p-3 flex flex-wrap gap-3 items-center">
-                        <div className="relative flex-1 min-w-[200px]">
+                        <div className="relative flex-1 min-w-50">
                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                            <input
                               type="text"
@@ -2923,13 +2978,14 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal wrap-break-word">
                               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-4 py-3 text-center font-bold">No</th><th className="px-4 py-3 text-center font-bold">Status Sistem</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>Nama Promo {sortConfigClaims.column === 'jenis_promosi' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'created_at')}>Tgl Submit {sortConfigClaims.column === 'created_at' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-center font-bold">Durasi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>Toko {sortConfigClaims.column === 'nama_toko' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Nota/Garansi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'validasi_by_mkt')}>MKT / FA {sortConfigClaims.column === 'validasi_by_mkt' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Catatan MKT</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
+                                 <tr><th className="px-3 py-3 text-center font-bold"><input type="checkbox" title="Pilih Semua" aria-label="Pilih Semua" className="w-4 h-4 cursor-pointer" checked={sortedClaims.length > 0 && sortedClaims.every((c: ClaimPromo) => c.id_claim && selectedClaimIds.has(c.id_claim))} onChange={e => { const next = new Set(selectedClaimIds); sortedClaims.forEach((c: ClaimPromo) => { if (c.id_claim) { e.target.checked ? next.add(c.id_claim) : next.delete(c.id_claim); } }); setSelectedClaimIds(next); }} /></th><th className="px-4 py-3 text-center font-bold">No</th><th className="px-4 py-3 text-center font-bold">Status Sistem</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>Nama {sortConfigClaims.column === 'nama_konsumen' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>No Seri {sortConfigClaims.column === 'nomor_seri' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>Barang {sortConfigClaims.column === 'tipe_barang' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>Nama Promo {sortConfigClaims.column === 'jenis_promosi' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'created_at')}>Tgl Submit {sortConfigClaims.column === 'created_at' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-center font-bold">Durasi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>Toko {sortConfigClaims.column === 'nama_toko' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Nota/Garansi</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'validasi_by_mkt')}>MKT / FA {sortConfigClaims.column === 'validasi_by_mkt' && (<span>{sortConfigClaims.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Catatan MKT</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedClaims.map((c: ClaimPromo) => {
                                     const isDuplicate = c.id_claim ? duplicateClaimIds.has(c.id_claim) : false;
                                     return (
-                                    <tr key={c.id_claim} className={`hover:bg-gray-50 font-medium ${isDuplicate ? 'bg-red-50' : ''}`}>
+                                    <tr key={c.id_claim} className={`hover:bg-gray-50 font-medium ${isDuplicate ? 'bg-red-50' : ''} ${c.id_claim && selectedClaimIds.has(c.id_claim) ? 'bg-yellow-50' : ''}`}>
+                                       <td className="px-3 py-3 text-center"><input type="checkbox" title="Pilih baris ini" aria-label="Pilih baris ini" className="w-4 h-4 cursor-pointer" checked={c.id_claim ? selectedClaimIds.has(c.id_claim) : false} onChange={e => { if (c.id_claim) { const next = new Set(selectedClaimIds); e.target.checked ? next.add(c.id_claim!) : next.delete(c.id_claim!); setSelectedClaimIds(next); } }} /></td>
                                        <td className="px-4 py-3 text-center font-bold text-gray-600">{claimNumberMap.get(c.id_claim!)}</td>
                                        <td className="px-4 py-3 text-center">
                                           <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold shadow-sm inline-block ${getBadgeStyle(getClaimStatusColor(c))}`}>
@@ -3880,23 +3936,23 @@ export default function NikonDashboard() {
                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div className="md:col-span-2">
                                              <label className="label-form">Nama Lengkap *</label>
-                                             <input type="text" required value={registrationForm.nama_lengkap || ''} onChange={e => setRegistrationForm({ ...registrationForm, nama_lengkap: e.target.value })} className="input-form" />
+                                             <input type="text" required aria-label="Nama Lengkap" value={registrationForm.nama_lengkap || ''} onChange={e => setRegistrationForm({ ...registrationForm, nama_lengkap: e.target.value })} className="input-form" />
                                           </div>
                                           <div>
                                              <label className="label-form">Nomor WhatsApp *</label>
-                                             <input type="text" required value={registrationForm.nomor_wa || ''} onChange={e => setRegistrationForm({ ...registrationForm, nomor_wa: e.target.value })} className="input-form" placeholder="081234567890" />
+                                             <input type="text" required aria-label="Nomor WhatsApp" value={registrationForm.nomor_wa || ''} onChange={e => setRegistrationForm({ ...registrationForm, nomor_wa: e.target.value })} className="input-form" placeholder="081234567890" />
                                           </div>
                                           <div>
                                              <label className="label-form">Email</label>
-                                             <input type="email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="input-form" placeholder="nama@email.com" />
+                                             <input type="email" aria-label="Email" value={registrationForm.email || ''} onChange={e => setRegistrationForm({ ...registrationForm, email: e.target.value })} className="input-form" placeholder="nama@email.com" />
                                           </div>
                                           <div>
                                              <label className="label-form">Tipe Kamera</label>
-                                             <input type="text" value={registrationForm.tipe_kamera || ''} onChange={e => setRegistrationForm({ ...registrationForm, tipe_kamera: e.target.value })} className="input-form" placeholder="Contoh: Nikon Z50 II" />
+                                             <input type="text" aria-label="Tipe Kamera" value={registrationForm.tipe_kamera || ''} onChange={e => setRegistrationForm({ ...registrationForm, tipe_kamera: e.target.value })} className="input-form" placeholder="Contoh: Nikon Z50 II" />
                                           </div>
                                           <div>
                                              <label className="label-form">Kabupaten / Kota</label>
-                                             <input type="text" value={registrationForm.kabupaten_kotamadya || ''} onChange={e => setRegistrationForm({ ...registrationForm, kabupaten_kotamadya: e.target.value })} className="input-form" />
+                                             <input type="text" aria-label="Kabupaten / Kota" value={registrationForm.kabupaten_kotamadya || ''} onChange={e => setRegistrationForm({ ...registrationForm, kabupaten_kotamadya: e.target.value })} className="input-form" />
                                           </div>
                                        </div>
                                     </div>
@@ -3919,7 +3975,7 @@ export default function NikonDashboard() {
                                           </div>
                                           <div className="md:col-span-2">
                                              <label className="label-form">Bukti Transfer URL</label>
-                                             <input type="url" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="input-form" placeholder="https://..." />
+                                             <input type="url" aria-label="Bukti Transfer URL" value={registrationForm.bukti_transfer_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, bukti_transfer_url: e.target.value })} className="input-form" placeholder="https://..." />
                                              {registrationForm.bukti_transfer_url && (
                                                 <button type="button" onClick={() => openImageViewer(registrationForm.bukti_transfer_url!)} className="text-xs text-blue-600 font-bold hover:underline mt-1">🔗 Lihat bukti transfer</button>
                                              )}
@@ -3933,7 +3989,7 @@ export default function NikonDashboard() {
                                           {registrationForm.status_pendaftaran === 'terdaftar' && (
                                              <div className="md:col-span-2">
                                                 <label className="label-form">Ticket URL</label>
-                                                <input type="url" value={registrationForm.ticket_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, ticket_url: e.target.value })} className="input-form" placeholder="https://... (auto-generate via /api/generate-ticket)" />
+                                                <input type="url" aria-label="Ticket URL" value={registrationForm.ticket_url || ''} onChange={e => setRegistrationForm({ ...registrationForm, ticket_url: e.target.value })} className="input-form" placeholder="https://... (auto-generate via /api/generate-ticket)" />
                                              </div>
                                           )}
                                        </div>
@@ -3976,11 +4032,11 @@ export default function NikonDashboard() {
                                              </div>
                                              <div>
                                                 <label className="label-form">Nomor Rekening</label>
-                                                <input type="text" value={registrationForm.no_rekening || ''} onChange={e => setRegistrationForm({ ...registrationForm, no_rekening: e.target.value })} className="input-form" />
+                                                <input type="text" aria-label="Nomor Rekening" value={registrationForm.no_rekening || ''} onChange={e => setRegistrationForm({ ...registrationForm, no_rekening: e.target.value })} className="input-form" />
                                              </div>
                                              <div className="md:col-span-2">
                                                 <label className="label-form">Nama Pemilik Rekening</label>
-                                                <input type="text" value={registrationForm.nama_pemilik_rekening || ''} onChange={e => setRegistrationForm({ ...registrationForm, nama_pemilik_rekening: e.target.value })} className="input-form" />
+                                                <input type="text" aria-label="Nama Pemilik Rekening" value={registrationForm.nama_pemilik_rekening || ''} onChange={e => setRegistrationForm({ ...registrationForm, nama_pemilik_rekening: e.target.value })} className="input-form" />
                                              </div>
                                              <div>
                                                 <label className="label-form">Status Refund</label>
@@ -4170,7 +4226,7 @@ export default function NikonDashboard() {
                                                    </div>
                                                    <div>
                                                       <label className="text-[10px] font-bold text-gray-900 uppercase block mb-1">Value (auto)</label>
-                                                      <div className="px-3 py-2.5 rounded-lg border-2 border-gray-300 bg-gray-100 text-sm font-bold text-gray-900 min-h-[44px] flex items-center">
+                                                      <div className="px-3 py-2.5 rounded-lg border-2 border-gray-300 bg-gray-100 text-sm font-bold text-gray-900 min-h-11 flex items-center">
                                                          {fmtRp(Number(item.value) || 0)}
                                                       </div>
                                                    </div>
@@ -4240,11 +4296,11 @@ export default function NikonDashboard() {
                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div>
                                              <label className="label-form">Comment dari {budgetForm.mgt_name_1 || 'Manager 1'}</label>
-                                             <textarea rows={2} value={budgetForm.mgt_comment_1 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_1: e.target.value })} className="input-form resize-none" />
+                                             <textarea rows={2} aria-label="Comment Manager 1" value={budgetForm.mgt_comment_1 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_1: e.target.value })} className="input-form resize-none" />
                                           </div>
                                           <div>
                                              <label className="label-form">Comment dari {budgetForm.mgt_name_2 || 'Manager 2'}</label>
-                                             <textarea rows={2} value={budgetForm.mgt_comment_2 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_2: e.target.value })} className="input-form resize-none" />
+                                             <textarea rows={2} aria-label="Comment Manager 2" value={budgetForm.mgt_comment_2 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_2: e.target.value })} className="input-form resize-none" />
                                           </div>
                                           <div>
                                              <label className="label-form">Persetujuan Management</label>
@@ -4545,15 +4601,15 @@ export default function NikonDashboard() {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Nomor WhatsApp Pemilik</label>
-                                    <input type="text" value={warrantyForm.nomor_wa || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_wa: e.target.value })} className="input-form" placeholder="62812345678 / 081234567890" />
+                                    <input type="text" aria-label="Nomor WhatsApp Pemilik" value={warrantyForm.nomor_wa || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_wa: e.target.value })} className="input-form" placeholder="62812345678 / 081234567890" />
                                  </div>
                                  <div>
                                     <label className="label-form">Nomor WA Notifikasi Update</label>
-                                    <input type="text" value={warrantyForm.nomor_wa_update || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_wa_update: e.target.value })} className="input-form" placeholder="Kosongkan = pakai nomor pemilik" />
+                                    <input type="text" aria-label="Nomor WA Notifikasi Update" value={warrantyForm.nomor_wa_update || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_wa_update: e.target.value })} className="input-form" placeholder="Kosongkan = pakai nomor pemilik" />
                                  </div>
                                  <div className="md:col-span-2">
                                     <label className="label-form">Nama Pendaftar</label>
-                                    <input type="text" value={warrantyForm.nama_pendaftar || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nama_pendaftar: e.target.value })} className="input-form" />
+                                    <input type="text" aria-label="Nama Pendaftar" value={warrantyForm.nama_pendaftar || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nama_pendaftar: e.target.value })} className="input-form" />
                                  </div>
                               </div>
                            </div>
@@ -4564,11 +4620,11 @@ export default function NikonDashboard() {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Nomor Seri *</label>
-                                    <input type="text" required value={warrantyForm.nomor_seri || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_seri: e.target.value })} className="input-form" />
+                                    <input type="text" required aria-label="Nomor Seri" value={warrantyForm.nomor_seri || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nomor_seri: e.target.value })} className="input-form" />
                                  </div>
                                  <div>
                                     <label className="label-form">Tipe Barang *</label>
-                                    <input type="text" required value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({ ...warrantyForm, tipe_barang: e.target.value })} className="input-form" list="dl-tipe-barang" placeholder="Contoh: Nikon Z50 Kit 16-50mm" />
+                                    <input type="text" required aria-label="Tipe Barang" value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({ ...warrantyForm, tipe_barang: e.target.value })} className="input-form" list="dl-tipe-barang" placeholder="Contoh: Nikon Z50 Kit 16-50mm" />
                                  </div>
                                  <div>
                                     <label className="label-form">Tanggal Pembelian</label>
@@ -4576,7 +4632,7 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="label-form">Nama Toko</label>
-                                    <input type="text" value={warrantyForm.nama_toko || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nama_toko: e.target.value })} className="input-form" list="dl-nama-toko" />
+                                    <input type="text" aria-label="Nama Toko" value={warrantyForm.nama_toko || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nama_toko: e.target.value })} className="input-form" list="dl-nama-toko" />
                                  </div>
                               </div>
                            </div>
@@ -4626,11 +4682,11 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="label-form">Catatan MKT</label>
-                                    <textarea rows={2} value={warrantyForm.catatan_mkt || ''} onChange={e => setWarrantyForm({ ...warrantyForm, catatan_mkt: e.target.value })} className="input-form resize-none" />
+                                    <textarea rows={2} aria-label="Catatan MKT" value={warrantyForm.catatan_mkt || ''} onChange={e => setWarrantyForm({ ...warrantyForm, catatan_mkt: e.target.value })} className="input-form resize-none" />
                                  </div>
                                  <div>
                                     <label className="label-form">Catatan FA</label>
-                                    <textarea rows={2} value={warrantyForm.catatan_fa || ''} onChange={e => setWarrantyForm({ ...warrantyForm, catatan_fa: e.target.value })} className="input-form resize-none" />
+                                    <textarea rows={2} aria-label="Catatan FA" value={warrantyForm.catatan_fa || ''} onChange={e => setWarrantyForm({ ...warrantyForm, catatan_fa: e.target.value })} className="input-form resize-none" />
                                  </div>
                               </div>
                            </div>
@@ -4711,6 +4767,7 @@ export default function NikonDashboard() {
                                     <label className="label-form">ID Konsumen</label>
                                     <input
                                        type="text"
+                                       aria-label="ID Konsumen"
                                        value={konsumenForm.id_konsumen || ''}
                                        onChange={e => setKonsumenForm({ ...konsumenForm, id_konsumen: e.target.value })}
                                        className="input-form"
@@ -4722,6 +4779,7 @@ export default function NikonDashboard() {
                                     <input
                                        type="text"
                                        required
+                                       aria-label="Nama Lengkap"
                                        value={konsumenForm.nama_lengkap || ''}
                                        onChange={e => setKonsumenForm({ ...konsumenForm, nama_lengkap: e.target.value })}
                                        className="input-form"
@@ -4751,36 +4809,23 @@ export default function NikonDashboard() {
                                     <label className="label-form">Alamat Rumah</label>
                                     <textarea
                                        rows={2}
+                                       aria-label="Alamat Rumah"
                                        value={konsumenForm.alamat_rumah || ''}
                                        onChange={e => setKonsumenForm({ ...konsumenForm, alamat_rumah: e.target.value })}
                                        className="input-form resize-none"
                                        placeholder="Jalan, nomor rumah, RT/RW"
                                     />
                                  </div>
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div>
-                                       <label className="label-form">Kelurahan</label>
-                                       <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="input-form" list="dl-kelurahan" />
-                                    </div>
-                                    <div>
-                                       <label className="label-form">Kecamatan</label>
-                                       <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="input-form" list="dl-kecamatan" />
-                                    </div>
-                                 </div>
-                                 <div>
-                                    <label className="label-form">Kabupaten / Kotamadya</label>
-                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="input-form" list="dl-kabupaten" />
-                                 </div>
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div>
-                                       <label className="label-form">Provinsi</label>
-                                       <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="input-form" list="dl-provinsi" />
-                                    </div>
-                                    <div>
-                                       <label className="label-form">Kode Pos</label>
-                                       <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="input-form" pattern="[0-9]{5}|BELUM_DIISI" title="5 digit angka" list="dl-kodepos" />
-                                    </div>
-                                 </div>
+                                 <AddressFields
+                                    values={{
+                                       kelurahan: konsumenForm.kelurahan || '',
+                                       kecamatan: konsumenForm.kecamatan || '',
+                                       kabupaten_kotamadya: konsumenForm.kabupaten_kotamadya || '',
+                                       provinsi: konsumenForm.provinsi || '',
+                                       kodepos: konsumenForm.kodepos || '',
+                                    }}
+                                    onChange={partial => setKonsumenForm(prev => ({ ...prev, ...partial }))}
+                                 />
                               </div>
                            </div>
 
@@ -4875,7 +4920,7 @@ export default function NikonDashboard() {
                               </div>
                               <div className="mt-3">
                                  <label className="label-form">Alamat Pengiriman Hadiah</label>
-                                 <textarea rows={2} value={claimForm.alamat_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, alamat_pengiriman: e.target.value })} className="input-form resize-none" />
+                                 <textarea rows={2} aria-label="Alamat Pengiriman Hadiah" value={claimForm.alamat_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, alamat_pengiriman: e.target.value })} className="input-form resize-none" />
                               </div>
                            </div>
 
@@ -4890,36 +4935,22 @@ export default function NikonDashboard() {
                               <div className="space-y-3">
                                  <div>
                                     <label className="label-form">NIK (Nomor KTP)</label>
-                                    <input type="text" value={konsumenForm.nik || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nik: e.target.value })} className="input-form" placeholder="16 digit" pattern="[0-9]{16}" />
+                                    <input type="text" aria-label="NIK (Nomor KTP)" value={konsumenForm.nik || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nik: e.target.value })} className="input-form" placeholder="16 digit" pattern="[0-9]{16}" />
                                  </div>
                                  <div>
                                     <label className="label-form">Alamat Rumah</label>
-                                    <textarea rows={2} value={konsumenForm.alamat_rumah || ''} onChange={e => setKonsumenForm({ ...konsumenForm, alamat_rumah: e.target.value })} className="input-form resize-none" placeholder="Jalan, nomor, RT/RW" />
+                                    <textarea rows={2} aria-label="Alamat Rumah" value={konsumenForm.alamat_rumah || ''} onChange={e => setKonsumenForm({ ...konsumenForm, alamat_rumah: e.target.value })} className="input-form resize-none" placeholder="Jalan, nomor, RT/RW" />
                                  </div>
-                                 <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                       <label className="label-form">Kelurahan</label>
-                                       <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="input-form" list="dl-kelurahan" />
-                                    </div>
-                                    <div>
-                                       <label className="label-form">Kecamatan</label>
-                                       <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="input-form" list="dl-kecamatan" />
-                                    </div>
-                                 </div>
-                                 <div>
-                                    <label className="label-form">Kabupaten / Kotamadya</label>
-                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="input-form" list="dl-kabupaten" />
-                                 </div>
-                                 <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                       <label className="label-form">Provinsi</label>
-                                       <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="input-form" list="dl-provinsi" />
-                                    </div>
-                                    <div>
-                                       <label className="label-form">Kode Pos</label>
-                                       <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="input-form" pattern="[0-9]{5}" list="dl-kodepos" />
-                                    </div>
-                                 </div>
+                                 <AddressFields
+                                    values={{
+                                       kelurahan: konsumenForm.kelurahan || '',
+                                       kecamatan: konsumenForm.kecamatan || '',
+                                       kabupaten_kotamadya: konsumenForm.kabupaten_kotamadya || '',
+                                       provinsi: konsumenForm.provinsi || '',
+                                       kodepos: konsumenForm.kodepos || '',
+                                    }}
+                                    onChange={partial => setKonsumenForm(prev => ({ ...prev, ...partial }))}
+                                 />
                               </div>
                            </div>
 
@@ -4929,11 +4960,11 @@ export default function NikonDashboard() {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Nomor Seri *</label>
-                                    <input type="text" required value={claimForm.nomor_seri || ''} onChange={e => setClaimForm({ ...claimForm, nomor_seri: e.target.value })} className="input-form" />
+                                    <input type="text" required aria-label="Nomor Seri" value={claimForm.nomor_seri || ''} onChange={e => setClaimForm({ ...claimForm, nomor_seri: e.target.value })} className="input-form" />
                                  </div>
                                  <div>
                                     <label className="label-form">Tipe Barang *</label>
-                                    <input type="text" required value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({ ...claimForm, tipe_barang: e.target.value })} className="input-form" list="dl-tipe-barang" placeholder="Contoh: Nikon Z50 Kit 16-50mm" />
+                                    <input type="text" required aria-label="Tipe Barang" value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({ ...claimForm, tipe_barang: e.target.value })} className="input-form" list="dl-tipe-barang" placeholder="Contoh: Nikon Z50 Kit 16-50mm" />
                                  </div>
                                  <div>
                                     <label className="label-form">Tanggal Pembelian *</label>
@@ -4941,7 +4972,7 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="label-form">Nama Toko</label>
-                                    <input type="text" value={claimForm.nama_toko || ''} onChange={e => setClaimForm({ ...claimForm, nama_toko: e.target.value })} className="input-form" list="dl-nama-toko" />
+                                    <input type="text" aria-label="Nama Toko" value={claimForm.nama_toko || ''} onChange={e => setClaimForm({ ...claimForm, nama_toko: e.target.value })} className="input-form" list="dl-nama-toko" />
                                  </div>
                                  <div className="md:col-span-2">
                                     <label className="label-form">Jenis Promosi</label>
@@ -4976,11 +5007,11 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="label-form">Catatan MKT</label>
-                                    <textarea rows={2} value={claimForm.catatan_mkt || ''} onChange={e => setClaimForm({ ...claimForm, catatan_mkt: e.target.value })} className="input-form resize-none" />
+                                    <textarea rows={2} aria-label="Catatan MKT" value={claimForm.catatan_mkt || ''} onChange={e => setClaimForm({ ...claimForm, catatan_mkt: e.target.value })} className="input-form resize-none" />
                                  </div>
                                  <div>
                                     <label className="label-form">Catatan FA</label>
-                                    <textarea rows={2} value={claimForm.catatan_fa || ''} onChange={e => setClaimForm({ ...claimForm, catatan_fa: e.target.value })} className="input-form resize-none" />
+                                    <textarea rows={2} aria-label="Catatan FA" value={claimForm.catatan_fa || ''} onChange={e => setClaimForm({ ...claimForm, catatan_fa: e.target.value })} className="input-form resize-none" />
                                  </div>
                               </div>
                            </div>
@@ -4998,7 +5029,7 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="label-form">Nomor Resi</label>
-                                    <input type="text" value={claimForm.nomor_resi || ''} onChange={e => setClaimForm({ ...claimForm, nomor_resi: e.target.value })} className="input-form" />
+                                    <input type="text" aria-label="Nomor Resi" value={claimForm.nomor_resi || ''} onChange={e => setClaimForm({ ...claimForm, nomor_resi: e.target.value })} className="input-form" />
                                  </div>
                               </div>
                            </div>
@@ -5108,21 +5139,21 @@ export default function NikonDashboard() {
                                        </div>
                                        <div>
                                           <label className="label-form">Harga *</label>
-                                          <input type="text" required value={getVal('event_price', 'price')} onChange={e => setField('event_price', e.target.value)} className="input-form" placeholder="Contoh: Rp 50.000" />
+                                          <input type="text" required aria-label="Harga" value={getVal('event_price', 'price')} onChange={e => setField('event_price', e.target.value)} className="input-form" placeholder="Contoh: Rp 50.000" />
                                        </div>
                                     </div>
                                     <div>
                                        <label className="label-form">Deskripsi Event *</label>
-                                       <textarea required rows={4} value={getVal('event_description', 'detail_acara')} onChange={e => setField('event_description', e.target.value)} className="input-form resize-none" placeholder="Detail acara, agenda, dll." />
+                                       <textarea required rows={4} aria-label="Deskripsi Event" value={getVal('event_description', 'detail_acara')} onChange={e => setField('event_description', e.target.value)} className="input-form resize-none" placeholder="Detail acara, agenda, dll." />
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                        <div>
                                           <label className="label-form">Kuota Peserta *</label>
-                                          <input type="number" required min={0} value={getVal('event_partisipant_stock', 'stock')} onChange={e => setField('event_partisipant_stock', parseInt(e.target.value) || 0)} className="input-form" />
+                                          <input type="number" required min={0} aria-label="Kuota Peserta" value={getVal('event_partisipant_stock', 'stock')} onChange={e => setField('event_partisipant_stock', parseInt(e.target.value) || 0)} className="input-form" />
                                        </div>
                                        <div>
                                           <label className="label-form">Status</label>
-                                          <select value={getVal('event_status', 'status') || 'In stock'} onChange={e => setField('event_status', e.target.value)} className="input-form">
+                                          <select aria-label="Status Event" value={getVal('event_status', 'status') || 'In stock'} onChange={e => setField('event_status', e.target.value)} className="input-form">
                                              {EVENT_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                           </select>
                                        </div>
@@ -5140,7 +5171,7 @@ export default function NikonDashboard() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                        <div>
                                           <label className="label-form">Tipe Pembayaran</label>
-                                          <select value={getVal('event_payment_tipe') || 'regular'} onChange={e => setField('event_payment_tipe', e.target.value)} className="input-form">
+                                          <select aria-label="Tipe Pembayaran" value={getVal('event_payment_tipe') || 'regular'} onChange={e => setField('event_payment_tipe', e.target.value)} className="input-form">
                                              {PAYMENT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                           </select>
                                        </div>
@@ -5306,11 +5337,11 @@ export default function NikonDashboard() {
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                  <label className="label-form">Nama Peminjam *</label>
-                                 <input type="text" required value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="input-form" />
+                                 <input type="text" required aria-label="Nama Peminjam" value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="input-form" />
                               </div>
                               <div>
                                  <label className="label-form">Nomor WhatsApp *</label>
-                                 <input type="text" required value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="input-form" placeholder="Contoh: 6281234567890" />
+                                 <input type="text" required aria-label="Nomor WhatsApp Peminjam" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="input-form" placeholder="Contoh: 6281234567890" />
                               </div>
                            </div>
                            <div>
@@ -5361,17 +5392,17 @@ export default function NikonDashboard() {
                                              }} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                           )}
                                        </div>
-                                       <input type="text" required placeholder="Nama Barang (cth: Nikon Z50 II Body Only)" value={item.nama_barang} onChange={e => {
+                                       <input type="text" required aria-label="Nama Barang" placeholder="Nama Barang (cth: Nikon Z50 II Body Only)" value={item.nama_barang} onChange={e => {
                                           const newItems = [...(lendingForm.items_dipinjam || [])];
                                           newItems[idx] = { ...newItems[idx], nama_barang: e.target.value };
                                           setLendingForm({ ...lendingForm, items_dipinjam: newItems });
                                        }} className="input-form" />
-                                       <input type="text" required placeholder="Nomor Seri" value={item.nomor_seri} onChange={e => {
+                                       <input type="text" required aria-label="Nomor Seri Barang" placeholder="Nomor Seri" value={item.nomor_seri} onChange={e => {
                                           const newItems = [...(lendingForm.items_dipinjam || [])];
                                           newItems[idx] = { ...newItems[idx], nomor_seri: e.target.value };
                                           setLendingForm({ ...lendingForm, items_dipinjam: newItems });
                                        }} className="input-form" />
-                                       <input type="text" placeholder="Catatan (opsional)" value={item.catatan || ''} onChange={e => {
+                                       <input type="text" aria-label="Catatan Barang" placeholder="Catatan (opsional)" value={item.catatan || ''} onChange={e => {
                                           const newItems = [...(lendingForm.items_dipinjam || [])];
                                           newItems[idx] = { ...newItems[idx], catatan: e.target.value };
                                           setLendingForm({ ...lendingForm, items_dipinjam: newItems });
@@ -5438,11 +5469,11 @@ export default function NikonDashboard() {
                   <form onSubmit={handleSendNewChat} className="p-6 space-y-4">
                      <div>
                         <label className="label-form">Nomor WhatsApp Tujuan</label>
-                        <input type="text" value={newChatWa} onChange={e => setNewChatWa(e.target.value)} className="input-form" placeholder="Contoh: 628123456789" required />
+                        <input type="text" aria-label="Nomor WhatsApp Tujuan" value={newChatWa} onChange={e => setNewChatWa(e.target.value)} className="input-form" placeholder="Contoh: 628123456789" required />
                      </div>
                      <div>
                         <label className="label-form">Isi Pesan</label>
-                        <textarea value={newChatMsg} onChange={e => setNewChatMsg(e.target.value)} className="input-form" rows={4} required />
+                        <textarea aria-label="Isi Pesan" value={newChatMsg} onChange={e => setNewChatMsg(e.target.value)} className="input-form" rows={4} required />
                      </div>
                      <div className="flex justify-end gap-3">
                         <button type="button" onClick={() => setIsNewChatModalOpen(false)} className="btn-secondary">Batal</button>
@@ -5531,7 +5562,7 @@ export default function NikonDashboard() {
                                  <div className="border-b border-black bg-gray-100 px-2 py-1.5 text-center">
                                     <p className="text-[10px] font-bold tracking-wider">PROPOSED / PREPARED BY</p>
                                  </div>
-                                 <div className="px-2 pt-12 pb-1 text-center min-h-[90px] flex flex-col justify-end">
+                                 <div className="px-2 pt-12 pb-1 text-center min-h-22.5 flex flex-col justify-end">
                                     <p className="text-base font-bold">{drafterDisplay}</p>
                                  </div>
                                  <div className="grid grid-cols-2 border-t border-black text-[9px]">
@@ -5549,7 +5580,7 @@ export default function NikonDashboard() {
                                  <div className="border-b border-black bg-gray-100 px-2 py-1.5 text-center">
                                     <p className="text-[10px] font-bold tracking-wider">MANAGEMENT APPROVAL</p>
                                  </div>
-                                 <div className="grid grid-cols-3 min-h-[90px]">
+                                 <div className="grid grid-cols-3 min-h-22.5">
                                     <div className="border-r border-black px-2 pt-12 pb-1 text-center flex flex-col justify-end">
                                        <p className="text-sm font-bold">{MGT_NAMES.col1}</p>
                                     </div>
@@ -5581,7 +5612,7 @@ export default function NikonDashboard() {
                                  <div className="border-b border-black bg-gray-100 px-2 py-1.5 text-center">
                                     <p className="text-[10px] font-bold tracking-wider">FINANCE & ACCOUNTING</p>
                                  </div>
-                                 <div className="px-2 pt-12 pb-1 text-center min-h-[90px] flex flex-col justify-end">
+                                 <div className="px-2 pt-12 pb-1 text-center min-h-22.5 flex flex-col justify-end">
                                     <p className="text-base font-bold">{FINANCE_NAME}</p>
                                  </div>
                                  <div className="grid grid-cols-2 border-t border-black text-[9px]">
