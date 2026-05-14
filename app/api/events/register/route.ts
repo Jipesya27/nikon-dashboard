@@ -20,19 +20,30 @@ function getSupabase() {
 }
 
 async function getAccessToken() {
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: GOOGLE_REFRESH_TOKEN,
-      grant_type: 'refresh_token',
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        refresh_token: GOOGLE_REFRESH_TOKEN,
+        grant_type: 'refresh_token',
+      }),
+      signal: AbortSignal.timeout(7000),
+    });
+  } catch {
+    throw new Error('Google Auth timeout atau jaringan bermasalah. Coba lagi.');
+  }
   const data = await res.json();
-  if (!data.access_token) throw new Error(`Google Auth gagal: ${JSON.stringify(data)}`);
-  return data.access_token;
+  if (!data.access_token) {
+    const hint = data.error === 'invalid_grant'
+      ? 'Refresh token expired — minta admin perbarui GOOGLE_REFRESH_TOKEN.'
+      : JSON.stringify(data);
+    throw new Error(`Google Auth gagal: ${hint}`);
+  }
+  return data.access_token as string;
 }
 
 async function uploadToDrive(file: File, fileName: string, accessToken: string): Promise<string> {
@@ -41,31 +52,39 @@ async function uploadToDrive(file: File, fileName: string, accessToken: string):
   form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
   form.append('file', file);
 
-  const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-    { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form }
-  );
+  let res: Response;
+  try {
+    res = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+      { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form, signal: AbortSignal.timeout(15000) }
+    );
+  } catch {
+    throw new Error('Upload ke Google Drive timeout. File mungkin terlalu besar atau koneksi lambat.');
+  }
   const data = await res.json();
   if (!data.id) throw new Error(`Upload Drive gagal: ${JSON.stringify(data)}`);
 
-  await fetch(`https://www.googleapis.com/drive/v3/files/${data.id}/permissions`, {
+  fetch(`https://www.googleapis.com/drive/v3/files/${data.id}/permissions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ role: 'reader', type: 'anyone' }),
-  });
+    signal: AbortSignal.timeout(5000),
+  }).catch(e => console.error('Set Drive permission gagal (non-kritis):', e));
 
   return `https://drive.google.com/uc?id=${data.id}&export=view`;
 }
 
 async function kirimWA(nomor: string, pesan: string) {
   try {
-    await fetch('https://api.fonnte.com/send', {
+    const res = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
       headers: { Authorization: FONNTE_TOKEN },
       body: new URLSearchParams({ target: nomor, message: pesan }),
+      signal: AbortSignal.timeout(8000),
     });
+    if (!res.ok) console.error('Fonnte kirimWA HTTP error:', res.status, await res.text());
   } catch (e) {
-    console.error('Gagal kirim WA:', e);
+    console.error('Gagal kirim WA (non-kritis):', e);
   }
 }
 

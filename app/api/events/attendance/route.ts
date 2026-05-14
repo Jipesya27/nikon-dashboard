@@ -51,8 +51,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, registration: reg });
   } catch (err: unknown) {
-    console.error('attendance GET error:', err);
     const message = err instanceof Error ? err.message : 'Internal error';
+    console.error('attendance GET error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
     // Kirim WA notifikasi (opsional)
     if (sendWa && reg.nomor_wa) {
       const msg = `Halo *${reg.nama_lengkap}*,\n\nKehadiran Anda di event *${reg.event_name}* sudah dikonfirmasi. ✅\n\nSelamat menikmati acara!\n\nSalam,\nNikon Indonesia`;
-      sendWhatsApp(reg.nomor_wa, msg).catch(() => {});
+      sendWhatsApp(reg.nomor_wa, msg).catch(e => console.error('WA attendance notify gagal:', e));
     }
 
     return NextResponse.json({
@@ -128,8 +128,8 @@ export async function POST(req: NextRequest) {
       registration: updated,
     });
   } catch (err: unknown) {
-    console.error('attendance POST error:', err);
     const message = err instanceof Error ? err.message : 'Internal error';
+    console.error('attendance POST error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

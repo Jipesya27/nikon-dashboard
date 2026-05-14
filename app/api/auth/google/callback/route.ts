@@ -46,7 +46,7 @@ export async function GET(req: Request) {
       });
       const userInfo = await userInfoRes.json();
       userEmail = userInfo.email || '';
-    } catch {}
+    } catch (e) { console.error('Gagal ambil userinfo Google (non-kritis):', e); }
 
     const params = new URLSearchParams({
       refresh_token: data.refresh_token,

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch related event manually (no FK relationship in schema)
-    let eventInfo: { event_date?: string; event_description?: string } | null = null;
+    let eventInfo: Record<string, unknown> | null = null;
     if (reg.event_id) {
       const { data: ev } = await supabase.from('events').select('*').eq('id', reg.event_id).maybeSingle();
       eventInfo = ev;
@@ -67,15 +67,15 @@ export async function POST(req: NextRequest) {
         fullName: reg.nama_lengkap,
         nomorWa: reg.nomor_wa,
         eventTitle: reg.event_name,
-        eventDate: eventInfo?.event_date || '',
-        eventDetail: eventInfo?.event_description || '',
+        eventDate: (eventInfo?.event_date as string) || '',
+        eventDetail: (eventInfo?.event_description as string) || '',
         cameraModel: reg.tipe_kamera || '',
         paymentType: reg.payment_type || 'regular',
       });
       ticketUrl = result.ticketUrl;
     } catch (err: unknown) {
-      console.error('generateTicket failed:', err);
       const message = err instanceof Error ? err.message : String(err);
+      console.error('generateTicket failed:', message);
       return NextResponse.json({ error: `Ticket generation failed: ${message}` }, { status: 500 });
     }
 
@@ -95,8 +95,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, status: 'terdaftar', ticketUrl });
   } catch (err: unknown) {
-    console.error('validate-payment error:', err);
     const message = err instanceof Error ? err.message : 'Internal error';
+    console.error('validate-payment error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

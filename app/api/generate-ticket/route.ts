@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, ...result });
   } catch (err: unknown) {
-    console.error('generate-ticket error:', err);
     const message = err instanceof Error ? err.message : 'Failed to generate ticket';
+    console.error('generate-ticket error:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

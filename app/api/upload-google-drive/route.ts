@@ -11,21 +11,30 @@ function sanitizeFileName(name: string): string {
 }
 
 async function getAccessToken() {
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: GOOGLE_REFRESH_TOKEN,
-      grant_type: "refresh_token",
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        refresh_token: GOOGLE_REFRESH_TOKEN,
+        grant_type: "refresh_token",
+      }),
+      signal: AbortSignal.timeout(7000),
+    });
+  } catch {
+    throw new Error("Google Auth timeout atau jaringan bermasalah. Coba lagi.");
+  }
   const data = await res.json();
   if (!data.access_token) {
-    throw new Error(`Google Auth failed: ${JSON.stringify(data)}`);
+    const hint = data.error === "invalid_grant"
+      ? "Refresh token expired — minta admin perbarui GOOGLE_REFRESH_TOKEN."
+      : JSON.stringify(data);
+    throw new Error(`Google Auth gagal: ${hint}`);
   }
-  return data.access_token;
+  return data.access_token as string;
 }
 
 async function uploadToGoogleDrive(file: File, fileName: string, accessToken: string) {
@@ -34,22 +43,29 @@ async function uploadToGoogleDrive(file: File, fileName: string, accessToken: st
   form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
   form.append("file", file);
 
-  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${accessToken}` },
-    body: form,
-  });
+  let res: Response;
+  try {
+    res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${accessToken}` },
+      body: form,
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch {
+    throw new Error("Upload ke Google Drive timeout. File mungkin terlalu besar atau koneksi lambat.");
+  }
   const data = await res.json();
 
   if (!data.id) {
     throw new Error(`Google Drive upload failed: ${JSON.stringify(data)}`);
   }
 
-  await fetch(`https://www.googleapis.com/drive/v3/files/${data.id}/permissions`, {
+  fetch(`https://www.googleapis.com/drive/v3/files/${data.id}/permissions`, {
     method: "POST",
     headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ role: "reader", type: "anyone" }),
-  });
+    signal: AbortSignal.timeout(5000),
+  }).catch(e => console.error("Set Drive permission gagal (non-kritis):", e));
 
   return `https://drive.google.com/uc?id=${data.id}&export=view`;
 }
@@ -86,7 +102,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, url });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Upload failed';
+    const message = error instanceof Error ? error.message : 'Internal error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -101,7 +117,7 @@ export async function DELETE(req: Request) {
         await deleteFromGoogleDrive(fileId, accessToken);
         return NextResponse.json({ success: true, message: 'File deleted' });
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Delete failed';
+        const message = error instanceof Error ? error.message : 'Internal error';
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
