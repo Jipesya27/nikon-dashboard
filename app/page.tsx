@@ -421,6 +421,20 @@ export default function NikonDashboard() {
    useEffect(() => {
       localStorage.setItem('nikon_chat_read_status', JSON.stringify(readStatus));
    }, [readStatus]);
+   // ESC key untuk tutup modal cepat
+   useEffect(() => {
+      const onKeyDown = (e: KeyboardEvent) => {
+         if (e.key === 'Escape') {
+            if (isModalOpen) closeModal();
+            else if (isNewChatModalOpen) setIsNewChatModalOpen(false);
+            else if (isScannerOpen) setIsScannerOpen(false);
+            else if (isImageViewerOpen) closeImageViewer();
+         }
+      };
+      window.addEventListener('keydown', onKeyDown);
+      return () => window.removeEventListener('keydown', onKeyDown);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [isModalOpen, isNewChatModalOpen, isScannerOpen, isImageViewerOpen]);
    useEffect(() => {
       if (typeof window !== 'undefined') localStorage.setItem('nikon_chat_tags', JSON.stringify(chatTags));
    }, [chatTags]);
@@ -3666,8 +3680,16 @@ export default function NikonDashboard() {
                <datalist id="dl-bank-info">{dBankInfo.map(v => <option key={v} value={v} />)}</datalist>
                <datalist id="dl-nama-toko">{dNamaToko.map(v => <option key={v} value={v} />)}</datalist>
                <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                  <div className="p-5 border-b border-gray-200">
-                     <h2 className="text-lg font-bold text-gray-900">
+                  <div className="p-5 border-b border-gray-200 flex items-center gap-3">
+                     <button
+                        onClick={closeModal}
+                        aria-label="Tutup modal"
+                        title="Tutup (Esc)"
+                        className="shrink-0 w-9 h-9 rounded-full bg-gray-100 hover:bg-red-100 text-gray-700 hover:text-red-700 flex items-center justify-center transition-all"
+                     >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/></svg>
+                     </button>
+                     <h2 className="text-lg font-bold text-gray-900 flex-1">
                         {modalAction === 'create' ? 'Tambah' : modalAction === 'edit' ? 'Edit' : modalAction === 'reset_pw' ? 'Reset Password' : 'Pengembalian'} Data
                      </h2>
                   </div>
@@ -4011,8 +4033,15 @@ export default function NikonDashboard() {
                                              <input type="text" required value={budgetForm.proposal_no || ''} onChange={e => setBudgetForm({ ...budgetForm, proposal_no: e.target.value })} className="input-form font-mono" />
                                           </div>
                                           <div>
-                                             <label className="label-form">Drafter</label>
-                                             <input type="text" value={budgetForm.drafter_name || ''} onChange={e => setBudgetForm({ ...budgetForm, drafter_name: e.target.value })} className="input-form" />
+                                             <label className="label-form">Proposed Name *</label>
+                                             <input
+                                                type="text"
+                                                required
+                                                value={budgetForm.proposed_name || budgetForm.drafter_name || ''}
+                                                onChange={e => setBudgetForm({ ...budgetForm, proposed_name: e.target.value, drafter_name: e.target.value })}
+                                                className="input-form"
+                                                placeholder="Nama yang mengajukan"
+                                             />
                                           </div>
                                           <div className="md:col-span-2">
                                              <label className="label-form">Judul Proposal *</label>
@@ -4136,10 +4165,48 @@ export default function NikonDashboard() {
                                           </button>
                                        </div>
 
-                                       {/* Total */}
-                                       <div className="mt-3 pt-3 border-t-2 border-yellow-300 flex items-center justify-between">
-                                          <span className="text-sm font-bold text-gray-700">TOTAL COST</span>
-                                          <span className="text-xl font-black text-gray-900">{fmtRp(totalCost)}</span>
+                                       {/* Total Cost + Total Petty Cash */}
+                                       {(() => {
+                                          const totalPettyCash = items.reduce((sum, it) => {
+                                             const v = parseFloat(String(it.petty_cash || '0').replace(/[^0-9.-]/g, ''));
+                                             return sum + (isNaN(v) ? 0 : v);
+                                          }, 0);
+                                          return (
+                                             <div className="mt-3 pt-3 border-t-2 border-yellow-300 space-y-1">
+                                                <div className="flex items-center justify-between text-xs">
+                                                   <span className="font-bold text-gray-800">Total Petty Cash</span>
+                                                   <span className="font-mono font-bold text-gray-900">{fmtRp(totalPettyCash)}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between pt-1">
+                                                   <span className="text-sm font-bold text-gray-700">TOTAL COST</span>
+                                                   <span className="text-xl font-black text-gray-900">{fmtRp(totalCost)}</span>
+                                                </div>
+                                             </div>
+                                          );
+                                       })()}
+                                    </div>
+
+                                    {/* Section: Penanggung Jawab Approval (editable nama) */}
+                                    <div className="bg-blue-50 rounded-lg p-3 border-2 border-blue-200">
+                                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Penanggung Jawab Approval (Print)</h3>
+                                       <p className="text-[11px] text-gray-800 font-medium mb-3">📌 Nama-nama berikut akan muncul di header Print PDF (kotak Approval).</p>
+                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                          <div className="md:col-span-2">
+                                             <label className="label-form">Management Approver 1 (Comment)</label>
+                                             <input type="text" value={budgetForm.mgt_name_1 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_name_1: e.target.value })} className="input-form" placeholder="Default: Jamal" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Management Approver 2 (Comment)</label>
+                                             <input type="text" value={budgetForm.mgt_name_2 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_name_2: e.target.value })} className="input-form" placeholder="Default: Eko" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Management Approver 3 (Consent)</label>
+                                             <input type="text" value={budgetForm.mgt_name_3 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_name_3: e.target.value })} className="input-form" placeholder="Default: Larry" />
+                                          </div>
+                                          <div className="md:col-span-2">
+                                             <label className="label-form">Finance & Accounting Approver</label>
+                                             <input type="text" value={budgetForm.finance_name || ''} onChange={e => setBudgetForm({ ...budgetForm, finance_name: e.target.value })} className="input-form" placeholder="Default: Merry" />
+                                          </div>
                                        </div>
                                     </div>
 
@@ -4148,11 +4215,11 @@ export default function NikonDashboard() {
                                        <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Komentar Management & Persetujuan</h3>
                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div>
-                                             <label className="label-form">Mgt Comment 1</label>
+                                             <label className="label-form">Comment dari {budgetForm.mgt_name_1 || 'Manager 1'}</label>
                                              <textarea rows={2} value={budgetForm.mgt_comment_1 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_1: e.target.value })} className="input-form resize-none" />
                                           </div>
                                           <div>
-                                             <label className="label-form">Mgt Comment 2</label>
+                                             <label className="label-form">Comment dari {budgetForm.mgt_name_2 || 'Manager 2'}</label>
                                              <textarea rows={2} value={budgetForm.mgt_comment_2 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_2: e.target.value })} className="input-form resize-none" />
                                           </div>
                                           <div>
@@ -5385,12 +5452,21 @@ export default function NikonDashboard() {
                   const items = printData.items || [];
                   const subtotal = items.reduce((s, it) => s + (Number(it.value) || 0), 0);
                   const grandTotal = subtotal; // tidak ada pajak/discount untuk saat ini
-                  // Management names (hardcoded sesuai template; admin bisa edit di sini)
-                  const MGT_NAMES = { col1: 'Jamal', col2: 'Eko', col3: 'Larry' };
-                  const FINANCE_NAME = 'Merry';
+                  // Management names — ambil dari data proposal, fallback ke default template
+                  const MGT_NAMES = {
+                     col1: printData.mgt_name_1 || 'Jamal',
+                     col2: printData.mgt_name_2 || 'Eko',
+                     col3: printData.mgt_name_3 || 'Larry',
+                  };
+                  const FINANCE_NAME = printData.finance_name || 'Merry';
                   // Section dynamic dari budget_source
                   const sectionLabel = printData.budget_source?.toUpperCase() || 'MARKETING BUDGET';
-                  const drafterDisplay = printData.drafter_name || 'Firza';
+                  const drafterDisplay = printData.proposed_name || printData.drafter_name || 'Firza';
+                  // Hitung total petty cash
+                  const totalPettyCash = items.reduce((sum, it) => {
+                     const v = parseFloat(String(it.petty_cash || '0').replace(/[^0-9.-]/g, ''));
+                     return sum + (isNaN(v) ? 0 : v);
+                  }, 0);
                   const attachments = (printData.attachment_urls || []).filter((u): u is string => typeof u === 'string' && Boolean(u)).slice(0, 3);
                   return (
                      <>
@@ -5555,6 +5631,11 @@ export default function NikonDashboard() {
                                              <td className="border border-black px-2 py-1.5 text-right font-bold font-mono">{fmtNum(Number(it.value) || 0)}</td>
                                           </tr>
                                        ))}
+                                       <tr>
+                                          <td colSpan={3}></td>
+                                          <td className="border border-black px-2 py-2 text-right font-bold bg-gray-50">TOTAL PETTY CASH</td>
+                                          <td className="border border-black px-2 py-2 text-right font-bold font-mono bg-gray-50" colSpan={2}>Rp {fmtNum(totalPettyCash)}</td>
+                                       </tr>
                                        <tr>
                                           <td colSpan={4}></td>
                                           <td className="border border-black px-2 py-2 text-right font-bold bg-gray-50">SUBTOTAL</td>
