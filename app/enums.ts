@@ -11,6 +11,7 @@ export const VALIDASI_OPTIONS = [
   { value: 'Dalam Proses Verifikasi', label: 'Dalam Proses Verifikasi' },
   { value: 'Valid', label: 'Valid' },
   { value: 'Ditolak', label: 'Ditolak' },
+  { value: 'HOLD', label: 'HOLD (Ditunda)' },
 ] as const;
 export type ValidasiStatus = typeof VALIDASI_OPTIONS[number]['value'];
 
@@ -181,6 +182,31 @@ export const STATUS_LANGKAH_OPTIONS = [
   { value: 'MENUNGGU_RESI_SERVICE', label: 'MENUNGGU_RESI_SERVICE (Cek Status)' },
 ] as const;
 export type StatusLangkah = typeof STATUS_LANGKAH_OPTIONS[number]['value'];
+
+// ============ NAMA BANK (statik enum) ============
+export const NAMA_BANK_OPTIONS = [
+  { value: 'BCA', label: 'BCA' },
+  { value: 'Mandiri', label: 'Mandiri' },
+  { value: 'BNI', label: 'BNI' },
+  { value: 'BRI', label: 'BRI' },
+  { value: 'CIMB Niaga', label: 'CIMB Niaga' },
+  { value: 'Permata', label: 'Permata' },
+  { value: 'Danamon', label: 'Danamon' },
+  { value: 'BTN', label: 'BTN' },
+  { value: 'Maybank', label: 'Maybank' },
+  { value: 'OCBC NISP', label: 'OCBC NISP' },
+  { value: 'Panin', label: 'Panin' },
+  { value: 'Bank Mega', label: 'Bank Mega' },
+  { value: 'Bank Syariah Indonesia', label: 'BSI (Bank Syariah Indonesia)' },
+  { value: 'Bank Jago', label: 'Bank Jago' },
+  { value: 'SeaBank', label: 'SeaBank' },
+  { value: 'Blu by BCA Digital', label: 'Blu by BCA Digital' },
+  { value: 'Jenius', label: 'Jenius (BTPN)' },
+  { value: 'GoPay', label: 'GoPay (E-Wallet)' },
+  { value: 'OVO', label: 'OVO (E-Wallet)' },
+  { value: 'DANA', label: 'DANA (E-Wallet)' },
+] as const;
+export type NamaBank = typeof NAMA_BANK_OPTIONS[number]['value'];
 
 // Helper untuk membuat dropdown component dgn options apapun di atas
 export type EnumOption = { value: string; label: string };
