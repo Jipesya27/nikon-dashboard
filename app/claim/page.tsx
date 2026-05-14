@@ -111,6 +111,29 @@ function ClaimForm() {
     else { setFileNota(file); setPreviewNota(url); }
   }
 
+  function compressImage(file: File, maxWidthPx = 1600, qualityJpeg = 0.8): Promise<File> {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith('image/')) { resolve(file); return; }
+      const img = new Image();
+      const blobUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(blobUrl);
+        const scale = Math.min(1, maxWidthPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => {
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
+        }, 'image/jpeg', qualityJpeg);
+      };
+      img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(file); };
+      img.src = blobUrl;
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!fileGaransi || !fileNota) {
@@ -122,19 +145,27 @@ function ClaimForm() {
     setErrorMsg('');
 
     try {
+      const [compGaransi, compNota] = await Promise.all([
+        compressImage(fileGaransi),
+        compressImage(fileNota),
+      ]);
       const fd = new FormData();
       fd.append('phone', phone);
       fd.append('recipient_type', recipient);
       Object.entries(formData).forEach(([k, v]) => fd.append(k, v));
-      fd.append('foto_kartu_garansi', fileGaransi);
-      fd.append('foto_nota_pembelian', fileNota);
+      fd.append('foto_kartu_garansi', compGaransi);
+      fd.append('foto_nota_pembelian', compNota);
 
       const res = await fetch('/api/claim', { method: 'POST', body: fd });
-      const result = await res.json();
+      if (res.status === 413) throw new Error('Ukuran file terlalu besar. Kompres foto terlebih dahulu (maks. ~3MB per file).');
+      const text = await res.text();
+      let result: { error?: string; success?: boolean };
+      try { result = JSON.parse(text); } catch { throw new Error(`Server error (${res.status}): ${text.slice(0, 120)}`); }
       if (!res.ok) throw new Error(result.error || 'Gagal mengirim data.');
       setStep('success');
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setErrorMsg(message);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
