@@ -11,7 +11,8 @@ import {
    VALIDASI_OPTIONS, STATUS_VALIDASI_GARANSI_OPTIONS, JENIS_GARANSI_OPTIONS, LAMA_GARANSI_OPTIONS,
    STATUS_SERVICE_OPTIONS, JENIS_PROMOSI_OPTIONS, JASA_PENGIRIMAN_OPTIONS, EVENT_STATUS_OPTIONS,
    PAYMENT_TYPE_OPTIONS, STATUS_PENDAFTARAN_OPTIONS, STATUS_REFUND_DEPOSIT_OPTIONS,
-   ROLE_OPTIONS, CONSENT_OPTIONS, BUDGET_SOURCE_OPTIONS, STATUS_LANGKAH_OPTIONS
+   ROLE_OPTIONS, CONSENT_OPTIONS, BUDGET_SOURCE_OPTIONS, STATUS_LANGKAH_OPTIONS,
+   NAMA_BANK_OPTIONS
 } from './enums';
 import Header from './Header';
 
@@ -636,6 +637,22 @@ export default function NikonDashboard() {
          window.print();
       }
    };
+   // Auto-trigger window.print() saat printData di-set
+   useEffect(() => {
+      if (!printData) return;
+      const originalTitle = document.title;
+      document.title = `${printData.proposal_no}-${printData.title}`;
+      // Beri waktu React render print template dulu
+      const timer = setTimeout(() => {
+         window.print();
+         // Reset printData setelah dialog cetak ditutup
+         setTimeout(() => {
+            setPrintData(null);
+            document.title = originalTitle;
+         }, 500);
+      }, 300);
+      return () => clearTimeout(timer);
+   }, [printData]);
 
    const scrollToBottom = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -2229,7 +2246,7 @@ export default function NikonDashboard() {
                               <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>🪪Kartu</button>
                            </div>
                         )}
-                        {activeTab === 'konsumen' && <button onClick={() => openModal('create', 'konsumen')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Konsumen</button>}
+                        {/* Tombol Tambah Konsumen dipindah ke dalam toolbar tab Konsumen, dekat tombol "+ Tambah Claim" */}
                      </div>
                      <div className="flex flex-wrap gap-2 items-center">
                         {activeTab === 'claims' && (
@@ -2269,11 +2286,18 @@ export default function NikonDashboard() {
                      return msgs.filter(m => !lastRead || new Date(m.waktu_pesan || m.created_at!) > lastRead).length;
                   };
                   // Filter chats sesuai pilihan
+                  // Auto-tag FOLLOW UP utk chat yang bicara_dengan_cs=true (sampai admin "Tandai Selesai")
+                  // Effective tags = stored chatTags + auto followup
+                  const getEffectiveTag = (wa: string, csMode: boolean) => {
+                     if (csMode && !chatTags[wa]) return 'followup';
+                     return chatTags[wa] || '';
+                  };
                   const filterApply = filteredContacts.filter(c => {
+                     const eff = getEffectiveTag(c.nomor_wa, !!c.bicara_dengan_cs);
                      if (chatFilter === 'all') return true;
                      if (chatFilter === 'unread') return countUnread(c.nomor_wa) > 0;
                      if (chatFilter === 'cs') return c.bicara_dengan_cs;
-                     if (chatFilter === 'tagged') return Boolean(chatTags[c.nomor_wa]);
+                     if (chatFilter === 'tagged') return Boolean(eff);
                      if (chatFilter === 'pinned') return pinnedChats.includes(c.nomor_wa);
                      return true;
                   });
@@ -2295,7 +2319,7 @@ export default function NikonDashboard() {
                   };
                   const totalUnread = uniqueContacts.reduce((sum, c) => sum + countUnread(c.nomor_wa), 0);
                   const totalCS = uniqueContacts.filter(c => c.bicara_dengan_cs).length;
-                  const totalTagged = uniqueContacts.filter(c => chatTags[c.nomor_wa]).length;
+                  const totalTagged = uniqueContacts.filter(c => getEffectiveTag(c.nomor_wa, !!c.bicara_dengan_cs)).length;
 
                   return (
                   <div className="animate-fade-in text-gray-900 h-full bg-white border-y border-gray-200 overflow-hidden flex">
@@ -2362,7 +2386,7 @@ export default function NikonDashboard() {
                               const unread = countUnread(c.nomor_wa);
                               const isNew = unread > 0;
                               const profileName = getRealProfileName(c.nomor_wa);
-                              const tag = chatTags[c.nomor_wa];
+                              const tag = getEffectiveTag(c.nomor_wa, !!c.bicara_dengan_cs);
                               const tagInfo = tag ? findTag(tag) : null;
                               const isPinned = pinnedChats.includes(c.nomor_wa);
                               const isSelected = selectedWa === c.nomor_wa;
@@ -2451,7 +2475,8 @@ export default function NikonDashboard() {
                      {/* MAIN CHAT AREA */}
                      <div className={`flex-1 flex flex-col bg-[#efeae2] relative min-w-0 ${selectedWa ? 'flex' : 'hidden md:flex'}`}>
                         {selectedWa ? (() => {
-                           const selectedTag = chatTags[selectedWa];
+                           const isCsActive = !!uniqueContacts.find(c => c.nomor_wa === selectedWa)?.bicara_dengan_cs;
+                           const selectedTag = getEffectiveTag(selectedWa, isCsActive);
                            const tagInfo = selectedTag ? findTag(selectedTag) : null;
                            const isPinned = pinnedChats.includes(selectedWa);
                            return (
@@ -3598,8 +3623,48 @@ export default function NikonDashboard() {
          </div>
 
          {/* MODALS */}
-         {isModalOpen && (
+         {isModalOpen && (() => {
+            // Distinct values dari data DB yang sudah loaded - jadi <datalist> suggestion utk autocomplete
+            const dedup = (arr: (string | null | undefined)[]) =>
+               Array.from(new Set(arr.filter((v): v is string => Boolean(v) && v !== 'BELUM_DIISI'))).sort();
+            const dTipeBarang = dedup([...claims.map(c => c.tipe_barang), ...warranties.map(w => w.tipe_barang)]);
+            const dNamaLengkap = dedup(consumersList.map(k => k.nama_lengkap));
+            const dKelurahan = dedup(consumersList.map(k => k.kelurahan));
+            const dKecamatan = dedup(consumersList.map(k => k.kecamatan));
+            const dKabupaten = dedup(consumersList.map(k => k.kabupaten_kotamadya));
+            const dProvinsi = dedup(consumersList.map(k => k.provinsi));
+            const dKodepos = dedup(consumersList.map(k => k.kodepos));
+            const dNamaPromo = dedup(promos.map(p => p.nama_promo));
+            const dProdukPromo = dedup(promos.flatMap(p => (p.tipe_produk || []).map(t => t.nama_produk)));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const dJudulEvent = dedup(events.map((e: any) => e.event_title || e.title));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const dSpeaker = dedup(events.map((e: any) => e.event_speaker));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const dGenreSpeaker = dedup(events.map((e: any) => e.event_speaker_genre));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const dDepositAmount = dedup(events.map((e: any) => e.deposit_amount));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const dBankInfo = dedup(events.map((e: any) => e.bank_info));
+            const dNamaToko = dedup(claims.map(c => c.nama_toko));
+            return (
             <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4 animate-fade-in">
+               {/* Global datalists untuk autocomplete dari data DB */}
+               <datalist id="dl-tipe-barang">{dTipeBarang.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-nama-lengkap">{dNamaLengkap.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-kelurahan">{dKelurahan.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-kecamatan">{dKecamatan.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-kabupaten">{dKabupaten.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-provinsi">{dProvinsi.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-kodepos">{dKodepos.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-nama-promo">{dNamaPromo.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-produk-promo">{dProdukPromo.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-judul-event">{dJudulEvent.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-speaker">{dSpeaker.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-genre-speaker">{dGenreSpeaker.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-deposit-amount">{dDepositAmount.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-bank-info">{dBankInfo.map(v => <option key={v} value={v} />)}</datalist>
+               <datalist id="dl-nama-toko">{dNamaToko.map(v => <option key={v} value={v} />)}</datalist>
                <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                   <div className="p-5 border-b border-gray-200">
                      <h2 className="text-lg font-bold text-gray-900">
@@ -3878,7 +3943,10 @@ export default function NikonDashboard() {
                                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                              <div>
                                                 <label className="label-form">Nama Bank</label>
-                                                <input type="text" value={registrationForm.nama_bank || ''} onChange={e => setRegistrationForm({ ...registrationForm, nama_bank: e.target.value })} className="input-form" />
+                                                <select aria-label="Nama bank" value={registrationForm.nama_bank || ''} onChange={e => setRegistrationForm({ ...registrationForm, nama_bank: e.target.value || null })} className="input-form">
+                                                   <option value="">-- Pilih bank --</option>
+                                                   {NAMA_BANK_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                                </select>
                                              </div>
                                              <div>
                                                 <label className="label-form">Nomor Rekening</label>
@@ -4250,6 +4318,7 @@ export default function NikonDashboard() {
                                        value={promoForm.nama_promo || ''}
                                        onChange={e => setPromoForm({ ...promoForm, nama_promo: e.target.value })}
                                        className="input-form"
+                                       list="dl-nama-promo"
                                        placeholder="Contoh: Free Battery Nikon EN-EL25a"
                                     />
                                  </div>
@@ -4331,6 +4400,7 @@ export default function NikonDashboard() {
                                              setPromoForm({ ...promoForm, tipe_produk: newProducts });
                                           }}
                                           className="input-form flex-1"
+                                          list="dl-produk-promo"
                                        />
                                        <button
                                           type="button"
@@ -4402,7 +4472,7 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="label-form">Tipe Barang *</label>
-                                    <input type="text" required value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({ ...warrantyForm, tipe_barang: e.target.value })} className="input-form" placeholder="Contoh: Nikon Z50 Kit 16-50mm" />
+                                    <input type="text" required value={warrantyForm.tipe_barang || ''} onChange={e => setWarrantyForm({ ...warrantyForm, tipe_barang: e.target.value })} className="input-form" list="dl-tipe-barang" placeholder="Contoh: Nikon Z50 Kit 16-50mm" />
                                  </div>
                                  <div>
                                     <label className="label-form">Tanggal Pembelian</label>
@@ -4410,7 +4480,7 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="label-form">Nama Toko</label>
-                                    <input type="text" value={warrantyForm.nama_toko || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nama_toko: e.target.value })} className="input-form" />
+                                    <input type="text" value={warrantyForm.nama_toko || ''} onChange={e => setWarrantyForm({ ...warrantyForm, nama_toko: e.target.value })} className="input-form" list="dl-nama-toko" />
                                  </div>
                               </div>
                            </div>
@@ -4559,6 +4629,7 @@ export default function NikonDashboard() {
                                        value={konsumenForm.nama_lengkap || ''}
                                        onChange={e => setKonsumenForm({ ...konsumenForm, nama_lengkap: e.target.value })}
                                        className="input-form"
+                                       list="dl-nama-lengkap"
                                     />
                                  </div>
                                  <div className="md:col-span-2">
@@ -4593,25 +4664,25 @@ export default function NikonDashboard() {
                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
                                        <label className="label-form">Kelurahan</label>
-                                       <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="input-form" />
+                                       <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="input-form" list="dl-kelurahan" />
                                     </div>
                                     <div>
                                        <label className="label-form">Kecamatan</label>
-                                       <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="input-form" />
+                                       <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="input-form" list="dl-kecamatan" />
                                     </div>
                                  </div>
                                  <div>
                                     <label className="label-form">Kabupaten / Kotamadya</label>
-                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="input-form" />
+                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="input-form" list="dl-kabupaten" />
                                  </div>
                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
                                        <label className="label-form">Provinsi</label>
-                                       <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="input-form" />
+                                       <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="input-form" list="dl-provinsi" />
                                     </div>
                                     <div>
                                        <label className="label-form">Kode Pos</label>
-                                       <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="input-form" pattern="[0-9]{5}|BELUM_DIISI" title="5 digit angka" />
+                                       <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="input-form" pattern="[0-9]{5}|BELUM_DIISI" title="5 digit angka" list="dl-kodepos" />
                                     </div>
                                  </div>
                               </div>
@@ -4699,11 +4770,11 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="label-form">Nama Pendaftar *</label>
-                                    <input type="text" required value={claimForm.nama_pendaftar || ''} onChange={e => setClaimForm({ ...claimForm, nama_pendaftar: e.target.value })} className="input-form" />
+                                    <input type="text" required value={claimForm.nama_pendaftar || ''} onChange={e => setClaimForm({ ...claimForm, nama_pendaftar: e.target.value })} className="input-form" list="dl-nama-lengkap" placeholder="Auto-isi dari data konsumen" />
                                  </div>
                                  <div>
                                     <label className="label-form">Nama Penerima Hadiah</label>
-                                    <input type="text" value={claimForm.nama_penerima_claim || ''} onChange={e => setClaimForm({ ...claimForm, nama_penerima_claim: e.target.value })} className="input-form" placeholder="Kosongkan jika sama dgn pendaftar" />
+                                    <input type="text" value={claimForm.nama_penerima_claim || ''} onChange={e => setClaimForm({ ...claimForm, nama_penerima_claim: e.target.value })} className="input-form" list="dl-nama-lengkap" placeholder="Kosongkan jika sama dgn pendaftar" />
                                  </div>
                               </div>
                               <div className="mt-3">
@@ -4732,25 +4803,25 @@ export default function NikonDashboard() {
                                  <div className="grid grid-cols-2 gap-3">
                                     <div>
                                        <label className="label-form">Kelurahan</label>
-                                       <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="input-form" />
+                                       <input type="text" value={konsumenForm.kelurahan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kelurahan: e.target.value })} className="input-form" list="dl-kelurahan" />
                                     </div>
                                     <div>
                                        <label className="label-form">Kecamatan</label>
-                                       <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="input-form" />
+                                       <input type="text" value={konsumenForm.kecamatan || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kecamatan: e.target.value })} className="input-form" list="dl-kecamatan" />
                                     </div>
                                  </div>
                                  <div>
                                     <label className="label-form">Kabupaten / Kotamadya</label>
-                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="input-form" />
+                                    <input type="text" value={konsumenForm.kabupaten_kotamadya || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kabupaten_kotamadya: e.target.value })} className="input-form" list="dl-kabupaten" />
                                  </div>
                                  <div className="grid grid-cols-2 gap-3">
                                     <div>
                                        <label className="label-form">Provinsi</label>
-                                       <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="input-form" />
+                                       <input type="text" value={konsumenForm.provinsi || ''} onChange={e => setKonsumenForm({ ...konsumenForm, provinsi: e.target.value })} className="input-form" list="dl-provinsi" />
                                     </div>
                                     <div>
                                        <label className="label-form">Kode Pos</label>
-                                       <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="input-form" pattern="[0-9]{5}" />
+                                       <input type="text" value={konsumenForm.kodepos || ''} onChange={e => setKonsumenForm({ ...konsumenForm, kodepos: e.target.value })} className="input-form" pattern="[0-9]{5}" list="dl-kodepos" />
                                     </div>
                                  </div>
                               </div>
@@ -4766,7 +4837,7 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="label-form">Tipe Barang *</label>
-                                    <input type="text" required value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({ ...claimForm, tipe_barang: e.target.value })} className="input-form" placeholder="Contoh: Nikon Z50 Kit 16-50mm" />
+                                    <input type="text" required value={claimForm.tipe_barang || ''} onChange={e => setClaimForm({ ...claimForm, tipe_barang: e.target.value })} className="input-form" list="dl-tipe-barang" placeholder="Contoh: Nikon Z50 Kit 16-50mm" />
                                  </div>
                                  <div>
                                     <label className="label-form">Tanggal Pembelian *</label>
@@ -4774,12 +4845,17 @@ export default function NikonDashboard() {
                                  </div>
                                  <div>
                                     <label className="label-form">Nama Toko</label>
-                                    <input type="text" value={claimForm.nama_toko || ''} onChange={e => setClaimForm({ ...claimForm, nama_toko: e.target.value })} className="input-form" />
+                                    <input type="text" value={claimForm.nama_toko || ''} onChange={e => setClaimForm({ ...claimForm, nama_toko: e.target.value })} className="input-form" list="dl-nama-toko" />
                                  </div>
                                  <div className="md:col-span-2">
                                     <label className="label-form">Jenis Promosi</label>
                                     <select aria-label="Jenis promosi" value={claimForm.jenis_promosi || ''} onChange={e => setClaimForm({ ...claimForm, jenis_promosi: e.target.value })} className="input-form">
                                        <option value="">-- Pilih jenis promosi --</option>
+                                       {/* Ambil dari Nama Promo tab Promo (yang aktif) + opsi statik fallback */}
+                                       {promos.filter(p => p.status_aktif).map(p => (
+                                          <option key={p.id_promo} value={p.nama_promo}>{p.nama_promo}</option>
+                                       ))}
+                                       <option disabled>──────────</option>
                                        {JENIS_PROMOSI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                  </div>
@@ -4883,13 +4959,56 @@ export default function NikonDashboard() {
                                  <>
                                     <div>
                                        <label className="label-form">Judul Event *</label>
-                                       <input type="text" required value={getVal('event_title', 'title')} onChange={e => setField('event_title', e.target.value)} className="input-form" placeholder="Contoh: Nikon On The Sport" />
+                                       <input type="text" required value={getVal('event_title', 'title')} onChange={e => setField('event_title', e.target.value)} className="input-form" list="dl-judul-event" placeholder="Contoh: Nikon On The Sport" />
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                        <div>
                                           <label className="label-form">Tanggal *</label>
-                                          <input type="text" required value={getVal('event_date', 'date')} onChange={e => setField('event_date', e.target.value)} className="input-form" placeholder="Contoh: 1 Juli 2026" />
-                                          <p className="text-[10px] text-gray-500 mt-1">Format: D Bulan YYYY (Bahasa Indonesia)</p>
+                                          {(() => {
+                                             // Parse "1 Juli 2026" → ISO for date picker, lalu format kembali ke "DD MMM YYYY"
+                                             const ID_MONTHS_FULL = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+                                             const EN_MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                             const currentValue = getVal('event_date', 'date');
+                                             // Try parse current value to ISO yyyy-mm-dd
+                                             const parseToISO = (str: string) => {
+                                                if (!str) return '';
+                                                // Coba parse "DD MMM YYYY" (English short)
+                                                const enMatch = str.trim().match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+                                                if (enMatch) {
+                                                   const monthIdx = EN_MONTHS_SHORT.findIndex(m => m.toLowerCase() === enMatch[2].toLowerCase());
+                                                   if (monthIdx >= 0) return `${enMatch[3]}-${String(monthIdx + 1).padStart(2, '0')}-${String(parseInt(enMatch[1])).padStart(2, '0')}`;
+                                                }
+                                                // Coba parse "D Bulan YYYY" (Indonesian full)
+                                                const idMatch = str.trim().toLowerCase().match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})$/);
+                                                if (idMatch) {
+                                                   const monthIdx = ID_MONTHS_FULL.findIndex(m => m === idMatch[2]);
+                                                   if (monthIdx >= 0) return `${idMatch[3]}-${String(monthIdx + 1).padStart(2, '0')}-${String(parseInt(idMatch[1])).padStart(2, '0')}`;
+                                                }
+                                                return '';
+                                             };
+                                             const isoVal = parseToISO(currentValue);
+                                             return (
+                                                <>
+                                                   <input
+                                                      type="date"
+                                                      required
+                                                      value={isoVal}
+                                                      onChange={e => {
+                                                         const iso = e.target.value;
+                                                         if (!iso) { setField('event_date', ''); return; }
+                                                         const [y, m, d] = iso.split('-').map(Number);
+                                                         const formatted = `${String(d).padStart(2, '0')} ${EN_MONTHS_SHORT[m - 1]} ${y}`;
+                                                         setField('event_date', formatted);
+                                                      }}
+                                                      className="input-form"
+                                                      aria-label="Tanggal event"
+                                                   />
+                                                   <p className="text-[10px] text-gray-700 mt-1 font-medium">
+                                                      Format tersimpan: <code className="bg-gray-100 px-1 rounded font-mono">{currentValue || '01 May 2026'}</code>
+                                                   </p>
+                                                </>
+                                             );
+                                          })()}
                                        </div>
                                        <div>
                                           <label className="label-form">Harga *</label>
@@ -4915,11 +5034,11 @@ export default function NikonDashboard() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                        <div>
                                           <label className="label-form">Speaker</label>
-                                          <input type="text" value={getVal('event_speaker')} onChange={e => setField('event_speaker', e.target.value)} className="input-form" placeholder="Nama pembicara" />
+                                          <input type="text" value={getVal('event_speaker')} onChange={e => setField('event_speaker', e.target.value)} className="input-form" list="dl-speaker" placeholder="Nama pembicara" />
                                        </div>
                                        <div>
                                           <label className="label-form">Genre Speaker</label>
-                                          <input type="text" value={getVal('event_speaker_genre')} onChange={e => setField('event_speaker_genre', e.target.value)} className="input-form" placeholder="Wildlife, Landscape, dll." />
+                                          <input type="text" value={getVal('event_speaker_genre')} onChange={e => setField('event_speaker_genre', e.target.value)} className="input-form" list="dl-genre-speaker" placeholder="Wildlife, Landscape, dll." />
                                        </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -4931,12 +5050,12 @@ export default function NikonDashboard() {
                                        </div>
                                        <div>
                                           <label className="label-form">Jumlah Deposit (jika deposit)</label>
-                                          <input type="text" value={getVal('deposit_amount')} onChange={e => setField('deposit_amount', e.target.value)} className="input-form" placeholder="Contoh: 50000" />
+                                          <input type="text" value={getVal('deposit_amount')} onChange={e => setField('deposit_amount', e.target.value)} className="input-form" list="dl-deposit-amount" placeholder="Contoh: 50000" />
                                        </div>
                                     </div>
                                     <div>
                                        <label className="label-form">Info Rekening Pembayaran</label>
-                                       <input type="text" value={getVal('bank_info')} onChange={e => setField('bank_info', e.target.value)} className="input-form" placeholder="Contoh: BCA 123456789 a.n. Nikon Indonesia" />
+                                       <input type="text" value={getVal('bank_info')} onChange={e => setField('bank_info', e.target.value)} className="input-form" list="dl-bank-info" placeholder="Contoh: BCA 123456789 a.n. Nikon Indonesia" />
                                     </div>
                                     <div>
                                        <label className="label-form">Poster Event {getVal('event_image', 'image') ? '(Upload ulang akan mengganti)' : ''}</label>
@@ -5188,7 +5307,8 @@ export default function NikonDashboard() {
                   </div>
                </div>
             </div>
-         )}
+            );
+         })()}
 
          {/* IMAGE VIEWER */}
          {isImageViewerOpen && (
@@ -5252,10 +5372,154 @@ export default function NikonDashboard() {
             </div>
          )}
 
-         {/* PRINT VIEW */}
+         {/* PRINT VIEW - Budget Approval Proposal */}
          {printData && (
-            <div className="hidden print:block p-8 font-sans">
-               {/* ... Print layout for budget approval ... */}
+            <div className="hidden print:block p-8 font-sans text-black bg-white">
+               {(() => {
+                  const fmtRp = (n: number) => 'Rp ' + n.toLocaleString('id-ID');
+                  const total = (printData.items || []).reduce((s, it) => s + (Number(it.value) || 0), 0);
+                  return (
+                     <>
+                        {/* HEADER */}
+                        <div className="flex items-start justify-between border-b-4 border-black pb-4 mb-6">
+                           <div className="flex items-center gap-3">
+                              <div className="bg-[#FFE500] w-14 h-14 rounded-md flex items-center justify-center">
+                                 <span className="text-black font-black text-2xl">N</span>
+                              </div>
+                              <div>
+                                 <h1 className="text-2xl font-black uppercase tracking-wider">Nikon Indonesia</h1>
+                                 <p className="text-xs text-gray-700">Alta Nikindo · Marketing Department</p>
+                              </div>
+                           </div>
+                           <div className="text-right">
+                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Budget Approval Proposal</p>
+                              <p className="text-base font-bold font-mono mt-1">{printData.proposal_no}</p>
+                              <p className="text-[10px] text-gray-600 mt-1">Dicetak: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                           </div>
+                        </div>
+
+                        {/* TITLE */}
+                        <div className="mb-6">
+                           <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Judul Proposal</p>
+                           <h2 className="text-xl font-bold mt-1">{printData.title || '-'}</h2>
+                        </div>
+
+                        {/* META */}
+                        <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
+                           <div>
+                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Periode</p>
+                              <p className="font-semibold">{printData.period || '-'}</p>
+                           </div>
+                           <div>
+                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Drafter</p>
+                              <p className="font-semibold">{printData.drafter_name || '-'}</p>
+                           </div>
+                           <div>
+                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Sumber Dana</p>
+                              <p className="font-semibold">{printData.budget_source || '-'}</p>
+                           </div>
+                        </div>
+
+                        {/* OBJECTIVES & DETAIL */}
+                        <div className="space-y-4 mb-6">
+                           <div>
+                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold mb-1">Objectives (Tujuan)</p>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap border border-gray-300 rounded p-3 bg-gray-50">{printData.objectives || '-'}</p>
+                           </div>
+                           <div>
+                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold mb-1">Detail Activity</p>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap border border-gray-300 rounded p-3 bg-gray-50">{printData.detail_activity || '-'}</p>
+                           </div>
+                           <div>
+                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold mb-1">Expected Result</p>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap border border-gray-300 rounded p-3 bg-gray-50">{printData.expected_result || '-'}</p>
+                           </div>
+                        </div>
+
+                        {/* ITEMS TABLE */}
+                        <div className="mb-6">
+                           <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold mb-2">Rincian Anggaran</p>
+                           <table className="w-full border-collapse border border-black text-sm">
+                              <thead className="bg-gray-200">
+                                 <tr>
+                                    <th className="border border-black p-2 text-center w-10">No</th>
+                                    <th className="border border-black p-2 text-left">Purpose / Keperluan</th>
+                                    <th className="border border-black p-2 text-center w-16">Qty</th>
+                                    <th className="border border-black p-2 text-right w-32">Cost/Unit</th>
+                                    <th className="border border-black p-2 text-right w-36">Total</th>
+                                    <th className="border border-black p-2 text-center w-24">Petty Cash</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {(printData.items || []).map((it, idx) => (
+                                    <tr key={idx}>
+                                       <td className="border border-black p-2 text-center">{idx + 1}</td>
+                                       <td className="border border-black p-2">{it.purpose || '-'}</td>
+                                       <td className="border border-black p-2 text-center">{it.qty || 0}</td>
+                                       <td className="border border-black p-2 text-right font-mono">{fmtRp(Number(it.cost_unit) || 0)}</td>
+                                       <td className="border border-black p-2 text-right font-mono font-bold">{fmtRp(Number(it.value) || 0)}</td>
+                                       <td className="border border-black p-2 text-center text-xs">{it.petty_cash || '-'}</td>
+                                    </tr>
+                                 ))}
+                                 <tr className="bg-yellow-100">
+                                    <td colSpan={4} className="border border-black p-2 text-right font-black uppercase">TOTAL</td>
+                                    <td className="border border-black p-2 text-right font-black font-mono text-base">{fmtRp(total)}</td>
+                                    <td className="border border-black p-2"></td>
+                                 </tr>
+                              </tbody>
+                           </table>
+                        </div>
+
+                        {/* MGT COMMENTS */}
+                        {(printData.mgt_comment_1 || printData.mgt_comment_2) && (
+                           <div className="mb-6 space-y-2">
+                              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-bold">Komentar Management</p>
+                              {printData.mgt_comment_1 && <p className="text-sm border border-gray-300 rounded p-2 bg-gray-50">{printData.mgt_comment_1}</p>}
+                              {printData.mgt_comment_2 && <p className="text-sm border border-gray-300 rounded p-2 bg-gray-50">{printData.mgt_comment_2}</p>}
+                           </div>
+                        )}
+
+                        {/* APPROVAL SIGNATURES */}
+                        <div className="grid grid-cols-3 gap-6 mt-12 pt-4">
+                           <div className="text-center">
+                              <p className="text-xs font-bold uppercase tracking-wider">Drafter</p>
+                              <div className="h-20"></div>
+                              <div className="border-t-2 border-black pt-1">
+                                 <p className="text-sm font-bold">{printData.drafter_name || '___________'}</p>
+                                 <p className="text-[10px] text-gray-600">Marketing</p>
+                              </div>
+                           </div>
+                           <div className="text-center">
+                              <p className="text-xs font-bold uppercase tracking-wider">Management Approval</p>
+                              <div className="h-20 flex items-center justify-center">
+                                 {printData.mgt_consent === 'Approved' && <span className="text-green-700 text-3xl font-black">✓ APPROVED</span>}
+                                 {printData.mgt_consent === 'Rejected' && <span className="text-red-700 text-3xl font-black">✗ REJECTED</span>}
+                              </div>
+                              <div className="border-t-2 border-black pt-1">
+                                 <p className="text-sm font-bold">{printData.mgt_consent || 'Pending'}</p>
+                                 <p className="text-[10px] text-gray-600">Management</p>
+                              </div>
+                           </div>
+                           <div className="text-center">
+                              <p className="text-xs font-bold uppercase tracking-wider">Finance Approval</p>
+                              <div className="h-20 flex items-center justify-center">
+                                 {printData.finance_consent === 'Approved' && <span className="text-green-700 text-3xl font-black">✓ APPROVED</span>}
+                                 {printData.finance_consent === 'Rejected' && <span className="text-red-700 text-3xl font-black">✗ REJECTED</span>}
+                              </div>
+                              <div className="border-t-2 border-black pt-1">
+                                 <p className="text-sm font-bold">{printData.finance_consent || 'Pending'}</p>
+                                 <p className="text-[10px] text-gray-600">Finance</p>
+                              </div>
+                           </div>
+                        </div>
+
+                        {/* FOOTER */}
+                        <div className="mt-8 pt-3 border-t border-gray-300 text-[10px] text-center text-gray-600">
+                           Dokumen ini dihasilkan otomatis oleh Alta Nikindo Dashboard · Nikon Indonesia
+                        </div>
+                     </>
+                  );
+               })()}
             </div>
          )}
       </>
