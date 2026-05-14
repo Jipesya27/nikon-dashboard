@@ -518,7 +518,16 @@ export default function NikonDashboard() {
       }
    };
 
-   const fetchAssets = () => fetchTable<BarangAset>('barang_aset', setAssets, { ascending: true });
+   const fetchAssets = async () => {
+      try {
+         const { data, error } = await supabase.from('barang_aset').select('*').order('nama_barang_aset', { ascending: true });
+         if (error) console.error('fetch barang_aset:', error.message);
+         setAssets((data || []) as BarangAset[]);
+      } catch (err) {
+         console.error('fetch barang_aset:', err);
+         setAssets([]);
+      }
+   };
    const fetchClaims = () => fetchTable<ClaimPromo>('claim_promo', setClaims, { dateFilter: true });
    const fetchWarranties = () => fetchTable<Garansi>('garansi', setWarranties, { dateFilter: true });
    const fetchPromos = () => fetchTable<Promosi>('promosi', setPromos);
@@ -821,6 +830,97 @@ export default function NikonDashboard() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+   };
+
+   const handlePrintPeminjamanPDF = (l: PeminjamanBarang) => {
+      const tglPinjam = l.tanggal_peminjaman
+         ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+         : new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+      const tglEstimasi = l.tanggal_estimasi_pengembalian
+         ? new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+         : '-';
+      const itemsHtml = l.items_dipinjam.map((item, idx) => {
+         const accs = [item.accs1, item.accs2, item.accs3, item.accs4, item.accs5, item.accs6, item.accs7]
+            .filter(Boolean).join('<br>');
+         return `<tr>
+            <td style="text-align:center">${idx + 1}</td>
+            <td>${item.nama_barang}</td>
+            <td style="font-family:monospace">${item.nomor_seri}</td>
+            <td>${accs || '-'}</td>
+            <td>${item.catatan || '-'}</td>
+         </tr>`;
+      }).join('');
+      const noTandaTerima = `PT/${new Date().getFullYear()}/${String(l.id_peminjaman || '').slice(-6).toUpperCase() || '------'}`;
+      const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8">
+<title>Tanda Terima Peminjaman - ${l.nama_peminjam}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; padding: 24px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; }
+  .company h1 { font-size: 16pt; font-weight: bold; }
+  .company p { font-size: 9pt; color: #444; margin-top: 2px; }
+  .doc-info { text-align: right; font-size: 9pt; }
+  .doc-info .no { font-size: 12pt; font-weight: bold; }
+  h2 { text-align: center; font-size: 13pt; letter-spacing: 1px; margin-bottom: 16px; text-transform: uppercase; }
+  .info-table { width: 100%; margin-bottom: 16px; }
+  .info-table td { padding: 3px 6px; font-size: 10pt; }
+  .info-table td:first-child { width: 130px; font-weight: bold; }
+  table.items { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  table.items th { background: #f0f0f0; border: 1px solid #999; padding: 6px 8px; font-size: 10pt; text-align: left; }
+  table.items td { border: 1px solid #999; padding: 5px 8px; font-size: 10pt; vertical-align: top; }
+  .notes { border: 1px solid #ccc; padding: 10px 14px; border-radius: 4px; font-size: 9.5pt; margin-bottom: 20px; }
+  .sign-area { display: flex; justify-content: space-between; margin-top: 30px; }
+  .sign-box { text-align: center; width: 200px; }
+  .sign-box .label { font-size: 10pt; margin-bottom: 70px; }
+  .sign-box .line { border-top: 1px solid #000; padding-top: 4px; font-size: 10pt; }
+  @media print { body { padding: 12px; } button { display:none; } }
+</style>
+</head><body>
+<div class="header">
+  <div class="company">
+    <h1>Alta Nikindo</h1>
+    <p>Komp. Mangga Dua Square Blok H No.1-2, Jakarta - 14430</p>
+    <p>WhatsApp: 08111877781</p>
+  </div>
+  <div class="doc-info">
+    <div class="no">${noTandaTerima}</div>
+    <div>Tanggal: ${tglPinjam}</div>
+  </div>
+</div>
+<h2>Tanda Terima Peminjaman Barang</h2>
+<table class="info-table">
+  <tr><td>Nama Peminjam</td><td>: ${l.nama_peminjam}</td></tr>
+  <tr><td>No. WhatsApp</td><td>: ${l.nomor_wa_peminjam}</td></tr>
+  <tr><td>Tanggal Pinjam</td><td>: ${tglPinjam}</td></tr>
+  <tr><td>Estimasi Kembali</td><td>: ${tglEstimasi}</td></tr>
+</table>
+<table class="items">
+  <thead><tr>
+    <th style="width:36px;text-align:center">No</th>
+    <th style="width:220px">Nama Barang</th>
+    <th style="width:130px">No. Seri</th>
+    <th>Accessories</th>
+    <th style="width:120px">Catatan</th>
+  </tr></thead>
+  <tbody>${itemsHtml}</tbody>
+</table>
+<div class="notes">
+  <strong>Catatan:</strong><br>
+  • Barang dipinjam dalam kondisi baik dan harus dikembalikan sesuai kondisi semula.<br>
+  • Kehilangan atau kerusakan menjadi tanggung jawab peminjam.<br>
+  • Pengembalian paling lambat: <strong>${tglEstimasi}</strong>
+</div>
+<div class="sign-area">
+  <div class="sign-box"><div class="label">Peminjam,</div><div class="line">${l.nama_peminjam}</div></div>
+  <div class="sign-box"><div class="label">Petugas Alta Nikindo,</div><div class="line">( ________________ )</div></div>
+</div>
+<br><br>
+<div style="text-align:center">
+  <button onclick="window.print()" style="padding:8px 24px;background:#FFE500;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:11pt">🖨️ Print / Simpan PDF</button>
+</div>
+</body></html>`;
+      const w = window.open('', '_blank', 'width=900,height=700');
+      if (w) { w.document.write(html); w.document.close(); }
    };
 
    // --- CSV CENTRAL TEMPLATE & IMPORT LOGIC ---
@@ -3449,10 +3549,11 @@ export default function NikonDashboard() {
                                           <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
                                        </td>
                                        <td className="px-4 py-3">
-                                          <div className="flex gap-3 items-center">
+                                          <div className="flex gap-3 items-center flex-wrap">
                                              {l.status_peminjaman === 'aktif' && (
                                                 <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-xs font-bold hover:underline">Pengembalian</button>
                                              )}
+                                             <button onClick={() => handlePrintPeminjamanPDF(l)} className="text-purple-600 text-xs font-bold hover:underline">🖨️ PDF</button>
                                              <button onClick={() => openModal('edit', 'lending', l)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                              <button onClick={() => handleDelete('lending', l.id_peminjaman!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                           </div>
@@ -3481,8 +3582,9 @@ export default function NikonDashboard() {
                                        ))}
                                     </ul>
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end flex-wrap">
                                     {l.status_peminjaman === 'aktif' && <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-xs font-bold hover:underline">Pengembalian</button>}
+                                    <button onClick={() => handlePrintPeminjamanPDF(l)} className="text-purple-600 text-xs font-bold hover:underline">🖨️ PDF</button>
                                     <button onClick={() => openModal('edit', 'lending', l)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => handleDelete('lending', l.id_peminjaman!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                  </div>
@@ -5450,6 +5552,9 @@ export default function NikonDashboard() {
                                  <p className="text-xs text-green-600 mt-1">File baru: {lendingForm.link_ktp_peminjam.name}</p>
                               )}
                            </div>
+                           <datalist id="dl-asset-sn">
+                              {assets.map(a => a.no_seri_aset ? <option key={a.id} value={a.no_seri_aset}>{a.nama_barang_aset}</option> : null)}
+                           </datalist>
                            <div>
                               <label className="label-form">Barang yang Dipinjam *</label>
                               <div className="space-y-3">
@@ -5465,16 +5570,42 @@ export default function NikonDashboard() {
                                              }} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                           )}
                                        </div>
-                                       <input type="text" required aria-label="Nama Barang" placeholder="Nama Barang (cth: Nikon Z50 II Body Only)" value={item.nama_barang} onChange={e => {
+                                       {/* Nomor Seri with autocomplete from barang_aset */}
+                                       <input type="text" required list="dl-asset-sn" aria-label="Nomor Seri Barang" placeholder="Nomor Seri (ketik untuk autocomplete)" value={item.nomor_seri} onChange={e => {
+                                          const val = e.target.value;
+                                          const found = assets.find(a => a.no_seri_aset === val);
+                                          const newItems = [...(lendingForm.items_dipinjam || [])];
+                                          newItems[idx] = {
+                                             ...newItems[idx],
+                                             nomor_seri: val,
+                                             ...(found ? {
+                                                nama_barang: found.nama_barang_aset,
+                                                accs1: found.accs1 || '',
+                                                accs2: found.accs2 || '',
+                                                accs3: found.accs3 || '',
+                                                accs4: found.accs4 || '',
+                                                accs5: found.accs5 || '',
+                                                accs6: found.accs6 || '',
+                                                accs7: found.accs7 || '',
+                                             } : {}),
+                                          };
+                                          setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                       }} className="input-form" />
+                                       <input type="text" required aria-label="Nama Barang" placeholder="Nama Barang (otomatis dari No. Seri)" value={item.nama_barang} onChange={e => {
                                           const newItems = [...(lendingForm.items_dipinjam || [])];
                                           newItems[idx] = { ...newItems[idx], nama_barang: e.target.value };
                                           setLendingForm({ ...lendingForm, items_dipinjam: newItems });
                                        }} className="input-form" />
-                                       <input type="text" required aria-label="Nomor Seri Barang" placeholder="Nomor Seri" value={item.nomor_seri} onChange={e => {
-                                          const newItems = [...(lendingForm.items_dipinjam || [])];
-                                          newItems[idx] = { ...newItems[idx], nomor_seri: e.target.value };
-                                          setLendingForm({ ...lendingForm, items_dipinjam: newItems });
-                                       }} className="input-form" />
+                                       {/* Accessories (auto-filled, editable) */}
+                                       {(['accs1','accs2','accs3','accs4','accs5','accs6','accs7'] as const).map(accsKey => (
+                                          item[accsKey] !== undefined && item[accsKey] !== '' ? (
+                                             <input key={accsKey} type="text" aria-label={accsKey} placeholder={accsKey} value={item[accsKey] || ''} onChange={e => {
+                                                const newItems = [...(lendingForm.items_dipinjam || [])];
+                                                newItems[idx] = { ...newItems[idx], [accsKey]: e.target.value };
+                                                setLendingForm({ ...lendingForm, items_dipinjam: newItems });
+                                             }} className="input-form text-sm" />
+                                          ) : null
+                                       ))}
                                        <input type="text" aria-label="Catatan Barang" placeholder="Catatan (opsional)" value={item.catatan || ''} onChange={e => {
                                           const newItems = [...(lendingForm.items_dipinjam || [])];
                                           newItems[idx] = { ...newItems[idx], catatan: e.target.value };

@@ -121,8 +121,9 @@ export async function GET(req: Request) {
         kodepos: clean(konsumen.kodepos),
       },
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Terjadi kesalahan server.';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -266,8 +267,9 @@ export async function POST(req: Request) {
     await kirimWA(matchedPhone, pesanWA);
 
     return NextResponse.json({ success: true, message: 'Data claim berhasil dikirim!' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error submit claim:', error);
-    return NextResponse.json({ error: error.message || 'Terjadi kesalahan server.' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Terjadi kesalahan server.';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

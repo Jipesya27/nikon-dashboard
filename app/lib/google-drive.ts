@@ -70,7 +70,7 @@ export async function uploadToGoogleDrive(
   if (options?.folderName) {
     parentFolderId = await getOrCreateSubfolder(options.folderName);
   }
-  const metadata: any = { name: fileName, parents: [parentFolderId] };
+  const metadata: { name: string; parents: string[]; mimeType?: string } = { name: fileName, parents: [parentFolderId] };
   if (options?.mimeType) metadata.mimeType = options.mimeType;
 
   const body = new FormData();

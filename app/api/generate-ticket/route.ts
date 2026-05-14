@@ -20,8 +20,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, ...result });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('generate-ticket error:', err);
-    return NextResponse.json({ error: err?.message || 'Failed to generate ticket' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Failed to generate ticket';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

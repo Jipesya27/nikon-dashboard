@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 function GoogleAuthInner() {
   const params = useSearchParams();
@@ -21,10 +22,12 @@ function GoogleAuthInner() {
       if (saved) {
         const user = JSON.parse(saved);
         if (user?.role === 'Admin') {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setAuthorized(true);
         }
       }
     } catch {}
+     
     setChecking(false);
   }, []);
 
@@ -63,9 +66,9 @@ function GoogleAuthInner() {
           <p className="text-gray-800 mb-4 font-medium">
             Halaman ini hanya bisa diakses oleh <strong>Admin</strong> yang sudah login di dashboard.
           </p>
-          <a href="/" className="inline-block bg-black text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-800 transition">
+          <Link href="/" className="inline-block bg-black text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-800 transition">
             ← Login ke Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -208,9 +211,9 @@ function GoogleAuthInner() {
               🔐 Connect Google Drive — Authorize Now
             </a>
 
-            <a href="/" className="block text-center text-sm font-bold text-gray-700 hover:text-gray-900 transition">
+            <Link href="/" className="block text-center text-sm font-bold text-gray-700 hover:text-gray-900 transition">
               ← Kembali ke Dashboard
-            </a>
+            </Link>
           </div>
         )}
       </div>

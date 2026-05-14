@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -59,16 +60,44 @@ export default function AdminAttendancePage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAll();
     // Try to load admin name from localStorage if available
     try {
       const u = localStorage.getItem('current_user');
       if (u) {
         const parsed = JSON.parse(u);
+         
         setAdminName(parsed.nama_karyawan || parsed.username || 'Admin');
       }
     } catch {}
   }, [fetchAll]);
+
+  const handleScan = useCallback(async (qrText: string) => {
+    setProcessing(true);
+    try {
+      const res = await fetch('/api/events/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qr: qrText, attendedBy: adminName, sendWa: true }),
+      });
+      const data = await res.json();
+
+      if (data.alreadyAttended) {
+        setScanResult({ type: 'already', reg: data.registration, message: data.message });
+      } else if (!res.ok) {
+        setScanResult({ type: 'error', message: data.error || 'Gagal proses', reg: data.registration });
+      } else {
+        setScanResult({ type: 'success', reg: data.registration, message: data.message });
+      }
+      fetchAll();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Network error';
+      setScanResult({ type: 'error', message });
+    } finally {
+      setProcessing(false);
+    }
+  }, [adminName, fetchAll]);
 
   // QR scanner lifecycle
   useEffect(() => {
@@ -95,32 +124,7 @@ export default function AdminAttendancePage() {
         scannerRef.current = null;
       };
     }
-  }, [scannerOpen]);
-
-  const handleScan = async (qrText: string) => {
-    setProcessing(true);
-    try {
-      const res = await fetch('/api/events/attendance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qr: qrText, attendedBy: adminName, sendWa: true }),
-      });
-      const data = await res.json();
-
-      if (data.alreadyAttended) {
-        setScanResult({ type: 'already', reg: data.registration, message: data.message });
-      } else if (!res.ok) {
-        setScanResult({ type: 'error', message: data.error || 'Gagal proses', reg: data.registration });
-      } else {
-        setScanResult({ type: 'success', reg: data.registration, message: data.message });
-      }
-      fetchAll();
-    } catch (err: any) {
-      setScanResult({ type: 'error', message: err.message || 'Network error' });
-    } finally {
-      setProcessing(false);
-    }
-  };
+  }, [scannerOpen, handleScan]);
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,8 +180,8 @@ export default function AdminAttendancePage() {
             <span className="font-bold text-zinc-300 text-sm hidden sm:block">Admin · Absensi & Konfirmasi Kehadiran</span>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/admin/events" className="text-xs text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg">← Validasi Pembayaran</a>
-            <a href="/" className="text-xs text-zinc-400 hover:text-white">Dashboard</a>
+            <Link href="/admin/events" className="text-xs text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg">← Validasi Pembayaran</Link>
+            <Link href="/" className="text-xs text-zinc-400 hover:text-white">Dashboard</Link>
           </div>
         </div>
       </header>
@@ -238,7 +242,7 @@ export default function AdminAttendancePage() {
 
         {/* Scanner Action */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="md:col-span-2 bg-gradient-to-br from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-xl p-6">
+          <div className="md:col-span-2 bg-linear-to-br from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-xl p-6">
             <h3 className="font-bold text-lg mb-2 text-white">📷 Scanner QR Code</h3>
             <p className="text-zinc-400 text-xs mb-4">Buka kamera HP/laptop untuk scan QR pada tiket peserta.</p>
             {!scannerOpen ? (

@@ -63,8 +63,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, refundUrl });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('deposit-refund error:', err);
-    return NextResponse.json({ error: err.message || 'Internal error' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Internal error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

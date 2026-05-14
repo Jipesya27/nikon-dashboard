@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch related event manually (no FK relationship in schema)
-    let eventInfo: any = null;
+    let eventInfo: { event_date?: string; event_description?: string } | null = null;
     if (reg.event_id) {
       const { data: ev } = await supabase.from('events').select('*').eq('id', reg.event_id).maybeSingle();
       eventInfo = ev;
@@ -73,9 +73,10 @@ export async function POST(req: NextRequest) {
         paymentType: reg.payment_type || 'regular',
       });
       ticketUrl = result.ticketUrl;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('generateTicket failed:', err);
-      return NextResponse.json({ error: `Ticket generation failed: ${err.message || err}` }, { status: 500 });
+      const message = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ error: `Ticket generation failed: ${message}` }, { status: 500 });
     }
 
     await supabase
@@ -93,8 +94,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, status: 'terdaftar', ticketUrl });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('validate-payment error:', err);
-    return NextResponse.json({ error: err?.message || 'Internal error' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Internal error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

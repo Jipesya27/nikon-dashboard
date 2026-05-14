@@ -85,8 +85,9 @@ export async function POST(req: Request) {
     const url = await uploadToGoogleDrive(file, fileName, accessToken);
 
     return NextResponse.json({ success: true, url });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Upload failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -99,7 +100,8 @@ export async function DELETE(req: Request) {
         const accessToken = await getAccessToken();
         await deleteFromGoogleDrive(fileId, accessToken);
         return NextResponse.json({ success: true, message: 'File deleted' });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Delete failed';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

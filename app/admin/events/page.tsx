@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -64,7 +65,10 @@ export default function AdminEventsPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchRegistrations(); }, [fetchRegistrations]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchRegistrations();
+  }, [fetchRegistrations]);
 
   const uniqueEvents = Array.from(new Set(registrations.map(r => r.event_name)));
 
@@ -90,8 +94,9 @@ export default function AdminEventsPage() {
       if (!res.ok) throw new Error(data.error);
       showToast('Pembayaran disetujui. Tiket dikirim via WhatsApp!');
       fetchRegistrations();
-    } catch (err: any) {
-      showToast(err.message || 'Gagal menyetujui', 'error');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal menyetujui';
+      showToast(message, 'error');
     } finally {
       setProcessingId(null);
     }
@@ -112,8 +117,9 @@ export default function AdminEventsPage() {
       setRejectModal(null);
       setRejectionReason('');
       fetchRegistrations();
-    } catch (err: any) {
-      showToast(err.message || 'Gagal menolak', 'error');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal menolak';
+      showToast(message, 'error');
     } finally {
       setProcessingId(null);
     }
@@ -143,10 +149,10 @@ export default function AdminEventsPage() {
             <span className="font-bold text-zinc-300 text-sm hidden sm:block">Admin · Validasi Pembayaran Event</span>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/admin/events/deposit" className="text-xs text-[#FFE800] border border-[#FFE800]/40 hover:bg-[#FFE800]/10 px-3 py-1.5 rounded-lg transition-all font-semibold">
+            <Link href="/admin/events/deposit" className="text-xs text-[#FFE800] border border-[#FFE800]/40 hover:bg-[#FFE800]/10 px-3 py-1.5 rounded-lg transition-all font-semibold">
               Kelola Deposit →
-            </a>
-            <a href="/" className="text-xs text-zinc-400 hover:text-white transition-colors">← Dashboard</a>
+            </Link>
+            <Link href="/" className="text-xs text-zinc-400 hover:text-white transition-colors">← Dashboard</Link>
           </div>
         </div>
       </header>
@@ -282,6 +288,7 @@ export default function AdminEventsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewUrl(null)}>
           <div className="relative max-w-2xl w-full" onClick={e => e.stopPropagation()}>
             <button onClick={() => setPreviewUrl(null)} className="absolute -top-10 right-0 text-zinc-400 hover:text-white text-sm">✕ Tutup</button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={previewUrl} alt="Bukti Transfer" className="w-full rounded-xl border border-white/10 shadow-2xl" />
           </div>
         </div>

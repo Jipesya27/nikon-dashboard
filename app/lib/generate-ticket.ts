@@ -89,7 +89,6 @@ export async function generateTicket(input: GenerateTicketInput): Promise<Genera
   // ====== KONTEN ======
   const CONTENT_LEFT = 40;
   const CONTENT_RIGHT = PAGE_W - 40;
-  const CONTENT_W = CONTENT_RIGHT - CONTENT_LEFT;
   let cursorY = HEADER_Y - 50;
 
   // Event title
@@ -153,8 +152,6 @@ export async function generateTicket(input: GenerateTicketInput): Promise<Genera
   const QR_X = (PAGE_W - QR_SIZE) / 2;
   const QR_Y = 150; // posisi QR
   // Safe zone: detail acara TIDAK BOLEH masuk area ini
-  // QR top edge (dgn padding & label space)
-  const QR_LABEL_BOT = QR_Y - QR_PAD - 36; // bottom label position
   const QR_TOP_WITH_PAD = QR_Y + QR_SIZE + QR_PAD;
   const DETAIL_BOTTOM_LIMIT = QR_TOP_WITH_PAD + 18; // 18px breathing room
 

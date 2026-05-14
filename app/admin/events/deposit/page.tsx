@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -55,21 +56,24 @@ export default function AdminDepositPage() {
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      const eventIds = [...new Set(data.map((r: any) => r.event_id).filter(Boolean))];
-      let eventsMap: Record<string, EventInfo> = {};
+      const eventIds = [...new Set(data.map((r: DepositRegistration) => r.event_id).filter(Boolean))];
+      const eventsMap: Record<string, EventInfo> = {};
       if (eventIds.length > 0) {
         const { data: events } = await supabase
           .from('events')
           .select('id, event_title, event_date, deposit_amount')
           .in('id', eventIds as string[]);
-        if (events) events.forEach((ev: any) => { eventsMap[ev.id] = ev; });
+        if (events) events.forEach((ev: EventInfo) => { eventsMap[ev.id] = ev; });
       }
-      setRegistrations(data.map((r: any) => ({ ...r, event: r.event_id ? eventsMap[r.event_id] : undefined })));
+      setRegistrations(data.map((r: DepositRegistration) => ({ ...r, event: r.event_id ? eventsMap[r.event_id] : undefined })));
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchRegistrations(); }, [fetchRegistrations]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchRegistrations();
+  }, [fetchRegistrations]);
 
   const filtered = registrations.filter(r => {
     if (filterStatus === 'no_data' && (r.nama_bank && r.no_rekening)) return false;
@@ -108,8 +112,9 @@ export default function AdminDepositPage() {
       showToast('Pengembalian deposit berhasil diproses. Notifikasi dikirim via WhatsApp!');
       setUploadFiles(prev => { const n = { ...prev }; delete n[regId]; return n; });
       fetchRegistrations();
-    } catch (err: any) {
-      showToast(err.message || 'Gagal memproses', 'error');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal memproses';
+      showToast(message, 'error');
     } finally {
       setUploadingId(null);
     }
@@ -135,10 +140,10 @@ export default function AdminDepositPage() {
             <span className="font-bold text-zinc-300 text-sm hidden sm:block">Admin · Pengecekan & Pengembalian Deposit</span>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/admin/events" className="text-xs text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg">
+            <Link href="/admin/events" className="text-xs text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg">
               ← Validasi Pembayaran
-            </a>
-            <a href="/" className="text-xs text-zinc-400 hover:text-white">Dashboard</a>
+            </Link>
+            <Link href="/" className="text-xs text-zinc-400 hover:text-white">Dashboard</Link>
           </div>
         </div>
       </header>
@@ -352,6 +357,7 @@ export default function AdminDepositPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewUrl(null)}>
           <div className="relative max-w-2xl w-full" onClick={e => e.stopPropagation()}>
             <button onClick={() => setPreviewUrl(null)} className="absolute -top-10 right-0 text-zinc-400 hover:text-white text-sm">✕ Tutup</button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={previewUrl} alt="Bukti Pengembalian" className="w-full rounded-xl border border-white/10 shadow-2xl" />
           </div>
         </div>

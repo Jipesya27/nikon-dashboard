@@ -11,15 +11,12 @@ export async function POST(req: Request) {
 
     // Fonnte webhook payload structure
     const {
-      webhook_id,
       message_type,
       phone,
       sender,
       message,
       timestamp,
       is_group,
-      group_id,
-      group_name
     } = body;
 
     // Only process incoming text messages from individual contacts
@@ -61,20 +58,16 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, message: 'Message saved' }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[WEBHOOK] Error processing WhatsApp webhook:', error);
+    const details = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details },
       { status: 500 }
     );
   }
 }
 
-export async function GET(req: Request) {
-  // Fonnte webhook verification
-  const { searchParams } = new URL(req.url);
-  const token = searchParams.get('token');
-
-  // You can optionally verify the token here if Fonnte provides one
+export async function GET() {
   return NextResponse.json({ status: 'Webhook endpoint active' }, { status: 200 });
 }

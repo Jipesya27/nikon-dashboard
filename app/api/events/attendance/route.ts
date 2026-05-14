@@ -50,9 +50,10 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, registration: reg });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('attendance GET error:', err);
-    return NextResponse.json({ error: err?.message || 'Internal error' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Internal error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -126,9 +127,10 @@ export async function POST(req: NextRequest) {
       message: `${reg.nama_lengkap} berhasil dicatat hadir.`,
       registration: updated,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('attendance POST error:', err);
-    return NextResponse.json({ error: err?.message || 'Internal error' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Internal error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -146,7 +148,8 @@ export async function DELETE(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true, message: 'Status kehadiran dibatalkan' });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Internal error' }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Internal error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
