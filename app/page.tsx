@@ -4076,9 +4076,9 @@ export default function NikonDashboard() {
                                                    onChange={e => updateItem(idx, { purpose: e.target.value })}
                                                    className="input-form"
                                                 />
-                                                <div className="grid grid-cols-3 gap-2">
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                                    <div>
-                                                      <label className="text-[10px] font-bold text-gray-600 uppercase block mb-1">Qty</label>
+                                                      <label className="text-[10px] font-bold text-gray-900 uppercase block mb-1">Qty</label>
                                                       <input
                                                          type="number"
                                                          min={0}
@@ -4091,7 +4091,7 @@ export default function NikonDashboard() {
                                                       />
                                                    </div>
                                                    <div>
-                                                      <label className="text-[10px] font-bold text-gray-600 uppercase block mb-1">Cost/Unit</label>
+                                                      <label className="text-[10px] font-bold text-gray-900 uppercase block mb-1">Cost/Unit</label>
                                                       <input
                                                          type="number"
                                                          min={0}
@@ -4104,19 +4104,24 @@ export default function NikonDashboard() {
                                                       />
                                                    </div>
                                                    <div>
-                                                      <label className="text-[10px] font-bold text-gray-600 uppercase block mb-1">Value (auto)</label>
-                                                      <div className="px-3 py-2.5 rounded-lg border-2 border-gray-200 bg-gray-100 text-sm font-bold text-gray-900">
+                                                      <label className="text-[10px] font-bold text-gray-900 uppercase block mb-1">Petty Cash</label>
+                                                      <input
+                                                         type="text"
+                                                         placeholder="Opsional / no.ref"
+                                                         aria-label="Petty cash"
+                                                         title="Petty cash"
+                                                         value={item.petty_cash || ''}
+                                                         onChange={e => updateItem(idx, { petty_cash: e.target.value })}
+                                                         className="input-form"
+                                                      />
+                                                   </div>
+                                                   <div>
+                                                      <label className="text-[10px] font-bold text-gray-900 uppercase block mb-1">Value (auto)</label>
+                                                      <div className="px-3 py-2.5 rounded-lg border-2 border-gray-300 bg-gray-100 text-sm font-bold text-gray-900 min-h-[44px] flex items-center">
                                                          {fmtRp(Number(item.value) || 0)}
                                                       </div>
                                                    </div>
                                                 </div>
-                                                <input
-                                                   type="text"
-                                                   placeholder="Petty cash / nomor referensi (opsional)"
-                                                   value={item.petty_cash || ''}
-                                                   onChange={e => updateItem(idx, { petty_cash: e.target.value })}
-                                                   className="input-form"
-                                                />
                                              </div>
                                           ))}
                                           <button
@@ -5386,16 +5391,11 @@ export default function NikonDashboard() {
                   // Section dynamic dari budget_source
                   const sectionLabel = printData.budget_source?.toUpperCase() || 'MARKETING BUDGET';
                   const drafterDisplay = printData.drafter_name || 'Firza';
-                  const attachments = (printData.attachment_urls || []).filter((u): u is string => typeof u === 'string' && Boolean(u));
-                  // Split items utk pagination: max ~12 item per halaman
-                  const ITEMS_PER_PAGE = 12;
-                  const firstPageItems = items.slice(0, ITEMS_PER_PAGE);
-                  const overflowItems = items.slice(ITEMS_PER_PAGE);
-                  const totalPages = 1 + (overflowItems.length > 0 ? 1 : 0) + (attachments.length > 0 ? 1 : 0);
+                  const attachments = (printData.attachment_urls || []).filter((u): u is string => typeof u === 'string' && Boolean(u)).slice(0, 3);
                   return (
                      <>
-                        {/* ============ PAGE 1 ============ */}
-                        <div className="p-8 print:p-6 page-break-after">
+                        {/* ============ DOKUMEN ============ */}
+                        <div className="p-8 print:p-6">
                            {/* HEADER */}
                            <div className="flex items-start justify-between mb-5">
                               <div className="flex items-center gap-4">
@@ -5418,20 +5418,20 @@ export default function NikonDashboard() {
                                     </tr>
                                     <tr>
                                        <td className="border border-black px-3 py-1 font-bold bg-gray-100">Page(s):</td>
-                                       <td className="border border-black px-3 py-1 font-bold">{totalPages}</td>
+                                       <td className="border border-black px-3 py-1 font-bold">1</td>
                                     </tr>
                                  </tbody>
                               </table>
                            </div>
 
-                           {/* APPROVAL ROW: 3 boxes */}
+                           {/* APPROVAL ROW: 3 boxes — nama di-push ke bawah (mendekat ke garis) supaya ada ruang tanda tangan di atas */}
                            <div className="grid grid-cols-12 gap-2 mb-5">
                               {/* PROPOSED / PREPARED BY */}
-                              <div className="col-span-3 border border-black">
+                              <div className="col-span-3 border border-black flex flex-col">
                                  <div className="border-b border-black bg-gray-100 px-2 py-1.5 text-center">
                                     <p className="text-[10px] font-bold tracking-wider">PROPOSED / PREPARED BY</p>
                                  </div>
-                                 <div className="px-2 py-4 text-center min-h-[80px] flex items-center justify-center">
+                                 <div className="px-2 pt-12 pb-1 text-center min-h-[90px] flex flex-col justify-end">
                                     <p className="text-base font-bold">{drafterDisplay}</p>
                                  </div>
                                  <div className="grid grid-cols-2 border-t border-black text-[9px]">
@@ -5445,18 +5445,18 @@ export default function NikonDashboard() {
                               </div>
 
                               {/* MANAGEMENT APPROVAL — 3 columns */}
-                              <div className="col-span-6 border border-black">
+                              <div className="col-span-6 border border-black flex flex-col">
                                  <div className="border-b border-black bg-gray-100 px-2 py-1.5 text-center">
                                     <p className="text-[10px] font-bold tracking-wider">MANAGEMENT APPROVAL</p>
                                  </div>
-                                 <div className="grid grid-cols-3 min-h-[80px]">
-                                    <div className="border-r border-black px-2 py-4 text-center flex items-center justify-center">
+                                 <div className="grid grid-cols-3 min-h-[90px]">
+                                    <div className="border-r border-black px-2 pt-12 pb-1 text-center flex flex-col justify-end">
                                        <p className="text-sm font-bold">{MGT_NAMES.col1}</p>
                                     </div>
-                                    <div className="border-r border-black px-2 py-4 text-center flex items-center justify-center">
+                                    <div className="border-r border-black px-2 pt-12 pb-1 text-center flex flex-col justify-end">
                                        <p className="text-sm font-bold">{MGT_NAMES.col2}</p>
                                     </div>
-                                    <div className="px-2 py-4 text-center flex items-center justify-center">
+                                    <div className="px-2 pt-12 pb-1 text-center flex flex-col justify-end">
                                        <p className="text-sm font-bold">{MGT_NAMES.col3}</p>
                                     </div>
                                  </div>
@@ -5477,11 +5477,11 @@ export default function NikonDashboard() {
                               </div>
 
                               {/* FINANCE & ACCOUNTING */}
-                              <div className="col-span-3 border border-black">
+                              <div className="col-span-3 border border-black flex flex-col">
                                  <div className="border-b border-black bg-gray-100 px-2 py-1.5 text-center">
                                     <p className="text-[10px] font-bold tracking-wider">FINANCE & ACCOUNTING</p>
                                  </div>
-                                 <div className="px-2 py-4 text-center min-h-[80px] flex items-center justify-center">
+                                 <div className="px-2 pt-12 pb-1 text-center min-h-[90px] flex flex-col justify-end">
                                     <p className="text-base font-bold">{FINANCE_NAME}</p>
                                  </div>
                                  <div className="grid grid-cols-2 border-t border-black text-[9px]">
@@ -5538,22 +5538,23 @@ export default function NikonDashboard() {
                                  </tr>
                               </thead>
                               <tbody>
-                                 {firstPageItems.length === 0 ? (
+                                 {items.length === 0 ? (
                                     <tr>
                                        <td colSpan={6} className="border border-black px-2 py-6 text-center text-gray-500 italic">Belum ada item anggaran.</td>
                                     </tr>
-                                 ) : firstPageItems.map((it, idx) => (
-                                    <tr key={idx}>
-                                       <td className="border border-black px-2 py-1.5 text-center">{idx + 1}</td>
-                                       <td className="border border-black px-2 py-1.5">{it.purpose || '-'}</td>
-                                       <td className="border border-black px-2 py-1.5 text-center">{it.qty || 0}</td>
-                                       <td className="border border-black px-2 py-1.5 text-right font-mono">{fmtNum(Number(it.cost_unit) || 0)}</td>
-                                       <td className="border border-black px-2 py-1.5 text-center text-[10px]">{it.petty_cash || ''}</td>
-                                       <td className="border border-black px-2 py-1.5 text-right font-bold font-mono">{fmtNum(Number(it.value) || 0)}</td>
-                                    </tr>
-                                 ))}
-                                 {overflowItems.length === 0 && (
+                                 ) : (
                                     <>
+                                       {/* Render SEMUA item (page break otomatis dari browser kalau overflow) */}
+                                       {items.map((it, idx) => (
+                                          <tr key={idx}>
+                                             <td className="border border-black px-2 py-1.5 text-center">{idx + 1}</td>
+                                             <td className="border border-black px-2 py-1.5">{it.purpose || '-'}</td>
+                                             <td className="border border-black px-2 py-1.5 text-center">{it.qty || 0}</td>
+                                             <td className="border border-black px-2 py-1.5 text-right font-mono">{fmtNum(Number(it.cost_unit) || 0)}</td>
+                                             <td className="border border-black px-2 py-1.5 text-center text-[10px]">{it.petty_cash || ''}</td>
+                                             <td className="border border-black px-2 py-1.5 text-right font-bold font-mono">{fmtNum(Number(it.value) || 0)}</td>
+                                          </tr>
+                                       ))}
                                        <tr>
                                           <td colSpan={4}></td>
                                           <td className="border border-black px-2 py-2 text-right font-bold bg-gray-50">SUBTOTAL</td>
@@ -5569,81 +5570,51 @@ export default function NikonDashboard() {
                               </tbody>
                            </table>
 
+                           {/* ATTACHMENTS — INLINE di bawah Grand Total, page-break natural kalau overflow */}
+                           {attachments.length > 0 && (
+                              <div className="mt-6 attachments-section">
+                                 <div className="border-t-2 border-dashed border-gray-500 mb-4"></div>
+                                 <h3 className="font-bold text-base mb-3 tracking-wider">LAMPIRAN (ATTACHMENTS):</h3>
+                                 {(() => {
+                                    // Max 3 gambar — split tampil sebaris, ukuran auto-fit width
+                                    const visibleAttachments = attachments.slice(0, 3);
+                                    const cols = visibleAttachments.length;
+                                    return (
+                                       <div className={`grid gap-3 ${cols === 1 ? 'grid-cols-1' : cols === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                                          {visibleAttachments.map((url, idx) => (
+                                             <div key={idx} className="border border-gray-300 p-1.5">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img
+                                                   src={url}
+                                                   alt={`Lampiran ${idx + 1}`}
+                                                   className="w-full h-auto object-contain"
+                                                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                />
+                                             </div>
+                                          ))}
+                                       </div>
+                                    );
+                                 })()}
+                              </div>
+                           )}
+
                            <div className="text-[9px] text-gray-600 mt-4 flex justify-between">
                               <span>https://nikonindonesia-altanikindo.vercel.app</span>
-                              <span>1/{totalPages}</span>
+                              <span>Halaman dicetak otomatis</span>
                            </div>
                         </div>
-
-                        {/* ============ PAGE 2 - Overflow items + TOTAL COST + Attachments ============ */}
-                        {(overflowItems.length > 0 || attachments.length > 0) && (
-                           <div className="p-8 print:p-6 page-break-before">
-                              {/* Items header tetap muncul */}
-                              <table className="w-full border-collapse border border-black text-[11px]">
-                                 <thead>
-                                    <tr className="bg-gray-100">
-                                       <th className="border border-black px-2 py-2 w-10 text-center font-bold">NO</th>
-                                       <th className="border border-black px-2 py-2 text-center font-bold">PURPOSE / ITEM DESCRIPTION</th>
-                                       <th className="border border-black px-2 py-2 w-16 text-center font-bold">QTY</th>
-                                       <th className="border border-black px-2 py-2 w-32 text-center font-bold">COST / UNIT</th>
-                                       <th className="border border-black px-2 py-2 w-28 text-center font-bold">PETTY CASH</th>
-                                       <th className="border border-black px-2 py-2 w-36 text-center font-bold">TOTAL VALUE</th>
-                                    </tr>
-                                 </thead>
-                                 <tbody>
-                                    {overflowItems.map((it, idx) => (
-                                       <tr key={idx}>
-                                          <td className="border border-black px-2 py-1.5 text-center">{ITEMS_PER_PAGE + idx + 1}</td>
-                                          <td className="border border-black px-2 py-1.5">{it.purpose || '-'}</td>
-                                          <td className="border border-black px-2 py-1.5 text-center">{it.qty || 0}</td>
-                                          <td className="border border-black px-2 py-1.5 text-right font-mono">{fmtNum(Number(it.cost_unit) || 0)}</td>
-                                          <td className="border border-black px-2 py-1.5 text-center text-[10px]">{it.petty_cash || ''}</td>
-                                          <td className="border border-black px-2 py-1.5 text-right font-bold font-mono">{fmtNum(Number(it.value) || 0)}</td>
-                                       </tr>
-                                    ))}
-                                    {overflowItems.length > 0 && (
-                                       <tr>
-                                          <td colSpan={4}></td>
-                                          <td className="border border-black px-2 py-3 text-right font-black text-base bg-black text-white">TOTAL COST</td>
-                                          <td className="border border-black px-2 py-3 text-right font-black font-mono text-base bg-black text-white">Rp {fmtNum(grandTotal)}</td>
-                                       </tr>
-                                    )}
-                                 </tbody>
-                              </table>
-
-                              {/* DASHED SEPARATOR */}
-                              <div className="my-6 border-t-2 border-dashed border-gray-400"></div>
-
-                              {/* ATTACHMENTS */}
-                              {attachments.length > 0 && (
-                                 <>
-                                    <h3 className="font-bold text-base mb-3 tracking-wider">LAMPIRAN (ATTACHMENTS):</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                       {attachments.map((url, idx) => (
-                                          <div key={idx} className="border border-gray-300 p-2">
-                                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                                             <img src={url} alt={`Lampiran ${idx + 1}`} className="w-full h-auto object-contain" style={{ maxHeight: '300px' }} />
-                                             <p className="text-[9px] text-gray-600 mt-1 text-center">Lampiran #{idx + 1}</p>
-                                          </div>
-                                       ))}
-                                    </div>
-                                 </>
-                              )}
-
-                              <div className="text-[9px] text-gray-600 mt-6 flex justify-between">
-                                 <span>https://nikonindonesia-altanikindo.vercel.app</span>
-                                 <span>{totalPages}/{totalPages}</span>
-                              </div>
-                           </div>
-                        )}
 
                         {/* CSS untuk page break dan print options */}
                         <style jsx global>{`
                            @media print {
                               @page { size: A4; margin: 0; }
-                              .page-break-after { page-break-after: always; }
-                              .page-break-before { page-break-before: always; }
                               body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                              /* Header tabel tidak repeat di halaman berikutnya (sesuai request) */
+                              thead { display: table-row-group; }
+                              /* Hindari split item row di tengah */
+                              tbody tr { page-break-inside: avoid; }
+                              /* Attachments section break sebelumnya kalau tidak muat */
+                              .attachments-section { page-break-inside: avoid; }
                            }
                         `}</style>
                      </>
