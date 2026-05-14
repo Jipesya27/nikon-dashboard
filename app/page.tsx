@@ -229,6 +229,7 @@ export default function NikonDashboard() {
    const [konsumenForm, setKonsumenForm] = useState<Partial<KonsumenData>>({});
    const [karyawanForm, setKaryawanForm] = useState<Partial<Karyawan>>({ role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
    const [lendingForm, setLendingForm] = useState<Partial<PeminjamanBarang>>({ items_dipinjam: [], status_peminjaman: 'aktif' });
+   const [assetForm, setAssetForm] = useState<Partial<BarangAset>>({});
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
    const [eventForm, setEventForm] = useState<Partial<EventData>>({});
    const [eventImageFile, setEventImageFile] = useState<File | null>(null);
@@ -1011,7 +1012,7 @@ export default function NikonDashboard() {
       return `MKTG/BA${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
    };
 
-   const openModal = (action: 'create' | 'edit' | 'reset_pw' | 'return', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings' | 'event' | 'eventregistration', item?: ClaimPromo | Garansi | Promosi | StatusService | BudgetApproval | Karyawan | PeminjamanBarang | KonsumenData | PengaturanBot | EventData | EventRegistration) => {
+   const openModal = (action: 'create' | 'edit' | 'reset_pw' | 'return', type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings' | 'event' | 'eventregistration' | 'asset', item?: ClaimPromo | Garansi | Promosi | StatusService | BudgetApproval | Karyawan | PeminjamanBarang | KonsumenData | PengaturanBot | EventData | EventRegistration | BarangAset) => {
       setModalAction(action);
       if (type === 'claim') {
          setClaimForm((item as ClaimPromo) || { validasi_by_mkt: 'Dalam Proses Verifikasi', validasi_by_fa: 'Dalam Proses Verifikasi' });
@@ -1093,6 +1094,10 @@ export default function NikonDashboard() {
          setRegistrationForm((item as EventRegistration) || { status: 'Pending Payment' });
          setEditingId((item as EventRegistration)?.id || null);
       }
+      else if (type === 'asset') {
+         setAssetForm((item as BarangAset) || {});
+         setEditingId((item as BarangAset)?.id || null);
+      }
       setIsModalOpen(true);
    };
 
@@ -1107,6 +1112,7 @@ export default function NikonDashboard() {
       setKaryawanForm({});
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' });
       setBotSettingsForm({});
+      setAssetForm({});
       setEventForm({ status: 'aktif', stock: 0 });
       setRegistrationForm({ status: 'Pending Payment' });
       setEventImageFile(null);
@@ -1565,7 +1571,19 @@ export default function NikonDashboard() {
          setIsSubmitting(false); }
    };
 
-   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings' | 'events' | 'eventregistration', id: string) => {
+   const handleSaveAsset = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      try {
+         const data = { ...assetForm };
+         if (modalAction === 'create') await supabase.from('barang_aset').insert([data]);
+         else await supabase.from('barang_aset').update(data).eq('id', editingId);
+         await fetchAssets();
+         closeModal();
+      } finally { setIsSubmitting(false); }
+   };
+
+   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings' | 'events' | 'eventregistration' | 'asset', id: string) => {
       if (!window.confirm('Yakin menghapus data?')) return;
       if (type === 'claim') { await supabase.from('claim_promo').delete().eq('id_claim', id); fetchClaims(); }
       else if (type === 'warranty') { await supabase.from('garansi').delete().eq('id_garansi', id); fetchWarranties(); }
@@ -1580,6 +1598,7 @@ export default function NikonDashboard() {
          // TODO: Delete KTP file from storage if it exists
          fetchLendingRecords();
       }
+      else if (type === 'asset') { await supabase.from('barang_aset').delete().eq('id', id); fetchAssets(); }
       else { await supabase.from('budget_approval').delete().eq('id_budget', id); fetchBudgets(); }
    };
 
@@ -3732,6 +3751,7 @@ export default function NikonDashboard() {
                         <div className="flex flex-col md:flex-row gap-2 items-center">
                            <input type="text" placeholder="🔍 Cari Nama Barang / No Seri / Catatan..." value={searchAssets} onChange={e => setSearchAssets(e.target.value)} className="flex-1 p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                            <span className="text-sm text-gray-500 font-medium whitespace-nowrap">{filteredAssets.length} barang</span>
+                           <button onClick={() => openModal('create', 'asset')} className="btn-primary whitespace-nowrap">+ Tambah Aset</button>
                         </div>
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm">
@@ -3742,6 +3762,7 @@ export default function NikonDashboard() {
                                     <th className="px-4 py-3 text-left font-bold">No. Seri</th>
                                     <th className="px-4 py-3 text-left font-bold">Accessories</th>
                                     <th className="px-4 py-3 text-left font-bold">Catatan</th>
+                                    <th className="px-4 py-3 text-left font-bold">Aksi</th>
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
@@ -3754,11 +3775,17 @@ export default function NikonDashboard() {
                                           <td className="px-4 py-3 font-mono text-sm">{a.no_seri_aset || '-'}</td>
                                           <td className="px-4 py-3 text-xs text-gray-600">{accs.length > 0 ? accs.join(', ') : '-'}</td>
                                           <td className="px-4 py-3 text-xs text-gray-600">{a.catatan || '-'}</td>
+                                          <td className="px-4 py-3">
+                                             <div className="flex gap-3">
+                                                <button onClick={() => openModal('edit', 'asset', a)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                                <button onClick={() => handleDelete('asset', a.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                             </div>
+                                          </td>
                                        </tr>
                                     );
                                  })}
                                  {filteredAssets.length === 0 && (
-                                    <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Tidak ada data aset.</td></tr>
+                                    <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Tidak ada data aset.</td></tr>
                                  )}
                               </tbody>
                            </table>
@@ -5627,7 +5654,39 @@ export default function NikonDashboard() {
                      )}
 
                      {/* ============ FORM TAB LAIN: placeholder info (jika ada tab baru) ============ */}
-                     {!['userrole', 'events', 'lending', 'claims', 'konsumen', 'warranties', 'promos', 'botsettings', 'budgets', 'eventregistrations', 'services'].includes(activeTab) && (
+                     {/* ============ ASSET FORM ============ */}
+                     {activeTab === 'assets' && (
+                        <form onSubmit={handleSaveAsset} className="space-y-4">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                 <label className="label-form">Nama Barang *</label>
+                                 <input type="text" required aria-label="Nama Barang" value={assetForm.nama_barang_aset || ''} onChange={e => setAssetForm({ ...assetForm, nama_barang_aset: e.target.value })} className="input-form" placeholder="Contoh: Nikon Z50 II Body Only" />
+                              </div>
+                              <div>
+                                 <label className="label-form">No. Seri</label>
+                                 <input type="text" aria-label="No Seri Aset" value={assetForm.no_seri_aset || ''} onChange={e => setAssetForm({ ...assetForm, no_seri_aset: e.target.value })} className="input-form" placeholder="Nomor seri barang" />
+                              </div>
+                           </div>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {(['accs1','accs2','accs3','accs4','accs5','accs6','accs7'] as const).map((k, i) => (
+                                 <div key={k}>
+                                    <label className="label-form">Aksesoris {i + 1}</label>
+                                    <input type="text" aria-label={`Aksesoris ${i+1}`} value={assetForm[k] || ''} onChange={e => setAssetForm({ ...assetForm, [k]: e.target.value })} className="input-form" placeholder={`Aksesoris ${i + 1} (opsional)`} />
+                                 </div>
+                              ))}
+                           </div>
+                           <div>
+                              <label className="label-form">Catatan</label>
+                              <input type="text" aria-label="Catatan" value={assetForm.catatan || ''} onChange={e => setAssetForm({ ...assetForm, catatan: e.target.value })} className="input-form" placeholder="Catatan tambahan (opsional)" />
+                           </div>
+                           <div className="mt-6 flex justify-end gap-3">
+                              <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
+                              <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan'}</button>
+                           </div>
+                        </form>
+                     )}
+
+                     {!['userrole', 'events', 'lending', 'claims', 'konsumen', 'warranties', 'promos', 'botsettings', 'budgets', 'eventregistrations', 'services', 'assets'].includes(activeTab) && (
                         <div className="text-center py-12">
                            <div className="text-5xl mb-3">🚧</div>
                            <p className="text-gray-700 font-semibold mb-1">Form untuk tab ini belum tersedia</p>
