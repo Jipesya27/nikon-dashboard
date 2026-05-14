@@ -5582,6 +5582,11 @@ export default function NikonDashboard() {
                            <datalist id="dl-asset-sn">
                               {assets.map(a => a.no_seri_aset ? <option key={a.id} value={a.no_seri_aset}>{a.nama_barang_aset}</option> : null)}
                            </datalist>
+                           <datalist id="dl-asset-accs">
+                              {Array.from(new Set(assets.flatMap(a => [a.accs1,a.accs2,a.accs3,a.accs4,a.accs5,a.accs6,a.accs7].filter(Boolean)))).map((v,i) => (
+                                 <option key={i} value={v as string} />
+                              ))}
+                           </datalist>
                            <div>
                               <label className="label-form">Barang yang Dipinjam *</label>
                               <div className="space-y-3">
@@ -5623,16 +5628,16 @@ export default function NikonDashboard() {
                                           newItems[idx] = { ...newItems[idx], nama_barang: e.target.value };
                                           setLendingForm({ ...lendingForm, items_dipinjam: newItems });
                                        }} className="input-form" />
-                                       {/* Accessories (auto-filled, editable) */}
-                                       {(['accs1','accs2','accs3','accs4','accs5','accs6','accs7'] as const).map(accsKey => (
-                                          item[accsKey] !== undefined && item[accsKey] !== '' ? (
-                                             <input key={accsKey} type="text" aria-label={accsKey} placeholder={accsKey} value={item[accsKey] || ''} onChange={e => {
+                                       {/* Accessories 1–7 */}
+                                       <div className="grid grid-cols-1 gap-2">
+                                          {(['accs1','accs2','accs3','accs4','accs5','accs6','accs7'] as const).map((accsKey, i) => (
+                                             <input key={accsKey} type="text" list="dl-asset-accs" aria-label={`Aksesoris ${i+1}`} placeholder={`Aksesoris ${i+1} (opsional)`} value={item[accsKey] || ''} onChange={e => {
                                                 const newItems = [...(lendingForm.items_dipinjam || [])];
                                                 newItems[idx] = { ...newItems[idx], [accsKey]: e.target.value };
                                                 setLendingForm({ ...lendingForm, items_dipinjam: newItems });
                                              }} className="input-form text-sm" />
-                                          ) : null
-                                       ))}
+                                          ))}
+                                       </div>
                                        <input type="text" aria-label="Catatan Barang" placeholder="Catatan (opsional)" value={item.catatan || ''} onChange={e => {
                                           const newItems = [...(lendingForm.items_dipinjam || [])];
                                           newItems[idx] = { ...newItems[idx], catatan: e.target.value };
