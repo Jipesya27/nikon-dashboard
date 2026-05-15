@@ -10,6 +10,168 @@ import {
    applyTemplate,
 } from '../lib/chatbotTemplate';
 
+// ── Bot Health Panel ──────────────────────────────────────────────
+interface HealthData {
+  overall: { edge_ok: boolean; fonnte_ok: boolean; has_recent_activity: boolean; has_error: boolean };
+  last_error: { context: string; message: string; detail: unknown; ts: string } | null;
+  last_success: string | null;
+  last_bot_reply: { waktu_pesan: string; isi_pesan: string } | null;
+  last_incoming: { waktu_pesan: string; nama_profil_wa: string } | null;
+  edge_function: { ok: boolean; status?: number; error?: string };
+  fonnte_api: { ok: boolean; status?: number; error?: string };
+}
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return '–';
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60) return `${diff}d lalu`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m lalu`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}j lalu`;
+  return `${Math.floor(diff / 86400)}hr lalu`;
+}
+
+function Dot({ ok }: { ok: boolean }) {
+  return <span className={`inline-block w-2.5 h-2.5 rounded-full mr-1.5 ${ok ? 'bg-green-400' : 'bg-red-500'}`} />;
+}
+
+function BotHealthPanel() {
+  const [health, setHealth] = useState<HealthData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+
+  const fetchHealth = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/bot-health');
+      if (res.ok) {
+        setHealth(await res.json());
+        setLastRefresh(new Date());
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHealth();
+    const iv = setInterval(fetchHealth, 60_000);
+    return () => clearInterval(iv);
+  }, [fetchHealth]);
+
+  const o = health?.overall;
+  const allOk = o && o.edge_ok && o.fonnte_ok && !o.has_error;
+  const panelColor = !health || loading
+    ? 'border-gray-300 bg-gray-50'
+    : allOk
+      ? 'border-green-400 bg-green-50'
+      : 'border-red-400 bg-red-50';
+
+  return (
+    <div className={`border-2 rounded-xl mb-6 overflow-hidden transition-colors ${panelColor}`}>
+      {/* Header bar */}
+      <div
+        className="flex items-center justify-between px-4 py-3 cursor-pointer select-none"
+        onClick={() => setExpanded(v => !v)}
+      >
+        <div className="flex items-center gap-3">
+          <span className="font-bold text-sm text-gray-800">Status Sistem Chatbot</span>
+          {loading ? (
+            <span className="text-xs text-gray-400 animate-pulse">Memeriksa...</span>
+          ) : (
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${allOk ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
+              {allOk ? 'Semua Normal' : 'Ada Masalah'}
+            </span>
+          )}
+          {health && (
+            <div className="flex items-center gap-3 text-xs text-gray-600">
+              <span><Dot ok={!!o?.edge_ok} />Edge Function</span>
+              <span><Dot ok={!!o?.fonnte_ok} />Fonnte API</span>
+              <span><Dot ok={!!o?.has_recent_activity} />Aktivitas Bot</span>
+              {o?.has_error && <span className="text-red-600 font-bold">⚠ Ada Error Tercatat</span>}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={e => { e.stopPropagation(); fetchHealth(); }}
+            className="text-xs text-gray-500 hover:text-gray-800 px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50"
+          >
+            Refresh
+          </button>
+          <span className="text-xs text-gray-400">{lastRefresh ? `Update: ${timeAgo(lastRefresh.toISOString())}` : ''}</span>
+          <span className="text-gray-400 text-sm">{expanded ? '▲' : '▼'}</span>
+        </div>
+      </div>
+
+      {/* Detail panel */}
+      {expanded && health && (
+        <div className="px-4 pb-4 border-t border-gray-200 bg-white">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+            <div className="rounded-lg border p-3 bg-gray-50">
+              <div className="text-xs text-gray-500 mb-1">Edge Function</div>
+              <div className={`font-bold text-sm ${health.edge_function.ok ? 'text-green-700' : 'text-red-600'}`}>
+                {health.edge_function.ok ? 'Online' : 'Error'}
+              </div>
+              {health.edge_function.error && <div className="text-xs text-red-500 mt-1 break-all">{health.edge_function.error}</div>}
+              {health.last_success && <div className="text-xs text-gray-400 mt-1">Sukses terakhir: {timeAgo(health.last_success)}</div>}
+            </div>
+            <div className="rounded-lg border p-3 bg-gray-50">
+              <div className="text-xs text-gray-500 mb-1">Fonnte API</div>
+              <div className={`font-bold text-sm ${health.fonnte_api.ok ? 'text-green-700' : 'text-red-600'}`}>
+                {health.fonnte_api.ok ? 'Terhubung' : 'Gagal'}
+              </div>
+              {health.fonnte_api.error && <div className="text-xs text-red-500 mt-1 break-all">{health.fonnte_api.error}</div>}
+              {health.fonnte_api.status && <div className="text-xs text-gray-400 mt-1">HTTP {health.fonnte_api.status}</div>}
+            </div>
+            <div className="rounded-lg border p-3 bg-gray-50">
+              <div className="text-xs text-gray-500 mb-1">Balasan Bot Terakhir</div>
+              {health.last_bot_reply ? (
+                <>
+                  <div className="font-bold text-sm text-gray-800">{timeAgo(health.last_bot_reply.waktu_pesan)}</div>
+                  <div className="text-xs text-gray-500 mt-1 truncate">{health.last_bot_reply.isi_pesan?.slice(0, 60)}…</div>
+                </>
+              ) : (
+                <div className="text-sm text-gray-400">Belum ada</div>
+              )}
+            </div>
+            <div className="rounded-lg border p-3 bg-gray-50">
+              <div className="text-xs text-gray-500 mb-1">Pesan Masuk Terakhir</div>
+              {health.last_incoming ? (
+                <>
+                  <div className="font-bold text-sm text-gray-800">{timeAgo(health.last_incoming.waktu_pesan)}</div>
+                  <div className="text-xs text-gray-500 mt-1">{health.last_incoming.nama_profil_wa}</div>
+                </>
+              ) : (
+                <div className="text-sm text-gray-400">Belum ada</div>
+              )}
+            </div>
+          </div>
+
+          {/* Error detail */}
+          {health.last_error && (
+            <div className="mt-3 bg-red-50 border border-red-300 rounded-lg p-3">
+              <div className="text-xs font-bold text-red-700 mb-1">
+                Error Terakhir — {timeAgo(health.last_error.ts)}
+              </div>
+              <div className="text-xs text-red-800 font-mono">
+                <span className="font-semibold">[{health.last_error.context}]</span> {health.last_error.message}
+              </div>
+              {health.last_error.detail != null && (
+                <pre className="text-xs text-red-600 mt-1 whitespace-pre-wrap break-all max-h-24 overflow-y-auto">
+                  {typeof health.last_error.detail === 'string'
+                    ? health.last_error.detail
+                    : JSON.stringify(health.last_error.detail, null, 2)}
+                </pre>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const supabase = createClient(
    process.env.NEXT_PUBLIC_SUPABASE_URL!,
    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -171,6 +333,9 @@ export default function ChatbotPage() {
          )}
 
          <div className="max-w-6xl mx-auto px-4 py-6">
+            {/* Bot Health Panel */}
+            <BotHealthPanel />
+
             {/* Syntax guide */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
                <h3 className="font-bold text-blue-900 mb-2 text-sm">📖 Panduan Sintaks Template</h3>

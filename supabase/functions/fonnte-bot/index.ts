@@ -49,7 +49,53 @@ async function balasKeWA(nomorTujuan, isiPesan, urlFile) {
     console.error("Gagal kontak Fonnte API:", err);
   }
 }
+async function logErrorToDB(context: string, message: string, detail: unknown) {
+  try {
+    const payload = JSON.stringify({ context, message, detail, ts: new Date().toISOString() });
+    await supabase.from('pengaturan_bot').upsert(
+      { nama_pengaturan: 'bot_last_error', description: payload },
+      { onConflict: 'nama_pengaturan' }
+    );
+  } catch (_) { /* silent — jangan sampai logging loop */ }
+}
+
+async function logSuccessToDB() {
+  try {
+    await supabase.from('pengaturan_bot').upsert(
+      { nama_pengaturan: 'bot_last_success', description: new Date().toISOString() },
+      { onConflict: 'nama_pengaturan' }
+    );
+  } catch (_) { /* silent */ }
+}
+
 serve(async (req)=>{
+  // ── Health check endpoint ──────────────────────────────────────
+  if (req.method === 'GET') {
+    const { data: lastErr } = await supabase
+      .from('pengaturan_bot')
+      .select('description')
+      .eq('nama_pengaturan', 'bot_last_error')
+      .maybeSingle();
+    const { data: lastOk } = await supabase
+      .from('pengaturan_bot')
+      .select('description')
+      .eq('nama_pengaturan', 'bot_last_success')
+      .maybeSingle();
+    const { data: lastMsg } = await supabase
+      .from('riwayat_pesan')
+      .select('waktu_pesan, isi_pesan')
+      .eq('arah_pesan', 'OUT')
+      .order('waktu_pesan', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return new Response(JSON.stringify({
+      status: 'ok',
+      last_success: lastOk?.description ?? null,
+      last_error: lastErr?.description ? JSON.parse(lastErr.description) : null,
+      last_bot_reply: lastMsg ?? null,
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+
   console.log("[INDICATOR 1] Webhook diterima. Method:", req.method);
   if (req.method !== 'POST') return new Response('Method not allowed', {
     status: 405
@@ -372,9 +418,10 @@ serve(async (req)=>{
             msg += `*Barang:* ${s.tipe_barang || '-'}\n`;
             msg += `*Status MKT:* ${s.validasi_by_mkt || 'Menunggu Verifikasi'}\n`;
             msg += `*Status FA:* ${s.validasi_by_fa || 'Menunggu Verifikasi'}\n`;
-            if (s.nama_jasa_pengiriman) msg += `*Jasa Kirim:* ${s.nama_jasa_pengiriman}\n`;
-            if (s.nomor_resi) msg += `*No Resi:* ${s.nomor_resi}\n`;
-            if (s.catatan_mkt) msg += `*Catatan:* ${s.catatan_mkt}\n`;
+            const isEmptyVal = (v: string | null | undefined) => !v || v === '-' || v === 'BELUM_DIISI';
+            if (!isEmptyVal(s.nama_jasa_pengiriman)) msg += `*Jasa Kirim:* ${s.nama_jasa_pengiriman}\n`;
+            if (!isEmptyVal(s.nomor_resi)) msg += `*No Resi:* ${s.nomor_resi}\n`;
+            if (!isEmptyVal(s.catatan_mkt)) msg += `*Catatan Marketing:* ${s.catatan_mkt}\n`;
             msg += `\nKetik *MENU* untuk kembali ke menu utama.`;
             balasanBot = msg;
           } else {
@@ -485,6 +532,7 @@ serve(async (req)=>{
         waktu_pesan: new Date().toISOString()
       });
     }
+    await logSuccessToDB();
     return new Response(JSON.stringify({
       status: "success",
       indicator: "DONE"
@@ -496,6 +544,7 @@ serve(async (req)=>{
     });
   } catch (error) {
     console.error("[INDICATOR ERROR] Global Catch Error:", error);
+    await logErrorToDB("GLOBAL_CATCH", error?.message ?? String(error), error?.stack ?? null);
     return new Response(JSON.stringify({
       error: "Internal Server Error",
       details: error.message,
