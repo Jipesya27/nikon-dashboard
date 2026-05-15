@@ -240,6 +240,7 @@ export default function NikonDashboard() {
 
    // SPECIAL STATES
    const [printData, setPrintData] = useState<BudgetApproval | null>(null);
+   const [printDownloading, setPrintDownloading] = useState(false);
    const [isSubmitting, setIsSubmitting] = useState(false);
 
    // IMAGE VIEWER STATES
@@ -665,32 +666,20 @@ export default function NikonDashboard() {
    }, [isLoggedIn, dateRange, currentUser?.role]);
    
    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-   const handlePrintDocument = () => {
-      if (printData) {
-         const originalTitle = document.title;
-         document.title = `${printData.proposal_no}-${printData.title}`;
-         window.print();
-         document.title = originalTitle;
-      } else {
-         window.print();
-      }
-   };
-   // Auto-trigger window.print() saat printData di-set
-   useEffect(() => {
+   const handleDownloadPDF = () => {
       if (!printData) return;
       const originalTitle = document.title;
       document.title = `${printData.proposal_no}-${printData.title}`;
-      // Beri waktu React render print template dulu
-      const timer = setTimeout(() => {
+      setPrintDownloading(true);
+      setTimeout(() => {
          window.print();
-         // Reset printData setelah dialog cetak ditutup
          setTimeout(() => {
+            setPrintDownloading(false);
             setPrintData(null);
             document.title = originalTitle;
-         }, 500);
-      }, 300);
-      return () => clearTimeout(timer);
-   }, [printData]);
+         }, 600);
+      }, 150);
+   };
 
    const scrollToBottom = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1039,6 +1028,10 @@ export default function NikonDashboard() {
                      id_konsumen: kon.id_konsumen,
                      created_at: kon.created_at,
                   });
+                  // Prefill nama_pendaftar dari konsumen jika kosong di data claim
+                  if (!itemAsClaim.nama_pendaftar && kon.nama_lengkap) {
+                     setClaimForm(prev => ({ ...prev, nama_pendaftar: kon.nama_lengkap }));
+                  }
                }
             });
          }
@@ -5943,34 +5936,28 @@ export default function NikonDashboard() {
             </div>
          )}
 
-         {/* PRINT VIEW - Budget Approval Proposal (sesuai template Alta Nikindo) */}
-         {printData && (
-            <div className="hidden print:block font-sans text-black bg-white text-[11px]">
-               {(() => {
-                  const fmtNum = (n: number) => n.toLocaleString('id-ID');
-                  const items = printData.items || [];
-                  const subtotal = items.reduce((s, it) => s + (Number(it.value) || 0), 0);
-                  const grandTotal = subtotal; // tidak ada pajak/discount untuk saat ini
-                  // Management names — ambil dari data proposal, fallback ke default template
-                  const MGT_NAMES = {
-                     col1: printData.mgt_name_1 || 'Jamal',
-                     col2: printData.mgt_name_2 || 'Eko',
-                     col3: printData.mgt_name_3 || 'Larry',
-                  };
-                  const FINANCE_NAME = printData.finance_name || 'Merry';
-                  // Section dynamic dari budget_source
-                  const sectionLabel = printData.budget_source?.toUpperCase() || 'MARKETING BUDGET';
-                  const drafterDisplay = printData.proposed_name || printData.drafter_name || 'Firza';
-                  // Hitung total petty cash
-                  const totalPettyCash = items.reduce((sum, it) => {
-                     const v = parseFloat(String(it.petty_cash || '0').replace(/[^0-9.-]/g, ''));
-                     return sum + (isNaN(v) ? 0 : v);
-                  }, 0);
-                  const attachments = (printData.attachment_urls || []).filter((u): u is string => typeof u === 'string' && Boolean(u)).slice(0, 3);
-                  return (
-                     <>
-                        {/* ============ DOKUMEN ============ */}
-                        <div className="p-8 print:p-6">
+         {/* PROPOSAL PDF PREVIEW MODAL */}
+         {printData && (() => {
+            const fmtNum = (n: number) => n.toLocaleString('id-ID');
+            const items = printData.items || [];
+            const subtotal = items.reduce((s, it) => s + (Number(it.value) || 0), 0);
+            const grandTotal = subtotal;
+            const MGT_NAMES = {
+               col1: printData.mgt_name_1 || 'Jamal',
+               col2: printData.mgt_name_2 || 'Eko',
+               col3: printData.mgt_name_3 || 'Larry',
+            };
+            const FINANCE_NAME = printData.finance_name || 'Merry';
+            const sectionLabel = printData.budget_source?.toUpperCase() || 'MARKETING BUDGET';
+            const drafterDisplay = printData.proposed_name || printData.drafter_name || 'Firza';
+            const totalPettyCash = items.reduce((sum, it) => {
+               const v = parseFloat(String(it.petty_cash || '0').replace(/[^0-9.-]/g, ''));
+               return sum + (isNaN(v) ? 0 : v);
+            }, 0);
+            const attachments = (printData.attachment_urls || []).filter((u): u is string => typeof u === 'string' && Boolean(u)).slice(0, 3);
+
+            const docEl = (
+               <div className="p-8 print:p-6">
                            {/* HEADER */}
                            <div className="flex items-start justify-between mb-5">
                               <div className="flex items-center gap-4">
@@ -6180,28 +6167,68 @@ export default function NikonDashboard() {
 
                            <div className="text-[9px] text-gray-600 mt-4 flex justify-between">
                               <span>https://nikonindonesia-altanikindo.vercel.app</span>
-                              <span>Halaman dicetak otomatis</span>
+                              <span>Dokumen Budget Approval</span>
                            </div>
                         </div>
+            );
 
-                        {/* CSS untuk page break dan print options */}
-                        <style jsx global>{`
-                           @media print {
-                              @page { size: A4; margin: 0; }
-                              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                              /* Header tabel tidak repeat di halaman berikutnya (sesuai request) */
-                              thead { display: table-row-group; }
-                              /* Hindari split item row di tengah */
-                              tbody tr { page-break-inside: avoid; }
-                              /* Attachments section break sebelumnya kalau tidak muat */
-                              .attachments-section { page-break-inside: avoid; }
-                           }
-                        `}</style>
-                     </>
-                  );
-               })()}
-            </div>
-         )}
+            return (
+               <>
+                  {/* PREVIEW MODAL — ditampilkan sebelum download */}
+                  {!printDownloading && (
+                     <div className="fixed inset-0 bg-black/60 z-[60] overflow-y-auto">
+                        <div className="min-h-full flex flex-col items-center py-8 px-4">
+                           <div className="w-full max-w-4xl">
+                              {/* Modal header sticky */}
+                              <div className="sticky top-0 z-10 bg-white border-b shadow-sm px-6 py-3 flex items-center justify-between rounded-t-xl">
+                                 <div className="min-w-0 mr-4">
+                                    <p className="font-mono text-[10px] text-gray-500 tracking-wider">{printData.proposal_no}</p>
+                                    <h2 className="font-bold text-sm text-slate-800 truncate">{printData.title}</h2>
+                                 </div>
+                                 <div className="flex gap-2 shrink-0">
+                                    <button
+                                       onClick={handleDownloadPDF}
+                                       className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition"
+                                    >
+                                       ⬇ Download PDF
+                                    </button>
+                                    <button
+                                       onClick={() => setPrintData(null)}
+                                       className="border border-gray-300 hover:bg-gray-100 text-sm font-bold px-4 py-2 rounded-lg transition"
+                                    >
+                                       ✕ Tutup
+                                    </button>
+                                 </div>
+                              </div>
+                              {/* Document preview */}
+                              <div className="bg-white rounded-b-xl shadow-2xl font-sans text-black text-[11px] overflow-hidden">
+                                 {docEl}
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  )}
+
+                  {/* PRINT TEMPLATE — hanya aktif saat window.print() dipanggil */}
+                  {printDownloading && (
+                     <div className="hidden print:block font-sans text-black bg-white text-[11px]">
+                        {docEl}
+                     </div>
+                  )}
+
+                  {/* Print CSS */}
+                  <style jsx global>{`
+                     @media print {
+                        @page { size: A4; margin: 0; }
+                        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        thead { display: table-row-group; }
+                        tbody tr { page-break-inside: avoid; }
+                        .attachments-section { page-break-inside: avoid; }
+                     }
+                  `}</style>
+               </>
+            );
+         })()}
       </>
    );
 }
