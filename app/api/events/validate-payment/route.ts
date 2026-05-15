@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { chatbotTexts } from '@/app/chatbotTexts';
+import { DEFAULT_TEMPLATES, applyTemplate, loadChatbotTemplates } from '@/app/lib/chatbotTemplate';
 import { generateTicket } from '@/app/lib/generate-ticket';
 
 const supabase = createClient(
@@ -18,6 +18,11 @@ async function sendWhatsApp(targetWa: string, message: string) {
 export async function POST(req: NextRequest) {
   try {
     const { registrationId, action, rejectionReason } = await req.json();
+    const dbTemplates: Record<string, string> = await loadChatbotTemplates(supabase).catch(() => ({}));
+    const getText = (key: string, vars: Record<string, string>) => {
+      const tmpl = dbTemplates[key] ?? DEFAULT_TEMPLATES[key]?.template ?? '';
+      return applyTemplate(tmpl, vars);
+    };
 
     if (!registrationId || !action) {
       return NextResponse.json({ error: 'Missing registrationId or action' }, { status: 400 });
@@ -50,7 +55,7 @@ export async function POST(req: NextRequest) {
       try {
         await sendWhatsApp(
           reg.nomor_wa,
-          chatbotTexts.eventRegistrationRejected(reg.nama_lengkap, reg.event_name, rejectionReason)
+          getText('eventRegistrationRejected', { nama: reg.nama_lengkap, eventTitle: reg.event_name, reason: rejectionReason || '' })
         );
       } catch (waErr) {
         console.error('WA notify (reject) failed:', waErr);
@@ -87,7 +92,7 @@ export async function POST(req: NextRequest) {
     try {
       await sendWhatsApp(
         reg.nomor_wa,
-        chatbotTexts.eventRegistrationApproved(reg.nama_lengkap, reg.event_name, ticketUrl)
+        getText('eventRegistrationApproved', { nama: reg.nama_lengkap, eventTitle: reg.event_name, ticketLink: ticketUrl })
       );
     } catch (waErr) {
       console.error('WA notify (approve) failed:', waErr);

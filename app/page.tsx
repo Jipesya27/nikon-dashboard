@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { chatbotTexts } from './chatbotTexts';
+import { DEFAULT_TEMPLATES, applyTemplate, loadChatbotTemplates } from './lib/chatbotTemplate';
 import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang, BarangAset } from './index';
 import {
    VALIDASI_OPTIONS, STATUS_VALIDASI_GARANSI_OPTIONS, JENIS_GARANSI_OPTIONS, LAMA_GARANSI_OPTIONS,
@@ -241,6 +241,7 @@ export default function NikonDashboard() {
    // SPECIAL STATES
    const [printData, setPrintData] = useState<BudgetApproval | null>(null);
    const [printDownloading, setPrintDownloading] = useState(false);
+   const [chatbotTemplates, setChatbotTemplates] = useState<Record<string, string>>({});
    const [isSubmitting, setIsSubmitting] = useState(false);
 
    // IMAGE VIEWER STATES
@@ -623,6 +624,7 @@ export default function NikonDashboard() {
                fetchBotSettings(),
                fetchEvents(),
                fetchEventRegistrations(),
+               loadChatbotTemplates(supabase).then(setChatbotTemplates),
             ];
             if (currentUser?.role === 'Admin') {
                promises.push(fetchKaryawans());
@@ -681,6 +683,11 @@ export default function NikonDashboard() {
       }, 150);
    };
 
+   const getText = (key: string, vars: Record<string, string | number>): string => {
+      const tmpl = chatbotTemplates[key] ?? DEFAULT_TEMPLATES[key]?.template ?? '';
+      return applyTemplate(tmpl, vars);
+   };
+
    const scrollToBottom = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
    };
@@ -714,7 +721,7 @@ export default function NikonDashboard() {
             const tempPw = Math.random().toString(36).substring(2, 10);
             await supabase.from('karyawan').update({ password: tempPw }).eq('id_karyawan', data.id_karyawan);
 
-            const msg = chatbotTexts.forgotPassword(data.nama_karyawan, tempPw);
+            const msg = getText('forgotPassword', { nama: data.nama_karyawan, pass: tempPw });
             await sendWhatsAppMessageViaFonnte(data.nomor_wa!, msg);
 
             setForgotPwMessage('Password baru telah dikirim ke WhatsApp Anda!');
@@ -1362,7 +1369,7 @@ export default function NikonDashboard() {
             if (!karyawanForm.nomor_wa) throw new Error("Nomor WhatsApp wajib diisi!");
             await supabase.from('karyawan').insert([{ ...karyawanForm, password: passwordToUse }]);
 
-            const msg = chatbotTexts.newKaryawan(karyawanForm.nama_karyawan!, karyawanForm.username!, passwordToUse);
+            const msg = getText('newKaryawan', { nama: karyawanForm.nama_karyawan!, user: karyawanForm.username!, pass: passwordToUse });
             await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
          } else {
             const updateData = { ...karyawanForm };
@@ -1370,7 +1377,7 @@ export default function NikonDashboard() {
             await supabase.from('karyawan').update(updateData).eq('id_karyawan', editingId);
 
             if (updateData.password && karyawanForm.nomor_wa) {
-               const msg = chatbotTexts.updatePasswordAdmin(karyawanForm.nama_karyawan!, updateData.password);
+               const msg = getText('updatePasswordAdmin', { nama: karyawanForm.nama_karyawan!, pass: updateData.password });
                await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
             }
          }
@@ -1389,7 +1396,7 @@ export default function NikonDashboard() {
          await supabase.from('karyawan').update({ password: karyawanForm.password }).eq('id_karyawan', editingId);
 
          if (karyawanForm.nomor_wa) {
-            const msg = chatbotTexts.resetPasswordAdmin(karyawanForm.nama_karyawan!, karyawanForm.password!);
+            const msg = getText('resetPasswordAdmin', { nama: karyawanForm.nama_karyawan!, pass: karyawanForm.password! });
             await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
          }
 
@@ -1453,12 +1460,11 @@ export default function NikonDashboard() {
          else await supabase.from('peminjaman_barang').update(dataToSave).eq('id_peminjaman', editingId);
 
          // 3. Send WhatsApp message
-         let message = chatbotTexts.lendingInitHeader(lendingForm.nama_peminjam!);
+         let message = getText('lendingInitHeader', { nama: lendingForm.nama_peminjam! });
          lendingForm.items_dipinjam?.forEach((item, idx) => {
-            message += chatbotTexts.lendingInitItem(idx, item.nama_barang, item.nomor_seri, item.catatan || '');
+            message += getText('lendingInitItem', { idx: idx + 1, barang: item.nama_barang, sn: item.nomor_seri, catatan: item.catatan || '' });
          });
-         // The initial message for lending doesn't need return notes.
-         message += chatbotTexts.lendingInitFooter();
+         message += getText('lendingInitFooter', {});
          await sendWhatsAppMessageViaFonnte(lendingForm.nomor_wa_peminjam!, message);
 
          fetchLendingRecords();
@@ -1628,7 +1634,7 @@ export default function NikonDashboard() {
    const handleKirimStatusClaim = async (c: ClaimPromo) => {
 
       if (!window.confirm('Kirim status claim ke WA konsumen?')) return;
-      const msg = chatbotTexts.statusClaim(c.nomor_seri, c.tipe_barang, c.validasi_by_mkt, c.validasi_by_fa, c.nama_jasa_pengiriman || '-', c.nomor_resi || '-', c.catatan_mkt || '');
+      const msg = getText('statusClaim', { nomor_seri: c.nomor_seri, tipe_barang: c.tipe_barang, status_mkt: c.validasi_by_mkt, status_fa: c.validasi_by_fa, jasa_kirim: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '', catatan_mkt: c.catatan_mkt || '' });
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
       await supabase.from('riwayat_pesan').insert([{ nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
       alert('Pesan status berhasil dikirim!');
@@ -1639,7 +1645,7 @@ export default function NikonDashboard() {
       const linked = claims.find(c => c.nomor_seri === w.nomor_seri);
       if (!linked || !linked.nomor_wa) return alert('Gagal: Tidak dapat menemukan Nomor WA (Barang ini tidak ada di tabel Claim Promo).');
       if (!window.confirm('Kirim status garansi ke WA konsumen?')) return;
-      const msg = chatbotTexts.statusGaransi(w.nomor_seri, w.tipe_barang, w.jenis_garansi, w.lama_garansi, calculateSisaGaransi(linked.tanggal_pembelian, w.lama_garansi));
+      const msg = getText('statusGaransi', { seri: w.nomor_seri, barang: w.tipe_barang, jenis: w.jenis_garansi, lama: w.lama_garansi, sisa: calculateSisaGaransi(linked.tanggal_pembelian, w.lama_garansi) });
       await sendWhatsAppMessageViaFonnte(linked.nomor_wa, msg);
       await supabase.from('riwayat_pesan').insert([{ nomor_wa: linked.nomor_wa, nama_profil_wa: getRealProfileName(linked.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
       alert('Pesan status berhasil dikirim!');
@@ -1699,11 +1705,11 @@ export default function NikonDashboard() {
          // Send WhatsApp message for returned items
          const returnedItems = lending.items_dipinjam.filter(item => item.status_pengembalian === 'dikembalikan');
          if (returnedItems.length > 0) {
-            let message = chatbotTexts.lendingReturnHeader(lending.nama_peminjam);
+            let message = getText('lendingReturnHeader', { nama: lending.nama_peminjam });
             returnedItems.forEach((item, idx) => {
-               message += chatbotTexts.lendingReturnItem(idx, item.nama_barang, item.nomor_seri, item.catatan_pengembalian || '');
+               message += getText('lendingReturnItem', { idx: idx + 1, barang: item.nama_barang, sn: item.nomor_seri, catatan: item.catatan_pengembalian || '' });
             });
-            message += chatbotTexts.lendingReturnFooter();
+            message += getText('lendingReturnFooter', {});
             await sendWhatsAppMessageViaFonnte(lending.nomor_wa_peminjam, message);
          }
 
