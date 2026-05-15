@@ -1,5 +1,24 @@
 export type ComponentType = 'image' | 'label' | 'button' | 'hyperlink' | 'divider' | 'spacer' | 'hero';
 
+// ── Konfigurasi konten halaman publik /nikon ──────────────────────
+export interface NikonPageConfig {
+   wa_number:         string; // nomor WA tanpa + (cth: 6281234567890)
+   hero_title_1:      string; // baris 1 hero (putih)
+   hero_title_2:      string; // baris 2 hero (gold — kata kunci)
+   hero_title_3:      string; // baris 3 hero (slate-300)
+   hero_subtitle:     string; // paragraf di bawah judul
+   announcement_text: string; // teks bar pengumuman kuning
+}
+
+export const DEFAULT_NIKON_CONFIG: NikonPageConfig = {
+   wa_number:         '62',
+   hero_title_1:      'Abadikan Setiap',
+   hero_title_2:      'Momen Terbaik',
+   hero_title_3:      'Anda.',
+   hero_subtitle:     'Alta Nikindo — distributor resmi Nikon Indonesia. Produk orisinal, garansi resmi, dan layanan purna jual terpercaya untuk fotografer profesional hingga pemula.',
+   announcement_text: '🤖 Chatbot WhatsApp aktif — Claim promo, registrasi garansi & cek status service via WA.',
+};
+
 export interface CompLayout {
    x: number; y: number; w: number; h: number;
    minW?: number; minH?: number;

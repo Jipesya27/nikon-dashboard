@@ -1,14 +1,30 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import Link from 'next/link';
+import { DEFAULT_NIKON_CONFIG, NikonPageConfig } from '@/app/lib/homepageTypes';
 
-// ── Konfigurasi ──────────────────────────────────────────────────
-const WA_NUMBER = '62';
-const WA_LINK   = `https://wa.me/${WA_NUMBER}`;
-const WA_CLAIM  = `${WA_LINK}?text=Halo%2C%20saya%20ingin%20claim%20promo%20Nikon`;
-const WA_GARANSI = `${WA_LINK}?text=Halo%2C%20saya%20ingin%20registrasi%20garansi%20Nikon`;
-const WA_SERVICE = `${WA_LINK}?text=Halo%2C%20saya%20ingin%20cek%20status%20service`;
+// ── WA links dari config ──────────────────────────────────────────
+function buildWaLinks(waNumber: string) {
+  const base = `https://wa.me/${waNumber}`;
+  return {
+    WA_LINK:    base,
+    WA_CLAIM:   `${base}?text=Halo%2C%20saya%20ingin%20claim%20promo%20Nikon`,
+    WA_GARANSI: `${base}?text=Halo%2C%20saya%20ingin%20registrasi%20garansi%20Nikon`,
+    WA_SERVICE: `${base}?text=Halo%2C%20saya%20ingin%20cek%20status%20service`,
+  };
+}
+
+// ── Context ──────────────────────────────────────────────────────
+interface SiteCtx {
+  cfg: NikonPageConfig;
+  WA_LINK: string; WA_CLAIM: string; WA_GARANSI: string; WA_SERVICE: string;
+}
+const SiteContext = createContext<SiteCtx>({
+  cfg: DEFAULT_NIKON_CONFIG,
+  ...buildWaLinks(DEFAULT_NIKON_CONFIG.wa_number),
+});
+const useSite = () => useContext(SiteContext);
 
 // ── Palette warna soft ───────────────────────────────────────────
 // hero bg   : #1e293b  (slate-800, tidak hitam pekat)
@@ -75,6 +91,7 @@ const NAV_ITEMS = [
 ];
 
 function Navbar() {
+  const { WA_LINK } = useSite();
   const [mobile, setMobile] = useState(false);
   const [drop, setDrop]     = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -159,6 +176,7 @@ function Navbar() {
 
 // ── Hero ─────────────────────────────────────────────────────────
 function HeroSection() {
+  const { cfg, WA_CLAIM } = useSite();
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 60%, #1e1b4b 100%)' }}>
       {/* Soft glow */}
@@ -182,14 +200,13 @@ function HeroSection() {
           </div>
 
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-[1.05] mb-6 text-white">
-            Abadikan Setiap
-            <span className="block" style={{ color: '#d4a017' }}>Momen Terbaik</span>
-            <span className="block text-slate-300">Anda.</span>
+            {cfg.hero_title_1}
+            <span className="block" style={{ color: '#d4a017' }}>{cfg.hero_title_2}</span>
+            <span className="block text-slate-300">{cfg.hero_title_3}</span>
           </h1>
 
           <p className="text-base sm:text-lg text-slate-400 max-w-xl leading-relaxed mb-10">
-            Alta Nikindo — distributor resmi Nikon Indonesia. Produk orisinal, garansi resmi,
-            dan layanan purna jual terpercaya untuk fotografer profesional hingga pemula.
+            {cfg.hero_subtitle}
           </p>
 
           <div className="flex flex-wrap gap-4">
@@ -232,10 +249,11 @@ function HeroSection() {
 
 // ── Announcement ─────────────────────────────────────────────────
 function AnnouncementBar() {
+  const { cfg, WA_LINK } = useSite();
   return (
     <div style={{ background: 'linear-gradient(90deg, #1e293b, #0f172a)' }} className="py-3 px-4 border-b border-slate-700/50">
       <p className="text-center text-sm" style={{ color: '#94a3b8' }}>
-        🤖 <span className="text-white font-medium">Chatbot WhatsApp aktif</span> — Claim promo, garansi & cek service via WA.{' '}
+        {cfg.announcement_text}{' '}
         <a href={WA_LINK} className="underline font-semibold hover:no-underline" style={{ color: '#d4a017' }}>Chat sekarang →</a>
       </p>
     </div>
@@ -244,6 +262,7 @@ function AnnouncementBar() {
 
 // ── Layanan ──────────────────────────────────────────────────────
 function LayananSection() {
+  const { WA_CLAIM, WA_GARANSI, WA_SERVICE } = useSite();
   const cards = [
     { icon: '🎁', title: 'Claim Promo', desc: 'Ajukan klaim cashback, aksesori gratis, atau voucher untuk pembelian kamera Nikon Anda. Proses mudah dan transparan.', cta: 'Ajukan Claim', href: WA_CLAIM },
     { icon: '🛡️', title: 'Registrasi Garansi', desc: 'Daftarkan garansi resmi produk Nikon Anda dan nikmati layanan purna jual dari Nikon Pusat Service Jakarta.', cta: 'Daftar Garansi', href: WA_GARANSI },
@@ -509,6 +528,7 @@ function FeatureVisual({ label, gradient }: { label: string; gradient: string })
 
 // ── WA CTA ───────────────────────────────────────────────────────
 function WACTASection() {
+  const { WA_LINK } = useSite();
   return (
     <section style={{ background: 'linear-gradient(135deg, #1e293b 0%, #1e1b4b 100%)' }} className="py-20 px-6">
       <div className="max-w-4xl mx-auto text-center">
@@ -542,6 +562,7 @@ function WACTASection() {
 
 // ── Service Center ────────────────────────────────────────────────
 function ServiceCenterSection() {
+  const { WA_LINK } = useSite();
   return (
     <section id="kontak" className="py-20 px-6 bg-white">
       <div className="max-w-7xl mx-auto">
@@ -611,6 +632,7 @@ function ServiceCenterSection() {
 
 // ── Footer ────────────────────────────────────────────────────────
 function Footer() {
+  const { WA_LINK, WA_CLAIM, WA_GARANSI, WA_SERVICE } = useSite();
   const sections = [
     { title: 'Tentang Kami', links: [{ l: 'Profil Alta Nikindo', h: '#' }, { l: 'Mitra Resmi Nikon', h: '#' }, { l: 'Dealer Resmi', h: '#' }] },
     { title: 'Layanan',      links: [{ l: 'Claim Promo', h: WA_CLAIM }, { l: 'Registrasi Garansi', h: WA_GARANSI }, { l: 'Status Service', h: WA_SERVICE }, { l: 'Chat CS', h: WA_LINK }] },
@@ -664,7 +686,20 @@ function Footer() {
 
 // ── Page ──────────────────────────────────────────────────────────
 export default function NikonPage() {
+  const [cfg, setCfg] = useState<NikonPageConfig>(DEFAULT_NIKON_CONFIG);
+
+  useEffect(() => {
+    fetch('/api/nikon-config')
+      .then(r => r.json())
+      .then(d => { if (d.config) setCfg(d.config); })
+      .catch(() => {});
+  }, []);
+
+  const waLinks = buildWaLinks(cfg.wa_number);
+  const ctxValue: SiteCtx = { cfg, ...waLinks };
+
   return (
+    <SiteContext.Provider value={ctxValue}>
     <div className="min-h-screen font-sans antialiased">
       <Navbar />
       <main>
@@ -678,7 +713,7 @@ export default function NikonPage() {
           subtitle="Cashback, aksesori gratis & lebih banyak lagi"
           body="Setiap pembelian kamera atau lensa Nikon resmi di toko rekanan Alta Nikindo berhak mendapatkan promo eksklusif. Siapkan nota pembelian dan kartu garansi, lalu chat via WhatsApp."
           cta="Ajukan Claim via WhatsApp"
-          href={WA_CLAIM}
+          href={waLinks.WA_CLAIM}
           visual={<FeatureVisual label="Claim Promo Nikon" gradient="bg-gradient-to-br from-slate-700 to-slate-900" />}
         />
         <FeatureSection
@@ -687,7 +722,7 @@ export default function NikonPage() {
           subtitle="Garansi resmi Nikon Indonesia"
           body="Registrasikan produk Nikon Anda untuk mendapatkan garansi resmi dan prioritas layanan di Nikon Pusat Service. Cukup satu kali daftar, produk Anda terlindungi penuh."
           cta="Daftar Garansi Sekarang"
-          href={WA_GARANSI}
+          href={waLinks.WA_GARANSI}
           reverse
           visual={<FeatureVisual label="Garansi Nikon" gradient="bg-gradient-to-br from-amber-800 to-amber-900" />}
         />
@@ -703,5 +738,6 @@ export default function NikonPage() {
         </Link>
       </div>
     </div>
+    </SiteContext.Provider>
   );
 }

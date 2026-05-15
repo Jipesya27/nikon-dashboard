@@ -9,6 +9,7 @@ import 'react-resizable/css/styles.css';
 import {
    HomepageConfig, PageComponent, ComponentType, DEFAULT_CONFIG, COMPONENT_META,
    ImageProps, LabelProps, ButtonProps, HyperlinkProps, DividerProps, SpacerProps, HeroProps, AnyProps,
+   NikonPageConfig, DEFAULT_NIKON_CONFIG,
 } from '@/app/lib/homepageTypes';
 
 const ROW_HEIGHT = 30;
@@ -301,6 +302,79 @@ function PageSettings({ config, onChange }: { config: HomepageConfig; onChange: 
    );
 }
 
+// ─────────────────────────── Nikon page settings panel ──────────────────────
+
+function NikonSettingsPanel() {
+   const [cfg, setCfg] = useState<NikonPageConfig>(DEFAULT_NIKON_CONFIG);
+   const [loading, setLoading] = useState(true);
+   const [saving, setSaving] = useState(false);
+   const [saved, setSaved] = useState(false);
+
+   useEffect(() => {
+      fetch('/api/nikon-config')
+         .then(r => r.json())
+         .then(d => { if (d.config) setCfg(d.config); })
+         .finally(() => setLoading(false));
+   }, []);
+
+   const set = (patch: Partial<NikonPageConfig>) => { setCfg(prev => ({ ...prev, ...patch })); setSaved(false); };
+
+   const save = async () => {
+      setSaving(true);
+      await fetch('/api/nikon-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ config: cfg }) });
+      setSaving(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+   };
+
+   if (loading) return <div className="py-8 text-center text-xs text-gray-400 animate-pulse">Memuat...</div>;
+
+   return (
+      <div className="space-y-4">
+         <div className="pb-2 border-b border-gray-100">
+            <p className="text-xs font-bold text-gray-800">🖥 Konten Halaman /nikon</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">Perubahan langsung tampil di halaman publik.</p>
+         </div>
+
+         <PropInput label="Nomor WhatsApp">
+            <input className={inp} value={cfg.wa_number} onChange={e => set({ wa_number: e.target.value })}
+               placeholder="6281234567890" />
+            <p className="text-[10px] text-gray-400 mt-1">Format: 62xxx tanpa + atau spasi</p>
+         </PropInput>
+
+         <div className="border-t border-dashed border-gray-100 pt-3">
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Hero — Judul</p>
+            <div className="space-y-2">
+               <PropInput label="Baris 1 (putih)">
+                  <input className={inp} value={cfg.hero_title_1} onChange={e => set({ hero_title_1: e.target.value })} />
+               </PropInput>
+               <PropInput label="Baris 2 (kuning emas — aksen)">
+                  <input className={inp} value={cfg.hero_title_2} onChange={e => set({ hero_title_2: e.target.value })} />
+               </PropInput>
+               <PropInput label="Baris 3 (abu terang)">
+                  <input className={inp} value={cfg.hero_title_3} onChange={e => set({ hero_title_3: e.target.value })} />
+               </PropInput>
+            </div>
+         </div>
+
+         <PropInput label="Subtitle Hero">
+            <textarea className={`${inp} resize-none`} rows={3} value={cfg.hero_subtitle}
+               onChange={e => set({ hero_subtitle: e.target.value })} />
+         </PropInput>
+
+         <PropInput label="Teks Announcement Bar">
+            <textarea className={`${inp} resize-none`} rows={2} value={cfg.announcement_text}
+               onChange={e => set({ announcement_text: e.target.value })} />
+         </PropInput>
+
+         <button onClick={save} disabled={saving}
+            className={`w-full text-xs font-bold py-2 rounded-lg transition ${saved ? 'bg-green-600 text-white' : 'bg-gray-900 hover:bg-gray-700 text-white disabled:bg-gray-300'}`}>
+            {saving ? '⏳ Menyimpan...' : saved ? '✓ Tersimpan' : '💾 Simpan Konten /nikon'}
+         </button>
+      </div>
+   );
+}
+
 // ─────────────────────────── Main editor ─────────────────────────────────────
 
 export default function HomepageEditor() {
@@ -313,6 +387,7 @@ export default function HomepageEditor() {
    const [canvasWidth, setCanvasWidth] = useState(900);
    const canvasRef = useRef<HTMLDivElement>(null);
    const [showPageSettings, setShowPageSettings] = useState(false);
+   const [showNikonSettings, setShowNikonSettings] = useState(false);
 
    // Measure canvas width
    useEffect(() => {
@@ -430,7 +505,8 @@ export default function HomepageEditor() {
                {dirty && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">Ada perubahan</span>}
             </div>
             <div className="flex items-center gap-2">
-               <button onClick={() => { setSelectedId(null); setShowPageSettings(s => !s); }} className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition ${showPageSettings ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 hover:bg-gray-100'}`}>⚙️ Halaman</button>
+               <button onClick={() => { setSelectedId(null); setShowPageSettings(s => !s); setShowNikonSettings(false); }} className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition ${showPageSettings ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 hover:bg-gray-100'}`}>⚙️ Halaman</button>
+               <button onClick={() => { setSelectedId(null); setShowNikonSettings(s => !s); setShowPageSettings(false); }} className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition ${showNikonSettings ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 hover:bg-gray-100'}`}>🖥 Konten /nikon</button>
                <a href="/nikon" target="_blank" rel="noopener noreferrer" className="text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 transition">👁 Preview</a>
                <button onClick={save} disabled={saving || !dirty} className="bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition">
                   {saving ? '⏳ Menyimpan...' : '💾 Simpan'}
@@ -556,11 +632,13 @@ export default function HomepageEditor() {
             <div className="w-64 bg-white border-l border-gray-200 flex flex-col shrink-0 overflow-y-auto">
                <div className="px-3 py-2.5 border-b border-gray-100 sticky top-0 bg-white z-10">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                     {showPageSettings ? '⚙️ Halaman' : selectedComp ? 'Properti Komponen' : 'Properti'}
+                     {showNikonSettings ? '🖥 Konten /nikon' : showPageSettings ? '⚙️ Halaman' : selectedComp ? 'Properti Komponen' : 'Properti'}
                   </p>
                </div>
                <div className="p-3">
-                  {showPageSettings ? (
+                  {showNikonSettings ? (
+                     <NikonSettingsPanel />
+                  ) : showPageSettings ? (
                      <PageSettings config={config} onChange={patch => { setConfig(prev => ({ ...prev, ...patch })); setDirty(true); }} />
                   ) : selectedComp ? (
                      <PropsPanel comp={selectedComp} onChange={updateProps} onDelete={deleteComponent} />
