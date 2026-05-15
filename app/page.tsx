@@ -16,6 +16,7 @@ import {
 } from './enums';
 import Header from './Header';
 import AddressFields from '@/app/components/AddressFields';
+import EventReport from '@/app/components/EventReport';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error'; // Akan diisi via .env.local
@@ -2120,6 +2121,7 @@ export default function NikonDashboard() {
             { id: 'events', label: '📅 Master Event', count: events.length },
             { id: 'eventregistrations', label: '👥 Data Peserta', count: eventRegistrations.length },
             { id: 'budgets', label: '💳 Proposal Event', count: budgets.length },
+            { id: 'eventreport', label: '📊 Report Event', count: undefined },
          ]
       },
       {
@@ -2444,7 +2446,7 @@ export default function NikonDashboard() {
                )}
 
                {/* ======================= OTHER TABS FILTER HEADER ======================= */}
-               {activeTab !== 'import' && activeTab !== 'lending' && activeTab !== 'messages' && (
+               {activeTab !== 'import' && activeTab !== 'lending' && activeTab !== 'messages' && activeTab !== 'eventreport' && (
                   <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-wrap gap-4 justify-between items-center text-gray-900 mb-6">
                      <div className="flex flex-wrap gap-4 items-center">
                         {activeTab !== 'konsumen' && activeTab !== 'budgets' && activeTab !== 'userrole' && (
@@ -3718,6 +3720,13 @@ export default function NikonDashboard() {
                )}
 
                
+               {/* ======================= REPORT EVENT ======================= */}
+               {activeTab === 'eventreport' && (
+                  <div className="animate-fade-in">
+                     <EventReport />
+                  </div>
+               )}
+
                {/* ======================= EVENT REGISTRATIONS ======================= */}
                {activeTab === 'eventregistrations' && (
                   <div className="space-y-4 animate-fade-in text-gray-900">
@@ -5866,7 +5875,7 @@ export default function NikonDashboard() {
                         </form>
                      )}
 
-                     {!['userrole', 'events', 'lending', 'claims', 'konsumen', 'warranties', 'promos', 'botsettings', 'budgets', 'eventregistrations', 'services', 'assets'].includes(activeTab) && (
+                     {!['userrole', 'events', 'lending', 'claims', 'konsumen', 'warranties', 'promos', 'botsettings', 'budgets', 'eventregistrations', 'services', 'assets', 'eventreport'].includes(activeTab) && (
                         <div className="text-center py-12">
                            <div className="text-5xl mb-3">🚧</div>
                            <p className="text-gray-700 font-semibold mb-1">Form untuk tab ini belum tersedia</p>
