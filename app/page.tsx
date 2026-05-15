@@ -5788,11 +5788,25 @@ export default function NikonDashboard() {
                               )}
                            </div>
                            <datalist id="dl-asset-sn">
+                              {/* from barang_aset */}
                               {assets.map(a => a.no_seri_aset ? <option key={a.id} value={a.no_seri_aset}>{a.nama_barang_aset}</option> : null)}
+                              {/* from past lending records */}
+                              {Array.from(new Set(lendingRecords.flatMap(l => l.items_dipinjam.map(i => i.nomor_seri)).filter(Boolean))).filter(sn => !assets.some(a => a.no_seri_aset === sn)).map((sn, i) => (
+                                 <option key={`l-sn-${i}`} value={sn} />
+                              ))}
+                           </datalist>
+                           <datalist id="dl-lending-nama">
+                              {Array.from(new Set([
+                                 ...assets.map(a => a.nama_barang_aset),
+                                 ...lendingRecords.flatMap(l => l.items_dipinjam.map(i => i.nama_barang)),
+                              ].filter(Boolean))).map((v, i) => <option key={i} value={v} />)}
                            </datalist>
                            <datalist id="dl-asset-accs">
-                              {Array.from(new Set(assets.flatMap(a => [a.accs1,a.accs2,a.accs3,a.accs4,a.accs5,a.accs6,a.accs7].filter(Boolean)))).map((v,i) => (
-                                 <option key={i} value={v as string} />
+                              {Array.from(new Set([
+                                 ...assets.flatMap(a => [a.accs1,a.accs2,a.accs3,a.accs4,a.accs5,a.accs6,a.accs7]),
+                                 ...lendingRecords.flatMap(l => l.items_dipinjam.flatMap(i => [i.accs1,i.accs2,i.accs3,i.accs4,i.accs5,i.accs6,i.accs7])),
+                              ].filter(Boolean) as string[])).map((v, i) => (
+                                 <option key={i} value={v} />
                               ))}
                            </datalist>
                            <div>
@@ -5831,7 +5845,7 @@ export default function NikonDashboard() {
                                           };
                                           setLendingForm({ ...lendingForm, items_dipinjam: newItems });
                                        }} className="input-form" />
-                                       <input type="text" required aria-label="Nama Barang" placeholder="Nama Barang (otomatis dari No. Seri)" value={item.nama_barang} onChange={e => {
+                                       <input type="text" required list="dl-lending-nama" aria-label="Nama Barang" placeholder="Nama Barang (otomatis dari No. Seri)" value={item.nama_barang} onChange={e => {
                                           const newItems = [...(lendingForm.items_dipinjam || [])];
                                           newItems[idx] = { ...newItems[idx], nama_barang: e.target.value };
                                           setLendingForm({ ...lendingForm, items_dipinjam: newItems });
