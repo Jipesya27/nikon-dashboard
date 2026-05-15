@@ -10,7 +10,7 @@
 export const VALIDASI_OPTIONS = [
   { value: 'Dalam Proses Verifikasi', label: 'Dalam Proses Verifikasi' },
   { value: 'Valid', label: 'Valid' },
-  { value: 'Ditolak', label: 'Ditolak' },
+  { value: 'Tidak Valid', label: 'Tidak Valid' },
   { value: 'HOLD', label: 'HOLD (Ditunda)' },
 ] as const;
 export type ValidasiStatus = typeof VALIDASI_OPTIONS[number]['value'];
@@ -20,7 +20,7 @@ export const STATUS_VALIDASI_GARANSI_OPTIONS = [
   { value: 'Menunggu', label: 'Menunggu' },
   { value: 'Proses Validasi', label: 'Proses Validasi' },
   { value: 'Valid', label: 'Valid' },
-  { value: 'Ditolak', label: 'Ditolak' },
+  { value: 'Tidak Valid', label: 'Tidak Valid' },
 ] as const;
 export type StatusValidasiGaransi = typeof STATUS_VALIDASI_GARANSI_OPTIONS[number]['value'];
 
