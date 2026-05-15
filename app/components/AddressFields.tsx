@@ -379,8 +379,6 @@ export default function AddressFields({
             kelurahan: db.kelurahan[0],
           });
         }
-      } else {
-        setKodeposStatus({ ok: false, msg: '⚠ Kodepos tidak ada di database lokal' });
       }
     }
   };
