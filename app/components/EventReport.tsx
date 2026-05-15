@@ -1,11 +1,6 @@
 'use client';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { EventData } from '@/app/index';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -233,43 +228,37 @@ function CheckGroup({ title, options, selected, onChange }: {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function EventReport() {
-  const [events,      setEvents]      = useState<EventItem[]>([]);
+export default function EventReport({ eventsData }: { eventsData: EventData[] }) {
+  const events: EventItem[] = eventsData.map(e => ({
+    id: e.id ?? '',
+    title: e.title,
+    date: e.date,
+    stock: e.stock,
+  }));
   const [reports,     setReports]     = useState<Record<string, ReportData>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingId,   setEditingId]   = useState<string | null>(null);
   const [dirty,       setDirty]       = useState<Set<string>>(new Set());
   const [loading,     setLoading]     = useState(true);
+  const [loadErr,     setLoadErr]     = useState('');
   const [saving,      setSaving]      = useState(false);
   const [deleting,    setDeleting]    = useState(false);
   const [confirmDel,  setConfirmDel]  = useState(false);
   const [toast,       setToast]       = useState<{ msg: string; ok: boolean } | null>(null);
   const [search,      setSearch]      = useState('');
   const [section,     setSection]     = useState<'basic' | 'target' | 'kpi' | 'docs'>('basic');
-  const printRef = useRef<HTMLDivElement>(null);
-
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 2500);
   };
 
-  // Load events + existing reports
+  // Load existing reports
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [{ data: evData }, rpRes] = await Promise.all([
-          supabase.from('events').select('id, title, date, stock').order('created_at', { ascending: false }),
-          fetch('/api/event-reports'),
-        ]);
-        if (evData) setEvents(evData as EventItem[]);
-        if (rpRes.ok) {
-          const d = await rpRes.json();
-          setReports(d.reports ?? {});
-        }
-      } catch { /* silent */ }
-      finally { setLoading(false); }
-    };
-    load();
+    fetch('/api/event-reports')
+      .then(r => r.json())
+      .then(d => setReports(d.reports ?? {}))
+      .catch(e => setLoadErr(String(e)))
+      .finally(() => setLoading(false));
   }, []);
 
   const getReport = useCallback((ev: EventItem): ReportData =>
@@ -573,6 +562,10 @@ export default function EventReport() {
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-700" />
     </div>
+  );
+
+  if (loadErr) return (
+    <div className="flex items-center justify-center h-64 text-red-500 text-sm">{loadErr}</div>
   );
 
   return (

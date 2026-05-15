@@ -3723,7 +3723,7 @@ export default function NikonDashboard() {
                {/* ======================= REPORT EVENT ======================= */}
                {activeTab === 'eventreport' && (
                   <div className="animate-fade-in">
-                     <EventReport />
+                     <EventReport eventsData={events} />
                   </div>
                )}
 
