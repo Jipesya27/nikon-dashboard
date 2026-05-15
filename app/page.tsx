@@ -1464,6 +1464,8 @@ export default function NikonDashboard() {
          let message = getText('lendingInitHeader', { nama: lendingForm.nama_peminjam! });
          lendingForm.items_dipinjam?.forEach((item, idx) => {
             message += getText('lendingInitItem', { idx: idx + 1, barang: item.nama_barang, sn: item.nomor_seri, catatan: item.catatan || '' });
+            const accs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean);
+            if (accs.length > 0) message += `\n   _Aksesori: ${accs.join(', ')}_`;
          });
          message += getText('lendingInitFooter', {});
          await sendWhatsAppMessageViaFonnte(lendingForm.nomor_wa_peminjam!, message);
@@ -1709,6 +1711,8 @@ export default function NikonDashboard() {
             let message = getText('lendingReturnHeader', { nama: lending.nama_peminjam });
             returnedItems.forEach((item, idx) => {
                message += getText('lendingReturnItem', { idx: idx + 1, barang: item.nama_barang, sn: item.nomor_seri, catatan: item.catatan_pengembalian || '' });
+               const accs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean);
+               if (accs.length > 0) message += `\n   _Aksesori: ${accs.join(', ')}_`;
             });
             message += getText('lendingReturnFooter', {});
             await sendWhatsAppMessageViaFonnte(lending.nomor_wa_peminjam, message);
@@ -3651,14 +3655,24 @@ export default function NikonDashboard() {
                                           ) : <span className="text-gray-400 text-[11px] italic">-</span>}
                                        </td>
                                        <td className="px-3 py-2.5 text-xs">
-                                          <ul className="space-y-1">
-                                             {l.items_dipinjam.map((item, idx) => (
-                                                <li key={idx} className={`flex items-start gap-1 ${item.status_pengembalian === 'dikembalikan' ? 'text-green-600 line-through' : 'text-slate-800'}`}>
-                                                   <span className="font-bold shrink-0">{idx + 1}.</span>
-                                                   <span>{item.nama_barang} <span className="font-mono text-gray-500">(SN: {item.nomor_seri})</span></span>
-                                                   {item.status_pengembalian === 'dikembalikan' && <span className="ml-1 text-[9px] bg-green-100 text-green-700 px-1 rounded font-bold shrink-0">✓</span>}
-                                                </li>
-                                             ))}
+                                          <ul className="space-y-1.5">
+                                             {l.items_dipinjam.map((item, idx) => {
+                                                const accs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean);
+                                                return (
+                                                   <li key={idx} className={`${item.status_pengembalian === 'dikembalikan' ? 'text-green-600' : 'text-slate-800'}`}>
+                                                      <div className={`flex items-start gap-1 ${item.status_pengembalian === 'dikembalikan' ? 'line-through' : ''}`}>
+                                                         <span className="font-bold shrink-0">{idx + 1}.</span>
+                                                         <span>{item.nama_barang} <span className="font-mono text-gray-500">(SN: {item.nomor_seri})</span></span>
+                                                         {item.status_pengembalian === 'dikembalikan' && <span className="ml-1 text-[9px] bg-green-100 text-green-700 px-1 rounded font-bold shrink-0">✓</span>}
+                                                      </div>
+                                                      {accs.length > 0 && (
+                                                         <div className="pl-4 mt-0.5 text-[10px] text-gray-500 space-y-0.5">
+                                                            {accs.map((a, ai) => <div key={ai}>• {a}</div>)}
+                                                         </div>
+                                                      )}
+                                                   </li>
+                                                );
+                                             })}
                                           </ul>
                                        </td>
                                        <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</td>
@@ -3700,10 +3714,20 @@ export default function NikonDashboard() {
                                     <p><span className="font-bold w-24 inline-block">Tgl Pinjam:</span> {l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</p>
                                     <p><span className="font-bold w-24 inline-block">Tgl Kembali:</span> {l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</p>
                                     <div className="font-bold mt-2">Barang:</div>
-                                    <ul className="list-disc list-inside pl-2 space-y-1">
-                                       {l.items_dipinjam.map((item, idx) => (
-                                          <li key={idx} className={`${item.status_pengembalian === 'dikembalikan' ? 'text-green-600 line-through' : 'text-slate-800'}`}>{item.nama_barang} (SN: {item.nomor_seri})</li>
-                                       ))}
+                                    <ul className="pl-2 space-y-1.5">
+                                       {l.items_dipinjam.map((item, idx) => {
+                                          const accs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean);
+                                          return (
+                                             <li key={idx} className={`${item.status_pengembalian === 'dikembalikan' ? 'text-green-600' : 'text-slate-800'}`}>
+                                                <span className={item.status_pengembalian === 'dikembalikan' ? 'line-through' : ''}>• {item.nama_barang} (SN: {item.nomor_seri})</span>
+                                                {accs.length > 0 && (
+                                                   <div className="pl-3 mt-0.5 text-[10px] text-gray-500 space-y-0.5">
+                                                      {accs.map((a, ai) => <div key={ai}>– {a}</div>)}
+                                                   </div>
+                                                )}
+                                             </li>
+                                          );
+                                       })}
                                     </ul>
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end flex-wrap">
