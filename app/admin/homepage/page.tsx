@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import GridLayout, { Layout, LayoutItem, noCompactor } from 'react-grid-layout';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 import {
    HomepageConfig, PageComponent, ComponentType, DEFAULT_CONFIG, COMPONENT_META,
    ImageProps, LabelProps, ButtonProps, HyperlinkProps, DividerProps, SpacerProps, HeroProps, AnyProps,
