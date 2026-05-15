@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import GridLayout, { Layout, LayoutItem, noCompactor } from 'react-grid-layout';
+import GridLayout from 'react-grid-layout/legacy';
+import type { Layout, LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import {
@@ -506,12 +507,18 @@ export default function HomepageEditor() {
                      )}
                      <GridLayout
                         layout={glLayouts}
+                        cols={COLS}
+                        rowHeight={ROW_HEIGHT}
                         width={canvasWidth}
-                        gridConfig={{ cols: COLS, rowHeight: ROW_HEIGHT, margin: [0, 0] as [number, number], containerPadding: [0, 0] as [number, number] }}
-                        dragConfig={{ enabled: true, handle: '.drag-handle' }}
-                        resizeConfig={{ enabled: true, handles: ['se', 'sw', 'ne', 'nw', 'e', 'w', 's', 'n'] as const }}
-                        compactor={noCompactor}
                         onLayoutChange={handleLayoutChange}
+                        isDraggable
+                        isResizable
+                        draggableHandle=".drag-handle"
+                        resizeHandles={['se', 'sw', 'ne', 'nw', 'e', 'w', 's', 'n']}
+                        margin={[0, 0]}
+                        containerPadding={[0, 0]}
+                        compactType={null}
+                        preventCollision={false}
                      >
                         {config.components.map(comp => {
                            const isSelected = selectedId === comp.id;
