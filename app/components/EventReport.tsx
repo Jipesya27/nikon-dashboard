@@ -241,6 +241,8 @@ export default function EventReport() {
   const [dirty,       setDirty]       = useState<Set<string>>(new Set());
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
+  const [deleting,    setDeleting]    = useState(false);
+  const [confirmDel,  setConfirmDel]  = useState(false);
   const [toast,       setToast]       = useState<{ msg: string; ok: boolean } | null>(null);
   const [search,      setSearch]      = useState('');
   const [section,     setSection]     = useState<'basic' | 'target' | 'kpi' | 'docs'>('basic');
@@ -299,6 +301,29 @@ export default function EventReport() {
     finally { setSaving(false); }
   };
 
+  const deleteReport = async (id: string) => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/event-reports?eventId=${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Gagal');
+      setReports(prev => { const n = { ...prev }; delete n[id]; return n; });
+      setDirty(prev => { const s = new Set(prev); s.delete(id); return s; });
+      setConfirmDel(false);
+      showToast('Report dihapus');
+    } catch { showToast('Gagal menghapus!', false); }
+    finally { setDeleting(false); }
+  };
+
+  const discardChanges = async (id: string) => {
+    try {
+      const res = await fetch(`/api/event-reports?eventId=${id}`);
+      const d = await res.json();
+      setReports(prev => ({ ...prev, [id]: d.report }));
+      setDirty(prev => { const s = new Set(prev); s.delete(id); return s; });
+      showToast('Perubahan dibatalkan');
+    } catch { showToast('Gagal mengambil data tersimpan', false); }
+  };
+
   const exportPDF = () => {
     const selected = events.filter(e => selectedIds.has(e.id));
     if (!selected.length) { showToast('Pilih minimal 1 event dulu', false); return; }
@@ -340,22 +365,61 @@ export default function EventReport() {
     const r = getReport(ev);
     const p = <T,>(key: keyof ReportData, val: T) => patchReport(editingId, { [key]: val } as Partial<ReportData>);
     const isDirty = dirty.has(editingId);
+    const isSaved = !!reports[editingId] && !isDirty;
 
     return (
       <div className="flex-1 flex flex-col min-h-0">
         {/* Form header */}
-        <div className="px-4 py-3 border-b border-gray-200 bg-white flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="font-bold text-sm text-gray-800">{ev.title}</h2>
-            <p className="text-xs text-gray-400">{ev.date}</p>
+        <div className="px-4 py-3 border-b border-gray-200 bg-white shrink-0">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold text-sm text-gray-800">{ev.title}</h2>
+                {isSaved
+                  ? <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">✓ Tersimpan</span>
+                  : reports[editingId]
+                    ? <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">● Ada perubahan</span>
+                    : <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">+ Baru</span>
+                }
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">{ev.date}</p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Discard — hanya jika ada perubahan dan ada data tersimpan */}
+              {isDirty && reports[editingId] && (
+                <button onClick={() => discardChanges(editingId)}
+                  className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2.5 py-1.5 rounded-lg transition">
+                  ↺ Discard
+                </button>
+              )}
+              {/* Save */}
+              <button onClick={() => saveReport(editingId)} disabled={saving || !isDirty}
+                className="bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">
+                {saving ? '⏳...' : '💾 Simpan'}
+              </button>
+              {/* Delete — hanya jika report sudah tersimpan di DB */}
+              {reports[editingId] && !confirmDel && (
+                <button onClick={() => setConfirmDel(true)}
+                  className="text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 text-xs font-bold px-2.5 py-1.5 rounded-lg transition">
+                  🗑
+                </button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {isDirty && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">Belum disimpan</span>}
-            <button onClick={() => saveReport(editingId)} disabled={saving || !isDirty}
-              className="bg-gray-900 hover:bg-gray-700 disabled:bg-gray-300 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">
-              {saving ? '⏳...' : '💾 Simpan'}
-            </button>
-          </div>
+          {/* Confirm delete */}
+          {confirmDel && (
+            <div className="mt-2 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <span className="text-xs text-red-700 font-semibold flex-1">Hapus report ini secara permanen?</span>
+              <button onClick={() => deleteReport(editingId)} disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1 rounded-lg transition">
+                {deleting ? '⏳...' : 'Ya, Hapus'}
+              </button>
+              <button onClick={() => setConfirmDel(false)}
+                className="text-gray-500 hover:text-gray-700 text-xs border border-gray-200 px-3 py-1 rounded-lg transition">
+                Batal
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Section tabs */}
