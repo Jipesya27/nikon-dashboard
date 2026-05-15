@@ -230,6 +230,7 @@ export default function NikonDashboard() {
    const [konsumenForm, setKonsumenForm] = useState<Partial<KonsumenData>>({});
    const [karyawanForm, setKaryawanForm] = useState<Partial<Karyawan>>({ role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
    const [lendingForm, setLendingForm] = useState<Partial<PeminjamanBarang>>({ items_dipinjam: [], status_peminjaman: 'aktif' });
+   const [accsReturnChecked, setAccsReturnChecked] = useState<Record<number, Record<string, boolean>>>({});
    const [assetForm, setAssetForm] = useState<Partial<BarangAset>>({});
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
    const [eventForm, setEventForm] = useState<Partial<EventData>>({});
@@ -1063,6 +1064,7 @@ export default function NikonDashboard() {
       else if (type === 'lending') {
          setLendingForm(item ? { ...(item as PeminjamanBarang), items_dipinjam: (item as PeminjamanBarang).items_dipinjam || [] } : { items_dipinjam: [{ nama_barang: '', nomor_seri: '', catatan: '', catatan_pengembalian: '', status_pengembalian: 'dipinjam' }], status_peminjaman: 'aktif' });
          setEditingId((item as PeminjamanBarang)?.id_peminjaman || null);
+         setAccsReturnChecked({});
       }
       else if (type === 'botsettings') {
          setBotSettingsForm((item as PengaturanBot) || {});
@@ -1692,21 +1694,32 @@ export default function NikonDashboard() {
    };
 
    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-   const handleReturnItems = async (lending: PeminjamanBarang) => {
+   const handleReturnItems = async (lending: PeminjamanBarang, accsChecked: Record<number, Record<string, boolean>> = {}) => {
       if (!window.confirm('Yakin mengembalikan barang yang dipilih?')) return;
       setIsSubmitting(true);
       try {
          const allItemsReturned = lending.items_dipinjam.every(item => item.status_pengembalian === 'dikembalikan');
          const newStatusPeminjaman = allItemsReturned ? 'selesai' : 'aktif';
 
+         // Append unchecked accessories to catatan_pengembalian
+         const itemsWithAccsNotes = lending.items_dipinjam.map((item, idx) => {
+            const allAccs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean) as string[];
+            const unchecked = allAccs.filter(a => !(accsChecked[idx]?.[a]));
+            if (unchecked.length > 0 && item.status_pengembalian === 'dikembalikan') {
+               const note = `Aksesori belum dicentang: ${unchecked.join(', ')}`;
+               return { ...item, catatan_pengembalian: [item.catatan_pengembalian, note].filter(Boolean).join(' | ') };
+            }
+            return item;
+         });
+
          await supabase.from('peminjaman_barang').update({
-            items_dipinjam: lending.items_dipinjam,
+            items_dipinjam: itemsWithAccsNotes,
             tanggal_pengembalian: allItemsReturned ? new Date().toISOString() : null,
             status_peminjaman: newStatusPeminjaman,
          }).eq('id_peminjaman', lending.id_peminjaman);
 
          // Send WhatsApp message for returned items
-         const returnedItems = lending.items_dipinjam.filter(item => item.status_pengembalian === 'dikembalikan');
+         const returnedItems = itemsWithAccsNotes.filter(item => item.status_pengembalian === 'dikembalikan');
          if (returnedItems.length > 0) {
             let message = getText('lendingReturnHeader', { nama: lending.nama_peminjam });
             returnedItems.forEach((item, idx) => {
@@ -5687,6 +5700,35 @@ export default function NikonDashboard() {
                                                    <span className="px-2 py-1 rounded-md bg-green-600 text-white text-[10px] font-bold uppercase shrink-0">✓ Dikembalikan</span>
                                                 )}
                                              </div>
+                                             {/* Accessories checklist */}
+                                             {(() => {
+                                                const accs = (['accs1','accs2','accs3','accs4','accs5','accs6','accs7'] as const).map(k => item[k]).filter(Boolean) as string[];
+                                                if (!accs.length) return null;
+                                                return (
+                                                   <div className={`mt-2 rounded-md border px-3 py-2 space-y-1.5 ${sudahKembali ? 'border-green-200 bg-green-50/60' : 'border-gray-200 bg-gray-50'}`}>
+                                                      <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Aksesori</p>
+                                                      {accs.map((a, ai) => {
+                                                         const checked = accsReturnChecked[idx]?.[a] ?? false;
+                                                         return (
+                                                            <label key={ai} className="flex items-center gap-2 cursor-pointer">
+                                                               <input
+                                                                  type="checkbox"
+                                                                  checked={checked}
+                                                                  onChange={e => setAccsReturnChecked(prev => ({
+                                                                     ...prev,
+                                                                     [idx]: { ...(prev[idx] || {}), [a]: e.target.checked },
+                                                                  }))}
+                                                                  className="w-4 h-4 accent-green-600 cursor-pointer shrink-0"
+                                                                  aria-label={`Aksesori ${a} dikembalikan`}
+                                                               />
+                                                               <span className={`text-xs font-medium ${checked ? 'line-through text-gray-400' : 'text-gray-800'}`}>{a}</span>
+                                                               {checked && <span className="text-[9px] text-green-600 font-bold">✓</span>}
+                                                            </label>
+                                                         );
+                                                      })}
+                                                   </div>
+                                                );
+                                             })()}
                                              {sudahKembali && (
                                                 <div className="mt-3">
                                                    <label className="block text-[10px] font-bold text-gray-900 uppercase tracking-wider mb-1">Catatan Kondisi saat Kembali</label>
@@ -5731,7 +5773,7 @@ export default function NikonDashboard() {
                               <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
                               <button
                                  type="button"
-                                 onClick={() => handleReturnItems(lendingForm as PeminjamanBarang)}
+                                 onClick={() => handleReturnItems(lendingForm as PeminjamanBarang, accsReturnChecked)}
                                  disabled={isSubmitting}
                                  className="btn-primary"
                               >
