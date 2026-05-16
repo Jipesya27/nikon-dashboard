@@ -296,7 +296,7 @@ export async function POST(req: Request) {
 
     // Notif WA ke ADMIN
     if (ADMIN_WA_NUMBER) {
-      const pesanAdmin = `🔔 *Registrasi Garansi Baru!*\n\n👤 ${nama_lengkap}\n📱 ${matchedPhone}\n📦 ${tipe_barang}\n🔢 ${nomor_seri}\n🏪 ${nama_toko}\n📅 ${tanggal_pembelian || '-'}\n\nVerifikasi: /admin/garansi`;
+      const pesanAdmin = `🔔 *Registrasi Garansi Baru!*\n\n👤 ${nama_lengkap}\n📱 ${matchedPhone}\n📦 ${tipe_barang}\n🔢 ${nomor_seri}\n🏪 ${nama_toko}\n📅 ${tanggal_pembelian || '-'}\n\nVerifikasi di Dashboard → tab Garansi`;
       kirimWA(ADMIN_WA_NUMBER, pesanAdmin);
     }
 

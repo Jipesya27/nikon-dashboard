@@ -305,7 +305,7 @@ export async function POST(req: Request) {
 
     // 5. Notif WA ke ADMIN
     if (ADMIN_WA_NUMBER) {
-      const pesanAdmin = `🔔 *Claim Promo Baru!*\n\n👤 ${nama_lengkap}\n📱 ${matchedPhone}\n📦 ${tipe_barang}\n🔢 ${nomor_seri}\n🎁 ${jenis_promosi || '-'}\n🏪 ${nama_toko}\n📅 ${tanggal_pembelian || '-'}\n\nVerifikasi: /admin/claims`;
+      const pesanAdmin = `🔔 *Claim Promo Baru!*\n\n👤 ${nama_lengkap}\n📱 ${matchedPhone}\n📦 ${tipe_barang}\n🔢 ${nomor_seri}\n🎁 ${jenis_promosi || '-'}\n🏪 ${nama_toko}\n📅 ${tanggal_pembelian || '-'}\n\nVerifikasi di Dashboard → tab Claim`;
       kirimWA(ADMIN_WA_NUMBER, pesanAdmin);
     }
 

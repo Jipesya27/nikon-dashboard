@@ -247,6 +247,12 @@ export default function NikonDashboard() {
    const [isDragging, setIsDragging] = useState(false);
    const [startDragPosition, setStartDragPosition] = useState({ x: 0, y: 0 });
 
+   // DUAL DOC VIEWER STATES
+   const [isDualDocOpen, setIsDualDocOpen] = useState(false);
+   const [dualDocUrls, setDualDocUrls] = useState<{ garansi: string | null; nota: string | null }>({ garansi: null, nota: null });
+   const [dualZoomG, setDualZoomG] = useState(1);
+   const [dualZoomN, setDualZoomN] = useState(1);
+
    const now = new Date();
 
    // --- SORTING LOGIC ---
@@ -305,6 +311,25 @@ export default function NikonDashboard() {
             : String(bValue).localeCompare(String(aValue));
       };
    }, []);
+
+   const driveDocThumb = (url: string | null | File, size = 'w2000'): string => {
+      if (!url || url instanceof File) return '';
+      const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=${size}`;
+      return url;
+   };
+
+   const openDualDocViewer = (garansi: string | File | null | undefined, nota: string | File | null | undefined) => {
+      const toUrl = (v: string | File | null | undefined): string | null => {
+         if (!v) return null;
+         if (v instanceof File) return URL.createObjectURL(v);
+         return v;
+      };
+      setDualDocUrls({ garansi: toUrl(garansi), nota: toUrl(nota) });
+      setDualZoomG(1);
+      setDualZoomN(1);
+      setIsDualDocOpen(true);
+   };
 
    const isGoogleDriveLink = (url: string): boolean => {
       if (typeof url !== 'string') return false;
@@ -5134,7 +5159,17 @@ export default function NikonDashboard() {
 
                            {/* Section: Dokumen */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Dokumen Pendukung</h3>
+                              <div className="flex items-center justify-between mb-3">
+                                 <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Dokumen Pendukung</h3>
+                                 {(warrantyForm.link_kartu_garansi || warrantyForm.link_nota_pembelian) && (
+                                    <button type="button"
+                                       onClick={() => openDualDocViewer(warrantyForm.link_kartu_garansi, warrantyForm.link_nota_pembelian)}
+                                       className="flex items-center gap-1.5 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-lg hover:bg-gray-800 transition-colors">
+                                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                       Lihat Kedua Dokumen
+                                    </button>
+                                 )}
+                              </div>
                               <div className="space-y-3">
                                  <div>
                                     <label className="label-form">Kartu Garansi</label>
@@ -5467,7 +5502,17 @@ export default function NikonDashboard() {
 
                            {/* Section: Dokumen */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Dokumen Pendukung</h3>
+                              <div className="flex items-center justify-between mb-3">
+                                 <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Dokumen Pendukung</h3>
+                                 {(claimForm.link_kartu_garansi || claimForm.link_nota_pembelian) && (
+                                    <button type="button"
+                                       onClick={() => openDualDocViewer(claimForm.link_kartu_garansi, claimForm.link_nota_pembelian)}
+                                       className="flex items-center gap-1.5 px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-lg hover:bg-gray-800 transition-colors">
+                                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                       Lihat Kedua Dokumen
+                                    </button>
+                                 )}
+                              </div>
                               <div className="space-y-3">
                                  <div>
                                     <label className="label-form">Kartu Garansi</label>
@@ -5978,6 +6023,55 @@ export default function NikonDashboard() {
          })()}
 
          {/* IMAGE VIEWER */}
+         {/* Dual Document Viewer */}
+         {isDualDocOpen && (
+            <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={() => setIsDualDocOpen(false)}>
+               <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0 bg-zinc-950" onClick={e => e.stopPropagation()}>
+                  <span className="text-sm font-bold text-white">Dokumen Pendukung</span>
+                  <div className="flex items-center gap-3">
+                     <span className="text-xs text-zinc-500 hidden sm:block">Scroll roda mouse untuk zoom</span>
+                     <button onClick={() => setIsDualDocOpen(false)} className="text-white/60 hover:text-white text-2xl font-bold leading-none px-1">✕</button>
+                  </div>
+               </div>
+               <div className="flex flex-1 gap-2 p-2 overflow-hidden" onClick={e => e.stopPropagation()}>
+                  {[
+                     { label: 'Kartu Garansi', url: dualDocUrls.garansi, zoom: dualZoomG, setZoom: setDualZoomG },
+                     { label: 'Nota Pembelian', url: dualDocUrls.nota,    zoom: dualZoomN, setZoom: setDualZoomN },
+                  ].map(({ label, url, zoom, setZoom }) => (
+                     <div key={label} className="flex-1 flex flex-col bg-zinc-900 rounded-lg overflow-hidden min-w-0">
+                        <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 shrink-0 gap-2">
+                           <span className="text-xs font-bold text-zinc-300 uppercase tracking-wide">{label}</span>
+                           <div className="flex items-center gap-1">
+                              <button onClick={() => setZoom((z: number) => Math.max(0.25, z - 0.25))} className="w-7 h-7 bg-zinc-800 hover:bg-zinc-700 rounded text-white font-bold text-base leading-none">−</button>
+                              <span className="w-12 text-center text-xs text-zinc-400">{Math.round(zoom * 100)}%</span>
+                              <button onClick={() => setZoom((z: number) => Math.min(5, z + 0.25))} className="w-7 h-7 bg-zinc-800 hover:bg-zinc-700 rounded text-white font-bold text-base leading-none">+</button>
+                              <button onClick={() => setZoom(() => 1)} className="px-2 h-7 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-400 text-xs">Reset</button>
+                           </div>
+                        </div>
+                        <div
+                           className="flex-1 overflow-auto p-2"
+                           onWheel={e => { e.preventDefault(); setZoom((z: number) => Math.min(5, Math.max(0.25, z + (e.deltaY > 0 ? -0.15 : 0.15)))); }}
+                        >
+                           {url ? (
+                              isGoogleDriveLink(url) ? (
+                                 /* eslint-disable-next-line @next/next/no-img-element */
+                                 <img src={driveDocThumb(url)} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', minWidth: '100%' }} className="rounded block" />
+                              ) : url.toLowerCase().endsWith('.pdf') ? (
+                                 <iframe src={url} className="w-full h-full border-none rounded" title={label} style={{ minHeight: '80vh' }} />
+                              ) : (
+                                 /* eslint-disable-next-line @next/next/no-img-element */
+                                 <img src={url} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', minWidth: '100%' }} className="rounded block" />
+                              )
+                           ) : (
+                              <div className="h-full flex items-center justify-center text-zinc-600 text-sm">Tidak ada file</div>
+                           )}
+                        </div>
+                     </div>
+                  ))}
+               </div>
+            </div>
+         )}
+
          {isImageViewerOpen && (
             <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center animate-fade-in" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
                <button onClick={closeImageViewer} aria-label="Tutup" className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-10">
