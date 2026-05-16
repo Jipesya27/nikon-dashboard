@@ -122,6 +122,13 @@ export default function AdminClaimsPage() {
   const totalPages = Math.ceil(total / 20);
   const isDriveImg = (url: string | null) => url?.includes('drive.google.com') || url?.includes('googleusercontent.com');
 
+  function driveThumb(url: string | null, size = 'w400'): string {
+    if (!url) return '';
+    const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=${size}`;
+    return url;
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* Lightbox */}
@@ -221,17 +228,17 @@ export default function AdminClaimsPage() {
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           {c.link_kartu_garansi && isDriveImg(c.link_kartu_garansi) && (
-                            <button onClick={e => { e.stopPropagation(); setLightboxUrl(c.link_kartu_garansi); }}
+                            <button onClick={e => { e.stopPropagation(); setLightboxUrl(driveThumb(c.link_kartu_garansi, 'w1600')); }}
                               className="w-10 h-10 rounded overflow-hidden border border-zinc-700 hover:border-[#ffe000] transition-colors">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={c.link_kartu_garansi} alt="garansi" className="w-full h-full object-cover" />
+                              <img src={driveThumb(c.link_kartu_garansi)} alt="garansi" className="w-full h-full object-cover" />
                             </button>
                           )}
                           {c.link_nota_pembelian && isDriveImg(c.link_nota_pembelian) && (
-                            <button onClick={e => { e.stopPropagation(); setLightboxUrl(c.link_nota_pembelian); }}
+                            <button onClick={e => { e.stopPropagation(); setLightboxUrl(driveThumb(c.link_nota_pembelian, 'w1600')); }}
                               className="w-10 h-10 rounded overflow-hidden border border-zinc-700 hover:border-[#ffe000] transition-colors">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={c.link_nota_pembelian} alt="nota" className="w-full h-full object-cover" />
+                              <img src={driveThumb(c.link_nota_pembelian)} alt="nota" className="w-full h-full object-cover" />
                             </button>
                           )}
                         </div>
@@ -254,10 +261,10 @@ export default function AdminClaimsPage() {
                                   <div className="flex flex-col gap-1 items-center">
                                     <span className="text-xs text-zinc-500">Kartu Garansi</span>
                                     {isDriveImg(c.link_kartu_garansi) ? (
-                                      <button onClick={() => setLightboxUrl(c.link_kartu_garansi)}
+                                      <button onClick={() => setLightboxUrl(driveThumb(c.link_kartu_garansi, 'w1600'))}
                                         className="w-32 h-24 rounded-lg overflow-hidden border border-zinc-700 hover:border-[#ffe000] transition-colors">
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={c.link_kartu_garansi} alt="kartu garansi" className="w-full h-full object-cover" />
+                                        <img src={driveThumb(c.link_kartu_garansi)} alt="kartu garansi" className="w-full h-full object-cover" />
                                       </button>
                                     ) : (
                                       <a href={c.link_kartu_garansi} target="_blank" rel="noopener noreferrer"
@@ -269,10 +276,10 @@ export default function AdminClaimsPage() {
                                   <div className="flex flex-col gap-1 items-center">
                                     <span className="text-xs text-zinc-500">Nota Pembelian</span>
                                     {isDriveImg(c.link_nota_pembelian) ? (
-                                      <button onClick={() => setLightboxUrl(c.link_nota_pembelian)}
+                                      <button onClick={() => setLightboxUrl(driveThumb(c.link_nota_pembelian, 'w1600'))}
                                         className="w-32 h-24 rounded-lg overflow-hidden border border-zinc-700 hover:border-[#ffe000] transition-colors">
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={c.link_nota_pembelian} alt="nota" className="w-full h-full object-cover" />
+                                        <img src={driveThumb(c.link_nota_pembelian)} alt="nota" className="w-full h-full object-cover" />
                                       </button>
                                     ) : (
                                       <a href={c.link_nota_pembelian} target="_blank" rel="noopener noreferrer"
