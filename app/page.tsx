@@ -332,30 +332,34 @@ export default function HomePage() {
       </section>
 
       {/* ── BRANDS ── */}
-      <section id="brand" className="py-20 bg-zinc-950">
-        <div className="max-w-7xl mx-auto px-5 sm:px-8">
+      <section id="brand" className="py-20 bg-white">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8">
           <FadeIn>
             <div className="text-center mb-12">
-              <div className="inline-block bg-[#FFE500] text-black text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded mb-4">Brand</div>
-              <h2 className="text-3xl font-black text-white">Meet Our Brand</h2>
+              <div className="inline-block bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded mb-4">Brand</div>
+              <h2 className="text-3xl font-black text-zinc-900">Meet Our Brand</h2>
               <p className="text-gray-500 text-sm mt-2">Brand-brand terpercaya yang kami distribusikan secara resmi di Indonesia</p>
             </div>
           </FadeIn>
           <FadeIn delay={100}>
-            <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12">
-              {[
-                { src: '/brand-nikon.png', alt: 'Nikon' },
-                { src: '/brand-athabasca.png', alt: 'Athabasca' },
-                { src: '/brand-datacolor.png', alt: 'Datacolor' },
-                { src: '/brand-somita.png', alt: 'Somita' },
-                { src: '/brand-visico.png', alt: 'Visico' },
-              ].map((b, i) => (
-                <div key={b.alt}
-                  className="flex items-center justify-center p-5 rounded-2xl border border-white/10 hover:border-[#FFE500]/40 hover:bg-white/5 transition-all hover:scale-105 group"
-                  style={{ minWidth: 140 }}>
-                  <Image src={b.src} alt={b.alt} width={130} height={60} className="h-14 w-auto object-contain" />
-                </div>
-              ))}
+            <div className="flex flex-col sm:flex-row items-stretch justify-center gap-4">
+              {/* Nikon — besar, 2 baris tinggi */}
+              <div className="flex items-center justify-center p-8 rounded-2xl border-2 border-[#FFE500] hover:shadow-lg transition-all hover:scale-[1.02] bg-white" style={{ minHeight: 240, minWidth: 220 }}>
+                <Image src="/brand-nikon.png" alt="Nikon" width={200} height={120} className="w-44 h-auto object-contain" />
+              </div>
+              {/* 4 brand lain — grid 2x2 */}
+              <div className="grid grid-cols-2 gap-4 flex-1">
+                {[
+                  { src: '/brand-athabasca.png', alt: 'Athabasca' },
+                  { src: '/brand-datacolor.png', alt: 'Datacolor' },
+                  { src: '/brand-somita.png', alt: 'Somita' },
+                  { src: '/brand-visico.png', alt: 'Visico' },
+                ].map(b => (
+                  <div key={b.alt} className="flex items-center justify-center p-5 rounded-2xl border border-gray-200 hover:border-[#FFE500] hover:shadow-md transition-all hover:scale-[1.03] bg-white">
+                    <Image src={b.src} alt={b.alt} width={120} height={60} className="h-12 w-auto object-contain" />
+                  </div>
+                ))}
+              </div>
             </div>
           </FadeIn>
         </div>
