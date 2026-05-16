@@ -389,11 +389,10 @@ export default function HomePage() {
               <h2 className="text-4xl font-black text-white">Our Contact</h2>
             </div>
           </FadeIn>
-          <div className="grid sm:grid-cols-3 gap-5 max-w-3xl mx-auto">
+          <div className="grid sm:grid-cols-2 gap-5 max-w-2xl mx-auto">
             {[
-              { icon: '🌐', label: 'Website', val: 'www.altanikindo.com', href: 'https://www.altanikindo.com' },
-              { icon: '📞', label: 'Telepon', val: '+62 5331-2500', href: 'tel:+6253312500' },
-              { icon: '📍', label: 'Alamat', val: 'Komplek Mangga Dua Square\nBlok H No 1–2, Jakarta', href: null },
+              { icon: '📞', label: 'Telepon', val: '+62 6231-2600', href: 'tel:+6262312600' },
+              { icon: '📍', label: 'Alamat', val: 'Komplek Mangga Dua Square\nBlok H No 1–2, Jakarta', href: 'https://maps.app.goo.gl/vXzprSzknSRaLqaD8' },
             ].map((c, i) => (
               <FadeIn key={c.label} delay={i * 80}>
                 {c.href ? (
