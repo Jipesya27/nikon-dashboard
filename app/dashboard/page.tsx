@@ -85,6 +85,11 @@ export default function NikonDashboard() {
    const [eventRegistrationsCount, setEventRegistrationsCount] = useState<Record<string, number>>({});
    const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]);
    const [searchRegistration, setSearchRegistration] = useState('');
+   type AutocompleteItem = { id: string; field_key: string; value: string; hidden: boolean };
+   const [autocompleteItems, setAutocompleteItems] = useState<AutocompleteItem[]>([]);
+   const [acFieldTab, setAcFieldTab] = useState('tipe_barang');
+   const [acNewValue, setAcNewValue] = useState('');
+   const [acSaving, setAcSaving] = useState(false);
 
    // SEARCH STATES
    const [searchKonsumen, setSearchKonsumen] = useState('');
@@ -613,6 +618,25 @@ export default function NikonDashboard() {
    }, [isScannerOpen, handleMarkAttendance]);
 
    const fetchBotSettings = async () => { const { data } = await supabase.from('pengaturan_bot').select('*'); setBotSettings(data || []); };
+
+   const fetchAutocomplete = async () => {
+      const { data } = await supabase.from('autocomplete_items').select('*').order('field_key').order('value');
+      setAutocompleteItems(data || []);
+   };
+
+   const handleACAdd = async (fieldKey: string, val: string, hidden = false) => {
+      if (!val.trim()) return;
+      setAcSaving(true);
+      await fetch('/api/autocomplete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field_key: fieldKey, value: val.trim(), hidden }) });
+      await fetchAutocomplete();
+      setAcNewValue('');
+      setAcSaving(false);
+   };
+
+   const handleACDelete = async (id: string) => {
+      await fetch(`/api/autocomplete?id=${id}`, { method: 'DELETE' });
+      await fetchAutocomplete();
+   };
    const fetchKaryawans = async () => {
       try {
          const { data, error } = await supabase.from('karyawan').select('*').order('created_at', { ascending: true });
@@ -662,6 +686,7 @@ export default function NikonDashboard() {
                fetchBotSettings(),
                fetchEvents(),
                fetchEventRegistrations(),
+               fetchAutocomplete(),
                loadChatbotTemplates(supabase).then(setChatbotTemplates),
             ];
             if (currentUser?.role === 'Admin') {
@@ -2183,6 +2208,7 @@ export default function NikonDashboard() {
             { id: 'import', label: '📤 Import Data', count: undefined },
             { id: 'userrole', label: '🔐 User Role', count: karyawans.length },
             { id: 'botsettings', label: '⚙️ Bot Settings', count: botSettings.length },
+            { id: 'autocomplete', label: '✏️ Saran Isian', count: undefined },
          ]
       }
    ], [messages.length, consumersList.length, promos.length, claims.length, warranties.length, services.length, budgets.length, lendingRecords.length, karyawans.length, botSettings.length, events.length, eventRegistrations.length]);
@@ -2192,7 +2218,7 @@ export default function NikonDashboard() {
          ...group,
          tabs: group.tabs.filter(tab => {
             if (currentUser?.role === 'Admin') return true;
-            if (tab.id === 'userrole') return false;
+            if (tab.id === 'userrole' || tab.id === 'autocomplete') return false;
             return (currentUser?.akses_halaman || []).includes(tab.id);
          })
       })).filter(group => group.tabs.length > 0);
@@ -4151,35 +4177,153 @@ export default function NikonDashboard() {
                   </div>
                )}
 
+               {/* ======================= SARAN ISIAN (AUTOCOMPLETE) ======================= */}
+               {activeTab === 'autocomplete' && currentUser?.role === 'Admin' && (() => {
+                  const AC_FIELDS = [
+                     { key: 'tipe_barang', label: 'Tipe Barang', hint: 'Model kamera, lensa, aksesori' },
+                     { key: 'nama_toko', label: 'Nama Toko / Dealer', hint: 'Nama toko resmi & tidak resmi' },
+                     { key: 'nama_promo', label: 'Nama Promo', hint: 'Nama program promo aktif' },
+                     { key: 'speaker', label: 'Speaker Event', hint: 'Nama pembicara event' },
+                  ];
+                  const activeField = AC_FIELDS.find(f => f.key === acFieldTab) || AC_FIELDS[0];
+                  const pinnedItems = autocompleteItems.filter(i => i.field_key === acFieldTab && !i.hidden);
+                  const hiddenItems = autocompleteItems.filter(i => i.field_key === acFieldTab && i.hidden);
+                  const inTableSet = new Set(autocompleteItems.filter(i => i.field_key === acFieldTab).map(i => i.value));
+
+                  const rawDBMap: Record<string, (string | null | undefined)[]> = {
+                     tipe_barang: [...claims.map(c => c.tipe_barang), ...warranties.map(w => w.tipe_barang)],
+                     nama_toko: claims.map(c => c.nama_toko),
+                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                     nama_promo: promos.map((p: any) => p.nama_promo),
+                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                     speaker: events.map((e: any) => e.event_speaker),
+                  };
+                  const dbOnlyValues = Array.from(new Set((rawDBMap[acFieldTab] || []).filter((v): v is string => Boolean(v) && v !== 'BELUM_DIISI' && !inTableSet.has(v)))).sort();
+
+                  return (
+                     <div className="space-y-5 animate-fade-in text-gray-900">
+                        <div>
+                           <p className="text-sm text-gray-500 mb-3">Kelola saran isian (autocomplete) untuk kolom form. Tambah saran tetap, atau sembunyikan data yang tidak relevan.</p>
+                           <div className="flex flex-wrap gap-2">
+                              {AC_FIELDS.map(f => (
+                                 <button key={f.key} onClick={() => { setAcFieldTab(f.key); setAcNewValue(''); }}
+                                    className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition ${acFieldTab === f.key ? 'bg-[#FFE500] border-yellow-400 text-black' : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}>
+                                    {f.label}
+                                 </button>
+                              ))}
+                           </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
+                           <div>
+                              <p className="text-xs text-gray-400 mb-1">{activeField.hint}</p>
+                              <div className="flex gap-2">
+                                 <input
+                                    type="text"
+                                    aria-label="Tambah saran baru"
+                                    placeholder={`Tambah saran untuk ${activeField.label}...`}
+                                    value={acNewValue}
+                                    onChange={e => setAcNewValue(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleACAdd(acFieldTab, acNewValue); }}
+                                    className="flex-1 p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-[#FFE500]"
+                                 />
+                                 <button
+                                    onClick={() => handleACAdd(acFieldTab, acNewValue)}
+                                    disabled={acSaving || !acNewValue.trim()}
+                                    className="px-4 py-2 bg-[#FFE500] hover:bg-yellow-400 text-black text-sm font-bold rounded-lg disabled:opacity-40 transition">
+                                    {acSaving ? '...' : '+ Tambah'}
+                                 </button>
+                              </div>
+                           </div>
+
+                           {pinnedItems.length > 0 && (
+                              <div>
+                                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Saran Tetap (ditambahkan admin)</p>
+                                 <div className="space-y-1">
+                                    {pinnedItems.map(item => (
+                                       <div key={item.id} className="flex items-center justify-between gap-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                          <span className="text-sm font-medium text-gray-800">{item.value}</span>
+                                          <button onClick={() => handleACDelete(item.id)} className="text-xs text-red-500 hover:text-red-700 font-semibold shrink-0">Hapus</button>
+                                       </div>
+                                    ))}
+                                 </div>
+                              </div>
+                           )}
+
+                           {dbOnlyValues.length > 0 && (
+                              <div>
+                                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Dari Data ({dbOnlyValues.length})</p>
+                                 <div className="space-y-1 max-h-64 overflow-y-auto">
+                                    {dbOnlyValues.map(val => (
+                                       <div key={val} className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                                          <span className="text-sm text-gray-700">{val}</span>
+                                          <div className="flex gap-2 shrink-0">
+                                             <button onClick={() => handleACAdd(acFieldTab, val, false)} className="text-xs text-blue-600 hover:text-blue-800 font-semibold">Pin</button>
+                                             <button onClick={() => handleACAdd(acFieldTab, val, true)} className="text-xs text-orange-500 hover:text-orange-700 font-semibold">Sembunyikan</button>
+                                          </div>
+                                       </div>
+                                    ))}
+                                 </div>
+                              </div>
+                           )}
+
+                           {hiddenItems.length > 0 && (
+                              <div>
+                                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Disembunyikan</p>
+                                 <div className="space-y-1">
+                                    {hiddenItems.map(item => (
+                                       <div key={item.id} className="flex items-center justify-between gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg opacity-70">
+                                          <span className="text-sm line-through text-gray-500">{item.value}</span>
+                                          <button onClick={() => handleACDelete(item.id)} className="text-xs text-green-600 hover:text-green-800 font-semibold shrink-0">Tampilkan</button>
+                                       </div>
+                                    ))}
+                                 </div>
+                              </div>
+                           )}
+
+                           {pinnedItems.length === 0 && dbOnlyValues.length === 0 && hiddenItems.length === 0 && (
+                              <p className="text-sm text-gray-400 text-center py-4">Belum ada data untuk kolom ini.</p>
+                           )}
+                        </div>
+                     </div>
+                  );
+               })()}
+
                </main>
             </div>
          </div>
 
          {/* MODALS */}
          {isModalOpen && (() => {
-            // Distinct values dari data DB yang sudah loaded - jadi <datalist> suggestion utk autocomplete
+            // Distinct values dari data DB — digabung dengan pinned dari autocomplete_items, tanpa hidden
+            const dedupAC = (fieldKey: string, arr: (string | null | undefined)[]) => {
+               const pinned = autocompleteItems.filter(i => i.field_key === fieldKey && !i.hidden).map(i => i.value);
+               const hiddenSet = new Set(autocompleteItems.filter(i => i.field_key === fieldKey && i.hidden).map(i => i.value));
+               const fromDB = arr.filter((v): v is string => Boolean(v) && v !== 'BELUM_DIISI' && !hiddenSet.has(v));
+               return Array.from(new Set([...pinned, ...fromDB])).sort();
+            };
             const dedup = (arr: (string | null | undefined)[]) =>
                Array.from(new Set(arr.filter((v): v is string => Boolean(v) && v !== 'BELUM_DIISI'))).sort();
-            const dTipeBarang = dedup([...claims.map(c => c.tipe_barang), ...warranties.map(w => w.tipe_barang)]);
+            const dTipeBarang = dedupAC('tipe_barang', [...claims.map(c => c.tipe_barang), ...warranties.map(w => w.tipe_barang)]);
             const dNamaLengkap = dedup(consumersList.map(k => k.nama_lengkap));
             const dKelurahan = dedup(consumersList.map(k => k.kelurahan));
             const dKecamatan = dedup(consumersList.map(k => k.kecamatan));
             const dKabupaten = dedup(consumersList.map(k => k.kabupaten_kotamadya));
             const dProvinsi = dedup(consumersList.map(k => k.provinsi));
             const dKodepos = dedup(consumersList.map(k => k.kodepos));
-            const dNamaPromo = dedup(promos.map(p => p.nama_promo));
+            const dNamaPromo = dedupAC('nama_promo', promos.map(p => p.nama_promo));
             const dProdukPromo = dedup(promos.flatMap(p => (p.tipe_produk || []).map(t => t.nama_produk)));
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const dJudulEvent = dedup(events.map((e: any) => e.event_title || e.title));
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const dSpeaker = dedup(events.map((e: any) => e.event_speaker));
+            const dSpeaker = dedupAC('speaker', events.map((e: any) => e.event_speaker));
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const dGenreSpeaker = dedup(events.map((e: any) => e.event_speaker_genre));
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const dDepositAmount = dedup(events.map((e: any) => e.deposit_amount));
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const dBankInfo = dedup(events.map((e: any) => e.bank_info));
-            const dNamaToko = dedup(claims.map(c => c.nama_toko));
+            const dNamaToko = dedupAC('nama_toko', claims.map(c => c.nama_toko));
 
             // Split-view: edit claim/garansi tampilkan dokumen di kiri, form di kanan
             const toViewUrl = (v: string | File | null | undefined): string | null => {
