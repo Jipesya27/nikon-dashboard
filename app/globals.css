@@ -97,7 +97,7 @@ html {
 }
 
 .input-form {
-  @apply w-full px-3.5 py-3 rounded-lg border-2 border-gray-400 bg-white text-sm text-gray-900 font-semibold min-h-[44px]
+  @apply w-full px-3.5 py-3 rounded-lg border-2 border-gray-400 bg-white text-sm text-gray-900 font-semibold min-h-11
          placeholder:text-gray-500 placeholder:font-normal placeholder:italic
          shadow-[inset_0_1px_3px_rgba(0,0,0,0.08)]
          hover:border-gray-600
@@ -107,7 +107,7 @@ html {
 }
 
 /* Textarea variant: tinggi minimal lebih besar */
-textarea.input-form { @apply min-h-[80px]; }
+textarea.input-form { @apply min-h-20; }
 
 /* Untuk select supaya panah dropdown tetap kelihatan
  * Pakai raw CSS (bukan @apply) karena Tailwind v4 tidak bisa parse SVG URL
@@ -137,11 +137,11 @@ input[type="file"].input-form {
 
 /* Gradient Backgrounds */
 .gradient-yellow {
-  @apply bg-gradient-to-br from-[#FFE500] to-[#E5CE00];
+  @apply bg-linear-to-br from-[#FFE500] to-[#E5CE00];
 }
 
 .gradient-dark {
-  @apply bg-gradient-to-br from-gray-900 to-gray-800;
+  @apply bg-linear-to-br from-gray-900 to-gray-800;
 }
 
 /* Animation */
@@ -184,7 +184,7 @@ input[type="file"].input-form {
 
 /* Profile Card Styles */
 .profile-card {
-  @apply bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all;
+  @apply bg-linear-to-br from-white to-gray-50 rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all;
 }
 
 /* Stat Card */

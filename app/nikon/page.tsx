@@ -4,7 +4,6 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import Link from 'next/link';
 import { DEFAULT_NIKON_CONFIG, NikonPageConfig } from '@/app/lib/homepageTypes';
 
-// ── WA links dari config ──────────────────────────────────────────
 function buildWaLinks(waNumber: string) {
   const base = `https://wa.me/${waNumber}`;
   return {
@@ -15,7 +14,6 @@ function buildWaLinks(waNumber: string) {
   };
 }
 
-// ── Context ──────────────────────────────────────────────────────
 interface SiteCtx {
   cfg: NikonPageConfig;
   WA_LINK: string; WA_CLAIM: string; WA_GARANSI: string; WA_SERVICE: string;
@@ -26,15 +24,6 @@ const SiteContext = createContext<SiteCtx>({
 });
 const useSite = () => useContext(SiteContext);
 
-// ── Palette warna soft ───────────────────────────────────────────
-// hero bg   : #1e293b  (slate-800, tidak hitam pekat)
-// accent    : #d4a017  (gold muted)
-// surface   : #f8fafc  (slate-50, off-white)
-// text utama: #0f172a  (slate-900)
-// text soft : #64748b  (slate-500)
-// border    : #e2e8f0  (slate-200)
-
-// ── Tipe ─────────────────────────────────────────────────────────
 interface EventItem {
   id: string;
   event_title: string;
@@ -50,25 +39,67 @@ interface EventItem {
   status?: string;
 }
 
-// ── Parse tanggal Indonesia ───────────────────────────────────────
-const ID_MONTHS: Record<string, number> = {
-  januari:0, februari:1, maret:2, april:3, mei:4, juni:5,
-  juli:6, agustus:7, september:8, oktober:9, november:10, desember:11,
-};
-function parseIdDate(str: string): Date | null {
-  if (!str) return null;
-  const p = str.trim().toLowerCase().split(/\s+/);
-  if (p.length < 3) return null;
-  const d = parseInt(p[0]), m = ID_MONTHS[p[1]], y = parseInt(p[2]);
-  return (isNaN(d) || m === undefined || isNaN(y)) ? null : new Date(y, m, d);
+// ── SVG Icons ────────────────────────────────────────────────────────────────
+function IconCamera({ size = 24 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+      <circle cx="12" cy="13" r="3"/>
+    </svg>
+  );
 }
-function daysUntil(dateStr: string): number | null {
-  const d = parseIdDate(dateStr);
-  if (!d) return null;
-  return Math.ceil((d.getTime() - Date.now()) / 86400000);
+function IconShield() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+  );
 }
-
-// ── SVG Icons ────────────────────────────────────────────────────
+function IconCalendar({ size = 24 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+      <line x1="16" x2="16" y1="2" y2="6"/>
+      <line x1="8" x2="8" y1="2" y2="6"/>
+      <line x1="3" x2="21" y1="10" y2="10"/>
+    </svg>
+  );
+}
+function IconChevronRight() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m9 18 6-6-6-6"/>
+    </svg>
+  );
+}
+function IconMenu() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="4" x2="20" y1="12" y2="12"/>
+      <line x1="4" x2="20" y1="6" y2="6"/>
+      <line x1="4" x2="20" y1="18" y2="18"/>
+    </svg>
+  );
+}
+function IconCheckCircle() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+  );
+}
+function IconGift() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 12 20 22 4 22 4 12"/>
+      <rect width="20" height="5" x="2" y="7"/>
+      <line x1="12" x2="12" y1="22" y2="7"/>
+      <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+      <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+    </svg>
+  );
+}
 function IconWA() {
   return (
     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -76,97 +107,58 @@ function IconWA() {
     </svg>
   );
 }
-function IconChevron({ className = 'w-3 h-3' }: { className?: string }) {
-  return <svg className={className} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>;
-}
 
-// ── Navbar ───────────────────────────────────────────────────────
-const NAV_ITEMS = [
-  { label: 'Kamera',   href: '#', children: ['Mirrorless', 'DSLR', 'Kamera Pocket'] },
-  { label: 'Lensa',    href: '#', children: ['Lensa Nikkor Z', 'Lensa Nikkor F'] },
-  { label: 'Aksesori', href: '#', children: ['Flash', 'Baterai & Charger', 'Tas Kamera'] },
-  { label: 'Layanan',  href: '#layanan', children: ['Claim Promo', 'Registrasi Garansi', 'Status Service'] },
-  { label: 'Event',    href: '#event' },
-  { label: 'Kontak',   href: '#kontak' },
-];
-
+// ── Navbar ───────────────────────────────────────────────────────────────────
 function Navbar() {
   const { WA_LINK } = useSite();
-  const [mobile, setMobile] = useState(false);
-  const [drop, setDrop]     = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 20);
+    const fn = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', fn);
     return () => window.removeEventListener('scroll', fn);
   }, []);
 
   return (
-    <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-slate-900 shadow-lg shadow-black/10' : 'bg-slate-900/95 backdrop-blur-md'}`}>
-      <div className="max-w-7xl mx-auto px-5 flex items-center justify-between h-16">
-        {/* Logo */}
-        <Link href="/nikon" className="flex items-center gap-3 flex-shrink-0">
-          <div className="bg-[#d4a017] px-3 py-1 rounded-sm">
-            <span className="text-white font-black text-lg tracking-widest">NIKON</span>
+    <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800 py-2' : 'bg-transparent py-4'}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <Link href="/nikon" className="flex-shrink-0 flex items-center cursor-pointer">
+            <span className="text-3xl font-black tracking-tighter text-white">
+              Nikon<span className="text-[#ffe000]">.</span>
+            </span>
+          </Link>
+
+          <div className="hidden md:flex items-center space-x-8">
+            <a href="#" className="text-sm font-semibold text-zinc-300 hover:text-[#ffe000] transition-colors uppercase tracking-wider">Produk</a>
+            <a href="#services" className="text-sm font-semibold text-zinc-300 hover:text-[#ffe000] transition-colors uppercase tracking-wider">Layanan & Klaim</a>
+            <a href="#events" className="text-sm font-semibold text-zinc-300 hover:text-[#ffe000] transition-colors uppercase tracking-wider">Nikon School</a>
+            <a href={WA_LINK}
+              className="hidden sm:flex items-center gap-2 bg-[#25D366]/90 hover:bg-[#25D366] text-white text-sm font-semibold px-4 py-2 rounded-full transition-all">
+              <IconWA /><span>WhatsApp</span>
+            </a>
           </div>
-          <span className="text-slate-400 text-sm hidden sm:block font-medium">Alta Nikindo</span>
-        </Link>
 
-        {/* Desktop links */}
-        <div className="hidden lg:flex items-center">
-          {NAV_ITEMS.map(item => (
-            <div key={item.label} className="relative"
-              onMouseEnter={() => setDrop(item.label)}
-              onMouseLeave={() => setDrop(null)}>
-              <a href={item.href}
-                className="flex items-center gap-1 px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors rounded-md hover:bg-white/5">
-                {item.label}
-                {item.children && <IconChevron />}
-              </a>
-              {item.children && drop === item.label && (
-                <div className="absolute top-full left-0 w-52 bg-white rounded-b-xl shadow-xl shadow-black/10 border-t-2 border-[#d4a017] overflow-hidden">
-                  {item.children.map(c => (
-                    <a key={c} href="#"
-                      className="block px-5 py-3 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
-                      {c}
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* WA + hamburger */}
-        <div className="flex items-center gap-3">
-          <a href={WA_LINK}
-            className="hidden sm:flex items-center gap-2 bg-[#25D366]/90 hover:bg-[#25D366] text-white text-sm font-semibold px-4 py-2 rounded-full transition-all">
-            <IconWA /><span className="hidden md:block">WhatsApp</span>
-          </a>
-          <button onClick={() => setMobile(v => !v)} className="lg:hidden text-slate-300 hover:text-white p-2 rounded-md hover:bg-white/10">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              {mobile
-                ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                : <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />}
-            </svg>
-          </button>
+          <div className="md:hidden flex items-center">
+            <button onClick={() => setMenuOpen(v => !v)} className="text-zinc-300 hover:text-white p-2">
+              <IconMenu />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Mobile drawer */}
-      {mobile && (
-        <div className="lg:hidden bg-slate-900 border-t border-slate-700/50">
-          {NAV_ITEMS.map(item => (
-            <div key={item.label}>
-              <a href={item.href} className="block px-6 py-3 text-slate-300 hover:text-white text-sm font-medium transition-colors">{item.label}</a>
-              {item.children?.map(c => (
-                <a key={c} href="#" className="block pl-10 pr-6 py-2.5 text-slate-500 hover:text-slate-300 text-sm transition-colors">{c}</a>
-              ))}
+      {menuOpen && (
+        <div className="md:hidden bg-zinc-950 border-b border-zinc-800 absolute w-full">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            <a href="#" className="block px-3 py-4 text-base font-medium text-zinc-300 hover:text-[#ffe000] border-b border-zinc-900">Produk</a>
+            <a href="#services" className="block px-3 py-4 text-base font-medium text-zinc-300 hover:text-[#ffe000] border-b border-zinc-900">Layanan & Klaim</a>
+            <a href="#events" className="block px-3 py-4 text-base font-medium text-zinc-300 hover:text-[#ffe000] border-b border-zinc-900">Nikon School</a>
+            <div className="px-3 py-4">
+              <a href={WA_LINK} className="flex items-center justify-center gap-2 w-full bg-[#25D366] text-white px-6 py-3 font-bold uppercase tracking-wider text-sm">
+                <IconWA /> Chat WhatsApp
+              </a>
             </div>
-          ))}
-          <div className="px-6 py-4 border-t border-slate-700/50">
-            <a href={WA_LINK} className="flex items-center gap-2 text-[#25D366] text-sm font-semibold"><IconWA /> Chat WhatsApp</a>
           </div>
         </div>
       )}
@@ -174,138 +166,112 @@ function Navbar() {
   );
 }
 
-// ── Hero ─────────────────────────────────────────────────────────
+// ── Hero ─────────────────────────────────────────────────────────────────────
 function HeroSection() {
   const { cfg, WA_CLAIM } = useSite();
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 60%, #1e1b4b 100%)' }}>
-      {/* Soft glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-20"
-          style={{ background: 'radial-gradient(circle, #d4a017, transparent 70%)' }} />
-        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 rounded-full opacity-10"
-          style={{ background: 'radial-gradient(circle, #6366f1, transparent 70%)' }} />
+    <section className="relative pt-20 pb-32 flex items-center min-h-[95vh]">
+      <div className="absolute inset-0 z-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="https://images.unsplash.com/photo-1516961642265-531546e84af2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80"
+          alt="Hero Background"
+          className="w-full h-full object-cover opacity-50 grayscale mix-blend-luminosity"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/90 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
       </div>
-      {/* Garis dekoratif halus */}
-      <div className="absolute left-0 top-0 h-full w-0.5 opacity-40"
-        style={{ background: 'linear-gradient(to bottom, transparent, #d4a017, transparent)' }} />
 
-      <div className="relative max-w-7xl mx-auto px-6 sm:px-10 pt-28 pb-20 w-full">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-12 md:mt-0">
         <div className="max-w-2xl">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-8 border"
-            style={{ background: 'rgba(212,160,23,0.1)', borderColor: 'rgba(212,160,23,0.3)' }}>
-            <div className="w-2 h-2 rounded-full bg-[#d4a017] animate-pulse" />
-            <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#d4a017' }}>Mitra Resmi Nikon Indonesia</span>
-          </div>
-
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-[1.05] mb-6 text-white">
-            {cfg.hero_title_1}
-            <span className="block" style={{ color: '#d4a017' }}>{cfg.hero_title_2}</span>
-            <span className="block text-slate-300">{cfg.hero_title_3}</span>
+          <span className="inline-block py-1 px-3 border border-[#ffe000] text-[#ffe000] text-xs font-bold uppercase tracking-widest mb-6 bg-zinc-950/50 backdrop-blur-sm">
+            Sistem CRM Pintar Terbaru
+          </span>
+          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[1.1] mb-6 text-white">
+            {cfg.hero_title_1 || 'Unstoppable'}<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-500">
+              {cfg.hero_title_2 || 'Performance.'}
+            </span>
           </h1>
-
-          <p className="text-base sm:text-lg text-slate-400 max-w-xl leading-relaxed mb-10">
-            {cfg.hero_subtitle}
+          <p className="text-lg md:text-xl text-zinc-400 mb-10 max-w-lg leading-relaxed">
+            {cfg.hero_subtitle || 'Jelajahi batas baru fotografi dan videografi. Daftarkan garansi produk Anda lebih mudah dengan teknologi pemindai AI dari Nikon Indonesia.'}
           </p>
-
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <a href={WA_CLAIM}
-              className="inline-flex items-center gap-2 font-bold px-8 py-4 rounded-full text-base transition-all hover:scale-105 text-slate-900 shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #d4a017, #f0c040)', boxShadow: '0 8px 24px rgba(212,160,23,0.3)' }}>
-              Claim Promo Sekarang
+              className="bg-[#ffe000] text-black px-8 py-4 font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 group">
+              Claim Promo <span className="group-hover:translate-x-1 transition-transform"><IconChevronRight /></span>
             </a>
-            <a href="#layanan"
-              className="inline-flex items-center gap-2 border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white font-semibold px-8 py-4 rounded-full text-base transition-all hover:bg-white/5">
-              Lihat Layanan ↓
+            <a href="#services"
+              className="bg-transparent border border-zinc-600 text-white px-8 py-4 font-bold uppercase tracking-wider hover:bg-zinc-800 transition-all text-center">
+              Layanan Purnajual
             </a>
-          </div>
-
-          {/* Stats */}
-          <div className="flex flex-wrap gap-10 mt-16 pt-10 border-t border-slate-700/50">
-            {[
-              { value: '10+', label: 'Tahun Pengalaman' },
-              { value: '50K+', label: 'Kamera Terjual' },
-              { value: '100%', label: 'Produk Orisinal' },
-              { value: '24/7', label: 'Layanan Chatbot' },
-            ].map(s => (
-              <div key={s.label}>
-                <div className="text-3xl font-black" style={{ color: '#d4a017' }}>{s.value}</div>
-                <div className="text-sm text-slate-500 mt-1">{s.label}</div>
-              </div>
-            ))}
           </div>
         </div>
-      </div>
-
-      {/* Scroll hint */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-slate-600">
-        <span className="text-xs tracking-widest uppercase">Scroll</span>
-        <div className="w-px h-10 bg-gradient-to-b from-slate-600 to-transparent" />
       </div>
     </section>
   );
 }
 
-// ── Announcement ─────────────────────────────────────────────────
-function AnnouncementBar() {
-  const { cfg, WA_LINK } = useSite();
-  return (
-    <div style={{ background: 'linear-gradient(90deg, #1e293b, #0f172a)' }} className="py-3 px-4 border-b border-slate-700/50">
-      <p className="text-center text-sm" style={{ color: '#94a3b8' }}>
-        {cfg.announcement_text}{' '}
-        <a href={WA_LINK} className="underline font-semibold hover:no-underline" style={{ color: '#d4a017' }}>Chat sekarang →</a>
-      </p>
-    </div>
-  );
-}
-
-// ── Layanan ──────────────────────────────────────────────────────
-function LayananSection() {
-  const { WA_CLAIM, WA_GARANSI, WA_SERVICE } = useSite();
+// ── Services Section ──────────────────────────────────────────────────────────
+function ServicesSection() {
+  const { WA_SERVICE } = useSite();
   const cards = [
-    { icon: '🎁', title: 'Claim Promo', desc: 'Ajukan klaim cashback, aksesori gratis, atau voucher untuk pembelian kamera Nikon Anda. Proses mudah dan transparan.', cta: 'Ajukan Claim', href: WA_CLAIM },
-    { icon: '🛡️', title: 'Registrasi Garansi', desc: 'Daftarkan garansi resmi produk Nikon Anda dan nikmati layanan purna jual dari Nikon Pusat Service Jakarta.', cta: 'Daftar Garansi', href: WA_GARANSI },
-    { icon: '🔧', title: 'Status Service', desc: 'Pantau perkembangan service kamera Nikon Anda secara real-time. Kirim nomor tanda terima via WhatsApp.', cta: 'Cek Status', href: WA_SERVICE },
+    {
+      icon: <IconShield />,
+      bg: <IconCamera size={120} />,
+      title: 'Registrasi Garansi Online',
+      desc: 'Daftarkan kamera Z series atau lensa Nikkor Anda. Sistem OCR otomatis membaca Nomor Seri dan tanggal pembelian dari foto struk toko Anda.',
+      cta: 'Mulai Registrasi',
+      href: '/garansi',
+    },
+    {
+      icon: <IconGift />,
+      bg: null,
+      title: 'Klaim Promo & Merchandise',
+      desc: 'Ajukan klaim hadiah eksklusif langsung dari form online ini. Status pengiriman hadiah diperbarui secara real-time oleh tim kami.',
+      cta: 'Ajukan Klaim Sekarang',
+      href: '/claim',
+    },
+    {
+      icon: <IconCheckCircle />,
+      bg: null,
+      title: 'Lacak Status Klaim',
+      desc: 'Pantau seluruh riwayat klaim garansi atau servis Anda. Sistem kami akan mengirimkan notifikasi otomatis ke WhatsApp Anda saat status berubah.',
+      cta: 'Cek Status via WA',
+      href: WA_SERVICE,
+    },
   ];
 
   return (
-    <section id="layanan" className="py-24 px-6 bg-white">
-      <div className="max-w-7xl mx-auto">
+    <section id="services" className="py-24 bg-zinc-900 border-y border-zinc-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <span className="text-xs font-bold tracking-[0.3em] uppercase px-3 py-1 rounded-full"
-            style={{ background: 'rgba(212,160,23,0.1)', color: '#d4a017' }}>
-            Layanan Kami
-          </span>
-          <h2 className="text-4xl sm:text-5xl font-black mt-4 mb-3" style={{ color: '#0f172a' }}>
-            Semua Kebutuhan Nikon Anda
+          <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4 text-white">
+            Layanan Cerdas Nikon
           </h2>
-          <p className="text-slate-500 text-lg max-w-xl mx-auto">Dalam satu tempat, mudah, dan cepat lewat WhatsApp.</p>
+          <p className="text-zinc-400 max-w-2xl mx-auto text-lg">
+            Kami mendesain ulang cara Anda mendaftarkan garansi dan klaim promosi. Cukup unggah foto nota Anda, sistem OCR AI kami akan memproses sisanya secara otomatis.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {cards.map((c, i) => (
-            <div key={c.title}
-              className="group rounded-2xl p-8 border border-slate-100 hover:border-[#d4a017]/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#d4a017]/5 bg-white relative overflow-hidden">
-              {/* Accent strip */}
-              <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{ background: 'linear-gradient(90deg, #d4a017, #f0c040)' }} />
-              {/* Nomor dekoratif */}
-              <div className="absolute top-4 right-6 text-8xl font-black select-none"
-                style={{ color: 'rgba(212,160,23,0.06)' }}>
-                {String(i + 1).padStart(2, '0')}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          {cards.map(card => (
+            <a key={card.title} href={card.href}
+              className="bg-zinc-950 p-8 border border-zinc-800 hover:border-[#ffe000] hover:-translate-y-2 transition-all duration-300 group cursor-pointer relative overflow-hidden flex flex-col h-full">
+              {card.bg && (
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity text-white">
+                  {card.bg}
+                </div>
+              )}
+              <div className="text-[#ffe000] mb-6 bg-zinc-900/50 w-14 h-14 flex items-center justify-center rounded-full">
+                {card.icon}
               </div>
-              <div className="text-5xl mb-5">{c.icon}</div>
-              <h3 className="text-xl font-bold mb-3" style={{ color: '#0f172a' }}>{c.title}</h3>
-              <p className="text-slate-500 text-sm leading-relaxed mb-8">{c.desc}</p>
-              <a href={c.href}
-                className="inline-flex items-center gap-2 font-bold text-sm px-5 py-2.5 rounded-full transition-all"
-                style={{ background: 'rgba(212,160,23,0.1)', color: '#d4a017' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'linear-gradient(135deg,#d4a017,#f0c040)'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(212,160,23,0.1)'; (e.currentTarget as HTMLAnchorElement).style.color = '#d4a017'; }}>
-                {c.cta} →
-              </a>
-            </div>
+              <h3 className="text-xl font-bold mb-3 text-white">{card.title}</h3>
+              <p className="text-zinc-400 text-sm mb-8 leading-relaxed flex-grow">{card.desc}</p>
+              <div className="flex items-center text-[#ffe000] text-sm font-bold uppercase tracking-wider group-hover:translate-x-2 transition-transform mt-auto">
+                {card.cta} <IconChevronRight />
+              </div>
+            </a>
           ))}
         </div>
       </div>
@@ -313,8 +279,8 @@ function LayananSection() {
   );
 }
 
-// ── Event Section ─────────────────────────────────────────────────
-function EventSection() {
+// ── Events Section ────────────────────────────────────────────────────────────
+function EventsSection() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -326,365 +292,222 @@ function EventSection() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (!loading && events.length === 0) return null;
-
   return (
-    <section id="event" className="py-24 px-6" style={{ background: '#f8fafc' }}>
-      <div className="max-w-7xl mx-auto">
-        {/* Heading */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-14">
+    <section id="events" className="py-24 bg-zinc-950">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-zinc-800 pb-6">
           <div>
-            <span className="text-xs font-bold tracking-[0.3em] uppercase px-3 py-1 rounded-full"
-              style={{ background: 'rgba(99,102,241,0.1)', color: '#6366f1' }}>
-              Event &amp; Workshop
-            </span>
-            <h2 className="text-4xl sm:text-5xl font-black mt-4" style={{ color: '#0f172a' }}>
-              Event Mendatang
+            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-3 text-white">
+              Nikon School & Event
             </h2>
-            <p className="text-slate-500 mt-2">Workshop, seminar, dan acara fotografi bersama Nikon.</p>
+            <p className="text-zinc-400 text-lg">Tingkatkan skill fotografi Anda dan bergabunglah dengan komunitas.</p>
           </div>
           <a href="/events/register"
-            className="inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-full border transition-all hover:bg-slate-900 hover:text-white flex-shrink-0"
-            style={{ borderColor: '#1e293b', color: '#1e293b' }}>
-            Semua Event →
+            className="hidden md:block border border-zinc-600 text-white px-6 py-3 font-bold uppercase tracking-wider text-sm hover:bg-zinc-800 transition-colors">
+            Lihat Semua Jadwal
           </a>
         </div>
 
-        {/* Loading skeleton */}
         {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white rounded-2xl overflow-hidden animate-pulse">
-                <div className="h-48 bg-slate-200" />
-                <div className="p-6 space-y-3">
-                  <div className="h-4 bg-slate-200 rounded w-1/3" />
-                  <div className="h-6 bg-slate-200 rounded w-3/4" />
-                  <div className="h-4 bg-slate-200 rounded w-1/2" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {[1, 2].map(i => (
+              <div key={i} className="bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 animate-pulse flex flex-col md:flex-row">
+                <div className="md:w-2/5 h-64 md:h-auto bg-zinc-800" />
+                <div className="p-6 md:w-3/5 space-y-3">
+                  <div className="h-3 bg-zinc-800 rounded w-1/3" />
+                  <div className="h-6 bg-zinc-800 rounded w-3/4" />
+                  <div className="h-4 bg-zinc-800 rounded w-full" />
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Cards */}
-        {!loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.slice(0, 6).map(ev => {
-              const days  = daysUntil(ev.event_date);
+        {!loading && events.length === 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {[
+              {
+                badge: 'Masterclass',
+                badgeBg: 'bg-[#ffe000] text-black',
+                img: 'https://images.unsplash.com/photo-1552168324-d612d77725e3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                date: '24 Mei 2026 • Jakarta',
+                title: 'Wildlife Photography Expedition',
+                desc: 'Eksplorasi teknik menangkap momen satwa liar dengan ketajaman tingkat tinggi menggunakan ekosistem lensa Nikkor Z.',
+                cta: 'Dapatkan Tiket (QR Code)',
+              },
+              {
+                badge: 'Photo Walk',
+                badgeBg: 'bg-white text-black',
+                img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+                date: '02 Juni 2026 • Bandung',
+                title: 'Urban Street dengan Nikon Zfc',
+                desc: 'Jelajahi sudut kota dengan gaya klasik modern. Hands-on langsung kamera Zfc terbaru bersama komunitas.',
+                cta: 'Daftar Sekarang',
+              },
+            ].map(ev => (
+              <div key={ev.title}
+                className="group cursor-pointer bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 hover:border-zinc-600 transition-colors flex flex-col md:flex-row">
+                <div className="relative md:w-2/5 h-64 md:h-auto overflow-hidden">
+                  <span className={`absolute top-4 left-4 ${ev.badgeBg} text-[10px] font-bold px-3 py-1 z-10 uppercase tracking-widest`}>
+                    {ev.badge}
+                  </span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={ev.img} alt={ev.title}
+                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 grayscale hover:grayscale-0" />
+                </div>
+                <div className="p-6 md:w-3/5 flex flex-col justify-center">
+                  <div className="flex items-center text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3 gap-2">
+                    <IconCalendar size={14} /> {ev.date}
+                  </div>
+                  <h3 className="text-2xl font-bold mb-3 leading-tight group-hover:text-[#ffe000] transition-colors text-white">
+                    {ev.title}
+                  </h3>
+                  <p className="text-zinc-400 text-sm mb-6 line-clamp-2">{ev.desc}</p>
+                  <span className="text-[#ffe000] font-bold text-sm uppercase tracking-wider flex items-center gap-1 mt-auto">
+                    {ev.cta} <IconChevronRight />
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && events.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {events.slice(0, 4).map(ev => {
               const slots = ev.event_partisipant_stock - (ev.registered_count || 0);
               const isFull = slots <= 0;
-              const isDeposit = ev.event_payment_tipe === 'deposit';
-
               return (
-                <div key={ev.id}
-                  className="group bg-white rounded-2xl overflow-hidden border border-slate-100 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300 hover:-translate-y-1 flex flex-col">
-                  {/* Image / placeholder */}
-                  <div className="relative h-48 overflow-hidden">
+                <a key={ev.id} href="/events/register"
+                  className="group cursor-pointer bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 hover:border-zinc-600 transition-colors flex flex-col md:flex-row">
+                  <div className="relative md:w-2/5 h-64 md:h-auto overflow-hidden">
+                    <span className="absolute top-4 left-4 bg-[#ffe000] text-black text-[10px] font-bold px-3 py-1 z-10 uppercase tracking-widest">
+                      {ev.event_speaker_genre || 'Event'}
+                    </span>
                     {ev.event_image ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={ev.event_image} alt={ev.event_title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 grayscale hover:grayscale-0" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center"
-                        style={{ background: 'linear-gradient(135deg, #1e293b, #1e1b4b)' }}>
+                      <div className="w-full h-full flex items-center justify-center bg-zinc-800">
                         <span className="text-5xl">📸</span>
                       </div>
                     )}
-                    {/* Badges */}
-                    <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
-                      {isDeposit && (
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/90 text-indigo-600">Deposit</span>
-                      )}
-                      {days !== null && days >= 0 && days <= 7 && !isFull && (
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-500 text-white">
-                          {days === 0 ? 'Hari ini!' : `${days}h lagi`}
-                        </span>
-                      )}
-                      {isFull && (
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800/80 text-white">Penuh</span>
-                      )}
-                    </div>
                   </div>
-
-                  <div className="p-6 flex flex-col flex-1">
-                    {/* Genre & speaker */}
-                    {(ev.event_speaker_genre || ev.event_speaker) && (
-                      <div className="flex items-center gap-2 mb-3 flex-wrap">
-                        {ev.event_speaker_genre && (
-                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
-                            style={{ background: 'rgba(99,102,241,0.08)', color: '#6366f1' }}>
-                            {ev.event_speaker_genre}
-                          </span>
-                        )}
-                        {ev.event_speaker && (
-                          <span className="text-xs text-slate-400">oleh {ev.event_speaker}</span>
-                        )}
-                      </div>
-                    )}
-
-                    <h3 className="font-bold text-lg leading-snug mb-2 line-clamp-2" style={{ color: '#0f172a' }}>
+                  <div className="p-6 md:w-3/5 flex flex-col justify-center">
+                    <div className="flex items-center text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3 gap-2">
+                      <IconCalendar size={14} /> {ev.event_date}
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3 leading-tight group-hover:text-[#ffe000] transition-colors text-white line-clamp-2">
                       {ev.event_title}
                     </h3>
-
-                    {/* Date */}
-                    <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-1">
-                      <span>📅</span> {ev.event_date}
-                    </div>
-
-                    {/* Slot */}
-                    <div className="flex items-center gap-1.5 text-sm mb-4" style={{ color: isFull ? '#ef4444' : '#22c55e' }}>
-                      <span>{isFull ? '🔴' : '🟢'}</span>
-                      <span>{isFull ? 'Kuota penuh' : `${slots} tempat tersisa`}</span>
-                    </div>
-
-                    {/* Description */}
                     {ev.event_description && (
-                      <p className="text-sm text-slate-500 leading-relaxed line-clamp-2 mb-5 flex-1">
-                        {ev.event_description}
-                      </p>
+                      <p className="text-zinc-400 text-sm mb-4 line-clamp-2">{ev.event_description}</p>
                     )}
-
-                    {/* Price + CTA */}
-                    <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100">
-                      <div>
-                        <p className="text-xs text-slate-400 mb-0.5">{isDeposit ? 'Deposit' : 'Harga'}</p>
-                        <p className="font-black text-base" style={{ color: '#d4a017' }}>
-                          {ev.event_price === '0' || ev.event_price === '' ? 'Gratis' : `Rp ${parseInt(ev.event_price || '0').toLocaleString('id-ID')}`}
-                        </p>
-                      </div>
-                      <a href="/events/register"
-                        className={`text-sm font-bold px-5 py-2.5 rounded-full transition-all ${
-                          isFull
-                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                            : 'text-white hover:scale-105'
-                        }`}
-                        style={isFull ? {} : { background: 'linear-gradient(135deg, #1e293b, #1e1b4b)', boxShadow: '0 4px 14px rgba(30,41,59,0.3)' }}
-                        onClick={isFull ? e => e.preventDefault() : undefined}>
-                        {isFull ? 'Penuh' : 'Daftar'}
-                      </a>
+                    <div className="flex items-center justify-between mt-auto">
+                      <span className="text-[#ffe000] font-bold text-sm uppercase tracking-wider flex items-center gap-1">
+                        {isFull ? 'Kuota Penuh' : 'Daftar Sekarang'} <IconChevronRight />
+                      </span>
+                      {!isFull && (
+                        <span className="text-xs text-zinc-500">{slots} tempat tersisa</span>
+                      )}
                     </div>
                   </div>
-                </div>
+                </a>
               );
             })}
           </div>
         )}
 
-        {/* CTA lihat semua */}
-        {!loading && events.length > 3 && (
-          <div className="text-center mt-12">
-            <a href="/events/register"
-              className="inline-flex items-center gap-2 font-bold text-sm px-8 py-4 rounded-full border-2 transition-all hover:bg-slate-900 hover:text-white hover:border-slate-900"
-              style={{ borderColor: '#1e293b', color: '#1e293b' }}>
-              Lihat Semua Event ({events.length}) →
-            </a>
-          </div>
-        )}
+        <a href="/events/register"
+          className="md:hidden w-full mt-8 border border-zinc-600 text-white px-6 py-4 font-bold uppercase tracking-wider text-sm hover:bg-zinc-800 transition-colors flex items-center justify-center">
+          Lihat Semua Jadwal
+        </a>
       </div>
     </section>
   );
 }
 
-// ── Feature Section ───────────────────────────────────────────────
-function FeatureSection({ tag, title, subtitle, body, cta, href, visual, reverse }: {
-  tag: string; title: string; subtitle: string; body: string; cta: string; href: string;
-  visual: React.ReactNode; reverse?: boolean;
-}) {
-  return (
-    <section className="py-24 px-6 bg-white">
-      <div className={`max-w-7xl mx-auto flex flex-col ${reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-16`}>
-        <div className="flex-1 max-w-xl">
-          <span className="text-xs font-bold tracking-[0.3em] uppercase px-3 py-1 rounded-full mb-6 inline-block"
-            style={{ background: 'rgba(212,160,23,0.1)', color: '#d4a017' }}>
-            {tag}
-          </span>
-          <h2 className="text-4xl sm:text-5xl font-black leading-tight mb-3" style={{ color: '#0f172a' }}>{title}</h2>
-          <h3 className="text-lg font-medium mb-6" style={{ color: '#64748b' }}>{subtitle}</h3>
-          <p className="leading-relaxed mb-8 text-slate-500">{body}</p>
-          <a href={href}
-            className="inline-flex items-center gap-2 font-bold px-8 py-4 rounded-full text-sm transition-all hover:scale-105 text-white"
-            style={{ background: 'linear-gradient(135deg, #1e293b, #1e1b4b)', boxShadow: '0 8px 24px rgba(30,41,59,0.2)' }}>
-            {cta} →
-          </a>
-        </div>
-        <div className="flex-1 w-full">{visual}</div>
-      </div>
-    </section>
-  );
-}
-
-function FeatureVisual({ label, gradient }: { label: string; gradient: string }) {
-  return (
-    <div className={`relative rounded-3xl overflow-hidden aspect-[4/3] flex items-end p-8 shadow-xl ${gradient}`}>
-      <div className="absolute inset-0 opacity-30"
-        style={{ backgroundImage: 'radial-gradient(ellipse at 70% 20%, rgba(255,255,255,0.4), transparent 60%)' }} />
-      <div className="relative z-10">
-        <p className="text-white/60 text-xs font-mono uppercase tracking-widest mb-1">Alta Nikindo</p>
-        <p className="text-white font-black text-2xl">{label}</p>
-      </div>
-    </div>
-  );
-}
-
-// ── WA CTA ───────────────────────────────────────────────────────
+// ── WA CTA ────────────────────────────────────────────────────────────────────
 function WACTASection() {
   const { WA_LINK } = useSite();
   return (
-    <section style={{ background: 'linear-gradient(135deg, #1e293b 0%, #1e1b4b 100%)' }} className="py-20 px-6">
+    <section className="py-20 px-6 bg-zinc-900 border-t border-zinc-800">
       <div className="max-w-4xl mx-auto text-center">
-        <div className="text-5xl mb-5">💬</div>
-        <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-4">
+        <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-4 uppercase tracking-tighter">
           Semua Layanan Tersedia<br />
-          <span style={{ color: '#d4a017' }}>via WhatsApp</span>
+          <span className="text-[#ffe000]">via WhatsApp</span>
         </h2>
-        <p className="text-slate-400 text-base max-w-xl mx-auto mb-10 leading-relaxed">
+        <p className="text-zinc-400 text-base max-w-xl mx-auto mb-10 leading-relaxed">
           Chatbot kami siap membantu kapan saja. Tidak perlu download aplikasi — cukup kirim pesan dan ikuti panduan dari bot.
         </p>
         <div className="flex flex-wrap justify-center gap-3 mb-10">
           {['Claim Promo', 'Registrasi Garansi', 'Cek Status Service', 'Tanya CS'].map(f => (
             <div key={f}
-              className="flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium border"
-              style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', color: '#cbd5e1' }}>
-              <span style={{ color: '#22c55e' }}>✓</span> {f}
+              className="flex items-center gap-2 rounded-sm px-5 py-2 text-sm font-medium border border-zinc-700 bg-zinc-950 text-zinc-300">
+              <span className="text-[#ffe000]">✓</span> {f}
             </div>
           ))}
         </div>
         <a href={WA_LINK}
-          className="inline-flex items-center gap-3 font-bold px-10 py-5 rounded-full text-lg transition-all hover:scale-105 text-white"
-          style={{ background: '#25D366', boxShadow: '0 8px 32px rgba(37,211,102,0.3)' }}>
+          className="inline-flex items-center gap-3 font-bold px-10 py-5 text-lg transition-all hover:bg-[#20bb58] text-white bg-[#25D366]"
+          style={{ boxShadow: '0 8px 32px rgba(37,211,102,0.3)' }}>
           <IconWA /> Mulai Chat WhatsApp
         </a>
-        <p className="text-slate-600 text-xs mt-4">CS tersedia Senin–Jumat 10.00–16.00 · Sabtu 10.00–12.00 WIB</p>
+        <p className="text-zinc-600 text-xs mt-4">CS tersedia Senin–Jumat 10.00–16.00 · Sabtu 10.00–12.00 WIB</p>
       </div>
     </section>
   );
 }
 
-// ── Service Center ────────────────────────────────────────────────
-function ServiceCenterSection() {
-  const { WA_LINK } = useSite();
-  return (
-    <section id="kontak" className="py-20 px-6 bg-white">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div>
-            <span className="text-xs font-bold tracking-[0.3em] uppercase px-3 py-1 rounded-full mb-6 inline-block"
-              style={{ background: 'rgba(212,160,23,0.1)', color: '#d4a017' }}>
-              Service Center
-            </span>
-            <h2 className="text-4xl sm:text-5xl font-black leading-tight mb-8" style={{ color: '#0f172a' }}>
-              Nikon Pusat<br />Service Jakarta
-            </h2>
-            <div className="space-y-5 mb-8">
-              {[
-                { icon: '📍', title: 'Alamat', body: 'Komplek Mangga Dua Square Blok H, No.1-2\nJl. Layang, Ancol, Kec. Pademangan\nJakarta Utara, DKI Jakarta 14430' },
-                { icon: '🕐', title: 'Jam Operasional', body: 'Senin – Jumat: 10.00 – 16.00 WIB\nSabtu: 10.00 – 12.00 WIB' },
-              ].map(item => (
-                <div key={item.title} className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-xl"
-                    style={{ background: 'rgba(212,160,23,0.1)' }}>
-                    {item.icon}
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm mb-0.5" style={{ color: '#0f172a' }}>{item.title}</p>
-                    <p className="text-slate-500 text-sm whitespace-pre-line leading-relaxed">{item.body}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <a href="https://maps.app.goo.gl/ysK9hvkm37bxoYGY9" target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm font-bold px-6 py-3 rounded-full border-2 transition-all hover:-translate-y-0.5"
-                style={{ borderColor: '#1e293b', color: '#1e293b' }}
-                onMouseEnter={e => { const el = e.currentTarget; el.style.background = '#1e293b'; el.style.color = '#fff'; }}
-                onMouseLeave={e => { const el = e.currentTarget; el.style.background = ''; el.style.color = '#1e293b'; }}>
-                📍 Google Maps
-              </a>
-              <a href={WA_LINK}
-                className="inline-flex items-center gap-2 text-sm font-bold px-6 py-3 rounded-full text-white transition-all hover:-translate-y-0.5"
-                style={{ background: '#25D366' }}>
-                <IconWA /> WhatsApp
-              </a>
-            </div>
-          </div>
-
-          {/* Map placeholder */}
-          <div className="relative rounded-3xl overflow-hidden aspect-[4/3] border border-slate-100 shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #f1f5f9, #e2e8f0)' }}>
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-lg bg-white">📍</div>
-              <p className="font-bold" style={{ color: '#0f172a' }}>Mangga Dua Square</p>
-              <p className="text-slate-400 text-sm text-center px-8">Jakarta Utara, DKI Jakarta</p>
-              <a href="https://maps.app.goo.gl/ysK9hvkm37bxoYGY9" target="_blank" rel="noopener noreferrer"
-                className="text-white text-xs font-bold px-5 py-2 rounded-full transition hover:-translate-y-0.5"
-                style={{ background: '#1e293b' }}>
-                Buka Peta
-              </a>
-            </div>
-            <div className="absolute inset-0 opacity-[0.04]"
-              style={{ backgroundImage: 'linear-gradient(#64748b 1px,transparent 1px),linear-gradient(90deg,#64748b 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ── Footer ────────────────────────────────────────────────────────
+// ── Footer ────────────────────────────────────────────────────────────────────
 function Footer() {
   const { WA_LINK, WA_CLAIM, WA_GARANSI, WA_SERVICE } = useSite();
-  const sections = [
-    { title: 'Tentang Kami', links: [{ l: 'Profil Alta Nikindo', h: '#' }, { l: 'Mitra Resmi Nikon', h: '#' }, { l: 'Dealer Resmi', h: '#' }] },
-    { title: 'Layanan',      links: [{ l: 'Claim Promo', h: WA_CLAIM }, { l: 'Registrasi Garansi', h: WA_GARANSI }, { l: 'Status Service', h: WA_SERVICE }, { l: 'Chat CS', h: WA_LINK }] },
-    { title: 'Event',        links: [{ l: 'Jadwal Event', h: '/events/register' }, { l: 'Daftar Workshop', h: '/events/register' }] },
-    { title: 'Informasi',    links: [{ l: 'Kebijakan Garansi', h: '#' }, { l: 'Cara Claim', h: '#' }, { l: 'FAQ', h: '#' }] },
-  ];
-
   return (
-    <footer style={{ background: '#0f172a' }} className="pt-16 pb-8 px-6 text-white">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10 mb-12">
-          <div className="col-span-2 md:col-span-4 lg:col-span-1">
-            <div className="inline-block px-3 py-1 rounded-sm mb-4" style={{ background: '#d4a017' }}>
-              <span className="text-white font-black text-lg tracking-widest">NIKON</span>
+    <footer className="bg-black pt-16 pb-8 border-t border-zinc-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+          <div className="md:col-span-2">
+            <div className="text-3xl font-black tracking-tighter mb-4 text-white">
+              Nikon<span className="text-[#ffe000]">.</span>
             </div>
-            <p className="text-sm leading-relaxed mb-4" style={{ color: '#475569' }}>
-              Alta Nikindo — distributor dan mitra resmi Nikon Indonesia.
+            <p className="text-zinc-500 text-sm max-w-sm mb-6 leading-relaxed">
+              Mendukung para kreator, fotografer, dan videografer profesional dengan teknologi optik revolusioner. Distributor resmi Nikon Indonesia.
             </p>
-            <a href={WA_LINK} className="inline-flex items-center gap-2 text-sm font-semibold transition-colors hover:text-green-300" style={{ color: '#4ade80' }}>
+            <a href={WA_LINK}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#25D366] hover:text-green-300 transition-colors">
               <IconWA /> Chat WhatsApp
             </a>
           </div>
-          {sections.map(sec => (
-            <div key={sec.title}>
-              <h4 className="text-xs font-bold tracking-[0.2em] uppercase mb-4" style={{ color: '#475569' }}>{sec.title}</h4>
-              <ul className="space-y-2.5">
-                {sec.links.map(l => (
-                  <li key={l.l}>
-                    <a href={l.h} className="text-sm transition-colors hover:text-white" style={{ color: '#64748b' }}>{l.l}</a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <div className="border-t pt-8 flex flex-col sm:flex-row justify-between items-center gap-4" style={{ borderColor: '#1e293b' }}>
-          <p className="text-xs" style={{ color: '#334155' }}>
-            © 2026 PT. Alta Nikindo. Seluruh merek dagang Nikon adalah milik Nikon Corporation.
-          </p>
-          <div className="flex gap-6">
-            {['Kebijakan Privasi', 'Syarat & Ketentuan'].map(t => (
-              <a key={t} href="#" className="text-xs transition-colors hover:text-slate-300" style={{ color: '#334155' }}>{t}</a>
-            ))}
+          <div>
+            <h4 className="text-white font-bold uppercase tracking-wider mb-4 text-sm">Layanan</h4>
+            <ul className="space-y-2 text-sm text-zinc-500">
+              <li><a href={WA_GARANSI} className="hover:text-[#ffe000] transition-colors">Registrasi Garansi</a></li>
+              <li><a href={WA_CLAIM} className="hover:text-[#ffe000] transition-colors">Klaim Promo</a></li>
+              <li><a href={WA_SERVICE} className="hover:text-[#ffe000] transition-colors">Cek Status Servis</a></li>
+              <li><a href="/events/register" className="hover:text-[#ffe000] transition-colors">Jadwal Event</a></li>
+            </ul>
           </div>
+          <div>
+            <h4 className="text-white font-bold uppercase tracking-wider mb-4 text-sm">Perusahaan</h4>
+            <ul className="space-y-2 text-sm text-zinc-500">
+              <li><a href="#" className="hover:text-[#ffe000] transition-colors">Tentang Kami</a></li>
+              <li><a href="#" className="hover:text-[#ffe000] transition-colors">Hubungi Kami</a></li>
+              <li><a href="#" className="hover:text-[#ffe000] transition-colors">Syarat & Ketentuan</a></li>
+              <li><a href="#" className="hover:text-[#ffe000] transition-colors">Kebijakan Privasi</a></li>
+            </ul>
+          </div>
+        </div>
+        <div className="border-t border-zinc-900 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-zinc-600 font-medium">
+          <p>© 2026 PT. Alta Nikindo. Seluruh merek dagang Nikon adalah milik Nikon Corporation.</p>
+          <p className="mt-2 md:mt-0">Sistem CRM Terintegrasi dengan OCR AI</p>
         </div>
       </div>
     </footer>
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function NikonPage() {
   const [cfg, setCfg] = useState<NikonPageConfig>(DEFAULT_NIKON_CONFIG);
 
@@ -700,44 +523,22 @@ export default function NikonPage() {
 
   return (
     <SiteContext.Provider value={ctxValue}>
-    <div className="min-h-screen font-sans antialiased">
-      <Navbar />
-      <main>
-        <HeroSection />
-        <AnnouncementBar />
-        <LayananSection />
-        <EventSection />
-        <FeatureSection
-          tag="Claim Promo"
-          title="Dapatkan Hadiah dari Pembelian Nikon Anda"
-          subtitle="Cashback, aksesori gratis & lebih banyak lagi"
-          body="Setiap pembelian kamera atau lensa Nikon resmi di toko rekanan Alta Nikindo berhak mendapatkan promo eksklusif. Siapkan nota pembelian dan kartu garansi, lalu chat via WhatsApp."
-          cta="Ajukan Claim via WhatsApp"
-          href={waLinks.WA_CLAIM}
-          visual={<FeatureVisual label="Claim Promo Nikon" gradient="bg-gradient-to-br from-slate-700 to-slate-900" />}
-        />
-        <FeatureSection
-          tag="Garansi Resmi"
-          title="Lindungi Investasi Fotografi Anda"
-          subtitle="Garansi resmi Nikon Indonesia"
-          body="Registrasikan produk Nikon Anda untuk mendapatkan garansi resmi dan prioritas layanan di Nikon Pusat Service. Cukup satu kali daftar, produk Anda terlindungi penuh."
-          cta="Daftar Garansi Sekarang"
-          href={waLinks.WA_GARANSI}
-          reverse
-          visual={<FeatureVisual label="Garansi Nikon" gradient="bg-gradient-to-br from-amber-800 to-amber-900" />}
-        />
-        <WACTASection />
-        <ServiceCenterSection />
-      </main>
-      <Footer />
-      <div className="fixed bottom-5 right-5 z-50">
-        <Link href="/admin/homepage"
-          className="text-xs font-bold px-3 py-2 rounded-lg shadow-lg transition opacity-40 hover:opacity-100 backdrop-blur-sm text-white"
-          style={{ background: 'rgba(15,23,42,0.8)' }}>
-          ✏️ Edit
-        </Link>
+      <div className="min-h-screen bg-zinc-950 text-white font-sans antialiased" style={{ scrollbarColor: '#3f3f46 #09090b' }}>
+        <Navbar />
+        <main>
+          <HeroSection />
+          <ServicesSection />
+          <EventsSection />
+          <WACTASection />
+        </main>
+        <Footer />
+        <div className="fixed bottom-5 right-5 z-50">
+          <Link href="/admin/homepage"
+            className="text-xs font-bold px-3 py-2 shadow-lg transition opacity-40 hover:opacity-100 text-white bg-zinc-900/80 backdrop-blur-sm border border-zinc-700">
+            ✏️ Edit
+          </Link>
+        </div>
       </div>
-    </div>
     </SiteContext.Provider>
   );
 }

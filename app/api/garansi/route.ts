@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const FONNTE_TOKEN = process.env.FONNTE_TOKEN || '';
+const FONNTE_TOKEN    = process.env.FONNTE_TOKEN || '';
+const ADMIN_WA_NUMBER = process.env.ADMIN_WA_NUMBER || '';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
@@ -194,9 +195,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'File Kartu Garansi dan Nota Pembelian wajib diunggah.' }, { status: 400 });
     }
 
-    const { konsumen, matchedPhone } = await findKonsumen(supabase, phone);
+    let { konsumen, matchedPhone } = await findKonsumen(supabase, phone);
     if (!konsumen) {
-      return NextResponse.json({ error: 'Nomor WhatsApp tidak terdaftar.' }, { status: 404 });
+      const normalizedPhone = phone.startsWith('0') ? '62' + phone.slice(1) : phone;
+      const { error: insertErr } = await supabase.from('konsumen').insert({
+        nomor_wa: normalizedPhone,
+        nama_lengkap,
+        nik: nik || null,
+        alamat_rumah,
+        kelurahan,
+        kecamatan,
+        kabupaten_kotamadya,
+        provinsi,
+        kodepos,
+        status_langkah: 'START',
+      });
+      if (insertErr && insertErr.code !== '23505') {
+        return NextResponse.json({ error: 'Gagal mendaftarkan nomor WA: ' + insertErr.message }, { status: 500 });
+      }
+      matchedPhone = normalizedPhone;
+      konsumen = { nomor_wa: normalizedPhone };
     }
 
     // Update konsumen
@@ -276,8 +294,14 @@ export async function POST(req: Request) {
     // Update status konsumen
     await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', matchedPhone);
 
-    // Notif WA
-    const pesanWA = `Pendaftaran Garansi berhasil dan dokumen telah diterima! 🎉\n\nAdmin akan memverifikasi data Anda dalam maksimal 14 hari kerja.\n\nKetik *MENU* untuk kembali ke menu utama.`;
+    // Notif WA ke ADMIN
+    if (ADMIN_WA_NUMBER) {
+      const pesanAdmin = `🔔 *Registrasi Garansi Baru!*\n\n👤 ${nama_lengkap}\n📱 ${matchedPhone}\n📦 ${tipe_barang}\n🔢 ${nomor_seri}\n🏪 ${nama_toko}\n📅 ${tanggal_pembelian || '-'}\n\nVerifikasi: /admin/garansi`;
+      kirimWA(ADMIN_WA_NUMBER, pesanAdmin);
+    }
+
+    // Notif WA ke konsumen
+    const pesanWA = `Pendaftaran Garansi berhasil dan dokumen telah diterima! 🎉\n\nAdmin akan memverifikasi data Anda dalam maksimal 14 hari kerja dan menghubungi Anda via WhatsApp.\n\nTerima kasih!`;
     await kirimWA(matchedPhone, pesanWA);
 
     return NextResponse.json({ success: true, message: 'Data garansi berhasil dikirim!' });

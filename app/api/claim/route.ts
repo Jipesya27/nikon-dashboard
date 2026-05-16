@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const FONNTE_TOKEN = process.env.FONNTE_TOKEN || '';
+const FONNTE_TOKEN    = process.env.FONNTE_TOKEN || '';
+const ADMIN_WA_NUMBER = process.env.ADMIN_WA_NUMBER || '';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
@@ -203,10 +204,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'File Kartu Garansi dan Nota Pembelian wajib diunggah.' }, { status: 400 });
     }
 
-    // Cari konsumen
-    const { konsumen, matchedPhone } = await findKonsumen(supabase, phone);
+    // Cari atau buat konsumen baru (upsert)
+    let { konsumen, matchedPhone } = await findKonsumen(supabase, phone);
     if (!konsumen) {
-      return NextResponse.json({ error: 'Nomor WhatsApp tidak terdaftar. Pastikan Anda sudah mulai chat dengan bot terlebih dahulu.' }, { status: 404 });
+      // Normalisasi phone: jika mulai dari 0 → ganti ke 62
+      const normalizedPhone = phone.startsWith('0') ? '62' + phone.slice(1) : phone;
+      const { error: insertErr } = await supabase.from('konsumen').insert({
+        nomor_wa: normalizedPhone,
+        nama_lengkap,
+        nik: nik || null,
+        alamat_rumah,
+        kelurahan,
+        kecamatan,
+        kabupaten_kotamadya,
+        provinsi,
+        kodepos,
+        status_langkah: 'START',
+      });
+      if (insertErr && insertErr.code !== '23505') {
+        console.error('Gagal buat konsumen baru:', insertErr);
+        return NextResponse.json({ error: 'Gagal mendaftarkan nomor WA: ' + insertErr.message }, { status: 500 });
+      }
+      matchedPhone = normalizedPhone;
+      konsumen = { nomor_wa: normalizedPhone };
     }
 
     // 1. UPDATE tabel konsumen dengan data diri terbaru
@@ -283,7 +303,13 @@ export async function POST(req: Request) {
       .update({ status_langkah: nextStatus })
       .eq('nomor_wa', matchedPhone);
 
-    // 5. Kirim notifikasi WA ke pendaftar
+    // 5. Notif WA ke ADMIN
+    if (ADMIN_WA_NUMBER) {
+      const pesanAdmin = `🔔 *Claim Promo Baru!*\n\n👤 ${nama_lengkap}\n📱 ${matchedPhone}\n📦 ${tipe_barang}\n🔢 ${nomor_seri}\n🎁 ${jenis_promosi || '-'}\n🏪 ${nama_toko}\n📅 ${tanggal_pembelian || '-'}\n\nVerifikasi: /admin/claims`;
+      kirimWA(ADMIN_WA_NUMBER, pesanAdmin);
+    }
+
+    // 6. Kirim notifikasi WA ke pendaftar
     const pesanWA = nextStatus === 'START'
       ? `Pengisian data Claim Promo berhasil dan dokumen telah diterima! 🎉\n\nNotifikasi update status Claim akan kami kirim ke nomor *${nomor_wa_update}*.\n\nProses verifikasi memerlukan waktu maksimal 14 hari kerja. Terima kasih.\n\nKetik *MENU* untuk kembali ke menu utama.`
       : `Pengisian data Claim Promo berhasil dan dokumen telah diterima! 🎉\n\n*Untuk notifikasi update status Claim*, apakah Anda ingin menggunakan nomor WA ini, atau mendaftarkan nomor lain? Ketik *INI* atau *NOMOR LAIN*?`;
