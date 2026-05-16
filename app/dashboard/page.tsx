@@ -624,6 +624,9 @@ export default function NikonDashboard() {
       }
    };
    
+   // Reset zoom panel dokumen saat modal dibuka
+   useEffect(() => { if (isModalOpen) { setDualZoomG(1); setDualZoomN(1); } }, [isModalOpen]);
+
    // Restore session dari localStorage hanya di client (hindari hydration mismatch)
    useEffect(() => {
       try {
@@ -4177,8 +4180,21 @@ export default function NikonDashboard() {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const dBankInfo = dedup(events.map((e: any) => e.bank_info));
             const dNamaToko = dedup(claims.map(c => c.nama_toko));
+
+            // Split-view: edit claim/garansi tampilkan dokumen di kiri, form di kanan
+            const toViewUrl = (v: string | File | null | undefined): string | null => {
+               if (!v) return null;
+               if (v instanceof File) return URL.createObjectURL(v);
+               return v;
+            };
+            const splitGaransiUrl = toViewUrl(activeTab === 'claim' ? claimForm.link_kartu_garansi : warrantyForm.link_kartu_garansi);
+            const splitNotaUrl    = toViewUrl(activeTab === 'claim' ? claimForm.link_nota_pembelian : warrantyForm.link_nota_pembelian);
+            const isSplitView     = modalAction === 'edit'
+               && (activeTab === 'claim' || activeTab === 'garansi')
+               && !!(splitGaransiUrl || splitNotaUrl);
+
             return (
-            <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4 animate-fade-in">
+            <div className={`fixed inset-0 z-40 animate-fade-in ${isSplitView ? 'flex bg-zinc-950' : 'bg-black/60 flex items-center justify-center p-4'}`}>
                {/* Global datalists untuk autocomplete dari data DB */}
                <datalist id="dl-tipe-barang">{dTipeBarang.map(v => <option key={v} value={v} />)}</datalist>
                <datalist id="dl-nama-lengkap">{dNamaLengkap.map(v => <option key={v} value={v} />)}</datalist>
@@ -4195,7 +4211,46 @@ export default function NikonDashboard() {
                <datalist id="dl-deposit-amount">{dDepositAmount.map(v => <option key={v} value={v} />)}</datalist>
                <datalist id="dl-bank-info">{dBankInfo.map(v => <option key={v} value={v} />)}</datalist>
                <datalist id="dl-nama-toko">{dNamaToko.map(v => <option key={v} value={v} />)}</datalist>
-               <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+
+               {/* Panel kiri: dokumen (hanya split view) */}
+               {isSplitView && (
+                  <div className="flex-1 flex flex-col gap-2 p-2 min-w-0 overflow-hidden">
+                     {([
+                        { label: 'Kartu Garansi', url: splitGaransiUrl, zoom: dualZoomG, setZoom: setDualZoomG },
+                        { label: 'Nota Pembelian', url: splitNotaUrl,    zoom: dualZoomN, setZoom: setDualZoomN },
+                     ] as const).map(({ label, url, zoom, setZoom }) => (
+                        <div key={label} className="flex-1 flex flex-col bg-zinc-900 rounded-xl overflow-hidden min-h-0">
+                           <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 shrink-0">
+                              <span className="text-xs font-bold text-zinc-300 uppercase tracking-wide">{label}</span>
+                              <div className="flex items-center gap-1">
+                                 <button type="button" onClick={() => setZoom((z: number) => Math.max(0.25, z - 0.25))} className="w-6 h-6 bg-zinc-800 hover:bg-zinc-700 rounded text-white font-bold leading-none">−</button>
+                                 <span className="w-10 text-center text-xs text-zinc-400">{Math.round(zoom * 100)}%</span>
+                                 <button type="button" onClick={() => setZoom((z: number) => Math.min(5, z + 0.25))} className="w-6 h-6 bg-zinc-800 hover:bg-zinc-700 rounded text-white font-bold leading-none">+</button>
+                                 <button type="button" onClick={() => setZoom(() => 1)} className="px-2 h-6 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-400 text-[11px]">Reset</button>
+                              </div>
+                           </div>
+                           <div className="flex-1 overflow-auto p-1" onWheel={e => { e.preventDefault(); setZoom((z: number) => Math.min(5, Math.max(0.25, z + (e.deltaY > 0 ? -0.15 : 0.15)))); }}>
+                              {url ? (
+                                 isGoogleDriveLink(url) ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={driveDocThumb(url)} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', minWidth: '100%' }} className="rounded block" />
+                                 ) : url.toLowerCase().endsWith('.pdf') ? (
+                                    <iframe src={url} className="w-full border-none rounded" style={{ height: '100%', minHeight: '300px' }} title={label} />
+                                 ) : (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={url} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', minWidth: '100%' }} className="rounded block" />
+                                 )
+                              ) : (
+                                 <div className="h-full flex items-center justify-center text-zinc-600 text-sm">Tidak ada file</div>
+                              )}
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               )}
+
+               {/* Panel kanan: form edit */}
+               <div className={`bg-white flex flex-col ${isSplitView ? 'w-[480px] shrink-0 max-h-screen shadow-2xl' : 'rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh]'}`}>
                   <div className="p-5 border-b border-gray-200 flex items-center gap-3">
                      <button
                         onClick={closeModal}
