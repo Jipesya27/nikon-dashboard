@@ -53,6 +53,9 @@ export default function AdminClaimsPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedId, setExpandedId]     = useState<number | null>(null);
   const [lightboxUrl, setLightboxUrl]   = useState<string | null>(null);
+  const [docsModal, setDocsModal]       = useState<{ garansi: string | null; nota: string | null } | null>(null);
+  const [zoomG, setZoomG]               = useState(1);
+  const [zoomN, setZoomN]               = useState(1);
   const [toast, setToast]               = useState<{ msg: string; ok: boolean } | null>(null);
   const [savingId, setSavingId]         = useState<number | null>(null);
   // Per-row edit state
@@ -129,14 +132,69 @@ export default function AdminClaimsPage() {
     return url;
   }
 
+  function ZoomPanel({ label, url, zoom, setZoom }: { label: string; url: string | null; zoom: number; setZoom: (fn: (z: number) => number) => void }) {
+    return (
+      <div className="flex-1 flex flex-col bg-zinc-900 rounded-lg overflow-hidden min-w-0">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 shrink-0 gap-2">
+          <span className="text-xs font-bold text-zinc-300 uppercase tracking-wide">{label}</span>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setZoom(z => Math.max(0.25, z - 0.25))} className="w-7 h-7 bg-zinc-800 hover:bg-zinc-700 rounded text-white font-bold text-base leading-none">−</button>
+            <span className="w-12 text-center text-xs text-zinc-400">{Math.round(zoom * 100)}%</span>
+            <button onClick={() => setZoom(z => Math.min(5, z + 0.25))} className="w-7 h-7 bg-zinc-800 hover:bg-zinc-700 rounded text-white font-bold text-base leading-none">+</button>
+            <button onClick={() => setZoom(() => 1)} className="px-2 h-7 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-400 text-xs">Reset</button>
+          </div>
+        </div>
+        <div
+          className="flex-1 overflow-auto p-2"
+          onWheel={e => { e.preventDefault(); setZoom(z => Math.min(5, Math.max(0.25, z + (e.deltaY > 0 ? -0.15 : 0.15)))); }}
+        >
+          {url ? (
+            isDriveImg(url) ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={driveThumb(url, 'w2000')}
+                alt={label}
+                style={{ width: `${zoom * 100}%`, height: 'auto', minWidth: '100%' }}
+                className="rounded block"
+              />
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <a href={url} target="_blank" rel="noopener noreferrer" className="text-[#ffe000] underline text-sm">Buka di tab baru</a>
+              </div>
+            )
+          ) : (
+            <div className="h-full flex items-center justify-center text-zinc-600 text-sm">Tidak ada file</div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      {/* Lightbox */}
+      {/* Lightbox — untuk thumbnail di kolom Foto */}
       {lightboxUrl && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxUrl(null)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={lightboxUrl} alt="preview" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={e => e.stopPropagation()} />
           <button className="absolute top-4 right-4 text-white/70 hover:text-white text-3xl font-bold" onClick={() => setLightboxUrl(null)}>✕</button>
+        </div>
+      )}
+
+      {/* Dual-modal dokumen */}
+      {docsModal && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={() => setDocsModal(null)}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0" onClick={e => e.stopPropagation()}>
+            <span className="text-sm font-bold text-white">Dokumen Claim</span>
+            <div className="flex items-center gap-3 text-xs text-zinc-500">
+              <span>Scroll roda mouse untuk zoom · Drag untuk geser</span>
+              <button onClick={() => setDocsModal(null)} className="text-white/60 hover:text-white text-2xl font-bold ml-2 leading-none">✕</button>
+            </div>
+          </div>
+          <div className="flex flex-1 gap-2 p-2 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <ZoomPanel label="Kartu Garansi"   url={docsModal.garansi} zoom={zoomG} setZoom={setZoomG} />
+            <ZoomPanel label="Nota Pembelian"  url={docsModal.nota}    zoom={zoomN} setZoom={setZoomN} />
+          </div>
         </div>
       )}
 
@@ -253,42 +311,20 @@ export default function AdminClaimsPage() {
                       <tr className="bg-zinc-900/70 border-b border-zinc-800">
                         <td colSpan={8} className="px-6 py-5">
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Foto besar */}
+                            {/* Dokumen */}
                             <div>
                               <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">Dokumen</p>
-                              <div className="flex gap-4 flex-wrap">
-                                {c.link_kartu_garansi && (
-                                  <div className="flex flex-col gap-1 items-center">
-                                    <span className="text-xs text-zinc-500">Kartu Garansi</span>
-                                    {isDriveImg(c.link_kartu_garansi) ? (
-                                      <button onClick={() => setLightboxUrl(driveThumb(c.link_kartu_garansi, 'w1600'))}
-                                        className="w-32 h-24 rounded-lg overflow-hidden border border-zinc-700 hover:border-[#ffe000] transition-colors">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={driveThumb(c.link_kartu_garansi)} alt="kartu garansi" className="w-full h-full object-cover" />
-                                      </button>
-                                    ) : (
-                                      <a href={c.link_kartu_garansi} target="_blank" rel="noopener noreferrer"
-                                        className="text-[#ffe000] text-xs underline">Buka Link</a>
-                                    )}
-                                  </div>
-                                )}
-                                {c.link_nota_pembelian && (
-                                  <div className="flex flex-col gap-1 items-center">
-                                    <span className="text-xs text-zinc-500">Nota Pembelian</span>
-                                    {isDriveImg(c.link_nota_pembelian) ? (
-                                      <button onClick={() => setLightboxUrl(driveThumb(c.link_nota_pembelian, 'w1600'))}
-                                        className="w-32 h-24 rounded-lg overflow-hidden border border-zinc-700 hover:border-[#ffe000] transition-colors">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={driveThumb(c.link_nota_pembelian)} alt="nota" className="w-full h-full object-cover" />
-                                      </button>
-                                    ) : (
-                                      <a href={c.link_nota_pembelian} target="_blank" rel="noopener noreferrer"
-                                        className="text-[#ffe000] text-xs underline">Buka Link</a>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                              {/* Alamat pengiriman */}
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setZoomG(() => 1); setZoomN(() => 1);
+                                  setDocsModal({ garansi: c.link_kartu_garansi, nota: c.link_nota_pembelian });
+                                }}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-[#ffe000] rounded-lg transition-colors text-sm font-semibold text-white"
+                              >
+                                <svg className="w-4 h-4 text-[#ffe000]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                Lihat Kartu Garansi &amp; Nota
+                              </button>
                               <div className="mt-4">
                                 <p className="text-xs text-zinc-500 mb-1">Alamat Pengiriman Hadiah</p>
                                 <p className="text-sm text-zinc-300">{c.alamat_pengiriman}</p>

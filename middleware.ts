@@ -5,6 +5,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname === '/admin/login') return NextResponse.next();
+  if (pathname === '/admin/google-auth') return NextResponse.next();
   if (pathname === '/api/admin/auth') return NextResponse.next();
 
   const session = request.cookies.get('admin_session')?.value;

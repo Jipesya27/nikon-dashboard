@@ -146,11 +146,11 @@ function ClaimForm() {
     const file = e.target.files?.[0] || null;
     if (!file) return;
     const url = URL.createObjectURL(file);
-    if (type === 'garansi') { setFileGaransi(file); setPreviewGaransi(url); }
-    else {
-      setFileNota(file); setPreviewNota(url);
-      // Otomatis jalankan OCR setelah nota dipilih
+    if (type === 'garansi') {
+      setFileGaransi(file); setPreviewGaransi(url);
       if (file.type.startsWith('image/')) runOcr(file);
+    } else {
+      setFileNota(file); setPreviewNota(url);
     }
   }
 
@@ -172,7 +172,7 @@ function ClaimForm() {
           ...(tanggal_pembelian && !prev.tanggal_pembelian ? { tanggal_pembelian } : {}),
           ...(nama_toko         && !prev.nama_toko         ? { nama_toko }         : {}),
         }));
-        if (result.success) setOcrMsg('✓ Data produk berhasil dibaca otomatis dari nota. Periksa dan koreksi jika perlu.');
+        if (result.success) setOcrMsg('✓ Data produk berhasil dibaca otomatis dari kartu garansi. Periksa dan koreksi jika perlu.');
         else setOcrMsg(result.reason || 'OCR selesai namun tidak semua data terbaca.');
       }
     } catch { setOcrMsg('OCR gagal — isi data produk secara manual.'); }
@@ -388,10 +388,90 @@ function ClaimForm() {
             </div>
           )}
 
-          {/* ── SECTION 3: DATA PRODUK ── */}
+          {/* ── SECTION 3: UPLOAD DOKUMEN ── */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
               <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">{recipient === 'orang_lain' ? 4 : 3}</div>
+              <h2 className="text-base font-semibold text-gray-800">Upload Dokumen</h2>
+            </div>
+
+            {/* Kartu Garansi */}
+            <div>
+              <label className={labelCls}>
+                Foto Kartu Garansi {req}
+                <span className="text-xs text-green-600 font-normal ml-2">— data produk terbaca otomatis</span>
+              </label>
+              <input ref={refGaransi} type="file" accept="image/*,application/pdf" onChange={e => handleFile(e, 'garansi')} className="hidden" />
+              <button type="button" onClick={() => refGaransi.current?.click()}
+                className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${fileGaransi ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'}`}>
+                {previewGaransi && fileGaransi?.type.startsWith('image/') ? (
+                  <div className="flex flex-col items-center gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={previewGaransi} alt="preview" className="h-24 object-contain rounded" />
+                    <span className="text-xs text-green-600 font-medium">{fileGaransi.name}</span>
+                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
+                  </div>
+                ) : fileGaransi ? (
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-xs text-green-600 font-medium">{fileGaransi.name}</span>
+                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <svg className="w-8 h-8 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <span className="text-sm text-gray-800 font-medium">Ketuk untuk upload foto/PDF</span>
+                    <span className="text-xs text-gray-700">Kartu Garansi dari dalam kotak produk</span>
+                  </div>
+                )}
+              </button>
+
+              {ocrLoading && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-blue-600">
+                  <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                  Membaca data kartu garansi otomatis...
+                </div>
+              )}
+              {ocrMsg && !ocrLoading && (
+                <p className={`mt-2 text-xs ${ocrMsg.startsWith('✓') ? 'text-green-600' : 'text-amber-600'}`}>{ocrMsg}</p>
+              )}
+            </div>
+
+            {/* Nota Pembelian */}
+            <div>
+              <label className={labelCls}>Foto Nota Pembelian {req}</label>
+              <input ref={refNota} type="file" accept="image/*,application/pdf" onChange={e => handleFile(e, 'nota')} className="hidden" />
+              <button type="button" onClick={() => refNota.current?.click()}
+                className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${fileNota ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'}`}>
+                {previewNota && fileNota?.type.startsWith('image/') ? (
+                  <div className="flex flex-col items-center gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={previewNota} alt="preview" className="h-24 object-contain rounded" />
+                    <span className="text-xs text-green-600 font-medium">{fileNota.name}</span>
+                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
+                  </div>
+                ) : fileNota ? (
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-xs text-green-600 font-medium">{fileNota.name}</span>
+                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <svg className="w-8 h-8 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <span className="text-sm text-gray-800 font-medium">Ketuk untuk upload foto/PDF</span>
+                    <span className="text-xs text-gray-700">Nota atau struk pembelian dari toko</span>
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* ── SECTION 4: DATA PRODUK ── */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">{recipient === 'orang_lain' ? 5 : 4}</div>
               <h2 className="text-base font-semibold text-gray-800">Data Produk & Pembelian</h2>
             </div>
 
@@ -426,87 +506,6 @@ function ClaimForm() {
               <textarea name="alamat_pengiriman" value={formData.alamat_pengiriman} onChange={handleChange} required rows={3}
                 disabled={alamatKirimSamaRumah} placeholder="Alamat lengkap tujuan pengiriman"
                 className={inputCls + " resize-none disabled:bg-gray-200 disabled:text-gray-700"} />
-            </div>
-          </div>
-
-          {/* ── SECTION 4: UPLOAD DOKUMEN ── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">{recipient === 'orang_lain' ? 5 : 4}</div>
-              <h2 className="text-base font-semibold text-gray-800">Upload Dokumen</h2>
-            </div>
-
-            {/* Kartu Garansi */}
-            <div>
-              <label className={labelCls}>Foto Kartu Garansi {req}</label>
-              <input ref={refGaransi} type="file" accept="image/*,application/pdf" onChange={e => handleFile(e, 'garansi')} className="hidden" />
-              <button type="button" onClick={() => refGaransi.current?.click()}
-                className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${fileGaransi ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'}`}>
-                {previewGaransi && fileGaransi?.type.startsWith('image/') ? (
-                  <div className="flex flex-col items-center gap-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={previewGaransi} alt="preview" className="h-24 object-contain rounded" />
-                    <span className="text-xs text-green-600 font-medium">{fileGaransi.name}</span>
-                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
-                  </div>
-                ) : fileGaransi ? (
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-xs text-green-600 font-medium">{fileGaransi.name}</span>
-                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-1">
-                    <svg className="w-8 h-8 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    <span className="text-sm text-gray-800 font-medium">Ketuk untuk upload foto/PDF</span>
-                    <span className="text-xs text-gray-700">Kartu Garansi dari dalam kotak produk</span>
-                  </div>
-                )}
-              </button>
-            </div>
-
-            {/* Nota Pembelian */}
-            <div>
-              <label className={labelCls}>
-                Foto Nota Pembelian {req}
-                <span className="text-xs text-green-600 font-normal ml-2">— OCR otomatis baca data produk</span>
-              </label>
-              <input ref={refNota} type="file" accept="image/*,application/pdf" onChange={e => handleFile(e, 'nota')} className="hidden" />
-              <button type="button" onClick={() => refNota.current?.click()}
-                className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${fileNota ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'}`}>
-                {previewNota && fileNota?.type.startsWith('image/') ? (
-                  <div className="flex flex-col items-center gap-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={previewNota} alt="preview" className="h-24 object-contain rounded" />
-                    <span className="text-xs text-green-600 font-medium">{fileNota.name}</span>
-                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
-                  </div>
-                ) : fileNota ? (
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-xs text-green-600 font-medium">{fileNota.name}</span>
-                    <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-1">
-                    <svg className="w-8 h-8 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    <span className="text-sm text-gray-800 font-medium">Ketuk untuk upload foto/PDF</span>
-                    <span className="text-xs text-gray-700">Nota atau struk pembelian dari toko</span>
-                  </div>
-                )}
-              </button>
-
-              {/* Status OCR */}
-              {ocrLoading && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-blue-600">
-                  <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                  </svg>
-                  Membaca data nota otomatis...
-                </div>
-              )}
-              {ocrMsg && !ocrLoading && (
-                <p className={`mt-2 text-xs ${ocrMsg.startsWith('✓') ? 'text-green-600' : 'text-amber-600'}`}>{ocrMsg}</p>
-              )}
             </div>
           </div>
 

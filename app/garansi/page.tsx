@@ -146,10 +146,11 @@ function GaransiForm() {
     const file = e.target.files?.[0] || null;
     if (!file) return;
     const url = URL.createObjectURL(file);
-    if (type === 'garansi') { setFileGaransi(file); setPreviewGaransi(url); }
-    else {
-      setFileNota(file); setPreviewNota(url);
+    if (type === 'garansi') {
+      setFileGaransi(file); setPreviewGaransi(url);
       if (file.type.startsWith('image/')) runOcr(file);
+    } else {
+      setFileNota(file); setPreviewNota(url);
     }
   }
 
@@ -326,40 +327,19 @@ function GaransiForm() {
             />
           </div>
 
-          {/* ── DATA PRODUK ── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">2</div>
-              <h2 className="text-base font-semibold text-gray-800">Data Produk & Pembelian</h2>
-            </div>
-            <div>
-              <label className={labelCls}>Tipe Barang {req}</label>
-              <input type="text" name="tipe_barang" value={formData.tipe_barang} onChange={handleChange} required placeholder="Contoh: Nikon Z50 Kit 16-50mm" className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Nomor Seri Produk {req}</label>
-              <input type="text" name="nomor_seri" value={formData.nomor_seri} onChange={handleChange} required placeholder="Tertera di body kamera/lensa/kotak" className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Tanggal Pembelian {req}</label>
-              <input type="date" name="tanggal_pembelian" value={formData.tanggal_pembelian} onChange={handleChange} required className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Nama Toko / Dealer {req}</label>
-              <input type="text" name="nama_toko" value={formData.nama_toko} onChange={handleChange} required placeholder="Nama toko tempat pembelian" className={inputCls} />
-            </div>
-          </div>
-
           {/* ── UPLOAD DOKUMEN ── */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
+              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">2</div>
               <h2 className="text-base font-semibold text-gray-800">Upload Dokumen</h2>
             </div>
 
             {/* Kartu Garansi */}
             <div>
-              <label className={labelCls}>Foto Kartu Garansi {req}</label>
+              <label className={labelCls}>
+                Foto Kartu Garansi {req}
+                <span className="text-xs text-green-600 font-normal ml-2">— data produk terbaca otomatis</span>
+              </label>
               <input ref={refGaransi} type="file" accept="image/*,application/pdf" onChange={e => handleFile(e, 'garansi')} className="hidden" />
               <button type="button" onClick={() => refGaransi.current?.click()}
                 className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${fileGaransi ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'}`}>
@@ -383,14 +363,24 @@ function GaransiForm() {
                   </div>
                 )}
               </button>
+
+              {ocrLoading && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-blue-600">
+                  <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                  Membaca data kartu garansi otomatis...
+                </div>
+              )}
+              {ocrMsg && !ocrLoading && (
+                <p className={`mt-2 text-xs ${ocrMsg.startsWith('✓') ? 'text-green-600' : 'text-amber-600'}`}>{ocrMsg}</p>
+              )}
             </div>
 
             {/* Nota Pembelian */}
             <div>
-              <label className={labelCls}>
-                Foto Nota Pembelian {req}
-                <span className="text-xs text-green-600 font-normal ml-2">— OCR otomatis baca data produk</span>
-              </label>
+              <label className={labelCls}>Foto Nota Pembelian {req}</label>
               <input ref={refNota} type="file" accept="image/*,application/pdf" onChange={e => handleFile(e, 'nota')} className="hidden" />
               <button type="button" onClick={() => refNota.current?.click()}
                 className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${fileNota ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'}`}>
@@ -415,18 +405,30 @@ function GaransiForm() {
                 )}
               </button>
 
-              {ocrLoading && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-blue-600">
-                  <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                  </svg>
-                  Membaca data nota otomatis...
-                </div>
-              )}
-              {ocrMsg && !ocrLoading && (
-                <p className={`mt-2 text-xs ${ocrMsg.startsWith('✓') ? 'text-green-600' : 'text-amber-600'}`}>{ocrMsg}</p>
-              )}
+            </div>
+          </div>
+
+          {/* ── DATA PRODUK ── */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
+              <h2 className="text-base font-semibold text-gray-800">Data Produk & Pembelian</h2>
+            </div>
+            <div>
+              <label className={labelCls}>Tipe Barang {req}</label>
+              <input type="text" name="tipe_barang" value={formData.tipe_barang} onChange={handleChange} required placeholder="Contoh: Nikon Z50 Kit 16-50mm" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Nomor Seri Produk {req}</label>
+              <input type="text" name="nomor_seri" value={formData.nomor_seri} onChange={handleChange} required placeholder="Tertera di body kamera/lensa/kotak" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Tanggal Pembelian {req}</label>
+              <input type="date" name="tanggal_pembelian" value={formData.tanggal_pembelian} onChange={handleChange} required className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Nama Toko / Dealer {req}</label>
+              <input type="text" name="nama_toko" value={formData.nama_toko} onChange={handleChange} required placeholder="Nama toko tempat pembelian" className={inputCls} />
             </div>
           </div>
 

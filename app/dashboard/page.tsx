@@ -56,16 +56,8 @@ const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) =
 
 export default function NikonDashboard() {
    // LOGIN & FORGOT PASSWORD STATES
-   const [currentUser, setCurrentUser] = useState<Karyawan | null>(() => {
-      if (typeof window === 'undefined') return null;
-      try {
-         const savedSession = localStorage.getItem('nikon_karyawan');
-         return savedSession ? JSON.parse(savedSession) : null;
-      } catch {
-         return null;
-      }
-   });
-   const [isLoggedIn, setIsLoggedIn] = useState(!!currentUser);
+   const [currentUser, setCurrentUser] = useState<Karyawan | null>(null);
+   const [isLoggedIn, setIsLoggedIn] = useState(false);
    const [loginForm, setLoginForm] = useState({ username: '', password: '' });
    const [loginError, setLoginError] = useState('');
    const [isForgotPw, setIsForgotPw] = useState(false);
@@ -607,6 +599,22 @@ export default function NikonDashboard() {
       }
    };
    
+   // Restore session dari localStorage hanya di client (hindari hydration mismatch)
+   useEffect(() => {
+      try {
+         const saved = localStorage.getItem('nikon_karyawan');
+         if (saved) {
+            const user: Karyawan = JSON.parse(saved);
+            setCurrentUser(user);
+            setIsLoggedIn(true);
+         } else {
+            setLoading(false);
+         }
+      } catch {
+         setLoading(false);
+      }
+   }, []);
+
    useEffect(() => {
       if (!isLoggedIn) return;
 
