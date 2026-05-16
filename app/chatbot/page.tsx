@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -310,7 +310,7 @@ export default function ChatbotPage() {
          {/* Header */}
          <header className="bg-gray-900 border-b-4 border-[#FFE500] px-6 py-4 flex items-center justify-between sticky top-0 z-30 shadow-lg">
             <div className="flex items-center gap-4">
-               <Link href="/" className="text-gray-400 hover:text-white text-sm font-medium transition flex items-center gap-1">
+               <Link href="/dashboard" className="text-gray-400 hover:text-white text-sm font-medium transition flex items-center gap-1">
                   ← Dashboard
                </Link>
                <div className="w-px h-5 bg-gray-600" />

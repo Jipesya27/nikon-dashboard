@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -66,7 +66,7 @@ function GoogleAuthInner() {
           <p className="text-gray-800 mb-4 font-medium">
             Halaman ini hanya bisa diakses oleh <strong>Admin</strong> yang sudah login di dashboard.
           </p>
-          <Link href="/" className="inline-block bg-black text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-800 transition">
+          <Link href="/dashboard" className="inline-block bg-black text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-800 transition">
             ← Login ke Dashboard
           </Link>
         </div>
@@ -211,7 +211,7 @@ function GoogleAuthInner() {
               🔐 Connect Google Drive — Authorize Now
             </a>
 
-            <Link href="/" className="block text-center text-sm font-bold text-gray-700 hover:text-gray-900 transition">
+            <Link href="/dashboard" className="block text-center text-sm font-bold text-gray-700 hover:text-gray-900 transition">
               ← Kembali ke Dashboard
             </Link>
           </div>

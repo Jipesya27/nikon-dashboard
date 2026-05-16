@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
@@ -499,7 +499,7 @@ export default function HomepageEditor() {
          {/* ── Top bar ── */}
          <header className="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between shrink-0 shadow-sm z-20">
             <div className="flex items-center gap-3">
-               <Link href="/" className="text-gray-400 hover:text-gray-700 text-xs font-medium transition">← Dashboard</Link>
+               <Link href="/dashboard" className="text-gray-400 hover:text-gray-700 text-xs font-medium transition">← Dashboard</Link>
                <div className="w-px h-4 bg-gray-200" />
                <h1 className="font-bold text-sm">🎨 Editor Homepage Nikon</h1>
                {dirty && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">Ada perubahan</span>}

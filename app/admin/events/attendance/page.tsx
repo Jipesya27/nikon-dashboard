@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
@@ -181,7 +181,7 @@ export default function AdminAttendancePage() {
           </div>
           <div className="flex items-center gap-3">
             <Link href="/admin/events" className="text-xs text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg">← Validasi Pembayaran</Link>
-            <Link href="/" className="text-xs text-zinc-400 hover:text-white">Dashboard</Link>
+            <Link href="/dashboard" className="text-xs text-zinc-400 hover:text-white">Dashboard</Link>
           </div>
         </div>
       </header>

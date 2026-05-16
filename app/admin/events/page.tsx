@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -152,7 +152,7 @@ export default function AdminEventsPage() {
             <Link href="/admin/events/deposit" className="text-xs text-[#FFE800] border border-[#FFE800]/40 hover:bg-[#FFE800]/10 px-3 py-1.5 rounded-lg transition-all font-semibold">
               Kelola Deposit →
             </Link>
-            <Link href="/" className="text-xs text-zinc-400 hover:text-white transition-colors">← Dashboard</Link>
+            <Link href="/dashboard" className="text-xs text-zinc-400 hover:text-white transition-colors">← Dashboard</Link>
           </div>
         </div>
       </header>
