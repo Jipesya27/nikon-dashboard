@@ -1,20 +1,20 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { DEFAULT_TEMPLATES, applyTemplate, loadChatbotTemplates } from './lib/chatbotTemplate';
-import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang, BarangAset } from './index';
+import { DEFAULT_TEMPLATES, applyTemplate, loadChatbotTemplates } from '@/app/lib/chatbotTemplate';
+import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang, BarangAset } from '@/app/index';
 import {
    VALIDASI_OPTIONS, STATUS_VALIDASI_GARANSI_OPTIONS, JENIS_GARANSI_OPTIONS, LAMA_GARANSI_OPTIONS,
    STATUS_SERVICE_OPTIONS, JENIS_PROMOSI_OPTIONS, JASA_PENGIRIMAN_OPTIONS, EVENT_STATUS_OPTIONS,
    PAYMENT_TYPE_OPTIONS, STATUS_PENDAFTARAN_OPTIONS, STATUS_REFUND_DEPOSIT_OPTIONS,
    ROLE_OPTIONS, CONSENT_OPTIONS, BUDGET_SOURCE_OPTIONS, STATUS_LANGKAH_OPTIONS,
    NAMA_BANK_OPTIONS
-} from './enums';
-import Header from './Header';
+} from '@/app/enums';
+import Header from '@/app/Header';
 import AddressFields from '@/app/components/AddressFields';
 import EventReport from '@/app/components/EventReport';
 
