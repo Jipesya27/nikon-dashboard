@@ -4198,7 +4198,10 @@ export default function NikonDashboard() {
                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                      speaker: events.map((e: any) => e.event_speaker),
                   };
-                  const dbOnlyValues = Array.from(new Set((rawDBMap[acFieldTab] || []).filter((v): v is string => Boolean(v) && v !== 'BELUM_DIISI' && !inTableSet.has(v)))).sort();
+                  const dbOnlyValues = Array.from(new Set((rawDBMap[acFieldTab] || []).filter((v): v is string => {
+                     if (typeof v !== 'string' || !v || v === 'BELUM_DIISI') return false;
+                     return !inTableSet.has(v);
+                  }))).sort();
 
                   return (
                      <div className="space-y-5 animate-fade-in text-gray-900">
@@ -4299,7 +4302,10 @@ export default function NikonDashboard() {
             const dedupAC = (fieldKey: string, arr: (string | null | undefined)[]) => {
                const pinned = autocompleteItems.filter(i => i.field_key === fieldKey && !i.hidden).map(i => i.value);
                const hiddenSet = new Set(autocompleteItems.filter(i => i.field_key === fieldKey && i.hidden).map(i => i.value));
-               const fromDB = arr.filter((v): v is string => Boolean(v) && v !== 'BELUM_DIISI' && !hiddenSet.has(v));
+               const fromDB = arr.filter((v): v is string => {
+                  if (typeof v !== 'string' || !v || v === 'BELUM_DIISI') return false;
+                  return !hiddenSet.has(v);
+               });
                return Array.from(new Set([...pinned, ...fromDB])).sort();
             };
             const dedup = (arr: (string | null | undefined)[]) =>
