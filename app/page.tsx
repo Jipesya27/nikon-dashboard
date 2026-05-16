@@ -83,7 +83,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <div className="flex items-center justify-between h-16">
             <a href="#" className="flex items-center gap-2">
-              <Image src="/ALTA_LOGO.png" alt="Alta Nikindo" width={120} height={40} className="h-10 w-auto object-contain" />
+              <Image src="/ALTA_baru.png" alt="Alta Nikindo" width={120} height={40} className="h-10 w-auto object-contain" />
             </a>
             <div className="hidden md:flex items-center gap-7">
               {NAV_LINKS.map(l => (
@@ -318,12 +318,12 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto px-5 sm:px-8 w-full flex justify-end">
             <FadeIn delay={80}>
               <div className="max-w-md text-right">
-                <p className="text-[#FFE500] text-xs font-black uppercase tracking-widest mb-2">Showroom Resmi</p>
+                <p className="text-[#FFE500] text-xs font-black uppercase tracking-widest mb-2">Distributor Resmi</p>
                 <h2 className="text-3xl sm:text-4xl font-black text-white">
-                  Experience Center<br />Berkelas Internasional
+                  Experience Now<br />Produk Berkelas
                 </h2>
                 <p className="text-gray-400 text-sm mt-3">
-                  Tampilan produk lengkap dengan standar display Nikon global, siap melayani Anda dengan pengalaman terbaik.
+                  Berbagai kebutuhan Studio mulai dari kamera Nikon, lampu studio Visico, tripod, filter dan dry cabinet Athabasca, tripod video Somita, dan Datacolor color management.
                 </p>
               </div>
             </FadeIn>
@@ -332,18 +332,30 @@ export default function HomePage() {
       </section>
 
       {/* ── BRANDS ── */}
-      <section id="brand" className="py-20 bg-white">
+      <section id="brand" className="py-20 bg-zinc-950">
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <FadeIn>
             <div className="text-center mb-12">
-              <div className="inline-block bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded mb-4">Brand</div>
-              <h2 className="text-3xl font-black text-zinc-900">Meet Our Brand</h2>
+              <div className="inline-block bg-[#FFE500] text-black text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded mb-4">Brand</div>
+              <h2 className="text-3xl font-black text-white">Meet Our Brand</h2>
               <p className="text-gray-500 text-sm mt-2">Brand-brand terpercaya yang kami distribusikan secara resmi di Indonesia</p>
             </div>
           </FadeIn>
           <FadeIn delay={100}>
-            <div className="flex justify-center">
-              <Image src="/brand_alta.png" alt="Brand-brand Alta Nikindo" width={900} height={300} className="w-full max-w-4xl h-auto object-contain" />
+            <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12">
+              {[
+                { src: '/brand-nikon.png', alt: 'Nikon' },
+                { src: '/brand-athabasca.png', alt: 'Athabasca' },
+                { src: '/brand-datacolor.png', alt: 'Datacolor' },
+                { src: '/brand-somita.png', alt: 'Somita' },
+                { src: '/brand-visico.png', alt: 'Visico' },
+              ].map((b, i) => (
+                <div key={b.alt}
+                  className="flex items-center justify-center p-5 rounded-2xl border border-white/10 hover:border-[#FFE500]/40 hover:bg-white/5 transition-all hover:scale-105 group"
+                  style={{ minWidth: 140 }}>
+                  <Image src={b.src} alt={b.alt} width={130} height={60} className="h-14 w-auto object-contain" />
+                </div>
+              ))}
             </div>
           </FadeIn>
         </div>
@@ -404,7 +416,7 @@ export default function HomePage() {
       <footer className="bg-black border-t border-zinc-900 py-10">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <Image src="/ALTA_LOGO.png" alt="Alta Nikindo" width={80} height={28} className="h-7 w-auto object-contain opacity-60" />
+            <Image src="/ALTA_baru.png" alt="Alta Nikindo" width={80} height={28} className="h-7 w-auto object-contain opacity-60" />
             <div>
               <div className="text-gray-600 text-[10px]">© 2026 All rights reserved.</div>
             </div>
