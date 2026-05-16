@@ -82,12 +82,8 @@ export default function HomePage() {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-zinc-900/96 backdrop-blur-md shadow-2xl' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <div className="flex items-center justify-between h-16">
-            <a href="#" className="flex items-center gap-3">
-              <Image src="/nikon-logo.svg" alt="Nikon" width={72} height={28} className="h-7 w-auto brightness-0 invert" />
-              <div className="hidden sm:block">
-                <div className="text-white font-black text-sm tracking-wide leading-none">Alta Nikindo</div>
-                <div className="text-[#FFE500] text-[9px] font-bold tracking-widest uppercase mt-0.5">Authorized Nikon Partner</div>
-              </div>
+            <a href="#" className="flex items-center gap-2">
+              <Image src="/ALTA_LOGO.png" alt="Alta Nikindo" width={120} height={40} className="h-10 w-auto object-contain" />
             </a>
             <div className="hidden md:flex items-center gap-7">
               {NAV_LINKS.map(l => (
@@ -170,14 +166,6 @@ export default function HomePage() {
         <Image src="/cp-store.png" alt="Nikon Experience Hub Interior" fill className="object-cover object-center" />
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/20 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-zinc-900/60 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-8 sm:p-12">
-          <div className="max-w-7xl mx-auto">
-            <FadeIn>
-              <p className="text-[#FFE500] text-xs font-black uppercase tracking-widest mb-2">Nikon Experience Hub</p>
-              <h2 className="text-3xl sm:text-4xl font-black text-white">Temukan Semua Produk Nikon<br />di Satu Tempat</h2>
-            </FadeIn>
-          </div>
-        </div>
       </section>
 
       {/* ── ABOUT ── */}
@@ -354,14 +342,8 @@ export default function HomePage() {
             </div>
           </FadeIn>
           <FadeIn delay={100}>
-            <div className="flex flex-wrap items-center justify-center gap-5">
-              {BRANDS.map(b => (
-                <div key={b.name}
-                  className="flex items-center justify-center px-10 py-5 rounded-2xl border-2 min-w-[150px] transition-all hover:scale-105 hover:shadow-lg"
-                  style={{ background: b.bg, borderColor: b.name === 'Nikon' ? '#FFE500' : '#e5e7eb' }}>
-                  <span className="font-black text-xl tracking-tight" style={{ color: b.textColor }}>{b.name}</span>
-                </div>
-              ))}
+            <div className="flex justify-center">
+              <Image src="/brand_alta.png" alt="Brand-brand Alta Nikindo" width={900} height={300} className="w-full max-w-4xl h-auto object-contain" />
             </div>
           </FadeIn>
         </div>
@@ -422,9 +404,8 @@ export default function HomePage() {
       <footer className="bg-black border-t border-zinc-900 py-10">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <Image src="/nikon-logo.svg" alt="Nikon" width={60} height={24} className="h-6 w-auto brightness-0 invert opacity-50" />
+            <Image src="/ALTA_LOGO.png" alt="Alta Nikindo" width={80} height={28} className="h-7 w-auto object-contain opacity-60" />
             <div>
-              <div className="text-white font-black text-xs">PT Alta Nikindo</div>
               <div className="text-gray-600 text-[10px]">© 2026 All rights reserved.</div>
             </div>
           </div>
