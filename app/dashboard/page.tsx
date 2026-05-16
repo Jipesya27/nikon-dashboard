@@ -4187,10 +4187,10 @@ export default function NikonDashboard() {
                if (v instanceof File) return URL.createObjectURL(v);
                return v;
             };
-            const splitGaransiUrl = toViewUrl(activeTab === 'claim' ? claimForm.link_kartu_garansi : warrantyForm.link_kartu_garansi);
-            const splitNotaUrl    = toViewUrl(activeTab === 'claim' ? claimForm.link_nota_pembelian : warrantyForm.link_nota_pembelian);
+            const splitGaransiUrl = toViewUrl(activeTab === 'claims' ? claimForm.link_kartu_garansi : warrantyForm.link_kartu_garansi);
+            const splitNotaUrl    = toViewUrl(activeTab === 'claims' ? claimForm.link_nota_pembelian : warrantyForm.link_nota_pembelian);
             const isSplitView     = modalAction === 'edit'
-               && (activeTab === 'claim' || activeTab === 'garansi')
+               && (activeTab === 'claims' || activeTab === 'warranties')
                && !!(splitGaransiUrl || splitNotaUrl);
 
             return (
