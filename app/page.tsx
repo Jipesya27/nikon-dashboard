@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -166,6 +166,12 @@ export default function HomePage() {
 
       {/* ── HERO ── */}
       <section className="relative bg-zinc-900 min-h-screen flex items-center overflow-hidden">
+        {/* Background image ambience */}
+        <div className="absolute inset-0">
+          <Image src="/cp-hero.png" alt="" fill className="object-cover object-center opacity-[0.12]" priority />
+        </div>
+        {/* Overlay gradient */}
+        <div className="absolute inset-0 bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-900/60" />
         {/* Grid pattern */}
         <div className="absolute inset-0"
           style={{ backgroundImage: 'linear-gradient(rgba(255,229,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,229,0,0.03) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
@@ -229,8 +235,11 @@ export default function HomePage() {
       </section>
 
       {/* ── ABOUT ── */}
-      <section id="tentang" className="py-28 bg-white">
-        <div className="max-w-7xl mx-auto px-5 sm:px-8">
+      <section id="tentang" className="py-28 bg-white relative overflow-hidden">
+        <div className="absolute inset-0">
+          <Image src="/cp-about.png" alt="" fill className="object-cover object-center opacity-[0.04]" />
+        </div>
+                <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-8">
           <div className="grid lg:grid-cols-2 gap-20 items-start">
             <FadeIn>
               <div className="inline-block bg-[#FFE500] text-black text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded mb-5">
@@ -305,7 +314,11 @@ export default function HomePage() {
       </section>
 
       {/* ── SERVICES ── */}
-      <section id="layanan" className="py-28 bg-zinc-950">
+      <section id="layanan" className="py-28 bg-zinc-950 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <Image src="/cp-services.png" alt="" fill className="object-cover object-center opacity-[0.08]" />
+        </div>
+        <div className="absolute inset-0 bg-zinc-950/70" />
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <FadeIn>
             <div className="mb-14">
@@ -392,7 +405,11 @@ export default function HomePage() {
       </section>
 
       {/* ── ACTIVITY ── */}
-      <section className="py-28 bg-zinc-900">
+      <section className="py-28 bg-zinc-900 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <Image src="/cp-activity.png" alt="" fill className="object-cover object-center opacity-[0.15]" />
+        </div>
+        <div className="absolute inset-0 bg-zinc-900/75" />
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <FadeIn>
@@ -456,7 +473,10 @@ export default function HomePage() {
       </section>
 
       {/* ── KONTAK ── */}
-      <section id="kontak" className="py-28 bg-white">
+      <section id="kontak" className="py-28 bg-white relative overflow-hidden">
+        <div className="absolute inset-0">
+          <Image src="/cp-contact.png" alt="" fill className="object-cover object-top opacity-[0.05]" />
+        </div>
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <FadeIn>
             <div className="text-center mb-14">
