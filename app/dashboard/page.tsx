@@ -97,6 +97,7 @@ export default function NikonDashboard() {
    const [searchPromo, setSearchPromo] = useState('');
    const [searchClaim, setSearchClaim] = useState('');
    const [filterStatusWarna, setFilterStatusWarna] = useState<string>('Semua');
+   const [filterDuplikat, setFilterDuplikat] = useState(false);
    const [printedClaimIds, setPrintedClaimIds] = useState<Set<string>>(() => {
       if (typeof window !== 'undefined') {
          try {
@@ -2023,6 +2024,22 @@ export default function NikonDashboard() {
       return counts;
    }, [claims]);
 
+   const duplicateClaimIds = useMemo(() => {
+      const duplicatesToMark = new Set<string>();
+      const snToIds: Record<string, string[]> = {};
+      claims.forEach(c => {
+         const sn = (c.nomor_seri || "").trim().toUpperCase();
+         if (sn && sn !== '-' && sn !== 'TBA' && c.id_claim) {
+            if (!snToIds[sn]) snToIds[sn] = [];
+            snToIds[sn].push(c.id_claim);
+         }
+      });
+      Object.values(snToIds).forEach(list => {
+         if (list.length > 1) list.forEach(id => duplicatesToMark.add(id));
+      });
+      return duplicatesToMark;
+   }, [claims]);
+
    const filteredClaims = useMemo(() => claims.filter((c: ClaimPromo) => {
       const name = (consumers[c.nomor_wa] || c.nomor_wa || "").toLowerCase();
       const seri = (c.nomor_seri || "").toLowerCase();
@@ -2038,8 +2055,9 @@ export default function NikonDashboard() {
          const color = getClaimStatusColor(c);
          if (color !== filterStatusWarna) return false;
       }
+      if (filterDuplikat && !(c.id_claim && duplicateClaimIds.has(c.id_claim))) return false;
       return true;
-   }), [claims, searchClaim, filterStatusWarna, consumers, getNamaPromo, getClaimStatusColor]); // Keep filteredClaims for search
+   }), [claims, searchClaim, filterStatusWarna, filterDuplikat, duplicateClaimIds, consumers, getNamaPromo, getClaimStatusColor]);
 
    const sortedClaims = useMemo(() => {
       const sortableItems = [...filteredClaims];
@@ -2111,26 +2129,6 @@ export default function NikonDashboard() {
       const dd = String(d.getDate()).padStart(2, '0');
       return `${dd} ${bulan[d.getMonth()]} ${d.getFullYear()}`;
    };
-
-   const duplicateClaimIds = useMemo(() => {
-      const duplicatesToMark = new Set<string>();
-      const snToIds: Record<string, string[]> = {};
-      claims.forEach(c => {
-         const sn = (c.nomor_seri || "").trim().toUpperCase();
-         if (sn && sn !== '-' && sn !== 'TBA' && c.id_claim) {
-            if (!snToIds[sn]) snToIds[sn] = [];
-            snToIds[sn].push(c.id_claim);
-         }
-      });
-      Object.values(snToIds).forEach(list => {
-         if (list.length > 1) {
-            for (let i = 0; i < list.length - 1; i++) {
-               duplicatesToMark.add(list[i]);
-            }
-         }
-      });
-      return duplicatesToMark;
-   }, [claims]);
 
    const filteredWarranties = useMemo(() => warranties.filter((w: Garansi) => (w.nomor_seri || "").toLowerCase().includes(searchGaransi.toLowerCase())), [warranties, searchGaransi]);
    const sortedWarranties = useMemo(() => {
@@ -3178,6 +3176,13 @@ export default function NikonDashboard() {
                            <option value="Pink">Tunggu Resi (Pink)</option>
                            <option value="Hijau">Selesai (Hijau)</option>
                         </select>
+                        <button
+                           onClick={() => setFilterDuplikat(v => !v)}
+                           className={`flex items-center gap-2 px-3 py-2.5 rounded-md border shadow-sm text-sm font-bold whitespace-nowrap transition ${filterDuplikat ? 'bg-red-500 text-white border-red-500' : 'bg-white text-red-600 border-red-300 hover:border-red-500'}`}
+                        >
+                           ⚠️ Duplikat
+                           <span className={`text-xs px-1.5 py-0.5 rounded-full font-black ${filterDuplikat ? 'bg-white text-red-500' : 'bg-red-100 text-red-600'}`}>{duplicateClaimIds.size}</span>
+                        </button>
                      </div>
                      <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
                         {([
