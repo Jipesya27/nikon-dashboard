@@ -2107,9 +2107,9 @@ export default function NikonDashboard() {
       if (!val) return '-';
       const d = new Date(val);
       if (isNaN(d.getTime())) return val;
-      const bulan = ['JAN','FEB','MAR','APR','MEI','JUN','JUL','AGU','SEP','OKT','NOV','DES'];
+      const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
       const dd = String(d.getDate()).padStart(2, '0');
-      return `${dd}${bulan[d.getMonth()]}${d.getFullYear()}`;
+      return `${dd} ${bulan[d.getMonth()]} ${d.getFullYear()}`;
    };
 
    const duplicateClaimIds = useMemo(() => {
