@@ -248,6 +248,13 @@ export default function NikonDashboard() {
    const [chatbotTemplates, setChatbotTemplates] = useState<Record<string, string>>({});
    const [isSubmitting, setIsSubmitting] = useState(false);
 
+   // TRANSAKSI DEALER
+   const [dealerSheet, setDealerSheet] = useState<{ headers: string[]; rows: string[][]; sheetName: string } | null>(null);
+   const [dealerLoading, setDealerLoading] = useState(false);
+   const [dealerError, setDealerError] = useState('');
+   const [dealerSearch, setDealerSearch] = useState('');
+   const [dealerSelected, setDealerSelected] = useState<Set<number>>(new Set());
+
    // IMAGE VIEWER STATES
 
    const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
@@ -483,6 +490,20 @@ export default function NikonDashboard() {
    useEffect(() => {
       if (typeof window !== 'undefined') localStorage.setItem('nikon_chat_pinned', JSON.stringify(pinnedChats));
    }, [pinnedChats]);
+   // Fetch data Transaksi Dealer saat tab aktif (lazy, sekali muat)
+   useEffect(() => {
+      if (activeTab !== 'dealer' || dealerSheet !== null || dealerLoading) return;
+      setDealerLoading(true);
+      setDealerError('');
+      fetch('/api/transaksi-dealer')
+         .then(r => r.json())
+         .then((json: { error?: string; headers: string[]; rows: string[][]; sheetName: string }) => {
+            if (json.error) throw new Error(json.error);
+            setDealerSheet(json);
+         })
+         .catch((e: Error) => setDealerError(e.message))
+         .finally(() => setDealerLoading(false));
+   }, [activeTab, dealerSheet, dealerLoading]);
    useEffect(() => {
       if (selectedWa && messages.length > 0) {
          const contactMessages = messages.filter(m => m.nomor_wa === selectedWa);
@@ -2228,6 +2249,7 @@ export default function NikonDashboard() {
             { id: 'services', label: '🔧 Service', count: services.length },
             { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
             { id: 'assets', label: '🗄️ Barang Aset', count: assets.length },
+            { id: 'dealer', label: '🏪 Transaksi Dealer', count: dealerSheet?.rows.length },
          ]
       },
       {
@@ -2248,7 +2270,7 @@ export default function NikonDashboard() {
             { id: 'autocomplete', label: '✏️ Saran Isian', count: undefined },
          ]
       }
-   ], [messages.length, consumersList.length, promos.length, claims.length, warranties.length, services.length, budgets.length, lendingRecords.length, karyawans.length, botSettings.length, events.length, eventRegistrations.length]);
+   ], [messages.length, consumersList.length, promos.length, claims.length, warranties.length, services.length, budgets.length, lendingRecords.length, karyawans.length, botSettings.length, events.length, eventRegistrations.length, dealerSheet?.rows.length]);
 
    const groupedVisibleTabs = useMemo(() => {
       return ALL_TABS_GROUPED.map(group => ({
@@ -4333,6 +4355,258 @@ export default function NikonDashboard() {
                               <p className="text-sm text-gray-400 text-center py-4">Belum ada data untuk kolom ini.</p>
                            )}
                         </div>
+                     </div>
+                  );
+               })()}
+
+               {/* ======================= TRANSAKSI DEALER ======================= */}
+               {activeTab === 'dealer' && (() => {
+                  // --- helpers ---
+                  const _findCol = (hdrs: string[], cands: string[]) => {
+                     for (const c of cands) {
+                        const i = hdrs.findIndex(h => h.toLowerCase().includes(c.toLowerCase()));
+                        if (i >= 0) return i;
+                     }
+                     return -1;
+                  };
+                  const _isImg = (v: string) =>
+                     !!v && (/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp)/i.test(v) ||
+                        v.includes('drive.google.com') || v.includes('googleusercontent.com') || v.includes('docs.google.com/uc'));
+                  const _resolveImg = (url: string) => {
+                     if (!url) return '';
+                     const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/) || url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                     if (m && (url.includes('drive.google.com') || url.includes('docs.google.com'))) return `/api/drive-file?id=${m[1]}`;
+                     return url;
+                  };
+
+                  const hdrs = dealerSheet?.headers ?? [];
+                  const colType = _findCol(hdrs, ['type barang', 'tipe barang', 'type', 'tipe', 'model', 'nama barang', 'barang']);
+                  const colSN   = _findCol(hdrs, ['serial number', 'serial', 'nomor seri', 's/n', 'sn', 'no seri']);
+                  const colFoto = _findCol(hdrs, ['foto kartu garansi', 'foto garansi', 'foto', 'image', 'gambar', 'link foto', 'url foto', 'link', 'url']);
+
+                  const q = dealerSearch.toLowerCase();
+                  const filteredDealer = (dealerSheet?.rows ?? [])
+                     .map((row, idx) => ({ row, idx }))
+                     .filter(({ row }) => !q || row.some(c => c.toLowerCase().includes(q)));
+
+                  const allDealerIdx = filteredDealer.map(r => r.idx);
+                  const allDealerSel = allDealerIdx.length > 0 && allDealerIdx.every(i => dealerSelected.has(i));
+
+                  const selectedDealerRows = (dealerSheet?.rows ?? []).filter((_, i) => dealerSelected.has(i));
+
+                  const toggleDealerAll = () => {
+                     setDealerSelected(prev => {
+                        const next = new Set(prev);
+                        if (allDealerSel) allDealerIdx.forEach(i => next.delete(i));
+                        else allDealerIdx.forEach(i => next.add(i));
+                        return next;
+                     });
+                  };
+                  const toggleDealerRow = (idx: number) => {
+                     setDealerSelected(prev => {
+                        const next = new Set(prev);
+                        next.has(idx) ? next.delete(idx) : next.add(idx);
+                        return next;
+                     });
+                  };
+
+                  const doPrint = () => {
+                     const area = document.getElementById('dealer-print-area');
+                     if (!area) return;
+                     area.style.display = 'block';
+                     window.print();
+                     setTimeout(() => { area.style.display = 'none'; }, 500);
+                  };
+
+                  return (
+                     <div className="space-y-4 animate-fade-in">
+                        {/* Print CSS */}
+                        <style>{`
+                           @media print {
+                              body * { visibility: hidden !important; }
+                              #dealer-print-area, #dealer-print-area * { visibility: visible !important; }
+                              #dealer-print-area { position: fixed; top: 0; left: 0; width: 100%; padding: 10mm; box-sizing: border-box; }
+                              @page { size: A4 portrait; margin: 10mm; }
+                           }
+                        `}</style>
+
+                        {/* Area print — tersembunyi di layar */}
+                        <div id="dealer-print-area" style={{ display: 'none' }}>
+                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8mm' }}>
+                              {selectedDealerRows.map((row, i) => {
+                                 const tv = colType >= 0 ? (row[colType] || '-') : '-';
+                                 const sv = colSN   >= 0 ? (row[colSN]   || '-') : '-';
+                                 const fv = colFoto >= 0 ? row[colFoto]  : '';
+                                 const fu = fv ? _resolveImg(fv) : '';
+                                 return (
+                                    <div key={i} style={{ border: '1.5px solid #333', pageBreakInside: 'avoid', fontFamily: 'Arial,sans-serif', fontSize: '10pt' }}>
+                                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                          <tbody>
+                                             <tr>
+                                                <td style={{ border: '1px solid #333', padding: '3px 6px', width: '40%', background: '#f5f5f5', fontWeight: 600 }}>Type Barang</td>
+                                                <td style={{ border: '1px solid #333', padding: '3px 6px', fontWeight: 700, color: '#1a56db' }}>{tv}</td>
+                                             </tr>
+                                             <tr>
+                                                <td style={{ border: '1px solid #333', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600 }}>Serial Number</td>
+                                                <td style={{ border: '1px solid #333', padding: '3px 6px', fontWeight: 700 }}>{sv}</td>
+                                             </tr>
+                                          </tbody>
+                                       </table>
+                                       <div style={{ height: '52mm', display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid #ddd', background: '#fafafa', overflow: 'hidden' }}>
+                                          {fu && _isImg(fv)
+                                             // eslint-disable-next-line @next/next/no-img-element
+                                             ? <img src={fu} alt="foto kartu garansi" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                             : <span style={{ color: '#1a56db', fontStyle: 'italic', fontSize: '9pt' }}>foto kartu garansi</span>}
+                                       </div>
+                                    </div>
+                                 );
+                              })}
+                           </div>
+                        </div>
+
+                        {/* Toolbar */}
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                           <div className="flex items-center gap-3">
+                              <h2 className="text-lg font-bold text-gray-800">🏪 Transaksi Dealer</h2>
+                              {dealerSheet && <span className="text-xs text-gray-500">Sheet: {dealerSheet.sheetName} · {dealerSheet.rows.length} baris</span>}
+                           </div>
+                           <div className="flex items-center gap-2">
+                              <input
+                                 type="text"
+                                 placeholder="Cari..."
+                                 value={dealerSearch}
+                                 onChange={e => setDealerSearch(e.target.value)}
+                                 className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-52 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                              />
+                              <button
+                                 onClick={() => { setDealerSheet(null); setDealerSelected(new Set()); setDealerSearch(''); }}
+                                 className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-sm transition"
+                              >🔄 Refresh</button>
+                              <button
+                                 onClick={doPrint}
+                                 disabled={dealerSelected.size === 0}
+                                 className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold transition shadow"
+                              >🖨️ Print Terpilih ({dealerSelected.size})</button>
+                           </div>
+                        </div>
+
+                        {dealerLoading && (
+                           <div className="text-center py-20 text-gray-400">
+                              <div className="text-4xl mb-3 animate-pulse">⏳</div>
+                              <p>Memuat data dari Google Sheets...</p>
+                           </div>
+                        )}
+
+                        {dealerError && (
+                           <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
+                              <p className="font-bold mb-1">❌ Gagal memuat data</p>
+                              <p className="text-sm">{dealerError}</p>
+                              <button onClick={() => { setDealerSheet(null); setDealerSelected(new Set()); }} className="mt-2 text-xs underline text-red-600">Coba lagi</button>
+                           </div>
+                        )}
+
+                        {!dealerLoading && !dealerError && dealerSheet && (
+                           <>
+                              {dealerSheet.rows.length === 0 ? (
+                                 <div className="text-center py-20 text-gray-400">
+                                    <div className="text-4xl mb-3">📭</div>
+                                    <p>Tidak ada data di sheet ini.</p>
+                                 </div>
+                              ) : (
+                                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                       <table className="w-full text-sm">
+                                          <thead className="bg-gray-50 border-b border-gray-200">
+                                             <tr>
+                                                <th className="px-3 py-2.5 text-center w-10">
+                                                   <input type="checkbox" checked={allDealerSel} onChange={toggleDealerAll} className="w-4 h-4 accent-blue-600" />
+                                                </th>
+                                                <th className="px-3 py-2.5 text-left text-gray-400 font-semibold w-10">#</th>
+                                                {hdrs.map((h, i) => (
+                                                   <th key={i} className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">{h}</th>
+                                                ))}
+                                             </tr>
+                                          </thead>
+                                          <tbody>
+                                             {filteredDealer.map(({ row, idx }) => {
+                                                const checked = dealerSelected.has(idx);
+                                                return (
+                                                   <tr
+                                                      key={idx}
+                                                      onClick={() => toggleDealerRow(idx)}
+                                                      className={`border-t border-gray-100 cursor-pointer transition-colors ${checked ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'}`}
+                                                   >
+                                                      <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
+                                                         <input type="checkbox" checked={checked} onChange={() => toggleDealerRow(idx)} className="w-4 h-4 accent-blue-600" />
+                                                      </td>
+                                                      <td className="px-3 py-2 text-gray-400 text-xs">{idx + 1}</td>
+                                                      {row.map((cell, ci) => {
+                                                         const isImg = ci === colFoto && _isImg(cell);
+                                                         return (
+                                                            <td key={ci} className="px-3 py-2 text-gray-800 whitespace-nowrap max-w-[200px] truncate">
+                                                               {isImg ? (
+                                                                  <a href={_resolveImg(cell)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-blue-600 underline text-xs">📷 Lihat Foto</a>
+                                                               ) : cell || <span className="text-gray-300">—</span>}
+                                                            </td>
+                                                         );
+                                                      })}
+                                                   </tr>
+                                                );
+                                             })}
+                                          </tbody>
+                                       </table>
+                                    </div>
+                                    <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-400">
+                                       Menampilkan {filteredDealer.length} dari {dealerSheet.rows.length} baris
+                                       {dealerSelected.size > 0 && <span className="text-blue-600 font-semibold ml-2">· {dealerSelected.size} dipilih untuk print</span>}
+                                    </div>
+                                 </div>
+                              )}
+
+                              {/* Preview print */}
+                              {dealerSelected.size > 0 && (
+                                 <div className="mt-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                       <h3 className="text-sm font-bold text-gray-700">Preview Print — 2 kartu per baris</h3>
+                                       <button onClick={doPrint} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition shadow">🖨️ Print ke PDF</button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                       {selectedDealerRows.map((row, i) => {
+                                          const tv = colType >= 0 ? (row[colType] || '-') : '-';
+                                          const sv = colSN   >= 0 ? (row[colSN]   || '-') : '-';
+                                          const fv = colFoto >= 0 ? row[colFoto]  : '';
+                                          const fu = fv ? _resolveImg(fv) : '';
+                                          return (
+                                             <div key={i} className="border border-gray-300 bg-white rounded overflow-hidden shadow-sm">
+                                                <table className="w-full text-xs border-collapse">
+                                                   <tbody>
+                                                      <tr>
+                                                         <td className="border border-gray-200 px-2 py-1.5 bg-gray-50 font-semibold w-2/5 text-gray-600">Type Barang</td>
+                                                         <td className="border border-gray-200 px-2 py-1.5 font-bold text-blue-700">{tv}</td>
+                                                      </tr>
+                                                      <tr>
+                                                         <td className="border border-gray-200 px-2 py-1.5 bg-gray-50 font-semibold text-gray-600">Serial Number</td>
+                                                         <td className="border border-gray-200 px-2 py-1.5 font-bold text-gray-800">{sv}</td>
+                                                      </tr>
+                                                   </tbody>
+                                                </table>
+                                                <div className="h-36 flex items-center justify-center border-t border-gray-200 bg-gray-50">
+                                                   {fu && _isImg(fv) ? (
+                                                      <div className="relative w-full h-full">
+                                                         <Image src={fu} alt="foto kartu garansi" fill style={{ objectFit: 'contain' }} unoptimized />
+                                                      </div>
+                                                   ) : (
+                                                      <span className="text-blue-500 italic text-xs">foto kartu garansi</span>
+                                                   )}
+                                                </div>
+                                             </div>
+                                          );
+                                       })}
+                                    </div>
+                                 </div>
+                              )}
+                           </>
+                        )}
                      </div>
                   );
                })()}
