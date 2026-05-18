@@ -6356,8 +6356,18 @@ export default function NikonDashboard() {
          {printData && (() => {
             const fmtNum = (n: number) => n.toLocaleString('id-ID');
             const items = printData.items || [];
-            const subtotal = items.reduce((s, it) => s + (Number(it.value) || 0), 0);
-            const grandTotal = subtotal;
+            const isPettyCashItem = (it: typeof items[0]) => {
+               const v = parseFloat(String(it.petty_cash || '').replace(/[^0-9.-]/g, ''));
+               return !isNaN(v) && v > 0;
+            };
+            const eventCostItems = items.filter(it => !isPettyCashItem(it));
+            const pettyCashItems = items.filter(it => isPettyCashItem(it));
+            const subtotalEventCost = eventCostItems.reduce((s, it) => s + (Number(it.value) || 0), 0);
+            const subtotalPettyCash = pettyCashItems.reduce((s, it) => {
+               const v = parseFloat(String(it.petty_cash || '0').replace(/[^0-9.-]/g, ''));
+               return s + (isNaN(v) ? 0 : v);
+            }, 0);
+            const grandTotal = subtotalEventCost + subtotalPettyCash;
             const MGT_NAMES = {
                col1: printData.mgt_name_1 || 'Jamal',
                col2: printData.mgt_name_2 || 'Eko',
@@ -6366,10 +6376,6 @@ export default function NikonDashboard() {
             const FINANCE_NAME = printData.finance_name || 'Merry';
             const sectionLabel = printData.budget_source?.toUpperCase() || 'MARKETING BUDGET';
             const drafterDisplay = printData.proposed_name || printData.drafter_name || 'Firza';
-            const totalPettyCash = items.reduce((sum, it) => {
-               const v = parseFloat(String(it.petty_cash || '0').replace(/[^0-9.-]/g, ''));
-               return sum + (isNaN(v) ? 0 : v);
-            }, 0);
             const attachments = (printData.attachment_urls || []).filter((u): u is string => typeof u === 'string' && Boolean(u)).slice(0, 3);
 
             const docEl = (
@@ -6503,55 +6509,56 @@ export default function NikonDashboard() {
                               </tbody>
                            </table>
 
-                           {/* ITEMS TABLE */}
-                           <table className="w-full border-collapse border border-black text-[11px]">
-                              <thead>
-                                 <tr className="bg-gray-100">
-                                    <th className="border border-black px-2 py-2 w-10 text-center font-bold">NO</th>
-                                    <th className="border border-black px-2 py-2 text-center font-bold">PURPOSE / ITEM DESCRIPTION</th>
-                                    <th className="border border-black px-2 py-2 w-16 text-center font-bold">QTY</th>
-                                    <th className="border border-black px-2 py-2 w-32 text-center font-bold">COST / UNIT</th>
-                                    <th className="border border-black px-2 py-2 w-28 text-center font-bold">PETTY CASH</th>
-                                    <th className="border border-black px-2 py-2 w-36 text-center font-bold">TOTAL VALUE</th>
-                                 </tr>
-                              </thead>
-                              <tbody>
-                                 {items.length === 0 ? (
-                                    <tr>
-                                       <td colSpan={6} className="border border-black px-2 py-6 text-center text-gray-500 italic">Belum ada item anggaran.</td>
-                                    </tr>
-                                 ) : (
-                                    <>
-                                       {/* Render SEMUA item (page break otomatis dari browser kalau overflow) */}
-                                       {items.map((it, idx) => (
-                                          <tr key={idx}>
-                                             <td className="border border-black px-2 py-1.5 text-center">{idx + 1}</td>
-                                             <td className="border border-black px-2 py-1.5">{it.purpose || '-'}</td>
-                                             <td className="border border-black px-2 py-1.5 text-center">{it.qty || 0}</td>
-                                             <td className="border border-black px-2 py-1.5 text-right font-mono">{fmtNum(Number(it.cost_unit) || 0)}</td>
-                                             <td className="border border-black px-2 py-1.5 text-center text-[10px]">{it.petty_cash || ''}</td>
-                                             <td className="border border-black px-2 py-1.5 text-right font-bold font-mono">{fmtNum(Number(it.value) || 0)}</td>
+                           {/* EVENT COST TABLE */}
+                           {(() => {
+                              const renderItemsTable = (label: string, rows: typeof items, subtotalVal: number, isGrandTotal?: boolean) => (
+                                 <div className="mt-5">
+                                    <p className="font-black text-[11px] uppercase tracking-wider mb-1">{label}</p>
+                                    <table className="w-full border-collapse border border-black text-[11px]">
+                                       <thead>
+                                          <tr className="bg-gray-100">
+                                             <th className="border border-black px-2 py-2 w-10 text-center font-bold">NO</th>
+                                             <th className="border border-black px-2 py-2 text-center font-bold">PURPOSE / ITEM DESCRIPTION</th>
+                                             <th className="border border-black px-2 py-2 w-16 text-center font-bold">QTY</th>
+                                             <th className="border border-black px-2 py-2 w-32 text-center font-bold">COST / UNIT</th>
+                                             <th className="border border-black px-2 py-2 w-36 text-center font-bold">TOTAL VALUE</th>
                                           </tr>
-                                       ))}
-                                       <tr>
-                                          <td colSpan={3}></td>
-                                          <td className="border border-black px-2 py-2 text-right font-bold bg-gray-50">TOTAL PETTY CASH</td>
-                                          <td className="border border-black px-2 py-2 text-right font-bold font-mono bg-gray-50" colSpan={2}>Rp {fmtNum(totalPettyCash)}</td>
-                                       </tr>
-                                       <tr>
-                                          <td colSpan={4}></td>
-                                          <td className="border border-black px-2 py-2 text-right font-bold bg-gray-50">SUBTOTAL</td>
-                                          <td className="border border-black px-2 py-2 text-right font-bold font-mono">{fmtNum(subtotal)}</td>
-                                       </tr>
-                                       <tr>
-                                          <td colSpan={4}></td>
-                                          <td className="border border-black px-2 py-3 text-right font-black text-base bg-black text-white">GRAND TOTAL</td>
-                                          <td className="border border-black px-2 py-3 text-right font-black font-mono text-base bg-black text-white">Rp {fmtNum(grandTotal)}</td>
-                                       </tr>
-                                    </>
-                                 )}
-                              </tbody>
-                           </table>
+                                       </thead>
+                                       <tbody>
+                                          {rows.length === 0 ? (
+                                             <tr>
+                                                <td colSpan={5} className="border border-black px-2 py-4 text-center text-gray-400 italic text-[10px]">Tidak ada item.</td>
+                                             </tr>
+                                          ) : rows.map((it, idx) => (
+                                             <tr key={idx}>
+                                                <td className="border border-black px-2 py-1.5 text-center">{idx + 1}</td>
+                                                <td className="border border-black px-2 py-1.5">{it.purpose || '-'}</td>
+                                                <td className="border border-black px-2 py-1.5 text-center">{it.qty || 0}</td>
+                                                <td className="border border-black px-2 py-1.5 text-right font-mono">{fmtNum(Number(it.cost_unit) || 0)}</td>
+                                                <td className="border border-black px-2 py-1.5 text-right font-bold font-mono">{fmtNum(Number(it.value) || 0)}</td>
+                                             </tr>
+                                          ))}
+                                          <tr>
+                                             <td colSpan={3}></td>
+                                             <td className="border border-black px-2 py-1.5 text-right font-bold bg-gray-50 text-[10px] tracking-wider">SUBTOTAL</td>
+                                             <td className="border border-black px-2 py-1.5 text-right font-bold font-mono">{fmtNum(subtotalVal)}</td>
+                                          </tr>
+                                          <tr>
+                                             <td colSpan={3}></td>
+                                             <td className="border border-black px-2 py-2.5 text-right font-black text-[11px] bg-black text-white tracking-wider">GRAND TOTAL</td>
+                                             <td className="border border-black px-2 py-2.5 text-right font-black font-mono text-[11px] bg-black text-white">Rp {fmtNum(isGrandTotal ? grandTotal : subtotalVal)}</td>
+                                          </tr>
+                                       </tbody>
+                                    </table>
+                                 </div>
+                              );
+                              return (
+                                 <>
+                                    {renderItemsTable('EVENT COST', eventCostItems, subtotalEventCost, pettyCashItems.length === 0)}
+                                    {pettyCashItems.length > 0 && renderItemsTable('PETTY CASH', pettyCashItems, subtotalPettyCash, true)}
+                                 </>
+                              );
+                           })()}
 
                            {/* ATTACHMENTS — INLINE di bawah Grand Total, page-break natural kalau overflow */}
                            {attachments.length > 0 && (
