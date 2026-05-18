@@ -4471,89 +4471,78 @@ export default function NikonDashboard() {
                   });
 
                   const doPrintAffiliate = () => {
-                     const area = document.getElementById('affiliate-print-area');
-                     if (!area) return;
-                     area.style.display = 'block';
-                     window.print();
-                     setTimeout(() => { area.style.display = 'none'; }, 500);
+                     if (!selectedAffiliate) return;
+                     const fmt = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n));
+
+                     const skemaRows = affiliateSkema.map(s => {
+                        const pot = s.nilai_barang * s.potongan_persen / 100;
+                        const sisa = s.nilai_barang - pot;
+                        return `<tr>
+                           <td>${s.barang}</td>
+                           <td class="r">${fmt(s.nilai_barang)}</td>
+                           <td class="c">${s.potongan_persen}%</td>
+                           <td class="r">${fmt(pot)}</td>
+                           <td class="r">${fmt(sisa)}</td>
+                        </tr>`;
+                     }).join('');
+
+                     let runPrint = sisal;
+                     const penjualanRows = affiliatePenjualan.map((p, i) => {
+                        const nom = p.harga_barang * p.persentase / 100;
+                        runPrint -= nom;
+                        return `<tr>
+                           <td class="c">${i + 1}</td>
+                           <td>${p.barang}</td>
+                           <td class="r">${fmt(p.harga_barang)}</td>
+                           <td class="c">${p.persentase}%</td>
+                           <td class="r">${fmt(nom)}</td>
+                           <td class="r">${fmt(runPrint)}</td>
+                        </tr>`;
+                     }).join('');
+
+                     const emptyRows = Array.from({ length: Math.max(0, 3 - affiliatePenjualan.length) },
+                        () => `<tr>${'<td>&nbsp;</td>'.repeat(6)}</tr>`).join('');
+
+                     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; padding: 12mm; font-size: 10pt; }
+  p.title { font-weight: 700; font-size: 11pt; margin: 0 0 6px; }
+  p.subtitle { font-weight: 700; font-size: 10pt; margin: 14px 0 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  th { background: #FFE500; border: 1px solid #999; padding: 5px 8px; font-weight: 700; text-align: center; }
+  td { border: 1px solid #ccc; padding: 4px 8px; }
+  td.r { text-align: right; }
+  td.c { text-align: center; }
+  @page { size: A4 portrait; margin: 12mm; }
+</style></head><body>
+<p class="title">SKEMA AFFILIATE (${selectedAffiliate.nama})</p>
+<table><thead><tr>
+  <th>Barang yang diambil</th>
+  <th>Nilai barang yang diambil</th>
+  <th>Potongan %</th>
+  <th>Potongan Rp</th>
+  <th>Sisa</th>
+</tr></thead><tbody>${skemaRows}</tbody></table>
+
+<p class="subtitle">Penjualan Affiliate</p>
+<table><thead><tr>
+  <th>No</th><th>Barang Affiliator</th><th>Harga Barang</th>
+  <th>Persentase %</th><th>Nominal</th><th>Sisa Kontrak</th>
+</tr></thead><tbody>${penjualanRows}${emptyRows}</tbody></table>
+</body></html>`;
+
+                     const w = window.open('', '_blank', 'width=900,height=700');
+                     if (!w) { alert('Popup diblokir browser. Izinkan popup untuk mencetak.'); return; }
+                     w.document.open();
+                     w.document.write(html);
+                     w.document.close();
+                     w.onload = () => { w.focus(); w.print(); };
                   };
 
                   // ---- DETAIL VIEW ----
                   if (affiliateView === 'detail' && selectedAffiliate) {
                      return (
                         <div className="space-y-5 animate-fade-in">
-                           {/* Print CSS */}
-                           <style>{`
-                              @media print {
-                                 body * { visibility: hidden !important; }
-                                 #affiliate-print-area, #affiliate-print-area * { visibility: visible !important; }
-                                 #affiliate-print-area { position: fixed; top: 0; left: 0; width: 100%; padding: 12mm; box-sizing: border-box; font-family: Arial, sans-serif; }
-                                 @page { size: A4 portrait; margin: 12mm; }
-                              }
-                           `}</style>
-
-                           {/* Print area */}
-                           <div id="affiliate-print-area" style={{ display: 'none' }}>
-                              <p style={{ fontSize: '11pt', fontWeight: 700, marginBottom: '6px' }}>
-                                 SKEMA AFFILIATE ({selectedAffiliate.nama})
-                              </p>
-                              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '14px', fontSize: '9pt' }}>
-                                 <thead>
-                                    <tr>
-                                       {['Barang yang diambil','Nilai barang yang diambil','Potongan %','Potongan Rp','Sisa'].map(h => (
-                                          <th key={h} style={{ background: '#FFE500', border: '1px solid #aaa', padding: '4px 8px', textAlign: 'center', fontWeight: 700 }}>{h}</th>
-                                       ))}
-                                    </tr>
-                                 </thead>
-                                 <tbody>
-                                    {affiliateSkema.map(s => {
-                                       const pot = s.nilai_barang * s.potongan_persen / 100;
-                                       const sisa = s.nilai_barang - pot;
-                                       return (
-                                          <tr key={s.id}>
-                                             <td style={{ border:'1px solid #ccc', padding:'3px 8px' }}>{s.barang}</td>
-                                             <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(s.nilai_barang)}</td>
-                                             <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'center' }}>{s.potongan_persen}%</td>
-                                             <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(pot)}</td>
-                                             <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(sisa)}</td>
-                                          </tr>
-                                       );
-                                    })}
-                                 </tbody>
-                              </table>
-
-                              <p style={{ fontSize: '10pt', fontWeight: 700, marginBottom: '6px' }}>Penjualan Affiliate</p>
-                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
-                                 <thead>
-                                    <tr>
-                                       {['No','Barang Affiliator','Harga Barang','Persentase %','Nominal','Sisa Kontrak'].map(h => (
-                                          <th key={h} style={{ background: '#FFE500', border: '1px solid #aaa', padding: '4px 8px', textAlign: 'center', fontWeight: 700 }}>{h}</th>
-                                       ))}
-                                    </tr>
-                                 </thead>
-                                 <tbody>
-                                    {penjualanWithSisa.map((p, i) => (
-                                       <tr key={p.id}>
-                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'center' }}>{i+1}</td>
-                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px' }}>{p.barang}</td>
-                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(p.harga_barang)}</td>
-                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'center' }}>{p.persentase}%</td>
-                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(p.nominal)}</td>
-                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(p.sisa_kontrak)}</td>
-                                       </tr>
-                                    ))}
-                                    {/* 3 empty rows */}
-                                    {[...Array(Math.max(0, 3 - penjualanWithSisa.length))].map((_, i) => (
-                                       <tr key={`empty-${i}`}>
-                                          {[...Array(6)].map((__, j) => (
-                                             <td key={j} style={{ border:'1px solid #ccc', padding:'3px 8px', height:'20px' }}>&nbsp;</td>
-                                          ))}
-                                       </tr>
-                                    ))}
-                                 </tbody>
-                              </table>
-                           </div>
-
                            {/* Toolbar detail */}
                            <div className="flex items-center gap-3 flex-wrap">
                               <button onClick={() => { setAffiliateView('list'); setSelectedAffiliate(null); setAffiliateSkema([]); setAffiliatePenjualan([]); }}
