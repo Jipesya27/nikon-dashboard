@@ -421,55 +421,75 @@ export default function EventRegisterPage() {
         {/* MODAL DESKRIPSI EVENT */}
         {descEvent && (
           <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4"
             onClick={() => setDescEvent(null)}
           >
             <div
-              className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden max-h-[90dvh] flex flex-col"
+              className="bg-white w-full sm:max-w-xl sm:rounded-2xl rounded-t-3xl shadow-2xl overflow-hidden max-h-[95dvh] sm:max-h-[90dvh] flex flex-col"
               onClick={e => e.stopPropagation()}
             >
-              {/* Image */}
-              {descEvent.event_image && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={descEvent.event_image}
-                  alt={descEvent.event_title}
-                  className="w-full max-h-56 object-contain bg-gray-100"
-                />
+              {/* Image — full width, portrait-friendly */}
+              {descEvent.event_image ? (
+                <div className="relative w-full bg-black flex-shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={descEvent.event_image}
+                    alt={descEvent.event_title}
+                    className="w-full object-contain"
+                    style={{ maxHeight: '60vh' }}
+                  />
+                  {/* Close button overlay */}
+                  <button
+                    onClick={() => setDescEvent(null)}
+                    className="absolute top-3 right-3 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition"
+                    aria-label="Tutup"
+                  >
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <div className="w-full h-40 bg-gradient-to-br from-gray-800 to-black flex items-center justify-center flex-shrink-0">
+                  <span className="text-[#FFE500] font-black text-6xl">N</span>
+                </div>
               )}
 
-              {/* Content */}
-              <div className="overflow-y-auto p-5 flex flex-col gap-3 flex-1">
+              {/* Content — scrollable */}
+              <div className="overflow-y-auto flex-1 px-5 pt-4 pb-2 flex flex-col gap-2.5">
                 {descEvent.event_speaker_genre && (
                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{descEvent.event_speaker_genre}</p>
                 )}
-                <h2 className="text-lg font-bold text-gray-900 leading-snug">{descEvent.event_title}</h2>
+                <h2 className="text-xl font-bold text-gray-900 leading-snug">{descEvent.event_title}</h2>
 
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-700">
-                  <span className="flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-gray-600">
+                  <span className="flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     {descEvent.event_date}
                   </span>
                   {descEvent.event_speaker && (
-                    <span className="flex items-center gap-1">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
                       {descEvent.event_speaker}
                     </span>
                   )}
-                  <span className="font-bold text-gray-900">{descEvent.event_price}</span>
+                  <span className="flex items-center gap-1 font-bold text-gray-900 text-sm">
+                    {descEvent.event_price}
+                  </span>
                 </div>
 
-                {/* Deskripsi */}
-                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-line border-t border-gray-100 pt-3">
-                  {descEvent.event_description}
-                </div>
+                {descEvent.event_description && (
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line border-t border-gray-100 pt-3 pb-1">
+                    {descEvent.event_description}
+                  </p>
+                )}
               </div>
 
               {/* Actions */}
-              <div className="p-4 border-t border-gray-100 flex gap-3 bg-white">
+              <div className="px-5 py-4 border-t border-gray-100 flex gap-3 bg-white flex-shrink-0">
                 <button
                   onClick={() => setDescEvent(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  className="px-5 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
                 >
                   Tutup
                 </button>
