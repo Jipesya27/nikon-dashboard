@@ -20,7 +20,7 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ password }),
       });
       if (res.ok) {
-        router.push('/admin/events');
+        router.push('/dashboard');
       } else {
         setError('Password salah');
       }
