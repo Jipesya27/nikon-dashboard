@@ -69,6 +69,35 @@ export interface PeminjamanBarang {
    created_at?: string;
    updated_at?: string;
 }
+export interface Affiliate {
+  id: string;
+  nama: string;
+  phone: string;
+  alamat: string;
+  map: string | null;
+  awal_kontrak: string | null;
+  akhir_kontrak: string | null;
+  fee_max_6_jam: number | null;
+  fee_diatas_6_jam: number | null;
+  created_at: string;
+}
+export interface AffiliateSkema {
+  id: string;
+  affiliate_id: string;
+  barang: string;
+  nilai_barang: number;
+  potongan_persen: number;
+  created_at: string;
+}
+export interface AffiliatePenjualan {
+  id: string;
+  affiliate_id: string;
+  barang: string;
+  harga_barang: number;
+  persentase: number;
+  created_at: string;
+}
+
 export interface EventDataExtended extends EventData {
    event_title?: string;
    event_date?: string;

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { DEFAULT_TEMPLATES, applyTemplate, loadChatbotTemplates } from '@/app/lib/chatbotTemplate';
-import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang, BarangAset } from '@/app/index';
+import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang, BarangAset, Affiliate, AffiliateSkema, AffiliatePenjualan } from '@/app/index';
 import {
    VALIDASI_OPTIONS, STATUS_VALIDASI_GARANSI_OPTIONS, JENIS_GARANSI_OPTIONS, LAMA_GARANSI_OPTIONS,
    STATUS_SERVICE_OPTIONS, JENIS_PROMOSI_OPTIONS, JASA_PENGIRIMAN_OPTIONS, EVENT_STATUS_OPTIONS,
@@ -238,6 +238,22 @@ export default function NikonDashboard() {
    const [eventForm, setEventForm] = useState<Partial<EventData>>({});
    const [eventImageFile, setEventImageFile] = useState<File | null>(null);
    const [registrationForm, setRegistrationForm] = useState<Partial<EventRegistration>>({});
+
+   // AFFILIATE
+   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
+   const [affiliateView, setAffiliateView] = useState<'list' | 'detail'>('list');
+   const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null);
+   const [affiliateSkema, setAffiliateSkema] = useState<AffiliateSkema[]>([]);
+   const [affiliatePenjualan, setAffiliatePenjualan] = useState<AffiliatePenjualan[]>([]);
+   const [affiliateFormOpen, setAffiliateFormOpen] = useState(false);
+   const [editingAffiliateId, setEditingAffiliateId] = useState<string | null>(null);
+   const [affiliateFormData, setAffiliateFormData] = useState<Partial<Affiliate>>({});
+   const [skemaFormData, setSkemaFormData] = useState({ barang: '', nilai_barang: '', potongan_persen: '' });
+   const [penjualanFormData, setPenjualanFormData] = useState({ barang: '', harga_barang: '', persentase: '' });
+   const [skemaFormOpen, setSkemaFormOpen] = useState(false);
+   const [penjualanFormOpen, setPenjualanFormOpen] = useState(false);
+   const [affiliateSearch, setAffiliateSearch] = useState('');
+   const [affiliateSaving, setAffiliateSaving] = useState(false);
 
    // IMPORT CSV STATES
    const [importTarget, setImportTarget] = useState<'claim_promo' | 'garansi' | 'konsumen' | 'status_service'>('claim_promo');
@@ -490,6 +506,13 @@ export default function NikonDashboard() {
    useEffect(() => {
       if (typeof window !== 'undefined') localStorage.setItem('nikon_chat_pinned', JSON.stringify(pinnedChats));
    }, [pinnedChats]);
+   // Fetch Affiliates saat tab aktif
+   useEffect(() => {
+      if (activeTab !== 'affiliate') return;
+      if (affiliates.length === 0) fetchAffiliates();
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [activeTab]);
+
    // Fetch data Transaksi Dealer saat tab aktif (lazy, sekali muat)
    useEffect(() => {
       if (activeTab !== 'dealer' || dealerSheet !== null || dealerLoading) return;
@@ -652,6 +675,80 @@ export default function NikonDashboard() {
    const fetchAutocomplete = async () => {
       const { data } = await supabase.from('autocomplete_items').select('*').order('field_key').order('value');
       setAutocompleteItems(data || []);
+   };
+
+   const fetchAffiliates = async () => {
+      const { data } = await supabase.from('affiliates').select('*').order('created_at', { ascending: false });
+      setAffiliates(data || []);
+   };
+   const fetchAffiliateDetail = async (affiliateId: string) => {
+      const [{ data: skema }, { data: penjualan }] = await Promise.all([
+         supabase.from('affiliate_skema').select('*').eq('affiliate_id', affiliateId).order('created_at'),
+         supabase.from('affiliate_penjualan').select('*').eq('affiliate_id', affiliateId).order('created_at'),
+      ]);
+      setAffiliateSkema(skema || []);
+      setAffiliatePenjualan(penjualan || []);
+   };
+   const saveAffiliate = async () => {
+      if (!affiliateFormData.nama || !affiliateFormData.phone) return;
+      setAffiliateSaving(true);
+      if (editingAffiliateId) {
+         await supabase.from('affiliates').update(affiliateFormData).eq('id', editingAffiliateId);
+         if (selectedAffiliate?.id === editingAffiliateId) setSelectedAffiliate(prev => prev ? { ...prev, ...affiliateFormData as Affiliate } : null);
+      } else {
+         await supabase.from('affiliates').insert(affiliateFormData);
+      }
+      await fetchAffiliates();
+      setAffiliateFormOpen(false);
+      setAffiliateFormData({});
+      setEditingAffiliateId(null);
+      setAffiliateSaving(false);
+   };
+   const deleteAffiliate = async (id: string) => {
+      if (!confirm('Hapus affiliate ini beserta semua data skema dan penjualannya?')) return;
+      await supabase.from('affiliate_penjualan').delete().eq('affiliate_id', id);
+      await supabase.from('affiliate_skema').delete().eq('affiliate_id', id);
+      await supabase.from('affiliates').delete().eq('id', id);
+      await fetchAffiliates();
+      if (selectedAffiliate?.id === id) { setSelectedAffiliate(null); setAffiliateView('list'); }
+   };
+   const addSkema = async () => {
+      if (!selectedAffiliate || !skemaFormData.barang || !skemaFormData.nilai_barang) return;
+      setAffiliateSaving(true);
+      await supabase.from('affiliate_skema').insert({
+         affiliate_id: selectedAffiliate.id,
+         barang: skemaFormData.barang,
+         nilai_barang: parseFloat(skemaFormData.nilai_barang) || 0,
+         potongan_persen: parseFloat(skemaFormData.potongan_persen) || 0,
+      });
+      await fetchAffiliateDetail(selectedAffiliate.id);
+      setSkemaFormData({ barang: '', nilai_barang: '', potongan_persen: '' });
+      setSkemaFormOpen(false);
+      setAffiliateSaving(false);
+   };
+   const deleteSkema = async (id: string) => {
+      if (!selectedAffiliate) return;
+      await supabase.from('affiliate_skema').delete().eq('id', id);
+      await fetchAffiliateDetail(selectedAffiliate.id);
+   };
+   const addPenjualan = async () => {
+      if (!selectedAffiliate || !penjualanFormData.barang || !penjualanFormData.harga_barang) return;
+      setAffiliateSaving(true);
+      await supabase.from('affiliate_penjualan').insert({
+         affiliate_id: selectedAffiliate.id,
+         barang: penjualanFormData.barang,
+         harga_barang: parseFloat(penjualanFormData.harga_barang) || 0,
+         persentase: parseFloat(penjualanFormData.persentase) || 0,
+      });
+      await fetchAffiliateDetail(selectedAffiliate.id);
+      setPenjualanFormData({ barang: '', harga_barang: '', persentase: '' });
+      setPenjualanFormOpen(false);
+      setAffiliateSaving(false);
+   };
+   const deletePenjualan = async (id: string) => {
+      if (!selectedAffiliate) return;
+      await supabase.from('affiliate_penjualan').delete().eq('id', id);
+      await fetchAffiliateDetail(selectedAffiliate.id);
    };
 
    const handleACAdd = async (fieldKey: string, val: string, hidden = false) => {
@@ -2250,6 +2347,7 @@ export default function NikonDashboard() {
             { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
             { id: 'assets', label: '🗄️ Barang Aset', count: assets.length },
             { id: 'dealer', label: '🏪 Transaksi Dealer', count: dealerSheet?.rows.length },
+            { id: 'affiliate', label: '🤝 Affiliate', count: affiliates.length },
          ]
       },
       {
@@ -2270,7 +2368,7 @@ export default function NikonDashboard() {
             { id: 'autocomplete', label: '✏️ Saran Isian', count: undefined },
          ]
       }
-   ], [messages.length, consumersList.length, promos.length, claims.length, warranties.length, services.length, budgets.length, lendingRecords.length, karyawans.length, botSettings.length, events.length, eventRegistrations.length, dealerSheet?.rows.length]);
+   ], [messages.length, consumersList.length, promos.length, claims.length, warranties.length, services.length, budgets.length, lendingRecords.length, karyawans.length, botSettings.length, events.length, eventRegistrations.length, dealerSheet?.rows.length, affiliates.length]);
 
    const groupedVisibleTabs = useMemo(() => {
       return ALL_TABS_GROUPED.map(group => ({
@@ -4355,6 +4453,365 @@ export default function NikonDashboard() {
                               <p className="text-sm text-gray-400 text-center py-4">Belum ada data untuk kolom ini.</p>
                            )}
                         </div>
+                     </div>
+                  );
+               })()}
+
+               {/* ======================= AFFILIATE ======================= */}
+               {activeTab === 'affiliate' && (() => {
+                  const fmtRp = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n));
+
+                  // Hitung running sisa kontrak per baris penjualan
+                  const sisal = affiliateSkema.reduce((acc, s) => acc + s.nilai_barang - (s.nilai_barang * s.potongan_persen / 100), 0);
+                  let running = sisal;
+                  const penjualanWithSisa = affiliatePenjualan.map(p => {
+                     const nominal = p.harga_barang * p.persentase / 100;
+                     running -= nominal;
+                     return { ...p, nominal, sisa_kontrak: running };
+                  });
+
+                  const doPrintAffiliate = () => {
+                     const area = document.getElementById('affiliate-print-area');
+                     if (!area) return;
+                     area.style.display = 'block';
+                     window.print();
+                     setTimeout(() => { area.style.display = 'none'; }, 500);
+                  };
+
+                  // ---- DETAIL VIEW ----
+                  if (affiliateView === 'detail' && selectedAffiliate) {
+                     return (
+                        <div className="space-y-5 animate-fade-in">
+                           {/* Print CSS */}
+                           <style>{`
+                              @media print {
+                                 body * { visibility: hidden !important; }
+                                 #affiliate-print-area, #affiliate-print-area * { visibility: visible !important; }
+                                 #affiliate-print-area { position: fixed; top: 0; left: 0; width: 100%; padding: 12mm; box-sizing: border-box; font-family: Arial, sans-serif; }
+                                 @page { size: A4 portrait; margin: 12mm; }
+                              }
+                           `}</style>
+
+                           {/* Print area */}
+                           <div id="affiliate-print-area" style={{ display: 'none' }}>
+                              <p style={{ fontSize: '11pt', fontWeight: 700, marginBottom: '6px' }}>
+                                 SKEMA AFFILIATE ({selectedAffiliate.nama})
+                              </p>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '14px', fontSize: '9pt' }}>
+                                 <thead>
+                                    <tr>
+                                       {['Barang yang diambil','Nilai barang yang diambil','Potongan %','Potongan Rp','Sisa'].map(h => (
+                                          <th key={h} style={{ background: '#FFE500', border: '1px solid #aaa', padding: '4px 8px', textAlign: 'center', fontWeight: 700 }}>{h}</th>
+                                       ))}
+                                    </tr>
+                                 </thead>
+                                 <tbody>
+                                    {affiliateSkema.map(s => {
+                                       const pot = s.nilai_barang * s.potongan_persen / 100;
+                                       const sisa = s.nilai_barang - pot;
+                                       return (
+                                          <tr key={s.id}>
+                                             <td style={{ border:'1px solid #ccc', padding:'3px 8px' }}>{s.barang}</td>
+                                             <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(s.nilai_barang)}</td>
+                                             <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'center' }}>{s.potongan_persen}%</td>
+                                             <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(pot)}</td>
+                                             <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(sisa)}</td>
+                                          </tr>
+                                       );
+                                    })}
+                                 </tbody>
+                              </table>
+
+                              <p style={{ fontSize: '10pt', fontWeight: 700, marginBottom: '6px' }}>Penjualan Affiliate</p>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
+                                 <thead>
+                                    <tr>
+                                       {['No','Barang Affiliator','Harga Barang','Persentase %','Nominal','Sisa Kontrak'].map(h => (
+                                          <th key={h} style={{ background: '#FFE500', border: '1px solid #aaa', padding: '4px 8px', textAlign: 'center', fontWeight: 700 }}>{h}</th>
+                                       ))}
+                                    </tr>
+                                 </thead>
+                                 <tbody>
+                                    {penjualanWithSisa.map((p, i) => (
+                                       <tr key={p.id}>
+                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'center' }}>{i+1}</td>
+                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px' }}>{p.barang}</td>
+                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(p.harga_barang)}</td>
+                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'center' }}>{p.persentase}%</td>
+                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(p.nominal)}</td>
+                                          <td style={{ border:'1px solid #ccc', padding:'3px 8px', textAlign:'right' }}>{fmtRp(p.sisa_kontrak)}</td>
+                                       </tr>
+                                    ))}
+                                    {/* 3 empty rows */}
+                                    {[...Array(Math.max(0, 3 - penjualanWithSisa.length))].map((_, i) => (
+                                       <tr key={`empty-${i}`}>
+                                          {[...Array(6)].map((__, j) => (
+                                             <td key={j} style={{ border:'1px solid #ccc', padding:'3px 8px', height:'20px' }}>&nbsp;</td>
+                                          ))}
+                                       </tr>
+                                    ))}
+                                 </tbody>
+                              </table>
+                           </div>
+
+                           {/* Toolbar detail */}
+                           <div className="flex items-center gap-3 flex-wrap">
+                              <button onClick={() => { setAffiliateView('list'); setSelectedAffiliate(null); setAffiliateSkema([]); setAffiliatePenjualan([]); }}
+                                 className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-gray-900 transition">
+                                 ← Kembali
+                              </button>
+                              <h2 className="text-lg font-bold text-gray-800">🤝 {selectedAffiliate.nama}</h2>
+                              <span className="text-xs text-gray-400">{selectedAffiliate.phone}</span>
+                              <div className="ml-auto flex gap-2">
+                                 <button onClick={() => { setAffiliateFormData(selectedAffiliate); setEditingAffiliateId(selectedAffiliate.id); setAffiliateFormOpen(true); }}
+                                    className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-sm transition">✏️ Edit</button>
+                                 <button onClick={doPrintAffiliate}
+                                    className="px-4 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg text-sm font-bold shadow transition">🖨️ Cetak PDF</button>
+                              </div>
+                           </div>
+
+                           {/* Info affiliate */}
+                           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                              {[
+                                 { label: 'Alamat', value: selectedAffiliate.alamat },
+                                 { label: 'Kontrak', value: `${selectedAffiliate.awal_kontrak || '-'} s/d ${selectedAffiliate.akhir_kontrak || '-'}` },
+                                 { label: 'Fee ≤ 6 Jam', value: selectedAffiliate.fee_max_6_jam ? `Rp ${fmtRp(selectedAffiliate.fee_max_6_jam)}` : '-' },
+                                 { label: 'Fee > 6 Jam', value: selectedAffiliate.fee_diatas_6_jam ? `Rp ${fmtRp(selectedAffiliate.fee_diatas_6_jam)}` : '-' },
+                              ].map(f => (
+                                 <div key={f.label}>
+                                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-0.5">{f.label}</p>
+                                    <p className="font-semibold text-gray-800">{f.value || '-'}</p>
+                                 </div>
+                              ))}
+                              {selectedAffiliate.map && (
+                                 <div>
+                                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Maps</p>
+                                    <a href={selectedAffiliate.map} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs">Buka Maps</a>
+                                 </div>
+                              )}
+                           </div>
+
+                           {/* ==== SKEMA ==== */}
+                           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                              <div className="flex items-center justify-between px-4 py-3 bg-yellow-50 border-b border-yellow-200">
+                                 <h3 className="font-bold text-gray-800">📋 Skema Affiliate</h3>
+                                 <button onClick={() => setSkemaFormOpen(o => !o)}
+                                    className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg text-xs font-bold transition">
+                                    {skemaFormOpen ? '✕ Batal' : '+ Tambah Baris'}
+                                 </button>
+                              </div>
+                              {skemaFormOpen && (
+                                 <div className="flex flex-wrap gap-2 p-3 bg-yellow-50 border-b border-yellow-100">
+                                    <input placeholder="Barang yang diambil *" value={skemaFormData.barang} onChange={e => setSkemaFormData(f => ({ ...f, barang: e.target.value }))}
+                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1 min-w-40" />
+                                    <input placeholder="Nilai Barang *" type="number" value={skemaFormData.nilai_barang} onChange={e => setSkemaFormData(f => ({ ...f, nilai_barang: e.target.value }))}
+                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm w-36" />
+                                    <input placeholder="Potongan %" type="number" value={skemaFormData.potongan_persen} onChange={e => setSkemaFormData(f => ({ ...f, potongan_persen: e.target.value }))}
+                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm w-28" />
+                                    <button onClick={addSkema} disabled={affiliateSaving}
+                                       className="px-4 py-1.5 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-black rounded text-sm font-bold transition">
+                                       {affiliateSaving ? '...' : 'Simpan'}
+                                    </button>
+                                 </div>
+                              )}
+                              <table className="w-full text-sm">
+                                 <thead className="bg-yellow-400">
+                                    <tr>
+                                       {['Barang yang diambil','Nilai Barang','Potongan %','Potongan Rp','Sisa',''].map(h => (
+                                          <th key={h} className="px-3 py-2 text-left font-bold text-black">{h}</th>
+                                       ))}
+                                    </tr>
+                                 </thead>
+                                 <tbody>
+                                    {affiliateSkema.length === 0 && (
+                                       <tr><td colSpan={6} className="text-center py-6 text-gray-400 text-xs">Belum ada data skema.</td></tr>
+                                    )}
+                                    {affiliateSkema.map(s => {
+                                       const pot = s.nilai_barang * s.potongan_persen / 100;
+                                       const sisa = s.nilai_barang - pot;
+                                       return (
+                                          <tr key={s.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                             <td className="px-3 py-2">{s.barang}</td>
+                                             <td className="px-3 py-2 text-right font-mono">{fmtRp(s.nilai_barang)}</td>
+                                             <td className="px-3 py-2 text-center">{s.potongan_persen}%</td>
+                                             <td className="px-3 py-2 text-right font-mono text-orange-600">{fmtRp(pot)}</td>
+                                             <td className="px-3 py-2 text-right font-mono font-bold text-green-700">{fmtRp(sisa)}</td>
+                                             <td className="px-3 py-2 text-center">
+                                                <button onClick={() => deleteSkema(s.id)} className="text-red-500 hover:text-red-700 text-xs font-semibold">Hapus</button>
+                                             </td>
+                                          </tr>
+                                       );
+                                    })}
+                                    {affiliateSkema.length > 0 && (
+                                       <tr className="bg-gray-50 border-t-2 border-gray-300">
+                                          <td className="px-3 py-2 font-bold text-gray-700" colSpan={4}>Total Sisa Target</td>
+                                          <td className="px-3 py-2 text-right font-bold font-mono text-green-700">{fmtRp(sisal)}</td>
+                                          <td />
+                                       </tr>
+                                    )}
+                                 </tbody>
+                              </table>
+                           </div>
+
+                           {/* ==== PENJUALAN ==== */}
+                           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                              <div className="flex items-center justify-between px-4 py-3 bg-yellow-50 border-b border-yellow-200">
+                                 <h3 className="font-bold text-gray-800">🛒 Penjualan Affiliate</h3>
+                                 <button onClick={() => setPenjualanFormOpen(o => !o)}
+                                    className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg text-xs font-bold transition">
+                                    {penjualanFormOpen ? '✕ Batal' : '+ Tambah Baris'}
+                                 </button>
+                              </div>
+                              {penjualanFormOpen && (
+                                 <div className="flex flex-wrap gap-2 p-3 bg-yellow-50 border-b border-yellow-100">
+                                    <input placeholder="Barang Affiliator *" value={penjualanFormData.barang} onChange={e => setPenjualanFormData(f => ({ ...f, barang: e.target.value }))}
+                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1 min-w-40" />
+                                    <input placeholder="Harga Barang *" type="number" value={penjualanFormData.harga_barang} onChange={e => setPenjualanFormData(f => ({ ...f, harga_barang: e.target.value }))}
+                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm w-36" />
+                                    <input placeholder="Persentase %" type="number" step="0.1" value={penjualanFormData.persentase} onChange={e => setPenjualanFormData(f => ({ ...f, persentase: e.target.value }))}
+                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm w-28" />
+                                    <button onClick={addPenjualan} disabled={affiliateSaving}
+                                       className="px-4 py-1.5 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-black rounded text-sm font-bold transition">
+                                       {affiliateSaving ? '...' : 'Simpan'}
+                                    </button>
+                                 </div>
+                              )}
+                              <table className="w-full text-sm">
+                                 <thead className="bg-yellow-400">
+                                    <tr>
+                                       {['No','Barang Affiliator','Harga Barang','Persentase %','Nominal','Sisa Kontrak',''].map(h => (
+                                          <th key={h} className="px-3 py-2 text-left font-bold text-black">{h}</th>
+                                       ))}
+                                    </tr>
+                                 </thead>
+                                 <tbody>
+                                    {penjualanWithSisa.length === 0 && (
+                                       <tr><td colSpan={7} className="text-center py-6 text-gray-400 text-xs">Belum ada data penjualan.</td></tr>
+                                    )}
+                                    {penjualanWithSisa.map((p, i) => (
+                                       <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                          <td className="px-3 py-2 text-gray-400">{i + 1}</td>
+                                          <td className="px-3 py-2">{p.barang}</td>
+                                          <td className="px-3 py-2 text-right font-mono">{fmtRp(p.harga_barang)}</td>
+                                          <td className="px-3 py-2 text-center">{p.persentase}%</td>
+                                          <td className="px-3 py-2 text-right font-mono text-blue-700 font-semibold">{fmtRp(p.nominal)}</td>
+                                          <td className="px-3 py-2 text-right font-mono font-bold text-green-700">{fmtRp(p.sisa_kontrak)}</td>
+                                          <td className="px-3 py-2 text-center">
+                                             <button onClick={() => deletePenjualan(p.id)} className="text-red-500 hover:text-red-700 text-xs font-semibold">Hapus</button>
+                                          </td>
+                                       </tr>
+                                    ))}
+                                 </tbody>
+                              </table>
+                           </div>
+                        </div>
+                     );
+                  }
+
+                  // ---- LIST VIEW ----
+                  const filteredAffiliates = affiliates.filter(a => {
+                     const q = affiliateSearch.toLowerCase();
+                     return !q || a.nama.toLowerCase().includes(q) || a.phone.includes(q) || (a.alamat || '').toLowerCase().includes(q);
+                  });
+
+                  return (
+                     <div className="space-y-4 animate-fade-in">
+                        {/* Toolbar */}
+                        <div className="flex items-center gap-3 flex-wrap">
+                           <h2 className="text-lg font-bold text-gray-800">🤝 Daftar Affiliate</h2>
+                           <input type="text" placeholder="Cari nama / phone..." value={affiliateSearch} onChange={e => setAffiliateSearch(e.target.value)}
+                              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                           <button onClick={fetchAffiliates} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-sm transition">🔄</button>
+                           <button onClick={() => { setAffiliateFormData({}); setEditingAffiliateId(null); setAffiliateFormOpen(o => !o); }}
+                              className="ml-auto px-4 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg text-sm font-bold transition shadow">
+                              {affiliateFormOpen && !editingAffiliateId ? '✕ Batal' : '+ Tambah Affiliate'}
+                           </button>
+                        </div>
+
+                        {/* Form tambah/edit */}
+                        {affiliateFormOpen && (
+                           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 space-y-3">
+                              <h3 className="font-bold text-gray-700 text-sm">{editingAffiliateId ? '✏️ Edit Affiliate' : '➕ Tambah Affiliate Baru'}</h3>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                 {[
+                                    { key: 'nama', label: 'Nama *', type: 'text' },
+                                    { key: 'phone', label: 'Phone *', type: 'text' },
+                                    { key: 'alamat', label: 'Alamat', type: 'text' },
+                                    { key: 'map', label: 'Link Maps', type: 'url' },
+                                    { key: 'awal_kontrak', label: 'Awal Kontrak', type: 'date' },
+                                    { key: 'akhir_kontrak', label: 'Akhir Kontrak', type: 'date' },
+                                    { key: 'fee_max_6_jam', label: 'Fee ≤ 6 Jam (Rp)', type: 'number' },
+                                    { key: 'fee_diatas_6_jam', label: 'Fee > 6 Jam (Rp)', type: 'number' },
+                                 ].map(f => (
+                                    <div key={f.key}>
+                                       <label className="block text-xs font-semibold text-gray-600 mb-1">{f.label}</label>
+                                       <input type={f.type} value={(affiliateFormData[f.key as keyof Affiliate] as string) || ''}
+                                          onChange={e => setAffiliateFormData(prev => ({ ...prev, [f.key]: f.type === 'number' ? parseFloat(e.target.value) || null : e.target.value }))}
+                                          className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                                    </div>
+                                 ))}
+                              </div>
+                              <div className="flex gap-2 justify-end pt-1">
+                                 <button onClick={() => { setAffiliateFormOpen(false); setAffiliateFormData({}); setEditingAffiliateId(null); }}
+                                    className="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-sm transition">Batal</button>
+                                 <button onClick={saveAffiliate} disabled={affiliateSaving}
+                                    className="px-6 py-1.5 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-black rounded font-bold text-sm transition shadow">
+                                    {affiliateSaving ? 'Menyimpan...' : 'Simpan'}
+                                 </button>
+                              </div>
+                           </div>
+                        )}
+
+                        {/* Tabel */}
+                        {affiliates.length === 0 ? (
+                           <div className="text-center py-20 text-gray-400">
+                              <div className="text-4xl mb-3">🤝</div>
+                              <p className="font-semibold">Belum ada data affiliate.</p>
+                              <p className="text-sm mt-1">Klik &quot;+ Tambah Affiliate&quot; untuk mulai.</p>
+                           </div>
+                        ) : (
+                           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                              <table className="w-full text-sm">
+                                 <thead className="bg-yellow-400">
+                                    <tr>
+                                       {['Nama','Phone','Alamat','Kontrak','Fee ≤6Jam','Fee >6Jam','Aksi'].map(h => (
+                                          <th key={h} className="px-3 py-2.5 text-left font-bold text-black whitespace-nowrap">{h}</th>
+                                       ))}
+                                    </tr>
+                                 </thead>
+                                 <tbody>
+                                    {filteredAffiliates.map(a => (
+                                       <tr key={a.id} className="border-t border-gray-100 hover:bg-yellow-50 transition-colors">
+                                          <td className="px-3 py-2 font-semibold text-gray-800">{a.nama}</td>
+                                          <td className="px-3 py-2 text-gray-600">{a.phone}</td>
+                                          <td className="px-3 py-2 text-gray-600 max-w-[200px] truncate">{a.alamat || '-'}</td>
+                                          <td className="px-3 py-2 text-gray-500 whitespace-nowrap text-xs">
+                                             {a.awal_kontrak || '-'}<br/>{a.akhir_kontrak ? `s/d ${a.akhir_kontrak}` : ''}
+                                          </td>
+                                          <td className="px-3 py-2 text-right font-mono text-xs">{a.fee_max_6_jam ? fmtRp(a.fee_max_6_jam) : '-'}</td>
+                                          <td className="px-3 py-2 text-right font-mono text-xs">{a.fee_diatas_6_jam ? fmtRp(a.fee_diatas_6_jam) : '-'}</td>
+                                          <td className="px-3 py-2">
+                                             <div className="flex gap-2">
+                                                <button onClick={async () => {
+                                                   setSelectedAffiliate(a);
+                                                   setAffiliateView('detail');
+                                                   await fetchAffiliateDetail(a.id);
+                                                }} className="text-xs px-2.5 py-1 bg-yellow-400 hover:bg-yellow-500 text-black rounded font-bold transition">Detail</button>
+                                                <button onClick={() => { setAffiliateFormData(a); setEditingAffiliateId(a.id); setAffiliateFormOpen(true); }}
+                                                   className="text-xs px-2.5 py-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded transition">Edit</button>
+                                                <button onClick={() => deleteAffiliate(a.id)}
+                                                   className="text-xs px-2.5 py-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition">Hapus</button>
+                                             </div>
+                                          </td>
+                                       </tr>
+                                    ))}
+                                 </tbody>
+                              </table>
+                              <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-400">
+                                 {filteredAffiliates.length} affiliate
+                              </div>
+                           </div>
+                        )}
                      </div>
                   );
                })()}
