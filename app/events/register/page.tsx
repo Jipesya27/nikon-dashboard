@@ -70,6 +70,7 @@ export default function EventRegisterPage() {
   const [filterPayment, setFilterPayment] = useState<'all' | 'regular' | 'deposit'>('all');
   const [filterGenre, setFilterGenre] = useState<string>('Semua');
   const [sortBy, setSortBy] = useState<'newest' | 'soonest' | 'price_asc' | 'price_desc'>('soonest');
+  const [descEvent, setDescEvent] = useState<EventItem | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -329,7 +330,11 @@ export default function EventRegisterPage() {
 
               return (
                 <div key={evt.id} className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
-                  <div className="relative bg-linear-to-br from-gray-100 to-gray-200">
+                  <div
+                    className="relative bg-linear-to-br from-gray-100 to-gray-200 cursor-pointer"
+                    onClick={() => evt.event_description ? setDescEvent(evt) : undefined}
+                    title={evt.event_description ? 'Klik untuk lihat deskripsi' : undefined}
+                  >
                     {evt.event_image ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -340,6 +345,13 @@ export default function EventRegisterPage() {
                     ) : (
                       <div className="w-full aspect-[3/4] bg-linear-to-br from-gray-800 to-black flex items-center justify-center">
                         <span className="text-[#FFE500] font-black text-5xl">N</span>
+                      </div>
+                    )}
+                    {evt.event_description && (
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/90 text-black text-xs font-bold px-3 py-1.5 rounded-full shadow">
+                          📋 Lihat Deskripsi
+                        </span>
                       </div>
                     )}
                     {/* badges overlay */}
@@ -405,6 +417,72 @@ export default function EventRegisterPage() {
             Nikon Indonesia · Powered by Alta Nikindo
           </p>
         </div>
+
+        {/* MODAL DESKRIPSI EVENT */}
+        {descEvent && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
+            onClick={() => setDescEvent(null)}
+          >
+            <div
+              className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden max-h-[90dvh] flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Image */}
+              {descEvent.event_image && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={descEvent.event_image}
+                  alt={descEvent.event_title}
+                  className="w-full max-h-56 object-contain bg-gray-100"
+                />
+              )}
+
+              {/* Content */}
+              <div className="overflow-y-auto p-5 flex flex-col gap-3 flex-1">
+                {descEvent.event_speaker_genre && (
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{descEvent.event_speaker_genre}</p>
+                )}
+                <h2 className="text-lg font-bold text-gray-900 leading-snug">{descEvent.event_title}</h2>
+
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-700">
+                  <span className="flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    {descEvent.event_date}
+                  </span>
+                  {descEvent.event_speaker && (
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                      {descEvent.event_speaker}
+                    </span>
+                  )}
+                  <span className="font-bold text-gray-900">{descEvent.event_price}</span>
+                </div>
+
+                {/* Deskripsi */}
+                <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-line border-t border-gray-100 pt-3">
+                  {descEvent.event_description}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="p-4 border-t border-gray-100 flex gap-3 bg-white">
+                <button
+                  onClick={() => setDescEvent(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Tutup
+                </button>
+                <button
+                  onClick={() => { pilihEvent(descEvent); setDescEvent(null); }}
+                  className="flex-1 py-2.5 rounded-xl bg-black text-[#FFE500] text-sm font-bold hover:bg-gray-800 transition shadow-md"
+                >
+                  Daftar Sekarang →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
