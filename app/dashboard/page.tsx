@@ -63,6 +63,10 @@ export default function NikonDashboard() {
    const [isForgotPw, setIsForgotPw] = useState(false);
    const [forgotPwUsername, setForgotPwUsername] = useState('');
    const [forgotPwMessage, setForgotPwMessage] = useState('');
+   const [isChangePwOpen, setIsChangePwOpen] = useState(false);
+   const [changePwForm, setChangePwForm] = useState({ current: '', newPw: '', confirm: '' });
+   const [changePwError, setChangePwError] = useState('');
+   const [changePwSuccess, setChangePwSuccess] = useState('');
 
    // DATA STATES
    const [messages, setMessages] = useState<RiwayatPesan[]>([]);
@@ -801,6 +805,28 @@ export default function NikonDashboard() {
          setForgotPwMessage('Gagal memproses reset password: ' + message);
       } finally {
          setIsSubmitting(false);
+      }
+   };
+
+   const handleChangePassword = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setChangePwError('');
+      setChangePwSuccess('');
+      if (changePwForm.newPw !== changePwForm.confirm) return setChangePwError('Password baru tidak cocok!');
+      if (changePwForm.newPw.length < 6) return setChangePwError('Password baru minimal 6 karakter!');
+      try {
+         const { data } = await supabase.from('karyawan').select('id_karyawan').eq('id_karyawan', currentUser?.id_karyawan).eq('password', changePwForm.current).single();
+         if (!data) return setChangePwError('Password saat ini tidak sesuai!');
+         const { error } = await supabase.from('karyawan').update({ password: changePwForm.newPw }).eq('id_karyawan', currentUser?.id_karyawan);
+         if (error) throw error;
+         const updated = { ...currentUser, password: changePwForm.newPw } as Karyawan;
+         localStorage.setItem('nikon_karyawan', JSON.stringify(updated));
+         setCurrentUser(updated);
+         setChangePwSuccess('Password berhasil diubah!');
+         setChangePwForm({ current: '', newPw: '', confirm: '' });
+         setTimeout(() => { setIsChangePwOpen(false); setChangePwSuccess(''); }, 1800);
+      } catch {
+         setChangePwError('Gagal mengubah password. Coba lagi.');
       }
    };
 
@@ -2306,6 +2332,7 @@ export default function NikonDashboard() {
                   setSidebarOpen={setSidebarOpen}
                   currentUser={currentUser}
                   handleLogout={handleLogout}
+                  onChangePassword={() => { setChangePwForm({ current: '', newPw: '', confirm: '' }); setChangePwError(''); setChangePwSuccess(''); setIsChangePwOpen(true); }}
                />
 
             <div className="flex flex-1 overflow-hidden relative">
@@ -6691,6 +6718,35 @@ export default function NikonDashboard() {
                </>
             );
          })()}
+
+      {/* MODAL GANTI PASSWORD */}
+      {isChangePwOpen && (
+         <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm border-t-4 border-[#FFE500]">
+               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <h2 className="font-bold text-gray-900">🔑 Ganti Password</h2>
+                  <button onClick={() => setIsChangePwOpen(false)} className="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">✕</button>
+               </div>
+               <form onSubmit={handleChangePassword} className="px-6 py-5 space-y-4">
+                  {changePwError && <div className="bg-red-50 border-l-4 border-red-500 text-red-700 text-sm px-3 py-2 rounded">{changePwError}</div>}
+                  {changePwSuccess && <div className="bg-green-50 border-l-4 border-green-500 text-green-700 text-sm px-3 py-2 rounded">{changePwSuccess}</div>}
+                  <div>
+                     <label className="label-form">Password Saat Ini</label>
+                     <input type="password" required value={changePwForm.current} onChange={e => setChangePwForm(f => ({ ...f, current: e.target.value }))} className="input-form" placeholder="Masukkan password lama" autoComplete="current-password" />
+                  </div>
+                  <div>
+                     <label className="label-form">Password Baru</label>
+                     <input type="password" required minLength={6} value={changePwForm.newPw} onChange={e => setChangePwForm(f => ({ ...f, newPw: e.target.value }))} className="input-form" placeholder="Minimal 6 karakter" autoComplete="new-password" />
+                  </div>
+                  <div>
+                     <label className="label-form">Konfirmasi Password Baru</label>
+                     <input type="password" required minLength={6} value={changePwForm.confirm} onChange={e => setChangePwForm(f => ({ ...f, confirm: e.target.value }))} className="input-form" placeholder="Ulangi password baru" autoComplete="new-password" />
+                  </div>
+                  <button type="submit" className="btn-primary w-full mt-2">Simpan Password Baru</button>
+               </form>
+            </div>
+         </div>
+      )}
       </>
    );
 }

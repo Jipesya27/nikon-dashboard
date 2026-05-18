@@ -10,6 +10,7 @@ interface HeaderProps {
    setSidebarOpen: (open: boolean) => void;
    currentUser: Karyawan | null;
    handleLogout: () => void;
+   onChangePassword: () => void;
 }
 
 const EXTERNAL_PAGES = [
@@ -23,7 +24,7 @@ const EXTERNAL_PAGES = [
    { href: '/events/register', label: 'Daftar Event (Publik)', icon: '🎟️' },
 ];
 
-export default function Header({ sidebarOpen, setSidebarOpen, currentUser, handleLogout }: HeaderProps) {
+export default function Header({ sidebarOpen, setSidebarOpen, currentUser, handleLogout, onChangePassword }: HeaderProps) {
    const [linksOpen, setLinksOpen] = useState(false);
    const linksRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +89,7 @@ export default function Header({ sidebarOpen, setSidebarOpen, currentUser, handl
             <Link href="/chatbot" aria-label="Editor Teks Bot" title="Editor Teks Chatbot" className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-md">
                🤖
             </Link>
+            <button onClick={onChangePassword} title="Ganti Password" className="bg-gray-700 hover:bg-yellow-500 hover:text-black text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-sm">🔑</button>
             <button onClick={handleLogout} className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-sm">Logout</button>
          </div>
       </header>
