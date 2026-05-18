@@ -532,12 +532,7 @@ export default function NikonPage() {
           <WACTASection />
         </main>
         <Footer />
-        <div className="fixed bottom-5 right-5 z-50">
-          <Link href="/admin/homepage"
-            className="text-xs font-bold px-3 py-2 shadow-lg transition opacity-40 hover:opacity-100 text-white bg-zinc-900/80 backdrop-blur-sm border border-zinc-700">
-            ✏️ Edit
-          </Link>
-        </div>
+
       </div>
     </SiteContext.Provider>
   );
