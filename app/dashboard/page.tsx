@@ -2103,6 +2103,15 @@ export default function NikonDashboard() {
       return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
    };
 
+   const formatTglBeli = (val?: string) => {
+      if (!val) return '-';
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return val;
+      const bulan = ['JAN','FEB','MAR','APR','MEI','JUN','JUL','AGU','SEP','OKT','NOV','DES'];
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${dd}${bulan[d.getMonth()]}${d.getFullYear()}`;
+   };
+
    const duplicateClaimIds = useMemo(() => {
       const duplicatesToMark = new Set<string>();
       const snToIds: Record<string, string[]> = {};
@@ -3268,7 +3277,7 @@ export default function NikonDashboard() {
                                        </td>
                                        <td className="px-3 py-2.5 text-xs text-gray-700">{c.tipe_barang}</td>
                                        <td className="px-3 py-2.5 text-xs font-bold text-black">{c.jenis_promosi || getNamaPromo(c.tipe_barang)}</td>
-                                       <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{c.tanggal_pembelian}</td>
+                                       <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{formatTglBeli(c.tanggal_pembelian)}</td>
                                        <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{formatSubmitDate(c.created_at)}</td>
                                        <td className="px-3 py-2.5 text-center">
                                           <span className="text-xs font-bold text-gray-700">{getClaimDurationDays(c.created_at)}</span>
@@ -3352,7 +3361,7 @@ export default function NikonDashboard() {
                                  </div>
                                  <div className="space-y-2 text-xs flex-1">
                                     <p><span className="font-bold w-20 inline-block">Barang:</span> {c.tipe_barang}</p>
-                                    <p><span className="font-bold w-20 inline-block">Tgl Beli:</span> {c.tanggal_pembelian}</p>
+                                    <p><span className="font-bold w-20 inline-block">Tgl Beli:</span> {formatTglBeli(c.tanggal_pembelian)}</p>
                                     <p><span className="font-bold w-20 inline-block">Tgl Submit:</span> {formatSubmitDate(c.created_at)}</p>
                                     <p><span className="font-bold w-20 inline-block">Durasi:</span> {getClaimDurationDays(c.created_at)}</p>
                                     <p><span className="font-bold w-20 inline-block">Toko:</span> {c.nama_toko || '-'}</p>
