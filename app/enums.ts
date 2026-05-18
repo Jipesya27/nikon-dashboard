@@ -26,13 +26,8 @@ export type StatusValidasiGaransi = typeof STATUS_VALIDASI_GARANSI_OPTIONS[numbe
 
 // ============ JENIS GARANSI ============
 export const JENIS_GARANSI_OPTIONS = [
+  { value: 'Extended 2 Years', label: 'Extended 2 Years' },
   { value: 'Jasa 30%', label: 'Jasa 30%' },
-  { value: 'Jasa 50%', label: 'Jasa 50%' },
-  { value: 'Jasa 100%', label: 'Jasa 100%' },
-  { value: 'Sparepart 30%', label: 'Sparepart 30%' },
-  { value: 'Sparepart 50%', label: 'Sparepart 50%' },
-  { value: 'Sparepart 100%', label: 'Sparepart 100%' },
-  { value: 'Full', label: 'Full Coverage' },
 ] as const;
 export type JenisGaransi = typeof JENIS_GARANSI_OPTIONS[number]['value'];
 
