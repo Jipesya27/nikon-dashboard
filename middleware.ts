@@ -19,6 +19,7 @@ export async function middleware(request: NextRequest) {
   // Always-public routes
   if (pathname === '/api/admin/auth') return NextResponse.next();
   if (pathname === '/api/auth/karyawan-login') return NextResponse.next();
+  if (pathname === '/api/auth/forgot-password') return NextResponse.next();
 
   const session = request.cookies.get('admin_session')?.value;
   // ADMIN_PASSWORD optional — fall back to SESSION_SECRET (set by karyawan login)

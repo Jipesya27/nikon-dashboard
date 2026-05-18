@@ -917,17 +917,16 @@ export default function NikonDashboard() {
       setForgotPwMessage('');
       setIsSubmitting(true);
       try {
-         const { data } = await supabase.from('karyawan').select('*').eq('nomor_wa', forgotPwUsername).single();
-         if (data) {
-            const tempPw = Math.random().toString(36).substring(2, 10);
-            await supabase.from('karyawan').update({ password: tempPw }).eq('id_karyawan', data.id_karyawan);
-
-            const msg = getText('forgotPassword', { nama: data.nama_karyawan, pass: tempPw });
-            await sendWhatsAppMessageViaFonnte(data.nomor_wa!, msg);
-
-            setForgotPwMessage('Password baru telah dikirim ke WhatsApp Anda!');
+         const res = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nomor_wa: forgotPwUsername }),
+         });
+         if (res.ok) {
+            setForgotPwMessage('Jika nomor terdaftar, password baru telah dikirim ke WhatsApp Anda!');
          } else {
-            setForgotPwMessage('Nomor WhatsApp tidak terdaftar!');
+            const j = await res.json();
+            setForgotPwMessage(j.error || 'Gagal memproses reset password.');
          }
       } catch (err: unknown) {
          const message = err instanceof Error ? err.message : String(err);
@@ -944,11 +943,19 @@ export default function NikonDashboard() {
       if (changePwForm.newPw !== changePwForm.confirm) return setChangePwError('Password baru tidak cocok!');
       if (changePwForm.newPw.length < 6) return setChangePwError('Password baru minimal 6 karakter!');
       try {
-         const { data } = await supabase.from('karyawan').select('id_karyawan').eq('id_karyawan', currentUser?.id_karyawan).eq('password', changePwForm.current).single();
-         if (!data) return setChangePwError('Password saat ini tidak sesuai!');
-         const { error } = await supabase.from('karyawan').update({ password: changePwForm.newPw }).eq('id_karyawan', currentUser?.id_karyawan);
-         if (error) throw error;
-         const updated = { ...currentUser, password: changePwForm.newPw } as Karyawan;
+         const res = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               id_karyawan: currentUser?.id_karyawan,
+               currentPassword: changePwForm.current,
+               newPassword: changePwForm.newPw,
+            }),
+         });
+         const json = await res.json();
+         if (!res.ok) return setChangePwError(json.error || 'Gagal mengubah password.');
+         // Jangan simpan password hash di localStorage
+         const updated = { ...currentUser } as Karyawan;
          localStorage.setItem('nikon_karyawan', JSON.stringify(updated));
          setCurrentUser(updated);
          setChangePwSuccess('Password berhasil diubah!');
@@ -1591,17 +1598,34 @@ export default function NikonDashboard() {
 
          if (modalAction === 'create') {
             if (!karyawanForm.nomor_wa) throw new Error("Nomor WhatsApp wajib diisi!");
-            await supabase.from('karyawan').insert([{ ...karyawanForm, password: passwordToUse }]);
-
+            // Insert tanpa password dulu, lalu set password (di-hash) via API
+            const { data: newKaryawan, error: insertErr } = await supabase
+               .from('karyawan')
+               .insert([{ ...karyawanForm, password: 'PENDING' }])
+               .select('id_karyawan')
+               .single();
+            if (insertErr) throw insertErr;
+            // Hash password via dedicated endpoint
+            await fetch('/api/admin/karyawan/password', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ id_karyawan: newKaryawan.id_karyawan, password: passwordToUse }),
+            });
             const msg = getText('newKaryawan', { nama: karyawanForm.nama_karyawan!, user: karyawanForm.username!, pass: passwordToUse });
             await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
          } else {
             const updateData = { ...karyawanForm };
-            if (!updateData.password) delete updateData.password;
+            const plainPw = updateData.password;
+            delete updateData.password; // jangan update password langsung via proxy
             await supabase.from('karyawan').update(updateData).eq('id_karyawan', editingId);
 
-            if (updateData.password && karyawanForm.nomor_wa) {
-               const msg = getText('updatePasswordAdmin', { nama: karyawanForm.nama_karyawan!, pass: updateData.password });
+            if (plainPw && karyawanForm.nomor_wa) {
+               await fetch('/api/admin/karyawan/password', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ id_karyawan: editingId, password: plainPw }),
+               });
+               const msg = getText('updatePasswordAdmin', { nama: karyawanForm.nama_karyawan!, pass: plainPw });
                await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
             }
          }
@@ -1617,7 +1641,12 @@ export default function NikonDashboard() {
       e.preventDefault(); setIsSubmitting(true);
       try {
          if (!karyawanForm.password) throw new Error("Password baru wajib diisi!");
-         await supabase.from('karyawan').update({ password: karyawanForm.password }).eq('id_karyawan', editingId);
+         const resetRes = await fetch('/api/admin/karyawan/password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_karyawan: editingId, password: karyawanForm.password }),
+         });
+         if (!resetRes.ok) throw new Error('Gagal menyimpan password');
 
          if (karyawanForm.nomor_wa) {
             const msg = getText('resetPasswordAdmin', { nama: karyawanForm.nama_karyawan!, pass: karyawanForm.password! });
