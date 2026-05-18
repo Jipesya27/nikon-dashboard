@@ -267,7 +267,7 @@ export default function ChatbotPage() {
       const { error } = await supabase
          .from('pengaturan_bot')
          .upsert(
-            { nama_pengaturan: dbKey, description: editText, url_file: null },
+            { nama_pengaturan: dbKey, description: editText, url_file: '' },
             { onConflict: 'nama_pengaturan' },
          );
       if (error) {
