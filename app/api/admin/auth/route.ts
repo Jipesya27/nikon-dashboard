@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
-import { buildSessionToken } from '@/app/lib/session';
+import { cookies } from 'next/headers';
+import { buildSessionToken, verifyAdminSession } from '@/app/lib/session';
 
 export const dynamic = 'force-dynamic';
+
+// GET: cek apakah sesi admin masih valid (dipakai AdminGate)
+export async function GET() {
+  const cookieStore = await cookies();
+  const ok = await verifyAdminSession(cookieStore);
+  if (!ok) return NextResponse.json({ ok: false }, { status: 401 });
+  return NextResponse.json({ ok: true });
+}
 
 export async function POST(req: Request) {
   try {
