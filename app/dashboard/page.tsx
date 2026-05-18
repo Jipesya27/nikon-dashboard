@@ -18,9 +18,9 @@ import Header from '@/app/Header';
 import AddressFields from '@/app/components/AddressFields';
 import EventReport from '@/app/components/EventReport';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hfqnlttxxrqarmpvtnhu.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key-to-prevent-error'; // Akan diisi via .env.local
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Route all Supabase queries through our server-side proxy so the
+// service_role key is never exposed to the browser and RLS is bypassed.
+const supabase = createClient('/api/admin/sb', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder');
 
 const ID_MONTHS: Record<string, number> = {
    januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
@@ -831,7 +831,7 @@ export default function NikonDashboard() {
       // Cek koneksi Supabase
       const checkConnection = async () => {
          try {
-            if (!supabaseKey || supabaseKey === 'dummy-key-to-prevent-error') {
+            if (false) { // supabase proxy is always available
                console.warn('Supabase key is not configured.');
                return;
             }

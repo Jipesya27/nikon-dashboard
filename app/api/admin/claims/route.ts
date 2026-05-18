@@ -3,6 +3,11 @@ import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
+/** Strip PostgREST syntax chars to prevent filter injection via .or() */
+function sanitizeSearch(s: string): string {
+  return s.replace(/[,()."'\\;]/g, ' ').trim().substring(0, 100);
+}
+
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +20,7 @@ export async function GET(req: Request) {
     const supabase = getSupabase();
     const { searchParams } = new URL(req.url);
     const status   = searchParams.get('status') || 'all';
-    const search   = searchParams.get('search') || '';
+    const search   = sanitizeSearch(searchParams.get('search') || '');
     const page     = parseInt(searchParams.get('page') || '1');
     const limit    = 20;
     const offset   = (page - 1) * limit;

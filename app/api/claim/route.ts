@@ -125,7 +125,7 @@ export async function GET(req: Request) {
       konsumen: {
         nomor_wa: konsumen.nomor_wa,
         nama_lengkap: clean(konsumen.nama_lengkap),
-        nik: clean(konsumen.nik),
+        // NIK tidak dikirim ke client karena merupakan data sensitif PII
         alamat_rumah: clean(konsumen.alamat_rumah),
         kelurahan: clean(konsumen.kelurahan),
         kecamatan: clean(konsumen.kecamatan),
@@ -139,6 +139,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 // POST: submit form claim — UPDATE konsumen + INSERT claim_promo + UPLOAD ke Drive
 export async function POST(req: Request) {
@@ -195,6 +198,23 @@ export async function POST(req: Request) {
     if (!fileGaransi || !fileNota) {
       return NextResponse.json({ error: 'File Kartu Garansi dan Nota Pembelian wajib diunggah.' }, { status: 400 });
     }
+
+    // Validasi tipe dan ukuran file
+    for (const [label, file] of [['Kartu Garansi', fileGaransi], ['Nota Pembelian', fileNota]] as [string, File][]) {
+      if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+        return NextResponse.json({ error: `File ${label}: tipe tidak diizinkan. Gunakan JPG, PNG, WEBP, GIF, atau PDF.` }, { status: 400 });
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json({ error: `File ${label}: ukuran maksimal 10 MB.` }, { status: 400 });
+      }
+    }
+
+    // Validasi panjang input
+    if (nama_lengkap && nama_lengkap.length > 150) return NextResponse.json({ error: 'Nama terlalu panjang.' }, { status: 400 });
+    if (nomor_seri && nomor_seri.length > 60) return NextResponse.json({ error: 'Nomor seri terlalu panjang.' }, { status: 400 });
+    if (tipe_barang && tipe_barang.length > 100) return NextResponse.json({ error: 'Tipe barang terlalu panjang.' }, { status: 400 });
+    if (alamat_rumah && alamat_rumah.length > 500) return NextResponse.json({ error: 'Alamat terlalu panjang.' }, { status: 400 });
+    if (alamat_pengiriman && alamat_pengiriman.length > 500) return NextResponse.json({ error: 'Alamat pengiriman terlalu panjang.' }, { status: 400 });
 
     // Cari atau buat konsumen baru (upsert)
     let { konsumen, matchedPhone } = await findKonsumen(supabase, phone);

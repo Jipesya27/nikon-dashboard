@@ -1,5 +1,20 @@
 // Uses Web Crypto (crypto.subtle) — works in Edge Runtime AND Node.js
+
+/** Constant-time string comparison (prevents timing attacks) */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const enc = new TextEncoder();
+  const aBytes = enc.encode(a);
+  const bBytes = enc.encode(b);
+  let result = 0;
+  for (let i = 0; i < aBytes.length; i++) {
+    result |= aBytes[i] ^ bBytes[i];
+  }
+  return result === 0;
+}
+
 export async function buildSessionToken(password: string): Promise<string> {
+  // SESSION_SECRET is a separate secret from ADMIN_PASSWORD — set it in env!
   const key = process.env.SESSION_SECRET || `nikon-auth-${password}-v2`;
   const enc = new TextEncoder();
   const k = await crypto.subtle.importKey(
@@ -18,5 +33,6 @@ export async function verifyAdminSession(
   const secret = process.env.ADMIN_PASSWORD || '';
   if (!secret || !session) return false;
   const expected = await buildSessionToken(secret);
-  return session === expected;
+  // Use constant-time comparison to prevent timing attacks
+  return safeEqual(session, expected);
 }

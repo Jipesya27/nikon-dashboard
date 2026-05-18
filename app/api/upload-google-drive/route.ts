@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { verifyAdminSession } from '@/app/lib/session';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
@@ -74,8 +76,20 @@ async function deleteFromGoogleDrive(fileId: string, accessToken: string) {
 }
 
 
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'application/pdf',
+];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
 export async function POST(req: Request) {
   try {
+    // Require admin session for file uploads
+    const cookieStore = await cookies();
+    if (!(await verifyAdminSession(cookieStore))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const prefix = formData.get('prefix') as string;
@@ -85,11 +99,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
+    // Validate file type and size
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      return NextResponse.json({ error: 'Tipe file tidak diizinkan. Gunakan JPG, PNG, WEBP, GIF, atau PDF.' }, { status: 400 });
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'Ukuran file maksimal 10 MB.' }, { status: 400 });
+    }
+
     const accessToken = await getAccessToken();
     const originalName = file.name.split('.');
     const ext = originalName.length > 1 ? originalName.pop() : '';
     const cleanBaseName = sanitizeFileName(originalName.join('.'));
-    
+
     const fileName = `${prefix}_${serial}_${cleanBaseName}_${Date.now()}.${ext}`;
     const url = await uploadToGoogleDrive(file, fileName, accessToken);
 
@@ -101,16 +123,22 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-    try {
-        const { fileId } = await req.json();
-        if (!fileId) {
-            return NextResponse.json({ error: 'File ID is required' }, { status: 400 });
-        }
-        const accessToken = await getAccessToken();
-        await deleteFromGoogleDrive(fileId, accessToken);
-        return NextResponse.json({ success: true, message: 'File deleted' });
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Internal error';
-        return NextResponse.json({ error: message }, { status: 500 });
+  try {
+    // Require admin session for file deletion
+    const cookieStore = await cookies();
+    if (!(await verifyAdminSession(cookieStore))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const { fileId } = await req.json();
+    if (!fileId || typeof fileId !== 'string') {
+      return NextResponse.json({ error: 'File ID is required' }, { status: 400 });
+    }
+    const accessToken = await getAccessToken();
+    await deleteFromGoogleDrive(fileId, accessToken);
+    return NextResponse.json({ success: true, message: 'File deleted' });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

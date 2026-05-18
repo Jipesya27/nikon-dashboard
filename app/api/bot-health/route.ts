@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const EDGE_FUNCTION_URL = `${supabaseUrl}/functions/v1/fonnte-bot`;
@@ -72,7 +72,7 @@ export async function GET() {
     const t2 = setTimeout(() => ctrl2.abort(), 5000);
     const fonnte = await fetch('https://api.fonnte.com/validate', {
       method: 'POST',
-      headers: { Authorization: process.env.FONNTE_TOKEN || 'xYsGrYetdkLXoK72dDtc' },
+      headers: { Authorization: process.env.FONNTE_TOKEN || '' },
       signal: ctrl2.signal,
     });
     clearTimeout(t2);

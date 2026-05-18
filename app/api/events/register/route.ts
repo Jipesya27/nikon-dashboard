@@ -181,6 +181,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Bukti transfer wajib diunggah.' }, { status: 400 });
     }
 
+    // Validasi tipe dan ukuran file bukti transfer
+    const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+    if (!ALLOWED_MIME_TYPES.includes(fileBukti.type)) {
+      return NextResponse.json({ error: 'File bukti transfer: tipe tidak diizinkan. Gunakan JPG, PNG, WEBP, GIF, atau PDF.' }, { status: 400 });
+    }
+    if (fileBukti.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'File bukti transfer: ukuran maksimal 10 MB.' }, { status: 400 });
+    }
+
+    // Validasi panjang input
+    if (nama_lengkap && nama_lengkap.length > 150) return NextResponse.json({ error: 'Nama terlalu panjang.' }, { status: 400 });
+    if (email && email.length > 200) return NextResponse.json({ error: 'Email terlalu panjang.' }, { status: 400 });
+    if (tipe_kamera && tipe_kamera.length > 100) return NextResponse.json({ error: 'Tipe kamera terlalu panjang.' }, { status: 400 });
+    if (kabupaten_kotamadya && kabupaten_kotamadya.length > 100) return NextResponse.json({ error: 'Kabupaten/kotamadya terlalu panjang.' }, { status: 400 });
+
     // Normalisasi nomor_wa ke format 08...
     let nomor_wa = nomor_wa_input.replace(/[^0-9]/g, '');
     if (nomor_wa.startsWith('62')) nomor_wa = '0' + nomor_wa.slice(2);
