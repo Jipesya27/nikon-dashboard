@@ -6559,18 +6559,16 @@ export default function NikonDashboard() {
                                  <div className="border-t-2 border-dashed border-gray-500 mb-4"></div>
                                  <h3 className="font-bold text-base mb-3 tracking-wider">LAMPIRAN (ATTACHMENTS):</h3>
                                  {(() => {
-                                    // Max 3 gambar — split tampil sebaris, ukuran auto-fit width
                                     const visibleAttachments = attachments.slice(0, 3);
-                                    const cols = visibleAttachments.length;
                                     return (
-                                       <div className={`grid gap-3 ${cols === 1 ? 'grid-cols-1' : cols === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                                       <div className="flex flex-wrap gap-3">
                                           {visibleAttachments.map((url, idx) => (
-                                             <div key={idx} className="border border-gray-300 p-1.5">
+                                             <div key={idx} className="border border-gray-300 p-1.5 flex-none" style={{ width: 'calc(50% - 6px)', height: '210px' }}>
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
                                                    src={url}
                                                    alt={`Lampiran ${idx + 1}`}
-                                                   className="w-full h-auto object-contain"
+                                                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                                 />
                                              </div>
