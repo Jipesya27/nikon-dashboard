@@ -65,14 +65,6 @@ async function uploadToDrive(file: File, fileName: string, accessToken: string):
   const data = await res.json();
   if (!data.id) throw new Error(`Upload Drive gagal: ${JSON.stringify(data)}`);
 
-  // Set permission non-blocking
-  fetch(`https://www.googleapis.com/drive/v3/files/${data.id}/permissions`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
-    signal: AbortSignal.timeout(5000),
-  }).catch(e => console.error('Set Drive permission gagal (non-kritis):', e));
-
   return `https://drive.google.com/uc?id=${data.id}&export=view`;
 }
 

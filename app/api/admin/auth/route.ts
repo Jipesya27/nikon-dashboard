@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { buildSessionToken } from '@/app/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,12 +12,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Password salah' }, { status: 401 });
     }
 
+    const token = await buildSessionToken(secret);
     const res = NextResponse.json({ success: true });
-    res.cookies.set('admin_session', secret, {
+    res.cookies.set('admin_session', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 hari
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7,
       path: '/',
     });
     return res;

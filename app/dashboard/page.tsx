@@ -318,11 +318,16 @@ export default function NikonDashboard() {
       };
    }, []);
 
-   const driveDocThumb = (url: string | null | File, size = 'w2000'): string => {
+   const driveDocThumb = (url: string | null | File): string => {
       if (!url || url instanceof File) return '';
       const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-      if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=${size}`;
+      if (m) return `/api/drive-file?id=${m[1]}`;
       return url;
+   };
+
+   const toDriveProxy = (url: string): string => {
+      const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      return m ? `/api/drive-file?id=${m[1]}` : url;
    };
 
    const openDualDocViewer = (garansi: string | File | null | undefined, nota: string | File | null | undefined) => {
@@ -343,9 +348,8 @@ export default function NikonDashboard() {
    };
 
    const openImageViewer = (urlOrFile: string | File) => {
-      // Jika url adalah link Google Drive, buka di tab baru
       if (typeof urlOrFile === 'string' && isGoogleDriveLink(urlOrFile)) {
-         window.open(urlOrFile, '_blank', 'noopener,noreferrer');
+         window.open(toDriveProxy(urlOrFile), '_blank', 'noopener,noreferrer');
          return;
       }
 
@@ -6610,7 +6614,7 @@ export default function NikonDashboard() {
                                              <div key={idx} className="border border-gray-300 p-1.5 flex-none" style={{ width: 'calc(50% - 6px)', height: '210px' }}>
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
-                                                   src={url}
+                                                   src={isGoogleDriveLink(url) ? toDriveProxy(url) : url}
                                                    alt={`Lampiran ${idx + 1}`}
                                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
