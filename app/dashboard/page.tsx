@@ -21,7 +21,7 @@ import EventReport from '@/app/components/EventReport';
 // Client-side: proxy through /api/admin/sb (validates admin session, uses service_role).
 // SSR/prerender: fall back to real URL (no queries happen server-side; all fetches are in useEffect).
 const supabase = createClient(
-  typeof window !== 'undefined' ? '/api/admin/sb' : (process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
+  typeof window !== 'undefined' ? (window.location.origin + '/api/admin/sb') : (process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder',
 );
 

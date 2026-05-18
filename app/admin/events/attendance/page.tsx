@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
 const supabase = createClient(
-  typeof window !== 'undefined' ? '/api/admin/sb' : (process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
+  typeof window !== 'undefined' ? (window.location.origin + '/api/admin/sb') : (process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder',
 );
 
