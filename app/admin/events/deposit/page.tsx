@@ -4,7 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient('/api/admin/sb', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder');
+const supabase = createClient(
+  typeof window !== 'undefined' ? '/api/admin/sb' : (process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder',
+);
 
 type DepositRegistration = {
   id: string;

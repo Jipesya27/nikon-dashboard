@@ -18,9 +18,12 @@ import Header from '@/app/Header';
 import AddressFields from '@/app/components/AddressFields';
 import EventReport from '@/app/components/EventReport';
 
-// Route all Supabase queries through our server-side proxy so the
-// service_role key is never exposed to the browser and RLS is bypassed.
-const supabase = createClient('/api/admin/sb', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder');
+// Client-side: proxy through /api/admin/sb (validates admin session, uses service_role).
+// SSR/prerender: fall back to real URL (no queries happen server-side; all fetches are in useEffect).
+const supabase = createClient(
+  typeof window !== 'undefined' ? '/api/admin/sb' : (process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder',
+);
 
 const ID_MONTHS: Record<string, number> = {
    januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
