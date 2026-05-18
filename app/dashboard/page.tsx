@@ -4748,12 +4748,13 @@ export default function NikonDashboard() {
                               const updateItem = (idx: number, patch: Partial<BudgetItem>) => {
                                  const newItems = [...items];
                                  const merged = { ...newItems[idx], ...patch };
-                                 // Auto-calc value = qty * cost_unit
-                                 if ('qty' in patch || 'cost_unit' in patch) {
+                                 if (merged.item_type === 'petty' && 'petty_cash' in patch) {
+                                    const v = parseFloat(String(merged.petty_cash || '0').replace(/[^0-9.-]/g, ''));
+                                    merged.value = isNaN(v) ? 0 : v;
+                                 } else if ('qty' in patch || 'cost_unit' in patch) {
                                     merged.value = (Number(merged.qty) || 0) * (Number(merged.cost_unit) || 0);
                                  }
                                  newItems[idx] = merged;
-                                 // Auto-update total_cost
                                  const newTotal = newItems.reduce((s, it) => s + (Number(it.value) || 0), 0);
                                  setBudgetForm({ ...budgetForm, items: newItems, total_cost: newTotal });
                               };
@@ -4834,14 +4835,14 @@ export default function NikonDashboard() {
                                        </div>
                                     </div>
 
-                                    {/* Section: Item Budget (auto-calc) */}
+                                    {/* Section: EVENT COST */}
                                     <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
                                        <div className="flex items-center justify-between mb-3">
-                                          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Detail Item Anggaran</h3>
-                                          <span className="text-[10px] text-gray-600 font-medium">{items.length} item · auto-calc</span>
+                                          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Event Cost</h3>
+                                          <span className="text-[10px] text-gray-600 font-medium">{items.filter(it => it.item_type !== 'petty').length} item · auto-calc</span>
                                        </div>
                                        <div className="space-y-3">
-                                          {items.map((item, idx) => (
+                                          {items.map((item, idx) => item.item_type === 'petty' ? null : (
                                              <div key={idx} className="bg-white border border-gray-200 rounded-lg p-3 space-y-2">
                                                 <div className="flex items-center justify-between">
                                                    <span className="text-xs font-bold text-gray-600">Item #{idx + 1}</span>
@@ -4860,44 +4861,14 @@ export default function NikonDashboard() {
                                                    onChange={e => updateItem(idx, { purpose: e.target.value })}
                                                    className="input-form"
                                                 />
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                                    <div>
                                                       <label className="text-[10px] font-bold text-gray-900 uppercase block mb-1">Qty</label>
-                                                      <input
-                                                         type="number"
-                                                         min={0}
-                                                         step={1}
-                                                         aria-label="Qty"
-                                                         title="Quantity"
-                                                         value={item.qty || ''}
-                                                         onChange={e => updateItem(idx, { qty: parseInt(e.target.value) || 0 })}
-                                                         className="input-form"
-                                                      />
+                                                      <input type="number" min={0} step={1} aria-label="Qty" title="Quantity" value={item.qty || ''} onChange={e => updateItem(idx, { qty: parseInt(e.target.value) || 0 })} className="input-form" />
                                                    </div>
                                                    <div>
                                                       <label className="text-[10px] font-bold text-gray-900 uppercase block mb-1">Cost/Unit</label>
-                                                      <input
-                                                         type="number"
-                                                         min={0}
-                                                         step={1000}
-                                                         aria-label="Cost per unit"
-                                                         title="Cost per unit"
-                                                         value={item.cost_unit || ''}
-                                                         onChange={e => updateItem(idx, { cost_unit: parseFloat(e.target.value) || 0 })}
-                                                         className="input-form"
-                                                      />
-                                                   </div>
-                                                   <div>
-                                                      <label className="text-[10px] font-bold text-gray-900 uppercase block mb-1">Petty Cash</label>
-                                                      <input
-                                                         type="text"
-                                                         placeholder="Opsional / no.ref"
-                                                         aria-label="Petty cash"
-                                                         title="Petty cash"
-                                                         value={item.petty_cash || ''}
-                                                         onChange={e => updateItem(idx, { petty_cash: e.target.value })}
-                                                         className="input-form"
-                                                      />
+                                                      <input type="number" min={0} step={1000} aria-label="Cost per unit" title="Cost per unit" value={item.cost_unit || ''} onChange={e => updateItem(idx, { cost_unit: parseFloat(e.target.value) || 0 })} className="input-form" />
                                                    </div>
                                                    <div>
                                                       <label className="text-[10px] font-bold text-gray-900 uppercase block mb-1">Value (auto)</label>
@@ -4911,34 +4882,97 @@ export default function NikonDashboard() {
                                           <button
                                              type="button"
                                              onClick={() => {
-                                                const newItems = [...items, { purpose: '', qty: 0, cost_unit: 0, value: 0, petty_cash: '' }];
+                                                const newItems = [...items, { purpose: '', qty: 0, cost_unit: 0, value: 0, petty_cash: '', item_type: 'event' as const }];
                                                 setBudgetForm({ ...budgetForm, items: newItems });
                                              }}
                                              className="w-full py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-bold border-2 border-dashed border-yellow-300"
                                           >
-                                             + Tambah Item Anggaran
+                                             + Tambah Item Event Cost
                                           </button>
+                                          <div className="flex items-center justify-between text-xs pt-1">
+                                             <span className="font-bold text-gray-700">Subtotal Event Cost</span>
+                                             <span className="font-mono font-bold text-gray-900">{fmtRp(items.filter(it => it.item_type !== 'petty').reduce((s, it) => s + (Number(it.value) || 0), 0))}</span>
+                                          </div>
                                        </div>
+                                    </div>
 
-                                       {/* Total Cost + Total Petty Cash */}
-                                       {(() => {
-                                          const totalPettyCash = items.reduce((sum, it) => {
-                                             const v = parseFloat(String(it.petty_cash || '0').replace(/[^0-9.-]/g, ''));
-                                             return sum + (isNaN(v) ? 0 : v);
-                                          }, 0);
-                                          return (
-                                             <div className="mt-3 pt-3 border-t-2 border-yellow-300 space-y-1">
-                                                <div className="flex items-center justify-between text-xs">
-                                                   <span className="font-bold text-gray-800">Total Petty Cash</span>
-                                                   <span className="font-mono font-bold text-gray-900">{fmtRp(totalPettyCash)}</span>
+                                    {/* Section: PETTY CASH */}
+                                    <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                                       <div className="flex items-center justify-between mb-3">
+                                          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Petty Cash</h3>
+                                          <span className="text-[10px] text-gray-600 font-medium">{items.filter(it => it.item_type === 'petty').length} item</span>
+                                       </div>
+                                       <div className="space-y-3">
+                                          {items.map((item, idx) => item.item_type !== 'petty' ? null : (
+                                             <div key={idx} className="bg-white border border-orange-100 rounded-lg p-3 space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                   <span className="text-xs font-bold text-orange-700">Petty Cash #{items.filter((it, i) => it.item_type === 'petty' && i <= idx).length}</span>
+                                                   <button type="button" onClick={() => {
+                                                      const newItems = [...items];
+                                                      newItems.splice(idx, 1);
+                                                      const newTotal = newItems.reduce((s, it) => s + (Number(it.value) || 0), 0);
+                                                      setBudgetForm({ ...budgetForm, items: newItems, total_cost: newTotal });
+                                                   }} className="text-red-600 text-xs font-bold hover:underline">✕ Hapus</button>
                                                 </div>
-                                                <div className="flex items-center justify-between pt-1">
-                                                   <span className="text-sm font-bold text-gray-700">TOTAL COST</span>
-                                                   <span className="text-xl font-black text-gray-900">{fmtRp(totalCost)}</span>
+                                                <input
+                                                   type="text"
+                                                   required
+                                                   placeholder="Keterangan / Keperluan petty cash"
+                                                   value={item.purpose}
+                                                   onChange={e => updateItem(idx, { purpose: e.target.value })}
+                                                   className="input-form"
+                                                />
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                                   <div>
+                                                      <label className="text-[10px] font-bold text-gray-900 uppercase block mb-1">Qty</label>
+                                                      <input type="number" min={0} step={1} aria-label="Qty" title="Quantity" value={item.qty || ''} onChange={e => updateItem(idx, { qty: parseInt(e.target.value) || 0 })} className="input-form" />
+                                                   </div>
+                                                   <div>
+                                                      <label className="text-[10px] font-bold text-gray-900 uppercase block mb-1">Cost/Unit</label>
+                                                      <input type="number" min={0} step={1000} aria-label="Cost per unit" title="Cost per unit" value={item.cost_unit || ''} onChange={e => updateItem(idx, { cost_unit: parseFloat(e.target.value) || 0 })} className="input-form" />
+                                                   </div>
+                                                   <div>
+                                                      <label className="text-[10px] font-bold text-orange-800 uppercase block mb-1">Jumlah Petty Cash</label>
+                                                      <input
+                                                         type="number"
+                                                         min={0}
+                                                         step={1000}
+                                                         placeholder="0"
+                                                         aria-label="Jumlah petty cash"
+                                                         title="Jumlah petty cash"
+                                                         value={item.petty_cash || ''}
+                                                         onChange={e => updateItem(idx, { petty_cash: e.target.value })}
+                                                         className="input-form border-orange-300 focus:border-orange-500"
+                                                      />
+                                                   </div>
+                                                </div>
+                                                <div className="flex items-center justify-between text-[11px] bg-orange-50 rounded px-2 py-1.5">
+                                                   <span className="font-bold text-orange-800">Total Petty Cash Item</span>
+                                                   <span className="font-mono font-bold text-orange-900">{fmtRp(Number(item.value) || 0)}</span>
                                                 </div>
                                              </div>
-                                          );
-                                       })()}
+                                          ))}
+                                          <button
+                                             type="button"
+                                             onClick={() => {
+                                                const newItems = [...items, { purpose: '', qty: 1, cost_unit: 0, value: 0, petty_cash: '', item_type: 'petty' as const }];
+                                                setBudgetForm({ ...budgetForm, items: newItems });
+                                             }}
+                                             className="w-full py-2 bg-white hover:bg-orange-50 text-orange-700 rounded-lg text-sm font-bold border-2 border-dashed border-orange-300"
+                                          >
+                                             + Tambah Item Petty Cash
+                                          </button>
+                                          <div className="flex items-center justify-between text-xs pt-1">
+                                             <span className="font-bold text-orange-700">Subtotal Petty Cash</span>
+                                             <span className="font-mono font-bold text-orange-900">{fmtRp(items.filter(it => it.item_type === 'petty').reduce((s, it) => s + (Number(it.value) || 0), 0))}</span>
+                                          </div>
+                                       </div>
+                                    </div>
+
+                                    {/* Grand Total */}
+                                    <div className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-200 flex items-center justify-between">
+                                       <span className="text-sm font-bold text-gray-700">GRAND TOTAL</span>
+                                       <span className="text-xl font-black text-gray-900">{fmtRp(totalCost)}</span>
                                     </div>
 
                                     {/* Section: Penanggung Jawab Approval (editable nama) */}
@@ -6357,6 +6391,9 @@ export default function NikonDashboard() {
             const fmtNum = (n: number) => n.toLocaleString('id-ID');
             const items = printData.items || [];
             const isPettyCashItem = (it: typeof items[0]) => {
+               if (it.item_type === 'petty') return true;
+               if (it.item_type === 'event') return false;
+               // backward compat: data lama tanpa item_type
                const v = parseFloat(String(it.petty_cash || '').replace(/[^0-9.-]/g, ''));
                return !isNaN(v) && v > 0;
             };
