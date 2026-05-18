@@ -30,9 +30,11 @@ export async function verifyAdminSession(
   cookieGetter: { get: (name: string) => { value: string } | undefined }
 ): Promise<boolean> {
   const session = cookieGetter.get('admin_session')?.value;
-  const secret = process.env.ADMIN_PASSWORD || '';
-  if (!secret || !session) return false;
+  if (!session) return false;
+  // ADMIN_PASSWORD is optional — fall back to SESSION_SECRET so karyawan login
+  // (which uses the same derivation) can create a valid admin_session without it.
+  const secret = process.env.ADMIN_PASSWORD || process.env.SESSION_SECRET || '';
+  if (!secret) return false;
   const expected = await buildSessionToken(secret);
-  // Use constant-time comparison to prevent timing attacks
   return safeEqual(session, expected);
 }

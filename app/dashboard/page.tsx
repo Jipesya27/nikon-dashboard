@@ -893,14 +893,22 @@ export default function NikonDashboard() {
    const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoginError('');
-      const { data } = await supabase.from('karyawan').select('*').eq('username', loginForm.username).eq('password', loginForm.password).single();
-      if (data) {
-         if (data.status_aktif === false) return setLoginError('Akun dinonaktifkan. Silakan hubungi Admin.');
-         setCurrentUser(data);
-         setIsLoggedIn(true);
-         localStorage.setItem('nikon_karyawan', JSON.stringify(data));
-      } else {
-         setLoginError('Username atau Password salah!');
+      try {
+         const res = await fetch('/api/auth/karyawan-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: loginForm.username, password: loginForm.password }),
+         });
+         const json = await res.json();
+         if (res.ok && json.karyawan) {
+            setCurrentUser(json.karyawan);
+            setIsLoggedIn(true);
+            localStorage.setItem('nikon_karyawan', JSON.stringify(json.karyawan));
+         } else {
+            setLoginError(json.error || 'Username atau Password salah!');
+         }
+      } catch {
+         setLoginError('Terjadi kesalahan, coba lagi.');
       }
    };
 
