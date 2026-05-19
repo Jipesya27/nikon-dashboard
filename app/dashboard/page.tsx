@@ -1415,11 +1415,13 @@ export default function NikonDashboard() {
             const { data: existKon } = await supabase.from('konsumen').select('nomor_wa, id_konsumen').eq('nomor_wa', claimForm.nomor_wa).maybeSingle();
             if (existKon) {
                // Update field non-null saja (jangan timpa data yang sudah ada dgn null)
-               const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+               const updatePayload: Record<string, unknown> = {};
                Object.entries(konsumenPayload).forEach(([k, v]) => {
                   if (v && k !== 'nomor_wa') updatePayload[k] = v;
                });
-               await supabase.from('konsumen').update(updatePayload).eq('nomor_wa', claimForm.nomor_wa);
+               if (Object.keys(updatePayload).length > 0) {
+                  await supabase.from('konsumen').update(updatePayload).eq('nomor_wa', claimForm.nomor_wa);
+               }
             } else {
                // Buat konsumen baru — generate id_konsumen
                const newID = `AN${Math.floor(100000 + Math.random() * 900000)}`;
@@ -1481,10 +1483,16 @@ export default function NikonDashboard() {
 
          if (modalAction === 'create') {
             const { error: insertError } = await supabase.from('claim_promo').insert([{ ...dataToSave, created_at: new Date().toISOString() }]);
-            if (insertError) throw new Error(insertError.message || insertError.details || `DB error code: ${insertError.code}`);
+            if (insertError) {
+               console.error('Claim insert error:', JSON.stringify(insertError));
+               throw new Error(insertError.message || insertError.details || insertError.hint || JSON.stringify(insertError));
+            }
          } else {
             const { error: updateError } = await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId);
-            if (updateError) throw new Error(updateError.message || updateError.details || `DB error code: ${updateError.code}`);
+            if (updateError) {
+               console.error('Claim update error:', JSON.stringify(updateError));
+               throw new Error(updateError.message || updateError.details || updateError.hint || JSON.stringify(updateError));
+            }
          }
 
          if (dataToSave.validasi_by_mkt === 'Valid' && dataToSave.nomor_seri) {
