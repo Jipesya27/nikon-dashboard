@@ -177,6 +177,30 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder',
 );
 
+/** Bypass proxy untuk WRITE ops (proxy generic HTTP 500 untuk PATCH/POST/DELETE). */
+async function sbWrite(opts: {
+  action: 'insert' | 'update' | 'delete' | 'upsert';
+  table: string;
+  data?: unknown;
+  match?: Record<string, unknown>;
+  onConflict?: string;
+}): Promise<{ error: { message: string } | null }> {
+  try {
+    const res = await fetch('/api/admin/sb-write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(opts),
+    });
+    if (!res.ok) {
+      const out = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      return { error: { message: out.error || JSON.stringify(out) } };
+    }
+    return { error: null };
+  } catch (err) {
+    return { error: { message: err instanceof Error ? err.message : String(err) } };
+  }
+}
+
 // Sample preview values for each variable
 const PREVIEW_SAMPLES: Record<string, string> = {
    nama: 'Budi Santoso',
@@ -264,12 +288,12 @@ export default function ChatbotPage() {
       if (!editKey) return;
       setSaving(true);
       const dbKey = `${DB_KEY_PREFIX}${editKey}`;
-      const { error } = await supabase
-         .from('pengaturan_bot')
-         .upsert(
-            { nama_pengaturan: dbKey, description: editText, url_file: '' },
-            { onConflict: 'nama_pengaturan' },
-         );
+      const { error } = await sbWrite({
+         action: 'upsert',
+         table: 'pengaturan_bot',
+         data: { nama_pengaturan: dbKey, description: editText, url_file: '' },
+         onConflict: 'nama_pengaturan',
+      });
       if (error) {
          showToast('Gagal menyimpan: ' + error.message, 'error');
       } else {
@@ -285,7 +309,7 @@ export default function ChatbotPage() {
    const resetToDefault = async (key: string) => {
       if (!confirm(`Reset template "${DEFAULT_TEMPLATES[key]?.label}" ke default? Perubahan custom akan hilang.`)) return;
       const dbKey = `${DB_KEY_PREFIX}${key}`;
-      await supabase.from('pengaturan_bot').delete().eq('nama_pengaturan', dbKey);
+      await sbWrite({ action: 'delete', table: 'pengaturan_bot', match: { nama_pengaturan: dbKey } });
       setDbTemplates(prev => { const n = { ...prev }; delete n[key]; return n; });
       setSavedKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
       showToast('Template direset ke default');

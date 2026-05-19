@@ -25,6 +25,36 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder',
 );
 
+/**
+ * Helper untuk semua operasi WRITE (insert/update/delete/upsert).
+ * Bypass generic /api/admin/sb proxy (yang HTTP 500 untuk PATCH).
+ * Untuk SELECT/GET tetap pakai `supabase` client biasa.
+ */
+async function sbWrite<T = unknown>(opts: {
+  action: 'insert' | 'update' | 'delete' | 'upsert';
+  table: string;
+  data?: unknown;
+  match?: Record<string, unknown>;
+  onConflict?: string;
+  /** kolom-kolom yg ingin dikembalikan setelah operasi, contoh: "id, nama" */
+  select?: string;
+}): Promise<{ data: T[] | null; error: { message: string; details?: string; hint?: string; code?: string } | null }> {
+  try {
+    const res = await fetch('/api/admin/sb-write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(opts),
+    });
+    const out = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    if (!res.ok) {
+      return { data: null, error: { message: out.error || JSON.stringify(out) } };
+    }
+    return { data: (out.data as T[]) ?? null, error: null };
+  } catch (err) {
+    return { data: null, error: { message: err instanceof Error ? err.message : String(err) } };
+  }
+}
+
 const ID_MONTHS: Record<string, number> = {
    januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
    juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
@@ -652,7 +682,7 @@ export default function NikonDashboard() {
 
    const handleMarkAttendance = useCallback(async (id: string) => {
       try {
-         const { error } = await supabase.from('event_registrations').update({ is_attended: true }).eq('id', id);
+         const { error } = await sbWrite({ action: 'update', table: 'event_registrations', data: { is_attended: true }, match: { id } });
          if (error) throw error;
          alert('✅ Kehadiran Berhasil Dikonfirmasi!');
          fetchEventRegistrations();
@@ -700,10 +730,10 @@ export default function NikonDashboard() {
       if (!affiliateFormData.nama || !affiliateFormData.phone) return;
       setAffiliateSaving(true);
       if (editingAffiliateId) {
-         await supabase.from('affiliates').update(affiliateFormData).eq('id', editingAffiliateId);
+         await sbWrite({ action: 'update', table: 'affiliates', data: affiliateFormData, match: { id: editingAffiliateId } });
          if (selectedAffiliate?.id === editingAffiliateId) setSelectedAffiliate(prev => prev ? { ...prev, ...affiliateFormData as Affiliate } : null);
       } else {
-         await supabase.from('affiliates').insert(affiliateFormData);
+         await sbWrite({ action: 'insert', table: 'affiliates', data: affiliateFormData });
       }
       await fetchAffiliates();
       setAffiliateFormOpen(false);
@@ -713,21 +743,21 @@ export default function NikonDashboard() {
    };
    const deleteAffiliate = async (id: string) => {
       if (!confirm('Hapus affiliate ini beserta semua data skema dan penjualannya?')) return;
-      await supabase.from('affiliate_penjualan').delete().eq('affiliate_id', id);
-      await supabase.from('affiliate_skema').delete().eq('affiliate_id', id);
-      await supabase.from('affiliates').delete().eq('id', id);
+      await sbWrite({ action: 'delete', table: 'affiliate_penjualan', match: { affiliate_id: id } });
+      await sbWrite({ action: 'delete', table: 'affiliate_skema', match: { affiliate_id: id } });
+      await sbWrite({ action: 'delete', table: 'affiliates', match: { id } });
       await fetchAffiliates();
       if (selectedAffiliate?.id === id) { setSelectedAffiliate(null); setAffiliateView('list'); }
    };
    const addSkema = async () => {
       if (!selectedAffiliate || !skemaFormData.barang || !skemaFormData.nilai_barang) return;
       setAffiliateSaving(true);
-      await supabase.from('affiliate_skema').insert({
+      await sbWrite({ action: 'insert', table: 'affiliate_skema', data: {
          affiliate_id: selectedAffiliate.id,
          barang: skemaFormData.barang,
          nilai_barang: parseFloat(skemaFormData.nilai_barang) || 0,
          potongan_persen: parseFloat(skemaFormData.potongan_persen) || 0,
-      });
+      }});
       await fetchAffiliateDetail(selectedAffiliate.id);
       setSkemaFormData({ barang: '', nilai_barang: '', potongan_persen: '' });
       setSkemaFormOpen(false);
@@ -735,7 +765,7 @@ export default function NikonDashboard() {
    };
    const deleteSkema = async (id: string) => {
       if (!selectedAffiliate) return;
-      await supabase.from('affiliate_skema').delete().eq('id', id);
+      await sbWrite({ action: 'delete', table: 'affiliate_skema', match: { id } });
       await fetchAffiliateDetail(selectedAffiliate.id);
    };
    const addPenjualan = async () => {
@@ -753,13 +783,13 @@ export default function NikonDashboard() {
             if (data.url) fotoUrls.push(data.url);
          } catch { /* skip failed upload */ }
       }
-      await supabase.from('affiliate_penjualan').insert({
+      await sbWrite({ action: 'insert', table: 'affiliate_penjualan', data: {
          affiliate_id: selectedAffiliate.id,
          barang: penjualanFormData.barang,
          harga_barang: parseFloat(penjualanFormData.harga_barang) || 0,
          persentase: parseFloat(penjualanFormData.persentase) || 0,
          ...(fotoUrls.length > 0 ? { foto_urls: fotoUrls } : {}),
-      });
+      }});
       await fetchAffiliateDetail(selectedAffiliate.id);
       setPenjualanFormData({ barang: '', harga_barang: '', persentase: '' });
       setPenjualanFotoFiles([]);
@@ -768,7 +798,7 @@ export default function NikonDashboard() {
    };
    const deletePenjualan = async (id: string) => {
       if (!selectedAffiliate) return;
-      await supabase.from('affiliate_penjualan').delete().eq('id', id);
+      await sbWrite({ action: 'delete', table: 'affiliate_penjualan', match: { id } });
       await fetchAffiliateDetail(selectedAffiliate.id);
    };
 
@@ -1234,7 +1264,7 @@ export default function NikonDashboard() {
                result.push(obj);
             }
 
-            const { error } = await supabase.from(importTarget).upsert(result);
+            const { error } = await sbWrite({ action: 'upsert', table: importTarget, data: result });
             if (error) throw new Error(error.message);
 
             alert(`Data CSV berhasil di-update ke tabel ${importTarget}!`);
@@ -1379,9 +1409,11 @@ export default function NikonDashboard() {
       setIsSubmitting(true);
       try {
          if (modalAction === 'create') {
-            await supabase.from('konsumen').insert([konsumenForm]);
+            const { error } = await sbWrite({ action: 'insert', table: 'konsumen', data: konsumenForm });
+            if (error) throw new Error(error.message);
          } else {
-            await supabase.from('konsumen').update(konsumenForm).eq('nomor_wa', editingId);
+            const { error } = await sbWrite({ action: 'update', table: 'konsumen', data: konsumenForm, match: { nomor_wa: editingId } });
+            if (error) throw new Error(error.message);
          }
          fetchConsumers();
          closeModal();
@@ -1420,7 +1452,7 @@ export default function NikonDashboard() {
                   if (v && k !== 'nomor_wa') updatePayload[k] = v;
                });
                if (Object.keys(updatePayload).length > 0) {
-                  await supabase.from('konsumen').update(updatePayload).eq('nomor_wa', claimForm.nomor_wa);
+                  await sbWrite({ action: 'update', table: 'konsumen', data: updatePayload, match: { nomor_wa: claimForm.nomor_wa } });
                }
             } else {
                // Buat konsumen baru — generate id_konsumen
@@ -1437,7 +1469,7 @@ export default function NikonDashboard() {
                   provinsi: konsumenPayload.provinsi || 'BELUM_DIISI',
                   kodepos: konsumenPayload.kodepos || 'BELUM_DIISI',
                };
-               await supabase.from('konsumen').insert([fullPayload]);
+               await sbWrite({ action: 'insert', table: 'konsumen', data: fullPayload });
             }
          }
 
@@ -1506,7 +1538,7 @@ export default function NikonDashboard() {
          }
 
          if (dataToSave.validasi_by_mkt === 'Valid' && dataToSave.nomor_seri) {
-            await supabase.from('garansi').update({ status_validasi: 'Valid' }).eq('nomor_seri', dataToSave.nomor_seri);
+            await sbWrite({ action: 'update', table: 'garansi', data: { status_validasi: 'Valid' }, match: { nomor_seri: dataToSave.nomor_seri } });
             fetchWarranties();
          }
 
@@ -1555,8 +1587,13 @@ export default function NikonDashboard() {
             link_nota_pembelian: notaUrl,
          };
 
-         if (modalAction === 'create') await supabase.from('garansi').insert([dataToSave]);
-         else await supabase.from('garansi').update(dataToSave).eq('id_garansi', editingId);
+         if (modalAction === 'create') {
+            const { error } = await sbWrite({ action: 'insert', table: 'garansi', data: dataToSave });
+            if (error) throw new Error(error.message);
+         } else {
+            const { error } = await sbWrite({ action: 'update', table: 'garansi', data: dataToSave, match: { id_garansi: editingId } });
+            if (error) throw new Error(error.message);
+         }
 
          fetchWarranties(); closeModal();
       } catch (err: unknown) {
@@ -1570,8 +1607,13 @@ export default function NikonDashboard() {
    const handleSavePromo = async (e: React.FormEvent) => {
       e.preventDefault(); setIsSubmitting(true);
       try {
-         if (modalAction === 'create') await supabase.from('promosi').insert([promoForm]);
-         else await supabase.from('promosi').update(promoForm).eq('id_promo', editingId);
+         if (modalAction === 'create') {
+            const { error } = await sbWrite({ action: 'insert', table: 'promosi', data: promoForm });
+            if (error) throw new Error(error.message);
+         } else {
+            const { error } = await sbWrite({ action: 'update', table: 'promosi', data: promoForm, match: { id_promo: editingId } });
+            if (error) throw new Error(error.message);
+         }
          fetchPromos();
          closeModal();
       } catch (err: unknown) {
@@ -1584,8 +1626,13 @@ export default function NikonDashboard() {
    const handleSaveService = async (e: React.FormEvent) => {
       e.preventDefault(); setIsSubmitting(true);
       try {
-         if (modalAction === 'create') await supabase.from('status_service').insert([serviceForm]);
-         else await supabase.from('status_service').update(serviceForm).eq('id_service', editingId);
+         if (modalAction === 'create') {
+            const { error } = await sbWrite({ action: 'insert', table: 'status_service', data: serviceForm });
+            if (error) throw new Error(error.message);
+         } else {
+            const { error } = await sbWrite({ action: 'update', table: 'status_service', data: serviceForm, match: { id_service: editingId } });
+            if (error) throw new Error(error.message);
+         }
          fetchServices();
          closeModal();
       } catch (err: unknown) {
@@ -1618,8 +1665,13 @@ export default function NikonDashboard() {
          }
 
          const dataToSave = { ...budgetForm, attachment_urls: finalUrls };
-         if (modalAction === 'create') await supabase.from('budget_approval').insert([dataToSave]);
-         else await supabase.from('budget_approval').update(dataToSave).eq('id_budget', editingId);
+         if (modalAction === 'create') {
+            const { error } = await sbWrite({ action: 'insert', table: 'budget_approval', data: dataToSave });
+            if (error) throw new Error(error.message);
+         } else {
+            const { error } = await sbWrite({ action: 'update', table: 'budget_approval', data: dataToSave, match: { id_budget: editingId } });
+            if (error) throw new Error(error.message);
+         }
 
          fetchBudgets(); closeModal();
       } catch (err: unknown) {
@@ -1638,12 +1690,15 @@ export default function NikonDashboard() {
          if (modalAction === 'create') {
             if (!karyawanForm.nomor_wa) throw new Error("Nomor WhatsApp wajib diisi!");
             // Insert tanpa password dulu, lalu set password (di-hash) via API
-            const { data: newKaryawan, error: insertErr } = await supabase
-               .from('karyawan')
-               .insert([{ ...karyawanForm, password: 'PENDING' }])
-               .select('id_karyawan')
-               .single();
-            if (insertErr) throw insertErr;
+            const { data: newKaryawanArr, error: insertErr } = await sbWrite<{ id_karyawan: string }>({
+               action: 'insert',
+               table: 'karyawan',
+               data: { ...karyawanForm, password: 'PENDING' },
+               select: 'id_karyawan',
+            });
+            if (insertErr) throw new Error(insertErr.message);
+            const newKaryawan = newKaryawanArr?.[0];
+            if (!newKaryawan) throw new Error('Gagal mendapat id_karyawan baru');
             // Hash password via dedicated endpoint
             await fetch('/api/admin/karyawan/password', {
                method: 'POST',
@@ -1656,7 +1711,8 @@ export default function NikonDashboard() {
             const updateData = { ...karyawanForm };
             const plainPw = updateData.password;
             delete updateData.password; // jangan update password langsung via proxy
-            await supabase.from('karyawan').update(updateData).eq('id_karyawan', editingId);
+            const { error: updErr } = await sbWrite({ action: 'update', table: 'karyawan', data: updateData, match: { id_karyawan: editingId } });
+            if (updErr) throw new Error(updErr.message);
 
             if (plainPw && karyawanForm.nomor_wa) {
                await fetch('/api/admin/karyawan/password', {
@@ -1709,13 +1765,13 @@ export default function NikonDashboard() {
          // 1. Pastikan konsumen ada atau buat baru
          const { error: consumerError } = await supabase.from('konsumen').select('nomor_wa').eq('nomor_wa', lendingForm.nomor_wa_peminjam!).single();
          if (consumerError && consumerError.code === 'PGRST116') { // Not found
-            await supabase.from('konsumen').insert({
+            await sbWrite({ action: 'insert', table: 'konsumen', data: {
                nomor_wa: lendingForm.nomor_wa_peminjam!,
                nama_lengkap: lendingForm.nama_peminjam!,
                status_langkah: 'START',
                alamat_rumah: 'BELUM_DIISI', kelurahan: 'BELUM_DIISI', kecamatan: 'BELUM_DIISI',
                kabupaten_kotamadya: 'BELUM_DIISI', provinsi: 'BELUM_DIISI', kodepos: 'BELUM_DIISI'
-            });
+            }});
          } else if (consumerError) {
             throw consumerError;
          }
@@ -1748,8 +1804,13 @@ export default function NikonDashboard() {
                dataToSave.reminder_sent_at = null;
             }
          }
-         if (modalAction === 'create') await supabase.from('peminjaman_barang').insert([dataToSave]);
-         else await supabase.from('peminjaman_barang').update(dataToSave).eq('id_peminjaman', editingId);
+         if (modalAction === 'create') {
+            const { error } = await sbWrite({ action: 'insert', table: 'peminjaman_barang', data: dataToSave });
+            if (error) throw new Error(error.message);
+         } else {
+            const { error } = await sbWrite({ action: 'update', table: 'peminjaman_barang', data: dataToSave, match: { id_peminjaman: editingId } });
+            if (error) throw new Error(error.message);
+         }
 
          // 3. Send WhatsApp message
          let message = getText('lendingInitHeader', { nama: lendingForm.nama_peminjam! });
@@ -1785,11 +1846,11 @@ export default function NikonDashboard() {
             if (evt) payload.event_name = (evt as any).event_title || (evt as any).title || payload.event_name;
          }
          if (modalAction === 'create') {
-            const { error } = await supabase.from('event_registrations').insert([payload]);
-            if (error) throw error;
+            const { error } = await sbWrite({ action: 'insert', table: 'event_registrations', data: payload });
+            if (error) throw new Error(error.message);
          } else {
-            const { error } = await supabase.from('event_registrations').update(payload).eq('id', editingId);
-            if (error) throw error;
+            const { error } = await sbWrite({ action: 'update', table: 'event_registrations', data: payload, match: { id: editingId } });
+            if (error) throw new Error(error.message);
          }
          fetchEventRegistrations();
          fetchEvents();
@@ -1829,11 +1890,11 @@ export default function NikonDashboard() {
             payload.event_image = imageUrl;
          }
          if (modalAction === 'create') {
-            const { error } = await supabase.from('events').insert([payload]);
-            if (error) throw error;
+            const { error } = await sbWrite({ action: 'insert', table: 'events', data: payload });
+            if (error) throw new Error(error.message);
          } else {
-            const { error } = await supabase.from('events').update(payload).eq('id', editingId);
-            if (error) throw error;
+            const { error } = await sbWrite({ action: 'update', table: 'events', data: payload, match: { id: editingId } });
+            if (error) throw new Error(error.message);
          }
          fetchEvents();
          closeModal();
@@ -1851,9 +1912,11 @@ export default function NikonDashboard() {
       setIsSubmitting(true);
       try {
          if (modalAction === 'create') {
-            await supabase.from('pengaturan_bot').insert([botSettingsForm]);
+            const { error } = await sbWrite({ action: 'insert', table: 'pengaturan_bot', data: botSettingsForm });
+            if (error) throw new Error(error.message);
          } else {
-            await supabase.from('pengaturan_bot').update(botSettingsForm).eq('id', editingId);
+            const { error } = await sbWrite({ action: 'update', table: 'pengaturan_bot', data: botSettingsForm, match: { id: editingId } });
+            if (error) throw new Error(error.message);
          }
          fetchBotSettings();
          closeModal();
@@ -1869,8 +1932,13 @@ export default function NikonDashboard() {
       setIsSubmitting(true);
       try {
          const data = { ...assetForm };
-         if (modalAction === 'create') await supabase.from('barang_aset').insert([data]);
-         else await supabase.from('barang_aset').update(data).eq('id', editingId);
+         if (modalAction === 'create') {
+            const { error } = await sbWrite({ action: 'insert', table: 'barang_aset', data });
+            if (error) throw new Error(error.message);
+         } else {
+            const { error } = await sbWrite({ action: 'update', table: 'barang_aset', data, match: { id: editingId } });
+            if (error) throw new Error(error.message);
+         }
          await fetchAssets();
          closeModal();
       } finally { setIsSubmitting(false); }
@@ -1878,21 +1946,22 @@ export default function NikonDashboard() {
 
    const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings' | 'events' | 'eventregistration' | 'asset', id: string) => {
       if (!window.confirm('Yakin menghapus data?')) return;
-      if (type === 'claim') { await supabase.from('claim_promo').delete().eq('id_claim', id); fetchClaims(); }
-      else if (type === 'warranty') { await supabase.from('garansi').delete().eq('id_garansi', id); fetchWarranties(); }
-      else if (type === 'konsumen') { await supabase.from('konsumen').delete().eq('nomor_wa', id); fetchConsumers(); }
-      else if (type === 'promo') { await supabase.from('promosi').delete().eq('id_promo', id); fetchPromos(); }
-      else if (type === 'service') { await supabase.from('status_service').delete().eq('id_service', id); fetchServices(); }
-      else if (type === 'karyawan') { await supabase.from('karyawan').delete().eq('id_karyawan', id); fetchKaryawans(); }
-      else if (type === 'botsettings') { await supabase.from('pengaturan_bot').delete().eq('id', id); fetchBotSettings(); } else if (type === 'events') { await supabase.from('events').delete().eq('id', id); fetchEvents(); }
-      else if (type === 'eventregistration') { await supabase.from('event_registrations').delete().eq('id', id); fetchEventRegistrations(); fetchEvents(); }
+      if (type === 'claim') { await sbWrite({ action: 'delete', table: 'claim_promo', match: { id_claim: id } }); fetchClaims(); }
+      else if (type === 'warranty') { await sbWrite({ action: 'delete', table: 'garansi', match: { id_garansi: id } }); fetchWarranties(); }
+      else if (type === 'konsumen') { await sbWrite({ action: 'delete', table: 'konsumen', match: { nomor_wa: id } }); fetchConsumers(); }
+      else if (type === 'promo') { await sbWrite({ action: 'delete', table: 'promosi', match: { id_promo: id } }); fetchPromos(); }
+      else if (type === 'service') { await sbWrite({ action: 'delete', table: 'status_service', match: { id_service: id } }); fetchServices(); }
+      else if (type === 'karyawan') { await sbWrite({ action: 'delete', table: 'karyawan', match: { id_karyawan: id } }); fetchKaryawans(); }
+      else if (type === 'botsettings') { await sbWrite({ action: 'delete', table: 'pengaturan_bot', match: { id } }); fetchBotSettings(); }
+      else if (type === 'events') { await sbWrite({ action: 'delete', table: 'events', match: { id } }); fetchEvents(); }
+      else if (type === 'eventregistration') { await sbWrite({ action: 'delete', table: 'event_registrations', match: { id } }); fetchEventRegistrations(); fetchEvents(); }
       else if (type === 'lending') {
-         await supabase.from('peminjaman_barang').delete().eq('id_peminjaman', id);
+         await sbWrite({ action: 'delete', table: 'peminjaman_barang', match: { id_peminjaman: id } });
          // TODO: Delete KTP file from storage if it exists
          fetchLendingRecords();
       }
-      else if (type === 'asset') { await supabase.from('barang_aset').delete().eq('id', id); fetchAssets(); }
-      else { await supabase.from('budget_approval').delete().eq('id_budget', id); fetchBudgets(); }
+      else if (type === 'asset') { await sbWrite({ action: 'delete', table: 'barang_aset', match: { id } }); fetchAssets(); }
+      else { await sbWrite({ action: 'delete', table: 'budget_approval', match: { id_budget: id } }); fetchBudgets(); }
    };
 
    const handleSendReply = async (e: React.FormEvent) => {
@@ -1905,8 +1974,8 @@ export default function NikonDashboard() {
          fullMessage = `> _${quotedName}: ${quotedText}_\n\n${replyText.trim()}`;
       }
       await sendWhatsAppMessageViaFonnte(selectedWa, fullMessage);
-      await supabase.from('riwayat_pesan').update({ bicara_dengan_cs: false }).eq('nomor_wa', selectedWa);
-      await supabase.from('riwayat_pesan').insert([{ nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: fullMessage, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
+      await sbWrite({ action: 'update', table: 'riwayat_pesan', data: { bicara_dengan_cs: false }, match: { nomor_wa: selectedWa } });
+      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: fullMessage, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false } });
       setReplyText('');
       setReplyToMessage(null);
       fetchMessages();
@@ -1917,7 +1986,7 @@ export default function NikonDashboard() {
       e.preventDefault();
       if (!newChatWa || !newChatMsg.trim()) return;
       await sendWhatsAppMessageViaFonnte(newChatWa, newChatMsg.trim());
-      await supabase.from('riwayat_pesan').insert([{ nomor_wa: newChatWa, nama_profil_wa: getRealProfileName(newChatWa), arah_pesan: 'OUT', isi_pesan: newChatMsg.trim(), waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
+      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: newChatWa, nama_profil_wa: getRealProfileName(newChatWa), arah_pesan: 'OUT', isi_pesan: newChatMsg.trim(), waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false } });
       setIsNewChatModalOpen(false);
       setNewChatWa('');
       setNewChatMsg('');
@@ -1930,7 +1999,7 @@ export default function NikonDashboard() {
       if (!window.confirm('Kirim status claim ke WA konsumen?')) return;
       const msg = getText('statusClaim', { nomor_seri: c.nomor_seri, tipe_barang: c.tipe_barang, status_mkt: c.validasi_by_mkt, status_fa: c.validasi_by_fa, jasa_kirim: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '', catatan_mkt: c.catatan_mkt || '' });
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
-      await supabase.from('riwayat_pesan').insert([{ nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
+      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false } });
       alert('Pesan status berhasil dikirim!');
       fetchMessages();
    };
@@ -1941,7 +2010,7 @@ export default function NikonDashboard() {
       if (!window.confirm('Kirim status garansi ke WA konsumen?')) return;
       const msg = getText('statusGaransi', { seri: w.nomor_seri, barang: w.tipe_barang, jenis: w.jenis_garansi, lama: w.lama_garansi, sisa: calculateSisaGaransi(linked.tanggal_pembelian, w.lama_garansi) });
       await sendWhatsAppMessageViaFonnte(linked.nomor_wa, msg);
-      await supabase.from('riwayat_pesan').insert([{ nomor_wa: linked.nomor_wa, nama_profil_wa: getRealProfileName(linked.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false }]);
+      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: linked.nomor_wa, nama_profil_wa: getRealProfileName(linked.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false } });
       alert('Pesan status berhasil dikirim!');
       fetchMessages();
    };
@@ -1955,14 +2024,14 @@ export default function NikonDashboard() {
 
       try {
          await sendWhatsAppMessageViaFonnte(waReg, message);
-         await supabase.from('riwayat_pesan').insert([{
+         await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: {
             nomor_wa: waReg,
             nama_profil_wa: namaReg,
-            arah_pesan: 'OUT', 
-            isi_pesan: message, 
-            waktu_pesan: new Date().toISOString(), 
-            bicara_dengan_cs: false 
-         }]);
+            arah_pesan: 'OUT',
+            isi_pesan: message,
+            waktu_pesan: new Date().toISOString(),
+            bicara_dengan_cs: false
+         }});
          alert('Notifikasi berhasil dikirim!');
          fetchMessages();
       } catch (err: unknown) {
@@ -1973,8 +2042,8 @@ export default function NikonDashboard() {
 
    const handleSelesaiCS = async (nomor_wa: string) => {
       try {
-         await supabase.from('riwayat_pesan').update({ bicara_dengan_cs: false }).eq('nomor_wa', nomor_wa);
-         await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomor_wa);
+         await sbWrite({ action: 'update', table: 'riwayat_pesan', data: { bicara_dengan_cs: false }, match: { nomor_wa } });
+         await sbWrite({ action: 'update', table: 'konsumen', data: { status_langkah: 'START' }, match: { nomor_wa } });
          fetchMessages();
       } catch (error: unknown) {
          const message = error instanceof Error ? error.message : String(error);
@@ -2001,11 +2070,11 @@ export default function NikonDashboard() {
             return item;
          });
 
-         await supabase.from('peminjaman_barang').update({
+         await sbWrite({ action: 'update', table: 'peminjaman_barang', data: {
             items_dipinjam: itemsWithAccsNotes,
             tanggal_pengembalian: allItemsReturned ? new Date().toISOString() : null,
             status_peminjaman: newStatusPeminjaman,
-         }).eq('id_peminjaman', lending.id_peminjaman);
+         }, match: { id_peminjaman: lending.id_peminjaman } });
 
          // Send WhatsApp message for returned items
          const returnedItems = itemsWithAccsNotes.filter(item => item.status_pengembalian === 'dikembalikan');
