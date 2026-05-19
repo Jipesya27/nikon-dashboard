@@ -1482,16 +1482,26 @@ export default function NikonDashboard() {
          };
 
          if (modalAction === 'create') {
-            const { error: insertError } = await supabase.from('claim_promo').insert([{ ...dataToSave, created_at: new Date().toISOString() }]);
-            if (insertError) {
-               console.error('Claim insert error:', JSON.stringify(insertError));
-               throw new Error(insertError.message || insertError.details || insertError.hint || JSON.stringify(insertError));
+            // Gunakan dedicated route (bypass generic proxy) untuk menghindari HTTP 500
+            const insertRes = await fetch('/api/admin/claim-update', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ ...dataToSave, created_at: new Date().toISOString() }),
+            });
+            if (!insertRes.ok) {
+               const err = await insertRes.json().catch(() => ({ error: `HTTP ${insertRes.status}` }));
+               throw new Error(err.error || JSON.stringify(err));
             }
          } else {
-            const { error: updateError, status: updateStatus, statusText: updateStatusText } = await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId);
-            if (updateError) {
-               console.error('Claim update error:', JSON.stringify(updateError), 'HTTP status:', updateStatus, updateStatusText);
-               throw new Error(`[HTTP ${updateStatus} ${updateStatusText}] ` + (updateError.message || updateError.details || updateError.hint || JSON.stringify(updateError)));
+            // Gunakan dedicated route (bypass generic proxy) untuk menghindari HTTP 500
+            const updateRes = await fetch('/api/admin/claim-update', {
+               method: 'PATCH',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ _id_claim: editingId, ...dataToSave }),
+            });
+            if (!updateRes.ok) {
+               const err = await updateRes.json().catch(() => ({ error: `HTTP ${updateRes.status}` }));
+               throw new Error(err.error || JSON.stringify(err));
             }
          }
 
