@@ -17,7 +17,7 @@ const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // Headers we strip from the incoming request before forwarding
-const STRIP_HEADERS = new Set(['host', 'connection', 'authorization', 'apikey', 'content-length']);
+const STRIP_HEADERS = new Set(['host', 'connection', 'authorization', 'apikey', 'content-length', 'transfer-encoding']);
 
 async function proxy(req: NextRequest, params: Promise<{ path: string[] }>) {
   // Validate admin session
@@ -43,12 +43,21 @@ async function proxy(req: NextRequest, params: Promise<{ path: string[] }>) {
 
   const method = req.method;
   const hasBody = !['GET', 'HEAD'].includes(method);
-  const body = hasBody ? await req.arrayBuffer() : undefined;
+
+  // Read body as text to avoid ArrayBuffer transmission issues,
+  // then set explicit Content-Length so PostgREST gets the full payload.
+  let body: string | undefined;
+  if (hasBody) {
+    body = await req.text();
+    if (body.length > 0) {
+      headers.set('content-length', String(Buffer.byteLength(body, 'utf8')));
+    }
+  }
 
   const upstream = await fetch(targetUrl, {
     method,
     headers,
-    body: body as BodyInit | undefined,
+    body,
   });
 
   const data = await upstream.arrayBuffer();
