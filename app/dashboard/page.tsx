@@ -274,6 +274,9 @@ export default function NikonDashboard() {
    const [dealerError, setDealerError] = useState('');
    const [dealerSearch, setDealerSearch] = useState('');
    const [dealerSelected, setDealerSelected] = useState<Set<number>>(new Set());
+   const [dealerSortCol, setDealerSortCol] = useState<number>(-1);
+   const [dealerSortDir, setDealerSortDir] = useState<'asc' | 'desc'>('asc');
+   const [dealerColFilters, setDealerColFilters] = useState<Record<number, string>>({});
 
    // IMAGE VIEWER STATES
 
@@ -4934,9 +4937,23 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                   const colFoto = _findCol(hdrs, ['foto kartu garansi', 'foto garansi', 'foto', 'image', 'gambar', 'link foto', 'url foto', 'link', 'url']);
 
                   const q = dealerSearch.toLowerCase();
-                  const filteredDealer = (dealerSheet?.rows ?? [])
+                  let filteredDealer = (dealerSheet?.rows ?? [])
                      .map((row, idx) => ({ row, idx }))
-                     .filter(({ row }) => !q || row.some(c => c.toLowerCase().includes(q)));
+                     .filter(({ row }) => {
+                        if (q && !row.some(c => c.toLowerCase().includes(q))) return false;
+                        for (const [ci, fv] of Object.entries(dealerColFilters)) {
+                           if (fv && !(row[Number(ci)] || '').toLowerCase().includes(fv.toLowerCase())) return false;
+                        }
+                        return true;
+                     });
+                  if (dealerSortCol >= 0) {
+                     filteredDealer = [...filteredDealer].sort((a, b) => {
+                        const av = (a.row[dealerSortCol] || '').toLowerCase();
+                        const bv = (b.row[dealerSortCol] || '').toLowerCase();
+                        const cmp = av.localeCompare(bv, 'id', { numeric: true });
+                        return dealerSortDir === 'asc' ? cmp : -cmp;
+                     });
+                  }
 
                   const allDealerIdx = filteredDealer.map(r => r.idx);
                   const allDealerSel = allDealerIdx.length > 0 && allDealerIdx.every(i => dealerSelected.has(i));
@@ -5044,7 +5061,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                  className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-52 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                               />
                               <button
-                                 onClick={() => { setDealerSheet(null); setDealerSelected(new Set()); setDealerSearch(''); }}
+                                 onClick={() => { setDealerSheet(null); setDealerSelected(new Set()); setDealerSearch(''); setDealerSortCol(-1); setDealerSortDir('asc'); setDealerColFilters({}); }}
                                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-sm transition"
                               >🔄 Refresh</button>
                               <button
@@ -5083,12 +5100,33 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                        <table className="w-full text-sm">
                                           <thead className="bg-gray-50 border-b border-gray-200">
                                              <tr>
-                                                <th className="px-3 py-2.5 text-center w-10">
-                                                   <input type="checkbox" checked={allDealerSel} onChange={toggleDealerAll} className="w-4 h-4 accent-blue-600" />
+                                                <th className="px-3 py-2.5 text-center w-10 align-top">
+                                                   <input type="checkbox" checked={allDealerSel} onChange={toggleDealerAll} className="w-4 h-4 accent-blue-600 mt-1" />
                                                 </th>
-                                                <th className="px-3 py-2.5 text-left text-gray-400 font-semibold w-10">#</th>
+                                                <th className="px-3 py-2.5 text-left text-gray-400 font-semibold w-10 align-top">#</th>
                                                 {hdrs.map((h, i) => (
-                                                   <th key={i} className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">{h}</th>
+                                                   <th key={i} className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap select-none align-top">
+                                                      <div
+                                                         className="flex items-center gap-1 cursor-pointer hover:text-yellow-600 transition-colors"
+                                                         onClick={() => {
+                                                            if (dealerSortCol === i) setDealerSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                                                            else { setDealerSortCol(i); setDealerSortDir('asc'); }
+                                                         }}
+                                                      >
+                                                         <span>{h}</span>
+                                                         <span className="text-gray-400 text-xs">
+                                                            {dealerSortCol === i ? (dealerSortDir === 'asc' ? '↑' : '↓') : '↕'}
+                                                         </span>
+                                                      </div>
+                                                      <input
+                                                         type="text"
+                                                         placeholder="filter..."
+                                                         value={dealerColFilters[i] || ''}
+                                                         onChange={e => setDealerColFilters(prev => ({ ...prev, [i]: e.target.value }))}
+                                                         onClick={e => e.stopPropagation()}
+                                                         className="mt-1 w-full min-w-[80px] border border-gray-300 rounded px-1.5 py-0.5 text-xs font-normal text-gray-700 focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                                                      />
+                                                   </th>
                                                 ))}
                                              </tr>
                                           </thead>
