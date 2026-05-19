@@ -36,7 +36,7 @@ async function fetchWilayah(url: string): Promise<WilayahItem[]> {
   return data;
 }
 
-const BASE = 'https://ibnux.github.io/data-indonesia';
+const BASE = '/api/wilayah';
 
 // ─── Name normalizer (ALL CAPS from API → Title Case) ────────────────────────
 

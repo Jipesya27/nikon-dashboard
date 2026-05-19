@@ -255,6 +255,7 @@ export default function NikonDashboard() {
    const [penjualanFormData, setPenjualanFormData] = useState({ barang: '', harga_barang: '', persentase: '' });
    const [skemaFormOpen, setSkemaFormOpen] = useState(false);
    const [penjualanFormOpen, setPenjualanFormOpen] = useState(false);
+   const [penjualanFotoFiles, setPenjualanFotoFiles] = useState<File[]>([]);
    const [affiliateSearch, setAffiliateSearch] = useState('');
    const [affiliateSaving, setAffiliateSaving] = useState(false);
 
@@ -273,6 +274,9 @@ export default function NikonDashboard() {
    const [dealerError, setDealerError] = useState('');
    const [dealerSearch, setDealerSearch] = useState('');
    const [dealerSelected, setDealerSelected] = useState<Set<number>>(new Set());
+   const [dealerSortCol, setDealerSortCol] = useState<number>(-1);
+   const [dealerSortDir, setDealerSortDir] = useState<'asc' | 'desc'>('asc');
+   const [dealerColFilters, setDealerColFilters] = useState<Record<number, string>>({});
 
    // IMAGE VIEWER STATES
 
@@ -737,14 +741,28 @@ export default function NikonDashboard() {
    const addPenjualan = async () => {
       if (!selectedAffiliate || !penjualanFormData.barang || !penjualanFormData.harga_barang) return;
       setAffiliateSaving(true);
+      const fotoUrls: string[] = [];
+      for (const file of penjualanFotoFiles) {
+         try {
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('prefix', 'affiliate-foto');
+            fd.append('serial', selectedAffiliate.nama.replace(/\s+/g, '_'));
+            const res = await fetch('/api/upload-google-drive', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.url) fotoUrls.push(data.url);
+         } catch { /* skip failed upload */ }
+      }
       await supabase.from('affiliate_penjualan').insert({
          affiliate_id: selectedAffiliate.id,
          barang: penjualanFormData.barang,
          harga_barang: parseFloat(penjualanFormData.harga_barang) || 0,
          persentase: parseFloat(penjualanFormData.persentase) || 0,
+         ...(fotoUrls.length > 0 ? { foto_urls: fotoUrls } : {}),
       });
       await fetchAffiliateDetail(selectedAffiliate.id);
       setPenjualanFormData({ barang: '', harga_barang: '', persentase: '' });
+      setPenjualanFotoFiles([]);
       setPenjualanFormOpen(false);
       setAffiliateSaving(false);
    };
@@ -1446,8 +1464,11 @@ export default function NikonDashboard() {
             await deleteFileFromStorage(original.link_kartu_garansi as string);
          }
 
+         // Hapus field immutable (PK & timestamp) dari payload
+         const { id_claim: _id, created_at: _ca, ...claimFields } = claimForm as ClaimPromo & { id_claim?: string; created_at?: string };
+
          const dataToSave = {
-            ...claimForm,
+            ...claimFields,
             nama_toko: claimForm.nama_toko || '',
             jenis_promosi: claimForm.jenis_promosi || '',
             nama_jasa_pengiriman: claimForm.nama_jasa_pengiriman || '',
@@ -1460,10 +1481,10 @@ export default function NikonDashboard() {
 
          if (modalAction === 'create') {
             const { error: insertError } = await supabase.from('claim_promo').insert([{ ...dataToSave, created_at: new Date().toISOString() }]);
-            if (insertError) throw new Error(insertError.message);
+            if (insertError) throw new Error(insertError.message || insertError.details || `DB error code: ${insertError.code}`);
          } else {
             const { error: updateError } = await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId);
-            if (updateError) throw new Error(updateError.message);
+            if (updateError) throw new Error(updateError.message || updateError.details || `DB error code: ${updateError.code}`);
          }
 
          if (dataToSave.validasi_by_mkt === 'Valid' && dataToSave.nomor_seri) {
@@ -4543,6 +4564,15 @@ export default function NikonDashboard() {
                      const emptyRows = Array.from({ length: Math.max(0, 3 - affiliatePenjualan.length) },
                         () => `<tr>${'<td>&nbsp;</td>'.repeat(6)}</tr>`).join('');
 
+                     const fotoSection = affiliatePenjualan.filter(p => p.foto_urls && p.foto_urls.length > 0).map(p => {
+                        const imgs = (p.foto_urls || []).map(url => {
+                           const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                           const src = m ? `${window.location.origin}/api/drive-file?id=${m[1]}` : url;
+                           return `<img src="${src}" style="width:120px;height:100px;object-fit:cover;border:1px solid #ccc;border-radius:4px;" />`;
+                        }).join('');
+                        return `<div style="margin-bottom:10px"><strong>${p.barang}</strong><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">${imgs}</div></div>`;
+                     }).join('');
+
                      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <style>
   body { font-family: Arial, sans-serif; margin: 0; padding: 12mm; font-size: 10pt; }
@@ -4569,6 +4599,7 @@ export default function NikonDashboard() {
   <th>No</th><th>Barang Affiliator</th><th>Harga Barang</th>
   <th>Persentase %</th><th>Nominal</th><th>Sisa Kontrak</th>
 </tr></thead><tbody>${penjualanRows}${emptyRows}</tbody></table>
+${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` : ''}
 </body></html>`;
 
                      const w = window.open('', '_blank', 'width=900,height=700');
@@ -4692,30 +4723,53 @@ export default function NikonDashboard() {
                                  </button>
                               </div>
                               {penjualanFormOpen && (
-                                 <div className="flex flex-wrap gap-2 p-3 bg-yellow-50 border-b border-yellow-100">
-                                    <input placeholder="Barang Affiliator *" value={penjualanFormData.barang} onChange={e => setPenjualanFormData(f => ({ ...f, barang: e.target.value }))}
-                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1 min-w-40" />
-                                    <input placeholder="Harga Barang *" type="number" value={penjualanFormData.harga_barang} onChange={e => setPenjualanFormData(f => ({ ...f, harga_barang: e.target.value }))}
-                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm w-36" />
-                                    <input placeholder="Persentase %" type="number" step="0.1" value={penjualanFormData.persentase} onChange={e => setPenjualanFormData(f => ({ ...f, persentase: e.target.value }))}
-                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm w-28" />
-                                    <button onClick={addPenjualan} disabled={affiliateSaving}
-                                       className="px-4 py-1.5 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-black rounded text-sm font-bold transition">
-                                       {affiliateSaving ? '...' : 'Simpan'}
-                                    </button>
+                                 <div className="p-3 bg-yellow-50 border-b border-yellow-100 space-y-2">
+                                    <div className="flex flex-wrap gap-2">
+                                       <input placeholder="Barang Affiliator *" value={penjualanFormData.barang} onChange={e => setPenjualanFormData(f => ({ ...f, barang: e.target.value }))}
+                                          className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1 min-w-40" />
+                                       <input placeholder="Harga Barang *" type="number" value={penjualanFormData.harga_barang} onChange={e => setPenjualanFormData(f => ({ ...f, harga_barang: e.target.value }))}
+                                          className="border border-gray-300 rounded px-2 py-1.5 text-sm w-36" />
+                                       <input placeholder="Persentase %" type="number" step="0.1" value={penjualanFormData.persentase} onChange={e => setPenjualanFormData(f => ({ ...f, persentase: e.target.value }))}
+                                          className="border border-gray-300 rounded px-2 py-1.5 text-sm w-28" />
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                       <label className="text-xs font-semibold text-gray-600">Foto barang (maks 4):</label>
+                                       <input type="file" accept="image/*" multiple
+                                          onChange={e => {
+                                             const files = Array.from(e.target.files || []).slice(0, 4);
+                                             setPenjualanFotoFiles(files);
+                                             e.target.value = '';
+                                          }}
+                                          className="text-xs text-gray-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-yellow-400 file:text-black file:text-xs file:font-bold file:cursor-pointer" />
+                                       {penjualanFotoFiles.length > 0 && (
+                                          <div className="flex gap-1 flex-wrap">
+                                             {penjualanFotoFiles.map((f, i) => (
+                                                <div key={i} className="relative">
+                                                   <img src={URL.createObjectURL(f)} alt="" className="w-12 h-12 object-cover rounded border border-gray-300" />
+                                                   <button onClick={() => setPenjualanFotoFiles(prev => prev.filter((_, j) => j !== i))}
+                                                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center leading-none">×</button>
+                                                </div>
+                                             ))}
+                                          </div>
+                                       )}
+                                       <button onClick={addPenjualan} disabled={affiliateSaving}
+                                          className="ml-auto px-4 py-1.5 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-black rounded text-sm font-bold transition">
+                                          {affiliateSaving ? '...' : 'Simpan'}
+                                       </button>
+                                    </div>
                                  </div>
                               )}
                               <table className="w-full text-sm">
                                  <thead className="bg-yellow-400">
                                     <tr>
-                                       {['No','Barang Affiliator','Harga Barang','Persentase %','Nominal','Sisa Kontrak',''].map(h => (
+                                       {['No','Barang Affiliator','Harga Barang','Persentase %','Nominal','Sisa Kontrak','Foto',''].map(h => (
                                           <th key={h} className="px-3 py-2 text-left font-bold text-black">{h}</th>
                                        ))}
                                     </tr>
                                  </thead>
                                  <tbody>
                                     {penjualanWithSisa.length === 0 && (
-                                       <tr><td colSpan={7} className="text-center py-6 text-gray-400 text-xs">Belum ada data penjualan.</td></tr>
+                                       <tr><td colSpan={8} className="text-center py-6 text-gray-400 text-xs">Belum ada data penjualan.</td></tr>
                                     )}
                                     {penjualanWithSisa.map((p, i) => (
                                        <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
@@ -4725,6 +4779,21 @@ export default function NikonDashboard() {
                                           <td className="px-3 py-2 text-center">{p.persentase}%</td>
                                           <td className="px-3 py-2 text-right font-mono text-blue-700 font-semibold">{fmtRp(p.nominal)}</td>
                                           <td className="px-3 py-2 text-right font-mono font-bold text-green-700">{fmtRp(p.sisa_kontrak)}</td>
+                                          <td className="px-3 py-2">
+                                             {p.foto_urls && p.foto_urls.length > 0 ? (
+                                                <div className="flex gap-1 flex-wrap">
+                                                   {p.foto_urls.map((url, fi) => {
+                                                      const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                                                      const src = m ? `/api/drive-file?id=${m[1]}` : url;
+                                                      return (
+                                                         <a key={fi} href={url} target="_blank" rel="noopener noreferrer">
+                                                            <img src={src} alt={`foto ${fi + 1}`} className="w-10 h-10 object-cover rounded border border-gray-200 hover:opacity-80 transition" />
+                                                         </a>
+                                                      );
+                                                   })}
+                                                </div>
+                                             ) : <span className="text-gray-300 text-xs">-</span>}
+                                          </td>
                                           <td className="px-3 py-2 text-center">
                                              <button onClick={() => deletePenjualan(p.id)} className="text-red-500 hover:text-red-700 text-xs font-semibold">Hapus</button>
                                           </td>
@@ -4871,9 +4940,23 @@ export default function NikonDashboard() {
                   const colFoto = _findCol(hdrs, ['foto kartu garansi', 'foto garansi', 'foto', 'image', 'gambar', 'link foto', 'url foto', 'link', 'url']);
 
                   const q = dealerSearch.toLowerCase();
-                  const filteredDealer = (dealerSheet?.rows ?? [])
+                  let filteredDealer = (dealerSheet?.rows ?? [])
                      .map((row, idx) => ({ row, idx }))
-                     .filter(({ row }) => !q || row.some(c => c.toLowerCase().includes(q)));
+                     .filter(({ row }) => {
+                        if (q && !row.some(c => c.toLowerCase().includes(q))) return false;
+                        for (const [ci, fv] of Object.entries(dealerColFilters)) {
+                           if (fv && !(row[Number(ci)] || '').toLowerCase().includes(fv.toLowerCase())) return false;
+                        }
+                        return true;
+                     });
+                  if (dealerSortCol >= 0) {
+                     filteredDealer = [...filteredDealer].sort((a, b) => {
+                        const av = (a.row[dealerSortCol] || '').toLowerCase();
+                        const bv = (b.row[dealerSortCol] || '').toLowerCase();
+                        const cmp = av.localeCompare(bv, 'id', { numeric: true });
+                        return dealerSortDir === 'asc' ? cmp : -cmp;
+                     });
+                  }
 
                   const allDealerIdx = filteredDealer.map(r => r.idx);
                   const allDealerSel = allDealerIdx.length > 0 && allDealerIdx.every(i => dealerSelected.has(i));
@@ -4900,8 +4983,24 @@ export default function NikonDashboard() {
                      const area = document.getElementById('dealer-print-area');
                      if (!area) return;
                      area.style.display = 'block';
-                     window.print();
-                     setTimeout(() => { area.style.display = 'none'; }, 500);
+                     const imgs = Array.from(area.querySelectorAll<HTMLImageElement>('img'));
+                     if (imgs.length === 0) {
+                        window.print();
+                        setTimeout(() => { area.style.display = 'none'; }, 500);
+                        return;
+                     }
+                     let pending = imgs.length;
+                     const tryPrint = () => {
+                        pending--;
+                        if (pending <= 0) {
+                           window.print();
+                           setTimeout(() => { area.style.display = 'none'; }, 500);
+                        }
+                     };
+                     imgs.forEach(img => {
+                        if (img.complete) { tryPrint(); }
+                        else { img.onload = tryPrint; img.onerror = tryPrint; }
+                     });
                   };
 
                   return (
@@ -4965,7 +5064,7 @@ export default function NikonDashboard() {
                                  className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-52 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                               />
                               <button
-                                 onClick={() => { setDealerSheet(null); setDealerSelected(new Set()); setDealerSearch(''); }}
+                                 onClick={() => { setDealerSheet(null); setDealerSelected(new Set()); setDealerSearch(''); setDealerSortCol(-1); setDealerSortDir('asc'); setDealerColFilters({}); }}
                                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-sm transition"
                               >🔄 Refresh</button>
                               <button
@@ -5002,14 +5101,56 @@ export default function NikonDashboard() {
                                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                                     <div className="overflow-x-auto">
                                        <table className="w-full text-sm">
-                                          <thead className="bg-gray-50 border-b border-gray-200">
-                                             <tr>
+                                          <thead>
+                                             {/* Baris header + sort */}
+                                             <tr className="bg-gray-50 border-b border-gray-200">
                                                 <th className="px-3 py-2.5 text-center w-10">
                                                    <input type="checkbox" checked={allDealerSel} onChange={toggleDealerAll} className="w-4 h-4 accent-blue-600" />
                                                 </th>
                                                 <th className="px-3 py-2.5 text-left text-gray-400 font-semibold w-10">#</th>
                                                 {hdrs.map((h, i) => (
-                                                   <th key={i} className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">{h}</th>
+                                                   <th
+                                                      key={i}
+                                                      className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                                                      onClick={() => {
+                                                         if (dealerSortCol === i) setDealerSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                                                         else { setDealerSortCol(i); setDealerSortDir('asc'); }
+                                                      }}
+                                                   >
+                                                      <span className="flex items-center gap-1">
+                                                         {h}
+                                                         <span className={`text-xs ${dealerSortCol === i ? 'text-yellow-600 font-bold' : 'text-gray-300'}`}>
+                                                            {dealerSortCol === i ? (dealerSortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                                                         </span>
+                                                      </span>
+                                                   </th>
+                                                ))}
+                                             </tr>
+                                             {/* Baris filter per kolom */}
+                                             <tr className="bg-yellow-50 border-b border-yellow-200">
+                                                <td className="px-2 py-1.5 text-center">
+                                                   {Object.values(dealerColFilters).some(v => v) && (
+                                                      <button
+                                                         onClick={() => setDealerColFilters({})}
+                                                         title="Hapus semua filter"
+                                                         className="text-red-400 hover:text-red-600 text-xs font-bold"
+                                                      >✕</button>
+                                                   )}
+                                                </td>
+                                                <td className="px-2 py-1" />
+                                                {hdrs.map((_, i) => (
+                                                   <td key={i} className="px-2 py-1">
+                                                      <input
+                                                         type="text"
+                                                         placeholder="filter..."
+                                                         value={dealerColFilters[i] || ''}
+                                                         onChange={e => {
+                                                            const val = e.target.value;
+                                                            setDealerColFilters(prev => ({ ...prev, [i]: val }));
+                                                         }}
+                                                         className="w-full border border-gray-300 rounded px-2 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-yellow-400 bg-white"
+                                                      />
+                                                   </td>
                                                 ))}
                                              </tr>
                                           </thead>
