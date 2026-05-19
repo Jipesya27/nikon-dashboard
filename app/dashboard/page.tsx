@@ -255,6 +255,7 @@ export default function NikonDashboard() {
    const [penjualanFormData, setPenjualanFormData] = useState({ barang: '', harga_barang: '', persentase: '' });
    const [skemaFormOpen, setSkemaFormOpen] = useState(false);
    const [penjualanFormOpen, setPenjualanFormOpen] = useState(false);
+   const [penjualanFotoFiles, setPenjualanFotoFiles] = useState<File[]>([]);
    const [affiliateSearch, setAffiliateSearch] = useState('');
    const [affiliateSaving, setAffiliateSaving] = useState(false);
 
@@ -737,14 +738,28 @@ export default function NikonDashboard() {
    const addPenjualan = async () => {
       if (!selectedAffiliate || !penjualanFormData.barang || !penjualanFormData.harga_barang) return;
       setAffiliateSaving(true);
+      const fotoUrls: string[] = [];
+      for (const file of penjualanFotoFiles) {
+         try {
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('prefix', 'affiliate-foto');
+            fd.append('serial', selectedAffiliate.nama.replace(/\s+/g, '_'));
+            const res = await fetch('/api/upload-google-drive', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.url) fotoUrls.push(data.url);
+         } catch { /* skip failed upload */ }
+      }
       await supabase.from('affiliate_penjualan').insert({
          affiliate_id: selectedAffiliate.id,
          barang: penjualanFormData.barang,
          harga_barang: parseFloat(penjualanFormData.harga_barang) || 0,
          persentase: parseFloat(penjualanFormData.persentase) || 0,
+         ...(fotoUrls.length > 0 ? { foto_urls: fotoUrls } : {}),
       });
       await fetchAffiliateDetail(selectedAffiliate.id);
       setPenjualanFormData({ barang: '', harga_barang: '', persentase: '' });
+      setPenjualanFotoFiles([]);
       setPenjualanFormOpen(false);
       setAffiliateSaving(false);
    };
@@ -4543,6 +4558,15 @@ export default function NikonDashboard() {
                      const emptyRows = Array.from({ length: Math.max(0, 3 - affiliatePenjualan.length) },
                         () => `<tr>${'<td>&nbsp;</td>'.repeat(6)}</tr>`).join('');
 
+                     const fotoSection = affiliatePenjualan.filter(p => p.foto_urls && p.foto_urls.length > 0).map(p => {
+                        const imgs = (p.foto_urls || []).map(url => {
+                           const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                           const src = m ? `${window.location.origin}/api/drive-file?id=${m[1]}` : url;
+                           return `<img src="${src}" style="width:120px;height:100px;object-fit:cover;border:1px solid #ccc;border-radius:4px;" />`;
+                        }).join('');
+                        return `<div style="margin-bottom:10px"><strong>${p.barang}</strong><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">${imgs}</div></div>`;
+                     }).join('');
+
                      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <style>
   body { font-family: Arial, sans-serif; margin: 0; padding: 12mm; font-size: 10pt; }
@@ -4569,6 +4593,7 @@ export default function NikonDashboard() {
   <th>No</th><th>Barang Affiliator</th><th>Harga Barang</th>
   <th>Persentase %</th><th>Nominal</th><th>Sisa Kontrak</th>
 </tr></thead><tbody>${penjualanRows}${emptyRows}</tbody></table>
+${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` : ''}
 </body></html>`;
 
                      const w = window.open('', '_blank', 'width=900,height=700');
@@ -4692,30 +4717,53 @@ export default function NikonDashboard() {
                                  </button>
                               </div>
                               {penjualanFormOpen && (
-                                 <div className="flex flex-wrap gap-2 p-3 bg-yellow-50 border-b border-yellow-100">
-                                    <input placeholder="Barang Affiliator *" value={penjualanFormData.barang} onChange={e => setPenjualanFormData(f => ({ ...f, barang: e.target.value }))}
-                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1 min-w-40" />
-                                    <input placeholder="Harga Barang *" type="number" value={penjualanFormData.harga_barang} onChange={e => setPenjualanFormData(f => ({ ...f, harga_barang: e.target.value }))}
-                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm w-36" />
-                                    <input placeholder="Persentase %" type="number" step="0.1" value={penjualanFormData.persentase} onChange={e => setPenjualanFormData(f => ({ ...f, persentase: e.target.value }))}
-                                       className="border border-gray-300 rounded px-2 py-1.5 text-sm w-28" />
-                                    <button onClick={addPenjualan} disabled={affiliateSaving}
-                                       className="px-4 py-1.5 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-black rounded text-sm font-bold transition">
-                                       {affiliateSaving ? '...' : 'Simpan'}
-                                    </button>
+                                 <div className="p-3 bg-yellow-50 border-b border-yellow-100 space-y-2">
+                                    <div className="flex flex-wrap gap-2">
+                                       <input placeholder="Barang Affiliator *" value={penjualanFormData.barang} onChange={e => setPenjualanFormData(f => ({ ...f, barang: e.target.value }))}
+                                          className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1 min-w-40" />
+                                       <input placeholder="Harga Barang *" type="number" value={penjualanFormData.harga_barang} onChange={e => setPenjualanFormData(f => ({ ...f, harga_barang: e.target.value }))}
+                                          className="border border-gray-300 rounded px-2 py-1.5 text-sm w-36" />
+                                       <input placeholder="Persentase %" type="number" step="0.1" value={penjualanFormData.persentase} onChange={e => setPenjualanFormData(f => ({ ...f, persentase: e.target.value }))}
+                                          className="border border-gray-300 rounded px-2 py-1.5 text-sm w-28" />
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                       <label className="text-xs font-semibold text-gray-600">Foto barang (maks 4):</label>
+                                       <input type="file" accept="image/*" multiple
+                                          onChange={e => {
+                                             const files = Array.from(e.target.files || []).slice(0, 4);
+                                             setPenjualanFotoFiles(files);
+                                             e.target.value = '';
+                                          }}
+                                          className="text-xs text-gray-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-yellow-400 file:text-black file:text-xs file:font-bold file:cursor-pointer" />
+                                       {penjualanFotoFiles.length > 0 && (
+                                          <div className="flex gap-1 flex-wrap">
+                                             {penjualanFotoFiles.map((f, i) => (
+                                                <div key={i} className="relative">
+                                                   <img src={URL.createObjectURL(f)} alt="" className="w-12 h-12 object-cover rounded border border-gray-300" />
+                                                   <button onClick={() => setPenjualanFotoFiles(prev => prev.filter((_, j) => j !== i))}
+                                                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center leading-none">×</button>
+                                                </div>
+                                             ))}
+                                          </div>
+                                       )}
+                                       <button onClick={addPenjualan} disabled={affiliateSaving}
+                                          className="ml-auto px-4 py-1.5 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-black rounded text-sm font-bold transition">
+                                          {affiliateSaving ? '...' : 'Simpan'}
+                                       </button>
+                                    </div>
                                  </div>
                               )}
                               <table className="w-full text-sm">
                                  <thead className="bg-yellow-400">
                                     <tr>
-                                       {['No','Barang Affiliator','Harga Barang','Persentase %','Nominal','Sisa Kontrak',''].map(h => (
+                                       {['No','Barang Affiliator','Harga Barang','Persentase %','Nominal','Sisa Kontrak','Foto',''].map(h => (
                                           <th key={h} className="px-3 py-2 text-left font-bold text-black">{h}</th>
                                        ))}
                                     </tr>
                                  </thead>
                                  <tbody>
                                     {penjualanWithSisa.length === 0 && (
-                                       <tr><td colSpan={7} className="text-center py-6 text-gray-400 text-xs">Belum ada data penjualan.</td></tr>
+                                       <tr><td colSpan={8} className="text-center py-6 text-gray-400 text-xs">Belum ada data penjualan.</td></tr>
                                     )}
                                     {penjualanWithSisa.map((p, i) => (
                                        <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
@@ -4725,6 +4773,21 @@ export default function NikonDashboard() {
                                           <td className="px-3 py-2 text-center">{p.persentase}%</td>
                                           <td className="px-3 py-2 text-right font-mono text-blue-700 font-semibold">{fmtRp(p.nominal)}</td>
                                           <td className="px-3 py-2 text-right font-mono font-bold text-green-700">{fmtRp(p.sisa_kontrak)}</td>
+                                          <td className="px-3 py-2">
+                                             {p.foto_urls && p.foto_urls.length > 0 ? (
+                                                <div className="flex gap-1 flex-wrap">
+                                                   {p.foto_urls.map((url, fi) => {
+                                                      const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                                                      const src = m ? `/api/drive-file?id=${m[1]}` : url;
+                                                      return (
+                                                         <a key={fi} href={url} target="_blank" rel="noopener noreferrer">
+                                                            <img src={src} alt={`foto ${fi + 1}`} className="w-10 h-10 object-cover rounded border border-gray-200 hover:opacity-80 transition" />
+                                                         </a>
+                                                      );
+                                                   })}
+                                                </div>
+                                             ) : <span className="text-gray-300 text-xs">-</span>}
+                                          </td>
                                           <td className="px-3 py-2 text-center">
                                              <button onClick={() => deletePenjualan(p.id)} className="text-red-500 hover:text-red-700 text-xs font-semibold">Hapus</button>
                                           </td>
