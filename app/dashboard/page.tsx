@@ -5098,35 +5098,56 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                                     <div className="overflow-x-auto">
                                        <table className="w-full text-sm">
-                                          <thead className="bg-gray-50 border-b border-gray-200">
-                                             <tr>
-                                                <th className="px-3 py-2.5 text-center w-10 align-top">
-                                                   <input type="checkbox" checked={allDealerSel} onChange={toggleDealerAll} className="w-4 h-4 accent-blue-600 mt-1" />
+                                          <thead>
+                                             {/* Baris header + sort */}
+                                             <tr className="bg-gray-50 border-b border-gray-200">
+                                                <th className="px-3 py-2.5 text-center w-10">
+                                                   <input type="checkbox" checked={allDealerSel} onChange={toggleDealerAll} className="w-4 h-4 accent-blue-600" />
                                                 </th>
-                                                <th className="px-3 py-2.5 text-left text-gray-400 font-semibold w-10 align-top">#</th>
+                                                <th className="px-3 py-2.5 text-left text-gray-400 font-semibold w-10">#</th>
                                                 {hdrs.map((h, i) => (
-                                                   <th key={i} className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap select-none align-top">
-                                                      <div
-                                                         className="flex items-center gap-1 cursor-pointer hover:text-yellow-600 transition-colors"
-                                                         onClick={() => {
-                                                            if (dealerSortCol === i) setDealerSortDir(d => d === 'asc' ? 'desc' : 'asc');
-                                                            else { setDealerSortCol(i); setDealerSortDir('asc'); }
-                                                         }}
-                                                      >
-                                                         <span>{h}</span>
-                                                         <span className="text-gray-400 text-xs">
-                                                            {dealerSortCol === i ? (dealerSortDir === 'asc' ? '↑' : '↓') : '↕'}
+                                                   <th
+                                                      key={i}
+                                                      className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                                                      onClick={() => {
+                                                         if (dealerSortCol === i) setDealerSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                                                         else { setDealerSortCol(i); setDealerSortDir('asc'); }
+                                                      }}
+                                                   >
+                                                      <span className="flex items-center gap-1">
+                                                         {h}
+                                                         <span className={`text-xs ${dealerSortCol === i ? 'text-yellow-600 font-bold' : 'text-gray-300'}`}>
+                                                            {dealerSortCol === i ? (dealerSortDir === 'asc' ? '▲' : '▼') : '⇅'}
                                                          </span>
-                                                      </div>
+                                                      </span>
+                                                   </th>
+                                                ))}
+                                             </tr>
+                                             {/* Baris filter per kolom */}
+                                             <tr className="bg-yellow-50 border-b border-yellow-200">
+                                                <td className="px-2 py-1.5 text-center">
+                                                   {Object.values(dealerColFilters).some(v => v) && (
+                                                      <button
+                                                         onClick={() => setDealerColFilters({})}
+                                                         title="Hapus semua filter"
+                                                         className="text-red-400 hover:text-red-600 text-xs font-bold"
+                                                      >✕</button>
+                                                   )}
+                                                </td>
+                                                <td className="px-2 py-1" />
+                                                {hdrs.map((_, i) => (
+                                                   <td key={i} className="px-2 py-1">
                                                       <input
                                                          type="text"
                                                          placeholder="filter..."
                                                          value={dealerColFilters[i] || ''}
-                                                         onChange={e => setDealerColFilters(prev => ({ ...prev, [i]: e.target.value }))}
-                                                         onClick={e => e.stopPropagation()}
-                                                         className="mt-1 w-full min-w-[80px] border border-gray-300 rounded px-1.5 py-0.5 text-xs font-normal text-gray-700 focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                                                         onChange={e => {
+                                                            const val = e.target.value;
+                                                            setDealerColFilters(prev => ({ ...prev, [i]: val }));
+                                                         }}
+                                                         className="w-full border border-gray-300 rounded px-2 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-yellow-400 bg-white"
                                                       />
-                                                   </th>
+                                                   </td>
                                                 ))}
                                              </tr>
                                           </thead>
