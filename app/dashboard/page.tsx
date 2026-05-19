@@ -4963,8 +4963,24 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                      const area = document.getElementById('dealer-print-area');
                      if (!area) return;
                      area.style.display = 'block';
-                     window.print();
-                     setTimeout(() => { area.style.display = 'none'; }, 500);
+                     const imgs = Array.from(area.querySelectorAll<HTMLImageElement>('img'));
+                     if (imgs.length === 0) {
+                        window.print();
+                        setTimeout(() => { area.style.display = 'none'; }, 500);
+                        return;
+                     }
+                     let pending = imgs.length;
+                     const tryPrint = () => {
+                        pending--;
+                        if (pending <= 0) {
+                           window.print();
+                           setTimeout(() => { area.style.display = 'none'; }, 500);
+                        }
+                     };
+                     imgs.forEach(img => {
+                        if (img.complete) { tryPrint(); }
+                        else { img.onload = tryPrint; img.onerror = tryPrint; }
+                     });
                   };
 
                   return (
