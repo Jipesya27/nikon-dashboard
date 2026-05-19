@@ -1464,8 +1464,11 @@ export default function NikonDashboard() {
             await deleteFileFromStorage(original.link_kartu_garansi as string);
          }
 
+         // Hapus field immutable (PK & timestamp) dari payload
+         const { id_claim: _id, created_at: _ca, ...claimFields } = claimForm as ClaimPromo & { id_claim?: string; created_at?: string };
+
          const dataToSave = {
-            ...claimForm,
+            ...claimFields,
             nama_toko: claimForm.nama_toko || '',
             jenis_promosi: claimForm.jenis_promosi || '',
             nama_jasa_pengiriman: claimForm.nama_jasa_pengiriman || '',
@@ -1478,10 +1481,10 @@ export default function NikonDashboard() {
 
          if (modalAction === 'create') {
             const { error: insertError } = await supabase.from('claim_promo').insert([{ ...dataToSave, created_at: new Date().toISOString() }]);
-            if (insertError) throw new Error(insertError.message);
+            if (insertError) throw new Error(insertError.message || insertError.details || `DB error code: ${insertError.code}`);
          } else {
             const { error: updateError } = await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId);
-            if (updateError) throw new Error(updateError.message);
+            if (updateError) throw new Error(updateError.message || updateError.details || `DB error code: ${updateError.code}`);
          }
 
          if (dataToSave.validasi_by_mkt === 'Valid' && dataToSave.nomor_seri) {
