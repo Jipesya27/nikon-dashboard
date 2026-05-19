@@ -1488,10 +1488,10 @@ export default function NikonDashboard() {
                throw new Error(insertError.message || insertError.details || insertError.hint || JSON.stringify(insertError));
             }
          } else {
-            const { error: updateError } = await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId);
+            const { error: updateError, status: updateStatus, statusText: updateStatusText } = await supabase.from('claim_promo').update(dataToSave).eq('id_claim', editingId);
             if (updateError) {
-               console.error('Claim update error:', JSON.stringify(updateError));
-               throw new Error(updateError.message || updateError.details || updateError.hint || JSON.stringify(updateError));
+               console.error('Claim update error:', JSON.stringify(updateError), 'HTTP status:', updateStatus, updateStatusText);
+               throw new Error(`[HTTP ${updateStatus} ${updateStatusText}] ` + (updateError.message || updateError.details || updateError.hint || JSON.stringify(updateError)));
             }
          }
 
