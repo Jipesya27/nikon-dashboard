@@ -2222,8 +2222,11 @@ export default function NikonDashboard() {
       try {
          await sendWhatsAppMessageViaFonnte(selectedWa, fullMessage);
          await sbWrite({ action: 'update', table: 'riwayat_pesan', data: { bicara_dengan_cs: false }, match: { nomor_wa: selectedWa } });
-         const { error: insertErr } = await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: fullMessage, waktu_pesan: now, bicara_dengan_cs: false } });
-         if (insertErr) console.error('[handleSendReply] insert error:', insertErr.message);
+         const { error: insertErr } = await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: fullMessage, waktu_pesan: now, bicara_dengan_cs: false, created_at: now } });
+         if (insertErr) {
+            console.error('[handleSendReply] insert error:', insertErr.message);
+            alert('⚠️ Pesan terkirim via WA tapi gagal disimpan ke database:\n' + insertErr.message);
+         }
       } catch (err) {
          console.error('[handleSendReply] error:', err);
       }
@@ -2236,7 +2239,7 @@ export default function NikonDashboard() {
       e.preventDefault();
       if (!newChatWa || !newChatMsg.trim()) return;
       await sendWhatsAppMessageViaFonnte(newChatWa, newChatMsg.trim());
-      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: newChatWa, nama_profil_wa: getRealProfileName(newChatWa), arah_pesan: 'OUT', isi_pesan: newChatMsg.trim(), waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false } });
+      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: newChatWa, nama_profil_wa: getRealProfileName(newChatWa), arah_pesan: 'OUT', isi_pesan: newChatMsg.trim(), waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false, created_at: new Date().toISOString() } });
       setIsNewChatModalOpen(false);
       setNewChatWa('');
       setNewChatMsg('');
@@ -2249,7 +2252,7 @@ export default function NikonDashboard() {
       if (!window.confirm('Kirim status claim ke WA konsumen?')) return;
       const msg = getText('statusClaim', { nomor_seri: c.nomor_seri, tipe_barang: c.tipe_barang, status_mkt: c.validasi_by_mkt, status_fa: c.validasi_by_fa, jasa_kirim: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '', catatan_mkt: c.catatan_mkt || '' });
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
-      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false } });
+      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false, created_at: new Date().toISOString() } });
       alert('Pesan status berhasil dikirim!');
       fetchMessages();
    };
@@ -2260,7 +2263,7 @@ export default function NikonDashboard() {
       if (!window.confirm('Kirim status garansi ke WA konsumen?')) return;
       const msg = getText('statusGaransi', { seri: w.nomor_seri, barang: w.tipe_barang, jenis: w.jenis_garansi, lama: w.lama_garansi, sisa: calculateSisaGaransi(linked.tanggal_pembelian, w.lama_garansi) });
       await sendWhatsAppMessageViaFonnte(linked.nomor_wa, msg);
-      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: linked.nomor_wa, nama_profil_wa: getRealProfileName(linked.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false } });
+      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: linked.nomor_wa, nama_profil_wa: getRealProfileName(linked.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false, created_at: new Date().toISOString() } });
       alert('Pesan status berhasil dikirim!');
       fetchMessages();
    };
@@ -2280,7 +2283,8 @@ export default function NikonDashboard() {
             arah_pesan: 'OUT',
             isi_pesan: message,
             waktu_pesan: new Date().toISOString(),
-            bicara_dengan_cs: false
+            bicara_dengan_cs: false,
+            created_at: new Date().toISOString(),
          }});
          alert('Notifikasi berhasil dikirim!');
          fetchMessages();
