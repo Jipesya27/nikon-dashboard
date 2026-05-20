@@ -31,6 +31,21 @@ type DepositRegistration = {
 
 type EventInfo = { id: string; event_title: string; event_date: string; deposit_amount: string | null };
 
+// Ekstrak Drive file ID dari berbagai format URL, lalu arahkan ke proxy /api/drive-file
+function driveProxyUrl(url: string | null): string | null {
+  if (!url) return null;
+  // https://drive.google.com/uc?id=xxx&export=view  atau  ?id=xxx
+  const qId = url.match(/[?&]id=([a-zA-Z0-9_-]{10,})/)?.[1];
+  if (qId) return `/api/drive-file?id=${qId}`;
+  // https://drive.google.com/file/d/xxx/view
+  const pathId = url.match(/\/file\/d\/([a-zA-Z0-9_-]{10,})/)?.[1];
+  if (pathId) return `/api/drive-file?id=${pathId}`;
+  // https://lh3.googleusercontent.com/d/xxx=w2000
+  const lhId = url.match(/\/d\/([a-zA-Z0-9_-]{10,})/)?.[1];
+  if (lhId) return `/api/drive-file?id=${lhId}`;
+  return url;
+}
+
 export default function AdminDepositPage() {
   const [registrations, setRegistrations] = useState<(DepositRegistration & { event?: EventInfo })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -243,7 +258,7 @@ export default function AdminDepositPage() {
                           <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-2">Bukti Bayar Deposit (saat daftar)</p>
                           {reg.bukti_transfer_url ? (
                             <button
-                              onClick={() => setPreviewUrl(reg.bukti_transfer_url)}
+                              onClick={() => setPreviewUrl(driveProxyUrl(reg.bukti_transfer_url))}
                               className="text-xs bg-blue-900/30 hover:bg-blue-900/50 text-blue-300 px-3 py-2 rounded-lg border border-blue-500/30 transition-all flex items-center gap-2"
                             >
                               🖼️ Lihat Bukti Transfer Pendaftaran
@@ -298,7 +313,7 @@ export default function AdminDepositPage() {
                           <>
                             {reg.bukti_pengembalian_deposit && (
                               <button
-                                onClick={() => setPreviewUrl(reg.bukti_pengembalian_deposit)}
+                                onClick={() => setPreviewUrl(driveProxyUrl(reg.bukti_pengembalian_deposit))}
                                 className="text-xs bg-green-900/30 hover:bg-green-900/50 text-green-300 px-3 py-2 rounded-lg border border-green-500/30 transition-all"
                               >
                                 🖼️ Lihat Bukti Transfer
@@ -356,9 +371,24 @@ export default function AdminDepositPage() {
       {previewUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewUrl(null)}>
           <div className="relative max-w-2xl w-full" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setPreviewUrl(null)} className="absolute -top-10 right-0 text-zinc-400 hover:text-white text-sm">✕ Tutup</button>
+            <div className="flex items-center justify-between mb-2">
+              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline">↗ Buka di tab baru</a>
+              <button onClick={() => setPreviewUrl(null)} className="text-zinc-400 hover:text-white text-sm">✕ Tutup</button>
+            </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previewUrl} alt="Bukti Pengembalian" className="w-full rounded-xl border border-white/10 shadow-2xl" />
+            <img
+              src={previewUrl}
+              alt="Bukti Transfer"
+              className="w-full rounded-xl border border-white/10 shadow-2xl"
+              onError={e => {
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+                (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
+              }}
+            />
+            <div style={{ display: 'none' }} className="flex-col items-center justify-center gap-3 bg-zinc-900 rounded-xl border border-white/10 p-8 text-center">
+              <p className="text-zinc-400 text-sm">Preview tidak tersedia (mungkin PDF)</p>
+              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-sm hover:underline font-bold">↗ Buka File</a>
+            </div>
           </div>
         </div>
       )}
