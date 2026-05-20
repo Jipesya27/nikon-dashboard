@@ -1,9 +1,9 @@
-import AdminGate from '@/app/components/AdminGate';
+import RoleGate from '@/app/components/RoleGate';
 
 export default function EventsAdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AdminGate title="Admin Events">
+    <RoleGate title="Admin Events" requiredAccess={['events', 'eventregistrations']}>
       {children}
-    </AdminGate>
+    </RoleGate>
   );
 }
