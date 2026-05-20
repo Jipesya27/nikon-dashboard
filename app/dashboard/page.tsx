@@ -1155,8 +1155,8 @@ export default function NikonDashboard() {
          if (konsumen?.kecamatan) parts.push(`KEC. ${konsumen.kecamatan.toUpperCase()}`);
          if (konsumen?.kabupaten_kotamadya) parts.push(`KAB/KOTA. ${konsumen.kabupaten_kotamadya.toUpperCase()}`);
          if (konsumen?.provinsi) parts.push(`PROV. ${konsumen.provinsi.toUpperCase()}`);
-         const alamat = parts.join(', ');
          const kodepos = (konsumen?.kodepos && konsumen.kodepos !== 'BELUM_DIISI') ? konsumen.kodepos : '';
+         const alamat = kodepos ? `${parts.join(', ')} - ${kodepos}` : parts.join(', ');
          const promo = c.jenis_promosi || getNamaPromo(c.tipe_barang);
          const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
          csvRows.push([
