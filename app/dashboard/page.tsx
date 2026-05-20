@@ -882,6 +882,17 @@ export default function NikonDashboard() {
       if (!isLoggedIn) return;
 
       const fetchAllData = async () => {
+         // Verifikasi session sebelum load — jika cookie sudah kadaluarsa, tampilkan login
+         try {
+            const sessionOk = await fetch('/api/admin/auth', { cache: 'no-store' }).then(r => r.ok);
+            if (!sessionOk) {
+               localStorage.removeItem('nikon_karyawan');
+               setIsLoggedIn(false);
+               setCurrentUser(null);
+               setLoading(false);
+               return;
+            }
+         } catch { /* network issue — lanjutkan fetch */ }
          setLoading(true);
          try {
             const promises = [
@@ -981,7 +992,24 @@ export default function NikonDashboard() {
       return () => clearInterval(id);
       // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [isLoggedIn, dateRange]);
-   
+
+   // Cek validity session setiap 90 detik — auto-logout jika cookie kadaluarsa
+   // Ini menangani kasus user tetap di halaman melebihi 2 hari tanpa refresh
+   useEffect(() => {
+      if (!isLoggedIn) return;
+      const id = setInterval(async () => {
+         try {
+            const res = await fetch('/api/admin/auth', { cache: 'no-store' });
+            if (!res.ok) {
+               localStorage.removeItem('nikon_karyawan');
+               setIsLoggedIn(false);
+               setCurrentUser(null);
+            }
+         } catch { /* network error — pertahankan sesi */ }
+      }, 90_000);
+      return () => clearInterval(id);
+   }, [isLoggedIn]);
+
    // eslint-disable-next-line @typescript-eslint/no-unused-vars
    const handleDownloadPDF = () => {
       if (!printData) return;
@@ -1092,6 +1120,7 @@ export default function NikonDashboard() {
       localStorage.removeItem('nikon_karyawan');
       setIsLoggedIn(false);
       setCurrentUser(null);
+      setLoading(false); // pastikan spinner tidak tertinggal saat session expired
    };
 
 
