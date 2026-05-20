@@ -24,6 +24,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      // Google Drive & Google user content (poster event, foto profil, dll.)
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      { protocol: 'https', hostname: 'drive.google.com' },
+    ],
+  },
   async headers() {
     return [
       {
