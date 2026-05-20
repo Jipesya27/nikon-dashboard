@@ -659,8 +659,10 @@ export default function NikonDashboard() {
          const { data, error } = await query;
          if (error) {
             console.error(`fetch ${table}:`, error.message, error.code, error.details);
-            // Tandai error agar terlihat di UI
             setDataLoadError(`[${table}] ${error.message || error.code || 'Unknown error'}`);
+         } else if (!data) {
+            // data null tapi tidak ada error — kemungkinan proxy error (ENV_MISSING, dll)
+            console.warn(`fetch ${table}: data null, error null`);
          }
          setter((data || []) as T[]);
       } catch (err) {
@@ -908,6 +910,21 @@ export default function NikonDashboard() {
                return;
             }
          } catch { /* network issue — lanjutkan fetch */ }
+
+         // Cek koneksi DB (env vars + Supabase) — tampilkan error jika ada masalah
+         try {
+            const check = await fetch('/api/admin/sb-check', { cache: 'no-store' });
+            const checkJson = await check.json() as { envOk?: boolean; sessionOk?: boolean; rowCount?: number | null; error?: string; sbUrl?: string };
+            if (!check.ok || checkJson.error) {
+               const msg = checkJson.envOk === false
+                  ? `❌ Env vars Supabase tidak tersedia di server (SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL missing)`
+                  : checkJson.sessionOk === false
+                  ? `❌ Session cookie tidak valid — coba logout lalu login ulang`
+                  : `❌ Koneksi DB gagal: ${checkJson.error}`;
+               setDataLoadError(msg);
+            }
+         } catch { /* ignore diagnostic error */ }
+
          setLoading(true);
          setDataLoadError(null);
          try {

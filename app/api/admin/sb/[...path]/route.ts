@@ -20,6 +20,15 @@ const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const STRIP_HEADERS = new Set(['host', 'connection', 'authorization', 'apikey', 'content-length', 'transfer-encoding']);
 
 async function proxy(req: NextRequest, params: Promise<{ path: string[] }>) {
+  // Guard: env vars harus tersedia
+  if (!SB_URL || !SB_KEY) {
+    console.error('[sb-proxy] MISSING ENV VARS — SB_URL:', !!SB_URL, 'SB_KEY:', !!SB_KEY);
+    return NextResponse.json(
+      { error: 'Server misconfigured: missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY', code: 'ENV_MISSING' },
+      { status: 503 }
+    );
+  }
+
   // Validate admin session
   const cookieStore = await cookies();
   if (!(await verifyAdminSession(cookieStore))) {
