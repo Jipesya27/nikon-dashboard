@@ -899,31 +899,40 @@ export default function NikonDashboard() {
       if (!isLoggedIn) return;
 
       const fetchAllData = async () => {
-         // Verifikasi session sebelum load — jika cookie sudah kadaluarsa, tampilkan login
+         // 1. Cek session via /api/admin/auth (selalu diizinkan middleware)
          try {
             const sessionOk = await fetch('/api/admin/auth', { cache: 'no-store' }).then(r => r.ok);
             if (!sessionOk) {
+               // Cookie tidak valid / kadaluarsa → tampilkan login langsung
                localStorage.removeItem('nikon_karyawan');
                setIsLoggedIn(false);
                setCurrentUser(null);
                setLoading(false);
                return;
             }
-         } catch { /* network issue — lanjutkan fetch */ }
+         } catch { /* network issue — lanjutkan */ }
 
-         // Cek koneksi DB (env vars + Supabase) — tampilkan error jika ada masalah
+         // 2. Cek koneksi DB — deteksi masalah env vars atau session ditolak middleware
          try {
             const check = await fetch('/api/admin/sb-check', { cache: 'no-store' });
-            const checkJson = await check.json() as { envOk?: boolean; sessionOk?: boolean; rowCount?: number | null; error?: string; sbUrl?: string };
-            if (!check.ok || checkJson.error) {
-               const msg = checkJson.envOk === false
-                  ? `❌ Env vars Supabase tidak tersedia di server (SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL missing)`
-                  : checkJson.sessionOk === false
-                  ? `❌ Session cookie tidak valid — coba logout lalu login ulang`
-                  : `❌ Koneksi DB gagal: ${checkJson.error}`;
-               setDataLoadError(msg);
+            if (!check.ok) {
+               const body = await check.json().catch(() => ({})) as { error?: string; envOk?: boolean };
+               if (check.status === 401) {
+                  // Middleware menolak session → logout paksa
+                  localStorage.removeItem('nikon_karyawan');
+                  setIsLoggedIn(false);
+                  setCurrentUser(null);
+                  setLoading(false);
+                  return;
+               }
+               if (check.status === 503 || body.envOk === false) {
+                  // Env vars Supabase tidak dikonfigurasi di server
+                  setDataLoadError('❌ Konfigurasi server tidak lengkap: SUPABASE_SERVICE_ROLE_KEY atau NEXT_PUBLIC_SUPABASE_URL belum diset di Vercel. Hubungi developer.');
+                  setLoading(false);
+                  return;
+               }
             }
-         } catch { /* ignore diagnostic error */ }
+         } catch { /* jaringan error — lanjutkan, proxy akan handle */ }
 
          setLoading(true);
          setDataLoadError(null);
@@ -2784,11 +2793,15 @@ export default function NikonDashboard() {
 
    return (
       <>
-         {/* Banner error jika data gagal dimuat — tampilkan pesan agar bisa diinvestigasi */}
+         {/* Banner error jika data gagal dimuat */}
          {dataLoadError && (
-            <div className="fixed top-0 left-0 right-0 z-[9999] bg-red-600 text-white text-xs px-4 py-2 flex items-center justify-between shadow-lg">
-               <span>⚠️ Gagal memuat data: {dataLoadError}</span>
-               <button onClick={() => setDataLoadError(null)} className="ml-4 font-bold hover:opacity-75">✕</button>
+            <div className="fixed top-0 left-0 right-0 z-[9999] bg-red-600 text-white text-xs px-4 py-2 flex items-center justify-between gap-2 shadow-lg">
+               <span className="flex-1">{dataLoadError}</span>
+               <button
+                  onClick={() => { localStorage.removeItem('nikon_karyawan'); setIsLoggedIn(false); setCurrentUser(null); setLoading(false); }}
+                  className="bg-white text-red-700 font-bold px-2 py-0.5 rounded text-xs hover:bg-red-100 whitespace-nowrap"
+               >Login Ulang</button>
+               <button onClick={() => setDataLoadError(null)} className="font-bold hover:opacity-75 px-1">✕</button>
             </div>
          )}
          <div className={`h-screen bg-gray-50 flex flex-col relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
