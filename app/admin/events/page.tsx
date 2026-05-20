@@ -245,7 +245,10 @@ export default function AdminEventsPage() {
                   <div className="flex flex-col gap-2 sm:items-end justify-start">
                     {reg.bukti_transfer_url && (
                       <button
-                        onClick={() => setPreviewUrl(reg.bukti_transfer_url)}
+                        onClick={() => {
+                          const id = reg.bukti_transfer_url!.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1];
+                          setPreviewUrl(id ? `/api/drive-file?id=${id}` : reg.bukti_transfer_url);
+                        }}
                         className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-lg border border-white/10 transition-all flex items-center gap-1"
                       >
                         🖼️ Lihat Bukti
@@ -287,9 +290,22 @@ export default function AdminEventsPage() {
       {previewUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewUrl(null)}>
           <div className="relative max-w-2xl w-full" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setPreviewUrl(null)} className="absolute -top-10 right-0 text-zinc-400 hover:text-white text-sm">✕ Tutup</button>
+            <div className="flex items-center justify-between mb-2">
+              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-400 hover:text-white underline">Buka di tab baru ↗</a>
+              <button onClick={() => setPreviewUrl(null)} className="text-zinc-400 hover:text-white text-sm">✕ Tutup</button>
+            </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previewUrl} alt="Bukti Transfer" className="w-full rounded-xl border border-white/10 shadow-2xl" />
+            <img
+              src={previewUrl}
+              alt="Bukti Transfer"
+              className="w-full rounded-xl border border-white/10 shadow-2xl"
+              onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex'; }}
+            />
+            <div style={{ display: 'none' }} className="flex-col items-center justify-center gap-3 bg-zinc-900 border border-white/10 rounded-xl p-10 text-center">
+              <span className="text-4xl">📄</span>
+              <p className="text-zinc-400 text-sm">File tidak bisa di-preview (mungkin PDF).</p>
+              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded-lg border border-white/10">Buka File ↗</a>
+            </div>
           </div>
         </div>
       )}
