@@ -2199,13 +2199,37 @@ export default function NikonDashboard() {
          const quotedName = replyToMessage.arah_pesan === 'OUT' ? 'Anda' : getRealProfileName(replyToMessage.nomor_wa);
          fullMessage = `> _${quotedName}: ${quotedText}_\n\n${replyText.trim()}`;
       }
-      await sendWhatsAppMessageViaFonnte(selectedWa, fullMessage);
-      await sbWrite({ action: 'update', table: 'riwayat_pesan', data: { bicara_dengan_cs: false }, match: { nomor_wa: selectedWa } });
-      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: fullMessage, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false } });
+
+      // --- Optimistic update: tampilkan pesan di UI sebelum network call selesai ---
+      const now = new Date().toISOString();
+      const tempId = `__opt_${now}`;
+      const optimisticMsg: RiwayatPesan = {
+         id_pesan: tempId,
+         nomor_wa: selectedWa,
+         nama_profil_wa: getRealProfileName(selectedWa),
+         arah_pesan: 'OUT',
+         isi_pesan: fullMessage,
+         waktu_pesan: now,
+         bicara_dengan_cs: false,
+         created_at: now,
+      };
+      setMessages(prev => [optimisticMsg, ...prev]);
       setReplyText('');
       setReplyToMessage(null);
+      setTimeout(scrollToBottom, 50);
+
+      // --- Kirim + simpan ke DB di background ---
+      try {
+         await sendWhatsAppMessageViaFonnte(selectedWa, fullMessage);
+         await sbWrite({ action: 'update', table: 'riwayat_pesan', data: { bicara_dengan_cs: false }, match: { nomor_wa: selectedWa } });
+         const { error: insertErr } = await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: fullMessage, waktu_pesan: now, bicara_dengan_cs: false } });
+         if (insertErr) console.error('[handleSendReply] insert error:', insertErr.message);
+      } catch (err) {
+         console.error('[handleSendReply] error:', err);
+      }
+
+      // Hapus optimistic message & ganti dengan data real dari DB
       fetchMessages();
-      scrollToBottom();
    };
 
    const handleSendNewChat = async (e: React.FormEvent) => {
@@ -2526,13 +2550,26 @@ export default function NikonDashboard() {
 
    const currentChatThread = useMemo(() => {
       if (!selectedWa) return [];
-      return messages
-         .filter((m: RiwayatPesan) => m.nomor_wa === selectedWa)
-         .sort((a, b) => {
-            const dateA = new Date(a.waktu_pesan || a.created_at || 0).getTime();
-            const dateB = new Date(b.waktu_pesan || b.created_at || 0).getTime();
-            return dateA - dateB;
-         });
+      const filtered = messages.filter((m: RiwayatPesan) => m.nomor_wa === selectedWa);
+      // De-duplikasi: hapus optimistic message (__opt_) jika sudah ada pesan real
+      // dengan isi dan waktu yang sama (selisih < 10 detik)
+      const optimistic = filtered.filter(m => m.id_pesan?.startsWith('__opt_'));
+      const real = filtered.filter(m => !m.id_pesan?.startsWith('__opt_'));
+      const deduped = [
+         ...real,
+         ...optimistic.filter(opt => {
+            const optTime = new Date(opt.waktu_pesan || opt.created_at || 0).getTime();
+            return !real.some(r =>
+               r.isi_pesan === opt.isi_pesan &&
+               Math.abs(new Date(r.waktu_pesan || r.created_at || 0).getTime() - optTime) < 10_000
+            );
+         }),
+      ];
+      return deduped.sort((a, b) => {
+         const dateA = new Date(a.waktu_pesan || a.created_at || 0).getTime();
+         const dateB = new Date(b.waktu_pesan || b.created_at || 0).getTime();
+         return dateA - dateB;
+      });
    }, [selectedWa, messages]);
 
    const filteredPromos = useMemo(() => promos.filter((p: Promosi) => {
