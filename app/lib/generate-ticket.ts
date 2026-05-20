@@ -22,6 +22,11 @@ function sanitize(s: string): string {
   return (s || '').replace(/[\/\\:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim().substring(0, 80);
 }
 
+// Hapus karakter di luar WinAnsi (>0xFF) agar pdf-lib tidak error saat encode
+function wa(s: string): string {
+  return (s || '').replace(/[^\x20-\xFF]/g, '').trim();
+}
+
 export interface GenerateTicketInput {
   registrationId: string;
   fullName: string;
@@ -92,7 +97,7 @@ export async function generateTicket(input: GenerateTicketInput): Promise<Genera
   let cursorY = HEADER_Y - 50;
 
   // Event title
-  const titleLines = wrapText(eventTitle, 38);
+  const titleLines = wrapText(wa(eventTitle), 38);
   for (const line of titleLines) {
     page.drawText(line, { x: CONTENT_LEFT, y: cursorY, size: 24, font: fontBold, color: yellow });
     cursorY -= 32;
@@ -102,7 +107,7 @@ export async function generateTicket(input: GenerateTicketInput): Promise<Genera
 
   // Date badge
   if (eventDate) {
-    const dateText = `Tanggal: ${eventDate}`;
+    const dateText = `Tanggal: ${wa(eventDate)}`;
     const dateTextWidth = fontBold.widthOfTextAtSize(dateText, 12);
     const badgeW = dateTextWidth + 24;
     page.drawRectangle({ x: CONTENT_LEFT, y: cursorY - 8, width: badgeW, height: 26, color: yellow });
@@ -119,15 +124,15 @@ export async function generateTicket(input: GenerateTicketInput): Promise<Genera
   // Peserta section
   page.drawText('PESERTA', { x: CONTENT_LEFT, y: cursorY, size: 9, font: fontBold, color: dimText });
   cursorY -= 20;
-  page.drawText(fullName, { x: CONTENT_LEFT, y: cursorY, size: 20, font: fontBold, color: white });
+  page.drawText(wa(fullName), { x: CONTENT_LEFT, y: cursorY, size: 20, font: fontBold, color: white });
   cursorY -= 24;
 
   if (cameraModel) {
-    page.drawText(`Kamera: ${cameraModel}`, { x: CONTENT_LEFT, y: cursorY, size: 11, font: fontRegular, color: lightText });
+    page.drawText(`Kamera: ${wa(cameraModel)}`, { x: CONTENT_LEFT, y: cursorY, size: 11, font: fontRegular, color: lightText });
     cursorY -= 20;
   }
   if (nomorWa) {
-    page.drawText(`WA: ${nomorWa}`, { x: CONTENT_LEFT, y: cursorY, size: 11, font: fontRegular, color: lightText });
+    page.drawText(`WA: ${wa(nomorWa)}`, { x: CONTENT_LEFT, y: cursorY, size: 11, font: fontRegular, color: lightText });
     cursorY -= 20;
   }
 
@@ -159,7 +164,7 @@ export async function generateTicket(input: GenerateTicketInput): Promise<Genera
   if (eventDetail) {
     page.drawText('DETAIL ACARA', { x: CONTENT_LEFT, y: cursorY, size: 9, font: fontBold, color: dimText });
     cursorY -= 18;
-    const detailLines = wrapText(eventDetail, 70);
+    const detailLines = wrapText(wa(eventDetail), 70);
     const lineHeight = 15;
     // Hitung max lines yang aman muat
     const availableSpace = cursorY - DETAIL_BOTTOM_LIMIT;
