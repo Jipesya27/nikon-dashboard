@@ -5067,75 +5067,38 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                   };
 
                   const doPrint = () => {
-                     const area = document.getElementById('dealer-print-area');
-                     if (!area) return;
-                     area.style.display = 'block';
-                     const imgs = Array.from(area.querySelectorAll<HTMLImageElement>('img'));
-                     if (imgs.length === 0) {
-                        window.print();
-                        setTimeout(() => { area.style.display = 'none'; }, 500);
-                        return;
-                     }
-                     let pending = imgs.length;
-                     const tryPrint = () => {
-                        pending--;
-                        if (pending <= 0) {
-                           window.print();
-                           setTimeout(() => { area.style.display = 'none'; }, 500);
-                        }
-                     };
-                     imgs.forEach(img => {
-                        if (img.complete) { tryPrint(); }
-                        else { img.onload = tryPrint; img.onerror = tryPrint; }
-                     });
+                     if (selectedDealerRows.length === 0) return;
+                     const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                     const cardsHtml = selectedDealerRows.map(row => {
+                        const tv = colType >= 0 ? (row[colType] || '-') : '-';
+                        const sv = colSN   >= 0 ? (row[colSN]   || '-') : '-';
+                        const fv = colFoto >= 0 ? row[colFoto]  : '';
+                        const fu = fv ? _resolveImg(fv) : '';
+                        const imgHtml = fu && _isImg(fv)
+                           ? `<img src="${esc(fu)}" alt="foto" style="max-width:100%;max-height:100%;object-fit:contain;" />`
+                           : `<span style="color:#1a56db;font-style:italic;font-size:9pt;">foto kartu garansi</span>`;
+                        return `<div style="border:1.5px solid #333;page-break-inside:avoid;font-family:Arial,sans-serif;font-size:10pt;">
+<table style="width:100%;border-collapse:collapse;"><tbody>
+<tr><td style="border:1px solid #333;padding:3px 6px;width:40%;background:#f5f5f5;font-weight:600;">Type Barang</td><td style="border:1px solid #333;padding:3px 6px;font-weight:700;color:#1a56db;">${esc(tv)}</td></tr>
+<tr><td style="border:1px solid #333;padding:3px 6px;background:#f5f5f5;font-weight:600;">Serial Number</td><td style="border:1px solid #333;padding:3px 6px;font-weight:700;">${esc(sv)}</td></tr>
+</tbody></table>
+<div style="height:52mm;display:flex;align-items:center;justify-content:center;border-top:1px solid #ddd;background:#fafafa;overflow:hidden;">${imgHtml}</div>
+</div>`;
+                     }).join('');
+                     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Print Kartu Garansi Dealer</title>
+<style>body{margin:0;padding:10mm;}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8mm;}button{display:block;margin:16px auto;padding:8px 24px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:11pt;}@media print{button{display:none!important;}@page{size:A4 portrait;margin:10mm;}}</style>
+</head><body><div class="grid">${cardsHtml}</div>
+<button onclick="window.print()">🖨️ Print / Simpan PDF</button></body></html>`;
+                     const w = window.open('', '_blank', 'width=900,height=700');
+                     if (!w) return;
+                     w.document.open();
+                     w.document.write(html);
+                     w.document.close();
+                     w.onload = () => { w.focus(); w.print(); };
                   };
 
                   return (
                      <div className="space-y-4 animate-fade-in">
-                        {/* Print CSS */}
-                        <style>{`
-                           @media print {
-                              body * { visibility: hidden !important; }
-                              #dealer-print-area, #dealer-print-area * { visibility: visible !important; }
-                              #dealer-print-area { position: fixed; top: 0; left: 0; width: 100%; padding: 10mm; box-sizing: border-box; }
-                              @page { size: A4 portrait; margin: 10mm; }
-                           }
-                        `}</style>
-
-                        {/* Area print — tersembunyi di layar */}
-                        <div id="dealer-print-area" style={{ display: 'none' }}>
-                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8mm' }}>
-                              {selectedDealerRows.map((row, i) => {
-                                 const tv = colType >= 0 ? (row[colType] || '-') : '-';
-                                 const sv = colSN   >= 0 ? (row[colSN]   || '-') : '-';
-                                 const fv = colFoto >= 0 ? row[colFoto]  : '';
-                                 const fu = fv ? _resolveImg(fv) : '';
-                                 return (
-                                    <div key={i} style={{ border: '1.5px solid #333', pageBreakInside: 'avoid', fontFamily: 'Arial,sans-serif', fontSize: '10pt' }}>
-                                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                          <tbody>
-                                             <tr>
-                                                <td style={{ border: '1px solid #333', padding: '3px 6px', width: '40%', background: '#f5f5f5', fontWeight: 600 }}>Type Barang</td>
-                                                <td style={{ border: '1px solid #333', padding: '3px 6px', fontWeight: 700, color: '#1a56db' }}>{tv}</td>
-                                             </tr>
-                                             <tr>
-                                                <td style={{ border: '1px solid #333', padding: '3px 6px', background: '#f5f5f5', fontWeight: 600 }}>Serial Number</td>
-                                                <td style={{ border: '1px solid #333', padding: '3px 6px', fontWeight: 700 }}>{sv}</td>
-                                             </tr>
-                                          </tbody>
-                                       </table>
-                                       <div style={{ height: '52mm', display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid #ddd', background: '#fafafa', overflow: 'hidden' }}>
-                                          {fu && _isImg(fv)
-                                             // eslint-disable-next-line @next/next/no-img-element
-                                             ? <img src={fu} alt="foto kartu garansi" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                                             : <span style={{ color: '#1a56db', fontStyle: 'italic', fontSize: '9pt' }}>foto kartu garansi</span>}
-                                       </div>
-                                    </div>
-                                 );
-                              })}
-                           </div>
-                        </div>
-
                         {/* Toolbar */}
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                            <div className="flex items-center gap-3">
