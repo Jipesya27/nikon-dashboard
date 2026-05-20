@@ -289,8 +289,11 @@ export default function NikonDashboard() {
    const [skemaFormOpen, setSkemaFormOpen] = useState(false);
    const [penjualanFormOpen, setPenjualanFormOpen] = useState(false);
    const [penjualanFotoFiles, setPenjualanFotoFiles] = useState<File[]>([]);
+   const [affiliateFotoProfilFile, setAffiliateFotoProfilFile] = useState<File | null>(null);
    const [affiliateSearch, setAffiliateSearch] = useState('');
    const [affiliateSaving, setAffiliateSaving] = useState(false);
+   const [lendingFotoPenerimaanFiles, setLendingFotoPenerimaanFiles] = useState<File[]>([]);
+   const [lendingFotoPengembalianFiles, setLendingFotoPengembalianFiles] = useState<File[]>([]);
 
    // IMPORT CSV STATES
    const [importTarget, setImportTarget] = useState<'claim_promo' | 'garansi' | 'konsumen' | 'status_service'>('claim_promo');
@@ -498,6 +501,18 @@ export default function NikonDashboard() {
       } catch (err) {
          console.error("Gagal hapus file dari Google Drive:", err);
       }
+   };
+
+   // --- IMAGE PROXY HELPER (routes Google Drive URLs through server-side proxy) ---
+   const proxyImg = (url: string | null | undefined): string | null => {
+      if (!url) return null;
+      const qId = url.match(/[?&]id=([a-zA-Z0-9_-]{10,})/)?.[1];
+      if (qId) return `/api/drive-file?id=${qId}`;
+      const pathId = url.match(/\/file\/d\/([a-zA-Z0-9_-]{10,})/)?.[1];
+      if (pathId) return `/api/drive-file?id=${pathId}`;
+      const lhId = url.match(/\/d\/([a-zA-Z0-9_-]{10,})/)?.[1];
+      if (lhId) return `/api/drive-file?id=${lhId}`;
+      return url;
    };
 
    // --- MULTIMEDIA HELPERS ---
@@ -734,16 +749,24 @@ export default function NikonDashboard() {
    const saveAffiliate = async () => {
       if (!affiliateFormData.nama || !affiliateFormData.phone) return;
       setAffiliateSaving(true);
+      let fotoProfilUrl = affiliateFormData.foto_profil;
+      if (affiliateFotoProfilFile) {
+         try {
+            fotoProfilUrl = await uploadFileToStorage(affiliateFotoProfilFile, 'Affiliate_Profil', (affiliateFormData.nama || 'aff').replace(/\s+/g, '_'));
+         } catch { /* skip failed upload */ }
+      }
+      const dataToSave = { ...affiliateFormData, foto_profil: fotoProfilUrl || null };
       if (editingAffiliateId) {
-         await sbWrite({ action: 'update', table: 'affiliates', data: affiliateFormData, match: { id: editingAffiliateId } });
-         if (selectedAffiliate?.id === editingAffiliateId) setSelectedAffiliate(prev => prev ? { ...prev, ...affiliateFormData as Affiliate } : null);
+         await sbWrite({ action: 'update', table: 'affiliates', data: dataToSave, match: { id: editingAffiliateId } });
+         if (selectedAffiliate?.id === editingAffiliateId) setSelectedAffiliate(prev => prev ? { ...prev, ...dataToSave as Affiliate } : null);
       } else {
-         await sbWrite({ action: 'insert', table: 'affiliates', data: affiliateFormData });
+         await sbWrite({ action: 'insert', table: 'affiliates', data: dataToSave });
       }
       await fetchAffiliates();
       setAffiliateFormOpen(false);
       setAffiliateFormData({});
       setEditingAffiliateId(null);
+      setAffiliateFotoProfilFile(null);
       setAffiliateSaving(false);
    };
    const deleteAffiliate = async (id: string) => {
@@ -1120,7 +1143,7 @@ export default function NikonDashboard() {
          return;
       }
       const selected = sortedClaims.filter((c: ClaimPromo) => c.id_claim && selectedClaimIds.has(c.id_claim));
-      const headers = ['No', 'Nama (No. WA)', 'Alamat', 'No. Seri', 'Barang', 'Promo'];
+      const headers = ['No', 'Nama (No. WA)', 'Alamat', 'No. Seri', 'Barang', 'Promo', 'Kodepos'];
       const csvRows = [headers.join(',')];
       selected.forEach((c: ClaimPromo, idx: number) => {
          const konsumen = consumersList.find(k => k.nomor_wa === c.nomor_wa);
@@ -1132,9 +1155,8 @@ export default function NikonDashboard() {
          if (konsumen?.kecamatan) parts.push(`KEC. ${konsumen.kecamatan.toUpperCase()}`);
          if (konsumen?.kabupaten_kotamadya) parts.push(`KAB/KOTA. ${konsumen.kabupaten_kotamadya.toUpperCase()}`);
          if (konsumen?.provinsi) parts.push(`PROV. ${konsumen.provinsi.toUpperCase()}`);
-         const alamat = konsumen?.kodepos
-            ? `${parts.join(', ')} - ${konsumen.kodepos}`
-            : parts.join(', ');
+         const alamat = parts.join(', ');
+         const kodepos = (konsumen?.kodepos && konsumen.kodepos !== 'BELUM_DIISI') ? konsumen.kodepos : '';
          const promo = c.jenis_promosi || getNamaPromo(c.tipe_barang);
          const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
          csvRows.push([
@@ -1144,6 +1166,7 @@ export default function NikonDashboard() {
             esc(c.nomor_seri || ''),
             esc(c.tipe_barang || ''),
             esc(promo || ''),
+            esc(kodepos),
          ].join(','));
       });
       const BOM = '﻿';
@@ -1447,6 +1470,8 @@ export default function NikonDashboard() {
       setRegistrationForm({ status: 'Pending Payment' });
       setEventImageFile(null);
       setEditingId(null);
+      setLendingFotoPenerimaanFiles([]);
+      setLendingFotoPengembalianFiles([]);
       if (returnTab) {
          setActiveTab(returnTab);
          setReturnTab(null);
@@ -1843,7 +1868,20 @@ export default function NikonDashboard() {
             if (originalLending?.link_ktp_peminjam) await deleteFileFromStorage(originalLending.link_ktp_peminjam as string);
          }
 
-         const dataToSave: Partial<PeminjamanBarang> = { ...lendingForm, link_ktp_peminjam: ktpUrl };
+         // 3. Upload foto penerimaan (max 10)
+         let fotoPenerimaanUrls: string[] = Array.isArray(lendingForm.foto_penerimaan) ? (lendingForm.foto_penerimaan as string[]) : [];
+         for (const file of lendingFotoPenerimaanFiles) {
+            try {
+               const url = await uploadFileToStorage(file, 'Lending_Penerimaan', lendingForm.nomor_wa_peminjam!);
+               fotoPenerimaanUrls = [...fotoPenerimaanUrls, url];
+            } catch { /* skip failed upload */ }
+         }
+
+         const dataToSave: Partial<PeminjamanBarang> = {
+            ...lendingForm,
+            link_ktp_peminjam: ktpUrl,
+            foto_penerimaan: fotoPenerimaanUrls.length > 0 ? fotoPenerimaanUrls : (lendingForm.foto_penerimaan ?? null),
+         };
          if (modalAction === 'create') {
             dataToSave.tanggal_peminjaman = new Date().toISOString();
             dataToSave.status_peminjaman = 'aktif';
@@ -2142,10 +2180,20 @@ export default function NikonDashboard() {
             return item;
          });
 
+         // Upload foto pengembalian (max 10)
+         let fotoPengembalianUrls: string[] = Array.isArray(lending.foto_pengembalian) ? (lending.foto_pengembalian as string[]) : [];
+         for (const file of lendingFotoPengembalianFiles) {
+            try {
+               const url = await uploadFileToStorage(file, 'Lending_Pengembalian', lending.nomor_wa_peminjam);
+               fotoPengembalianUrls = [...fotoPengembalianUrls, url];
+            } catch { /* skip failed upload */ }
+         }
+
          await sbWrite({ action: 'update', table: 'peminjaman_barang', data: {
             items_dipinjam: itemsWithAccsNotes,
             tanggal_pengembalian: allItemsReturned ? new Date().toISOString() : null,
             status_peminjaman: newStatusPeminjaman,
+            ...(fotoPengembalianUrls.length > 0 ? { foto_pengembalian: fotoPengembalianUrls } : {}),
          }, match: { id_peminjaman: lending.id_peminjaman } });
 
          // Send WhatsApp message for returned items
@@ -4145,6 +4193,7 @@ export default function NikonDashboard() {
                                  <tr>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && <span className="text-xs">{sortConfigLending.direction === 'asc' ? '↑' : '↓'}</span>}</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">KTP</th>
+                                    <th className="px-3 py-3 text-center font-bold text-gray-600">Foto</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">Barang Dipinjam</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_peminjaman')}>Tgl Pinjam {sortConfigLending.column === 'tanggal_peminjaman' && <span className="text-xs">{sortConfigLending.direction === 'asc' ? '↑' : '↓'}</span>}</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">Est. Kembali</th>
@@ -4164,6 +4213,39 @@ export default function NikonDashboard() {
                                           {l.link_ktp_peminjam ? (
                                              <button type="button" onClick={() => openImageViewer(l.link_ktp_peminjam as string)} className="text-blue-600 hover:underline text-[11px] font-bold">🪪 KTP</button>
                                           ) : <span className="text-gray-400 text-[11px] italic">-</span>}
+                                       </td>
+                                       <td className="px-3 py-2.5">
+                                          <div className="flex flex-col gap-1 items-center">
+                                             {Array.isArray(l.foto_penerimaan) && (l.foto_penerimaan as string[]).length > 0 && (
+                                                <div className="flex flex-wrap gap-0.5">
+                                                   {(l.foto_penerimaan as string[]).slice(0, 3).map((url, fi) => {
+                                                      const src = proxyImg(url) || url;
+                                                      return (
+                                                         // eslint-disable-next-line @next/next/no-img-element
+                                                         <button key={fi} type="button" onClick={() => openImageViewer(url)} title="Foto Penerimaan">
+                                                            <img src={src} alt="" className="w-8 h-8 object-cover rounded border border-orange-200" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                         </button>
+                                                      );
+                                                   })}
+                                                   {(l.foto_penerimaan as string[]).length > 3 && <span className="text-[9px] text-gray-400">+{(l.foto_penerimaan as string[]).length - 3}</span>}
+                                                </div>
+                                             )}
+                                             {Array.isArray(l.foto_pengembalian) && (l.foto_pengembalian as string[]).length > 0 && (
+                                                <div className="flex flex-wrap gap-0.5">
+                                                   {(l.foto_pengembalian as string[]).slice(0, 3).map((url, fi) => {
+                                                      const src = proxyImg(url) || url;
+                                                      return (
+                                                         // eslint-disable-next-line @next/next/no-img-element
+                                                         <button key={fi} type="button" onClick={() => openImageViewer(url)} title="Foto Pengembalian">
+                                                            <img src={src} alt="" className="w-8 h-8 object-cover rounded border border-green-200" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                         </button>
+                                                      );
+                                                   })}
+                                                   {(l.foto_pengembalian as string[]).length > 3 && <span className="text-[9px] text-gray-400">+{(l.foto_pengembalian as string[]).length - 3}</span>}
+                                                </div>
+                                             )}
+                                             {!Array.isArray(l.foto_penerimaan) && !Array.isArray(l.foto_pengembalian) && <span className="text-gray-300 text-[11px]">-</span>}
+                                          </div>
                                        </td>
                                        <td className="px-3 py-2.5 text-xs">
                                           <ul className="space-y-1.5">
@@ -4470,45 +4552,79 @@ export default function NikonDashboard() {
                         <div className="flex flex-col md:flex-row gap-2 items-center">
                            <input type="text" placeholder="🔍 Cari Nama Barang / No Seri / Catatan..." value={searchAssets} onChange={e => setSearchAssets(e.target.value)} className="flex-1 p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                            <span className="text-sm text-gray-500 font-medium whitespace-nowrap">{filteredAssets.length} barang</span>
+                           <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                              <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${viewMode === 'table' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-800'}`}>☰ Tabel</button>
+                              <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${viewMode === 'card' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-800'}`}>🪪 Kartu</button>
+                           </div>
                            <button onClick={() => openModal('create', 'asset')} className="btn-primary whitespace-nowrap">+ Tambah Aset</button>
                         </div>
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                           <table className="w-full text-sm">
-                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr>
-                                    <th className="px-4 py-3 text-center font-bold w-12">No</th>
-                                    <th className="px-4 py-3 text-left font-bold">Nama Barang</th>
-                                    <th className="px-4 py-3 text-left font-bold">No. Seri</th>
-                                    <th className="px-4 py-3 text-left font-bold">Accessories</th>
-                                    <th className="px-4 py-3 text-left font-bold">Catatan</th>
-                                    <th className="px-4 py-3 text-left font-bold">Aksi</th>
-                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200">
-                                 {filteredAssets.map((a, idx) => {
-                                    const accs = [a.accs1, a.accs2, a.accs3, a.accs4, a.accs5, a.accs6, a.accs7].filter(Boolean);
-                                    return (
-                                       <tr key={a.id || idx} className="hover:bg-gray-50 font-medium">
-                                          <td className="px-4 py-3 text-center text-gray-500 font-bold">{idx + 1}</td>
-                                          <td className="px-4 py-3 font-bold text-slate-800">{a.nama_barang_aset}</td>
-                                          <td className="px-4 py-3 font-mono text-sm">{a.no_seri_aset || '-'}</td>
-                                          <td className="px-4 py-3 text-xs text-gray-600">{accs.length > 0 ? accs.join(', ') : '-'}</td>
-                                          <td className="px-4 py-3 text-xs text-gray-600">{a.catatan || '-'}</td>
-                                          <td className="px-4 py-3">
-                                             <div className="flex gap-3">
-                                                <button onClick={() => openModal('edit', 'asset', a)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                                <button onClick={() => handleDelete('asset', a.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                             </div>
-                                          </td>
-                                       </tr>
-                                    );
-                                 })}
-                                 {filteredAssets.length === 0 && (
-                                    <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Tidak ada data aset.</td></tr>
-                                 )}
-                              </tbody>
-                           </table>
-                        </div>
+                        {viewMode === 'table' ? (
+                           <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                              <table className="w-full text-sm">
+                                 <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+                                    <tr>
+                                       <th className="px-4 py-3 text-center font-bold w-12">No</th>
+                                       <th className="px-4 py-3 text-left font-bold">Nama Barang</th>
+                                       <th className="px-4 py-3 text-left font-bold">No. Seri</th>
+                                       <th className="px-4 py-3 text-left font-bold">Accessories</th>
+                                       <th className="px-4 py-3 text-left font-bold">Catatan</th>
+                                       <th className="px-4 py-3 text-left font-bold">Aksi</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-200">
+                                    {filteredAssets.map((a, idx) => {
+                                       const accs = [a.accs1, a.accs2, a.accs3, a.accs4, a.accs5, a.accs6, a.accs7].filter(Boolean);
+                                       return (
+                                          <tr key={a.id || idx} className="hover:bg-gray-50 font-medium">
+                                             <td className="px-4 py-3 text-center text-gray-500 font-bold">{idx + 1}</td>
+                                             <td className="px-4 py-3 font-bold text-slate-800">{a.nama_barang_aset}</td>
+                                             <td className="px-4 py-3 font-mono text-sm">{a.no_seri_aset || '-'}</td>
+                                             <td className="px-4 py-3 text-xs text-gray-600">{accs.length > 0 ? accs.join(', ') : '-'}</td>
+                                             <td className="px-4 py-3 text-xs text-gray-600">{a.catatan || '-'}</td>
+                                             <td className="px-4 py-3">
+                                                <div className="flex gap-3">
+                                                   <button onClick={() => openModal('edit', 'asset', a)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                                   <button onClick={() => handleDelete('asset', a.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                                </div>
+                                             </td>
+                                          </tr>
+                                       );
+                                    })}
+                                    {filteredAssets.length === 0 && (
+                                       <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Tidak ada data aset.</td></tr>
+                                    )}
+                                 </tbody>
+                              </table>
+                           </div>
+                        ) : (
+                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {filteredAssets.length === 0 && <div className="col-span-3 text-center py-16 text-gray-400">Tidak ada data aset.</div>}
+                              {filteredAssets.map((a, idx) => {
+                                 const accs = [a.accs1, a.accs2, a.accs3, a.accs4, a.accs5, a.accs6, a.accs7].filter(Boolean);
+                                 return (
+                                    <div key={a.id || idx} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col gap-2 hover:border-[#FFE500] hover:shadow-md transition-all">
+                                       <div className="flex items-start justify-between gap-2">
+                                          <div>
+                                             <p className="font-bold text-gray-900 text-sm leading-tight">{a.nama_barang_aset}</p>
+                                             {a.no_seri_aset && <p className="font-mono text-xs text-gray-500 mt-0.5">SN: {a.no_seri_aset}</p>}
+                                          </div>
+                                          <span className="shrink-0 text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">#{idx + 1}</span>
+                                       </div>
+                                       {accs.length > 0 && (
+                                          <div className="flex flex-wrap gap-1 mt-1">
+                                             {accs.map((ac, ai) => <span key={ai} className="text-[10px] bg-yellow-50 border border-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">{ac}</span>)}
+                                          </div>
+                                       )}
+                                       {a.catatan && <p className="text-xs text-gray-500 italic">{a.catatan}</p>}
+                                       <div className="mt-auto pt-2 border-t border-gray-100 flex gap-3">
+                                          <button onClick={() => openModal('edit', 'asset', a)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                          <button onClick={() => handleDelete('asset', a.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       </div>
+                                    </div>
+                                 );
+                              })}
+                           </div>
+                        )}
                      </div>
                   );
                })()}
@@ -4530,7 +4646,12 @@ export default function NikonDashboard() {
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
-                                 {botSettings.filter((s: PengaturanBot) => !s.nama_pengaturan?.startsWith(DB_KEY_PREFIX)).map((setting: PengaturanBot) => (
+                                 {botSettings.filter((s: PengaturanBot) => {
+                                    const n = s.nama_pengaturan || '';
+                                    if (n.startsWith(DB_KEY_PREFIX)) return false; // template editor entries
+                                    if (n === 'bot_last_error' || n === 'bot_last_success') return false; // internal system entries
+                                    return true;
+                                 }).map((setting: PengaturanBot) => (
                                     <tr key={setting.id} className="hover:bg-gray-50 font-medium">
                                        <td className="px-4 py-3 font-bold text-slate-800">{setting.nama_pengaturan}</td>
                                        <td className="px-4 py-3">
@@ -4552,12 +4673,12 @@ export default function NikonDashboard() {
                         </div>
                      </div>
 
-                     {/* ── SEKSI 2: Editor Teks Chatbot — SUPER ADMIN ONLY ── */}
-                     {currentUser?.role === 'Super Admin' && (
+                     {/* ── SEKSI 2: Editor Teks Chatbot — ADMIN & SUPER ADMIN ── */}
+                     {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
                         <div className="space-y-4">
                            <div className="flex items-center gap-3">
                               <h2 className="text-base font-bold text-gray-900">💬 Editor Teks Chatbot</h2>
-                              <span className="text-[10px] font-extrabold bg-black text-[#FFE500] px-2 py-0.5 rounded tracking-wider">SUPER ADMIN</span>
+                              <span className="text-[10px] font-extrabold bg-black text-[#FFE500] px-2 py-0.5 rounded tracking-wider">ADMIN</span>
                            </div>
                            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                               <p className="text-xs text-gray-700">Edit teks pesan WhatsApp yang dikirim chatbot. Teks disimpan ke database dan menggantikan teks default. Gunakan <code className="bg-white px-1 rounded">{'{nama}'}</code> untuk variabel. Baris kosong dapat menggunakan <code className="bg-white px-1 rounded">\n</code>.</p>
@@ -4864,8 +4985,8 @@ export default function NikonDashboard() {
 
                      const fotoSection = affiliatePenjualan.filter(p => p.foto_urls && p.foto_urls.length > 0).map(p => {
                         const imgs = (p.foto_urls || []).map(url => {
-                           const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-                           const src = m ? `${window.location.origin}/api/drive-file?id=${m[1]}` : url;
+                           const proxyUrl = proxyImg(url);
+                           const src = proxyUrl ? `${window.location.origin}${proxyUrl}` : url;
                            return `<img src="${src}" style="width:120px;height:100px;object-fit:cover;border:1px solid #ccc;border-radius:4px;" />`;
                         }).join('');
                         return `<div style="margin-bottom:10px"><strong>${p.barang}</strong><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">${imgs}</div></div>`;
@@ -4918,7 +5039,13 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                  className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-gray-900 transition">
                                  ← Kembali
                               </button>
-                              <h2 className="text-lg font-bold text-gray-800">🤝 {selectedAffiliate.nama}</h2>
+                              {selectedAffiliate.foto_profil ? (
+                                 // eslint-disable-next-line @next/next/no-img-element
+                                 <img src={proxyImg(selectedAffiliate.foto_profil) || selectedAffiliate.foto_profil} alt={selectedAffiliate.nama} className="w-10 h-10 object-cover rounded-full border-2 border-yellow-400 shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              ) : (
+                                 <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center font-bold text-black text-base shrink-0">{selectedAffiliate.nama.charAt(0).toUpperCase()}</div>
+                              )}
+                              <h2 className="text-lg font-bold text-gray-800">{selectedAffiliate.nama}</h2>
                               <span className="text-xs text-gray-400">{selectedAffiliate.phone}</span>
                               <div className="ml-auto flex gap-2">
                                  <button onClick={() => { setAffiliateFormData(selectedAffiliate); setEditingAffiliateId(selectedAffiliate.id); setAffiliateFormOpen(true); }}
@@ -5031,10 +5158,10 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                           className="border border-gray-300 rounded px-2 py-1.5 text-sm w-28" />
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                       <label className="text-xs font-semibold text-gray-600">Foto barang (maks 4):</label>
+                                       <label className="text-xs font-semibold text-gray-600">Foto bukti penjualan (maks 6):</label>
                                        <input type="file" accept="image/*" multiple
                                           onChange={e => {
-                                             const files = Array.from(e.target.files || []).slice(0, 4);
+                                             const files = Array.from(e.target.files || []).slice(0, 6);
                                              setPenjualanFotoFiles(files);
                                              e.target.value = '';
                                           }}
@@ -5081,11 +5208,10 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                              {p.foto_urls && p.foto_urls.length > 0 ? (
                                                 <div className="flex gap-1 flex-wrap">
                                                    {p.foto_urls.map((url, fi) => {
-                                                      const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-                                                      const src = m ? `/api/drive-file?id=${m[1]}` : url;
+                                                      const src = proxyImg(url) || url;
                                                       return (
                                                          <a key={fi} href={url} target="_blank" rel="noopener noreferrer">
-                                                            <img src={src} alt={`foto ${fi + 1}`} className="w-10 h-10 object-cover rounded border border-gray-200 hover:opacity-80 transition" />
+                                                            <img src={src} alt={`foto ${fi + 1}`} className="w-10 h-10 object-cover rounded border border-gray-200 hover:opacity-80 transition" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                                          </a>
                                                       );
                                                    })}
@@ -5146,6 +5272,20 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                           className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" />
                                     </div>
                                  ))}
+                                 <div>
+                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Foto Profil</label>
+                                    {affiliateFormData.foto_profil && !affiliateFotoProfilFile && (
+                                       // eslint-disable-next-line @next/next/no-img-element
+                                       <img src={proxyImg(affiliateFormData.foto_profil as string) || affiliateFormData.foto_profil as string} alt="foto profil" className="w-14 h-14 object-cover rounded-full border-2 border-yellow-400 mb-1" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                    )}
+                                    {affiliateFotoProfilFile && (
+                                       // eslint-disable-next-line @next/next/no-img-element
+                                       <img src={URL.createObjectURL(affiliateFotoProfilFile)} alt="preview" className="w-14 h-14 object-cover rounded-full border-2 border-blue-400 mb-1" />
+                                    )}
+                                    <input type="file" accept="image/*"
+                                       onChange={e => setAffiliateFotoProfilFile(e.target.files?.[0] || null)}
+                                       className="w-full text-xs text-gray-600 file:mr-1 file:py-0.5 file:px-2 file:rounded file:border-0 file:bg-yellow-400 file:text-black file:text-xs file:font-bold file:cursor-pointer" />
+                                 </div>
                               </div>
                               <div className="flex gap-2 justify-end pt-1">
                                  <button onClick={() => { setAffiliateFormOpen(false); setAffiliateFormData({}); setEditingAffiliateId(null); }}
@@ -5170,7 +5310,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                               <table className="w-full text-sm">
                                  <thead className="bg-yellow-400">
                                     <tr>
-                                       {['Nama','Phone','Alamat','Kontrak','Fee ≤6Jam','Fee >6Jam','Aksi'].map(h => (
+                                       {['','Nama','Phone','Alamat','Kontrak','Fee ≤6Jam','Fee >6Jam','Aksi'].map(h => (
                                           <th key={h} className="px-3 py-2.5 text-left font-bold text-black whitespace-nowrap">{h}</th>
                                        ))}
                                     </tr>
@@ -5178,6 +5318,14 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                  <tbody>
                                     {filteredAffiliates.map(a => (
                                        <tr key={a.id} className="border-t border-gray-100 hover:bg-yellow-50 transition-colors">
+                                          <td className="px-3 py-2 w-12">
+                                             {a.foto_profil ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={proxyImg(a.foto_profil) || a.foto_profil} alt={a.nama} className="w-9 h-9 object-cover rounded-full border-2 border-yellow-300" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                             ) : (
+                                                <div className="w-9 h-9 rounded-full bg-yellow-400 flex items-center justify-center font-bold text-black text-sm">{a.nama.charAt(0).toUpperCase()}</div>
+                                             )}
+                                          </td>
                                           <td className="px-3 py-2 font-semibold text-gray-800">{a.nama}</td>
                                           <td className="px-3 py-2 text-gray-600">{a.phone}</td>
                                           <td className="px-3 py-2 text-gray-600 max-w-[200px] truncate">{a.alamat || '-'}</td>
@@ -7286,6 +7434,47 @@ ${pages.join('')}
                               );
                            })()}
 
+                           {/* FOTO BUKTI PENGEMBALIAN */}
+                           <div className="space-y-2">
+                              <label className="block text-sm font-bold text-gray-700">📷 Foto Bukti Pengembalian (maks 10)</label>
+                              {/* Existing photos */}
+                              {Array.isArray(lendingForm.foto_pengembalian) && (lendingForm.foto_pengembalian as string[]).length > 0 && (
+                                 <div className="flex flex-wrap gap-2">
+                                    {(lendingForm.foto_pengembalian as string[]).map((url, fi) => {
+                                       const src = proxyImg(url) || url;
+                                       return (
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          <img key={fi} src={src} alt={`pengembalian ${fi + 1}`} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                                       );
+                                    })}
+                                 </div>
+                              )}
+                              {lendingFotoPengembalianFiles.length > 0 && (
+                                 <div className="flex flex-wrap gap-2">
+                                    {lendingFotoPengembalianFiles.map((f, fi) => (
+                                       <div key={fi} className="relative">
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img src={URL.createObjectURL(f)} alt="" className="w-16 h-16 object-cover rounded-lg border-2 border-green-300" />
+                                          <button type="button" onClick={() => setLendingFotoPengembalianFiles(prev => prev.filter((_, j) => j !== fi))}
+                                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center leading-none">×</button>
+                                       </div>
+                                    ))}
+                                 </div>
+                              )}
+                              <input type="file" accept="image/*" multiple
+                                 disabled={lendingFotoPengembalianFiles.length + (Array.isArray(lendingForm.foto_pengembalian) ? (lendingForm.foto_pengembalian as string[]).length : 0) >= 10}
+                                 onChange={e => {
+                                    const existing = Array.isArray(lendingForm.foto_pengembalian) ? (lendingForm.foto_pengembalian as string[]).length : 0;
+                                    const remaining = 10 - existing - lendingFotoPengembalianFiles.length;
+                                    const files = Array.from(e.target.files || []).slice(0, remaining);
+                                    setLendingFotoPengembalianFiles(prev => [...prev, ...files]);
+                                    e.target.value = '';
+                                 }}
+                                 className="text-sm text-gray-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-green-400 file:text-black file:text-xs file:font-bold file:cursor-pointer"
+                                 aria-label="Upload foto bukti pengembalian" />
+                              <p className="text-[11px] text-gray-500">{lendingFotoPengembalianFiles.length + (Array.isArray(lendingForm.foto_pengembalian) ? (lendingForm.foto_pengembalian as string[]).length : 0)}/10 foto</p>
+                           </div>
+
                            <div className="mt-6 flex justify-end gap-3">
                               <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
                               <button
@@ -7332,7 +7521,7 @@ ${pages.join('')}
                               <label className="label-form">KTP Peminjam (Foto)</label>
                               {typeof lendingForm.link_ktp_peminjam === 'string' && lendingForm.link_ktp_peminjam && (
                                  // eslint-disable-next-line @next/next/no-img-element
-                                 <img src={lendingForm.link_ktp_peminjam} alt="KTP saat ini" className="w-32 h-20 object-cover rounded-lg border border-gray-200 mb-2" />
+                                 <img src={proxyImg(lendingForm.link_ktp_peminjam) || lendingForm.link_ktp_peminjam} alt="KTP saat ini" className="w-32 h-20 object-cover rounded-lg border border-gray-200 mb-2" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                               )}
                               <input
                                  type="file"
@@ -7431,6 +7620,51 @@ ${pages.join('')}
                                     setLendingForm({ ...lendingForm, items_dipinjam: newItems });
                                  }} className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold border-2 border-dashed border-gray-300">+ Tambah Barang</button>
                               </div>
+                           </div>
+                           {/* FOTO BUKTI PENERIMAAN */}
+                           <div>
+                              <label className="label-form">Foto Bukti Penerimaan Barang (maks 10)</label>
+                              {/* Existing photos */}
+                              {Array.isArray(lendingForm.foto_penerimaan) && lendingForm.foto_penerimaan.length > 0 && (
+                                 <div className="flex flex-wrap gap-2 mb-2">
+                                    {(lendingForm.foto_penerimaan as string[]).map((url, fi) => {
+                                       const src = proxyImg(url) || url;
+                                       return (
+                                          <div key={fi} className="relative">
+                                             {/* eslint-disable-next-line @next/next/no-img-element */}
+                                             <img src={src} alt={`bukti ${fi + 1}`} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                                             <button type="button" onClick={() => setLendingForm(prev => ({ ...prev, foto_penerimaan: (prev.foto_penerimaan as string[]).filter((_, j) => j !== fi) }))}
+                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center leading-none">×</button>
+                                          </div>
+                                       );
+                                    })}
+                                 </div>
+                              )}
+                              {/* New files preview */}
+                              {lendingFotoPenerimaanFiles.length > 0 && (
+                                 <div className="flex flex-wrap gap-2 mb-2">
+                                    {lendingFotoPenerimaanFiles.map((f, fi) => (
+                                       <div key={fi} className="relative">
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img src={URL.createObjectURL(f)} alt="" className="w-16 h-16 object-cover rounded-lg border-2 border-blue-300" />
+                                          <button type="button" onClick={() => setLendingFotoPenerimaanFiles(prev => prev.filter((_, j) => j !== fi))}
+                                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center leading-none">×</button>
+                                       </div>
+                                    ))}
+                                 </div>
+                              )}
+                              <input type="file" accept="image/*" multiple
+                                 disabled={(Array.isArray(lendingForm.foto_penerimaan) ? lendingForm.foto_penerimaan.length : 0) + lendingFotoPenerimaanFiles.length >= 10}
+                                 onChange={e => {
+                                    const existing = Array.isArray(lendingForm.foto_penerimaan) ? lendingForm.foto_penerimaan.length : 0;
+                                    const remaining = 10 - existing - lendingFotoPenerimaanFiles.length;
+                                    const files = Array.from(e.target.files || []).slice(0, remaining);
+                                    setLendingFotoPenerimaanFiles(prev => [...prev, ...files]);
+                                    e.target.value = '';
+                                 }}
+                                 className="input-form text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-yellow-400 file:text-black file:text-xs file:font-bold file:cursor-pointer"
+                                 aria-label="Upload foto bukti penerimaan" />
+                              <p className="text-[11px] text-gray-500 mt-1">{(Array.isArray(lendingForm.foto_penerimaan) ? lendingForm.foto_penerimaan.length : 0) + lendingFotoPenerimaanFiles.length}/10 foto</p>
                            </div>
                            <div className="mt-6 flex justify-end gap-3">
                               <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>

@@ -60,6 +60,8 @@ export interface PeminjamanBarang {
    nama_peminjam: string;
    link_ktp_peminjam?: string | File | null;
    items_dipinjam: PeminjamanItem[];
+   foto_penerimaan?: string[] | null;
+   foto_pengembalian?: string[] | null;
    tanggal_peminjaman?: string;
    tanggal_pengembalian?: string | null;
    tanggal_estimasi_pengembalian?: string | null;
@@ -75,6 +77,7 @@ export interface Affiliate {
   phone: string;
   alamat: string;
   map: string | null;
+  foto_profil?: string | null;
   awal_kontrak: string | null;
   akhir_kontrak: string | null;
   fee_max_6_jam: number | null;

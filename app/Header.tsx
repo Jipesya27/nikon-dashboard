@@ -88,7 +88,7 @@ export default function Header({ sidebarOpen, setSidebarOpen, currentUser, handl
             <Link href="/chatbot" aria-label="Editor Teks Bot" title="Editor Teks Chatbot" className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-md">
                🤖
             </Link>
-            <button onClick={onChangePassword} title="Ganti Password" className="bg-gray-700 hover:bg-yellow-500 hover:text-black text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-sm">🔑</button>
+            <button onClick={onChangePassword} title="Ganti Password" className="bg-gray-700 hover:bg-yellow-500 hover:text-black text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center gap-1.5">🔑 <span className="hidden sm:inline">Ganti Password</span></button>
             <button onClick={handleLogout} className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-all shadow-sm">Logout</button>
          </div>
       </header>
