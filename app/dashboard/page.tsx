@@ -250,6 +250,8 @@ export default function NikonDashboard() {
    const [tagMenuFor, setTagMenuFor] = useState<string | null>(null); // nomor_wa
    const [loading, setLoading] = useState(true);
    const [dataLoadError, setDataLoadError] = useState<string | null>(null);
+   const [dbCheckResult, setDbCheckResult] = useState<Record<string, unknown> | null>(null);
+   const [dbChecking, setDbChecking] = useState(false);
    const [activeTab, setActiveTab] = useState('dashboard');
    const [returnTab, setReturnTab] = useState<string | null>(null);
    const [isRefreshing, setIsRefreshing] = useState(false);
@@ -3014,17 +3016,41 @@ export default function NikonDashboard() {
                            </ul>
                         </div>
                         <div className="bg-green-50 border border-green-100 rounded-2xl p-6">
-                           <h4 className="font-bold text-green-900 mb-2 flex items-center gap-2">✅ System Status</h4>
-                           <div className="text-sm text-green-800 space-y-1">
-                              <div className="flex items-center gap-2">
-                                 <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                 Database Connected
-                              </div>
-                              <div className="flex items-center gap-2">
-                                 <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                 All Services Running
-                              </div>
+                           <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-bold text-green-900 flex items-center gap-2">🔌 Status Database</h4>
+                              <button
+                                 onClick={async () => {
+                                    setDbChecking(true);
+                                    try {
+                                       const res = await fetch('/api/admin/data-check', { cache: 'no-store' });
+                                       const json = await res.json();
+                                       setDbCheckResult(json);
+                                    } catch (e) { setDbCheckResult({ error: String(e) }); }
+                                    finally { setDbChecking(false); }
+                                 }}
+                                 disabled={dbChecking}
+                                 className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 disabled:opacity-50"
+                              >{dbChecking ? '⏳...' : '🔍 Cek'}</button>
                            </div>
+                           {!dbCheckResult ? (
+                              <p className="text-xs text-green-700">Klik tombol Cek untuk memeriksa koneksi database secara langsung.</p>
+                           ) : (
+                              <div className="text-xs space-y-1 font-mono">
+                                 {dbCheckResult.error ? (
+                                    <p className="text-red-700">❌ {String(dbCheckResult.error)}</p>
+                                 ) : (
+                                    <>
+                                       <p className="text-green-800">✅ URL: {String(dbCheckResult.sbUrl)}</p>
+                                       <p className={dbCheckResult.serviceKeySet ? 'text-green-800' : 'text-red-700'}>
+                                          {dbCheckResult.serviceKeySet ? '✅' : '❌'} Service Role Key: {dbCheckResult.serviceKeySet ? 'SET' : 'MISSING di Vercel!'}
+                                       </p>
+                                       {dbCheckResult.tables && typeof dbCheckResult.tables === 'object' && Object.entries(dbCheckResult.tables as Record<string, unknown>).map(([t, c]) => (
+                                          <p key={t} className={String(c).startsWith('ERR') ? 'text-red-700' : 'text-green-800'}>• {t}: {String(c)} rows</p>
+                                       ))}
+                                    </>
+                                 )}
+                              </div>
+                           )}
                         </div>
                      </div>
                   </div>
