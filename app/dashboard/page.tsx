@@ -242,6 +242,9 @@ export default function NikonDashboard() {
    const [loading, setLoading] = useState(true);
    const [activeTab, setActiveTab] = useState('dashboard');
    const [returnTab, setReturnTab] = useState<string | null>(null);
+   const [isRefreshing, setIsRefreshing] = useState(false);
+   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+   const activeTabRef = useRef('dashboard');
    const [dateRange, setDateRange] = useState({ start: '2024-01-01', end: new Date().toISOString().split('T')[0] });
 
    // MODAL STATES
@@ -912,6 +915,47 @@ export default function NikonDashboard() {
       return () => { subscription.unsubscribe(); };
       // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [isLoggedIn, dateRange, currentUser?.role]);
+
+   // Sync ref aktif tab agar interval selalu baca tab terkini
+   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+
+   // Auto-poll 30 detik — refresh data tab aktif tanpa loading spinner penuh
+   useEffect(() => {
+      if (!isLoggedIn) return;
+      let running = false;
+      const poll = async () => {
+         if (running) return;
+         running = true;
+         setIsRefreshing(true);
+         try {
+            const tab = activeTabRef.current;
+            const tasks: Promise<void>[] = [];
+            if (['dashboard', 'messages'].includes(tab))  { tasks.push(fetchMessages()); tasks.push(fetchConsumers()); }
+            if (['dashboard', 'claims'].includes(tab))     tasks.push(fetchClaims());
+            if (['dashboard', 'warranties'].includes(tab)) tasks.push(fetchWarranties());
+            if (['dashboard', 'services'].includes(tab))   tasks.push(fetchServices());
+            if (['dashboard', 'budgets'].includes(tab))    tasks.push(fetchBudgets());
+            if (tab === 'promos')           tasks.push(fetchPromos());
+            if (tab === 'lending')          tasks.push(fetchLendingRecords());
+            if (tab === 'assets')           tasks.push(fetchAssets());
+            if (tab === 'events')           tasks.push(fetchEvents());
+            if (tab === 'eventregistrations') tasks.push(fetchEventRegistrations());
+            if (tab === 'konsumen')         tasks.push(fetchConsumers());
+            if (tab === 'userrole')         tasks.push(fetchKaryawans());
+            if (tab === 'botsettings')      tasks.push(fetchBotSettings());
+            if (tab === 'autocomplete')     tasks.push(fetchAutocomplete());
+            if (tab === 'affiliate')        tasks.push(fetchAffiliates());
+            if (tasks.length > 0) await Promise.all(tasks);
+            setLastRefreshed(new Date());
+         } finally {
+            running = false;
+            setIsRefreshing(false);
+         }
+      };
+      const id = setInterval(poll, 30_000);
+      return () => clearInterval(id);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [isLoggedIn, dateRange]);
    
    // eslint-disable-next-line @typescript-eslint/no-unused-vars
    const handleDownloadPDF = () => {
@@ -2667,6 +2711,49 @@ export default function NikonDashboard() {
                               </Link>
                            )}
                         </div>
+                     </div>
+                     {/* REFRESH BUTTON */}
+                     <div className="px-2 pt-3 pb-4 border-t border-gray-200 mt-1">
+                        <button
+                           onClick={async () => {
+                              if (isRefreshing) return;
+                              setIsRefreshing(true);
+                              try {
+                                 const tab = activeTabRef.current;
+                                 const tasks: Promise<void>[] = [];
+                                 if (['dashboard', 'messages'].includes(tab))  { tasks.push(fetchMessages()); tasks.push(fetchConsumers()); }
+                                 if (['dashboard', 'claims'].includes(tab))     tasks.push(fetchClaims());
+                                 if (['dashboard', 'warranties'].includes(tab)) tasks.push(fetchWarranties());
+                                 if (['dashboard', 'services'].includes(tab))   tasks.push(fetchServices());
+                                 if (['dashboard', 'budgets'].includes(tab))    tasks.push(fetchBudgets());
+                                 if (tab === 'promos')             tasks.push(fetchPromos());
+                                 if (tab === 'lending')            tasks.push(fetchLendingRecords());
+                                 if (tab === 'assets')             tasks.push(fetchAssets());
+                                 if (tab === 'events')             tasks.push(fetchEvents());
+                                 if (tab === 'eventregistrations') tasks.push(fetchEventRegistrations());
+                                 if (tab === 'konsumen')           tasks.push(fetchConsumers());
+                                 if (tab === 'userrole')           tasks.push(fetchKaryawans());
+                                 if (tab === 'botsettings')        tasks.push(fetchBotSettings());
+                                 if (tab === 'autocomplete')       tasks.push(fetchAutocomplete());
+                                 if (tab === 'affiliate')          tasks.push(fetchAffiliates());
+                                 if (tasks.length === 0) tasks.push(fetchMessages());
+                                 await Promise.all(tasks);
+                                 setLastRefreshed(new Date());
+                              } finally {
+                                 setIsRefreshing(false);
+                              }
+                           }}
+                           disabled={isRefreshing}
+                           className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-all disabled:opacity-50 border border-gray-200"
+                        >
+                           <span className={isRefreshing ? 'animate-spin inline-block' : 'inline-block'}>↻</span>
+                           {isRefreshing ? 'Memperbarui...' : 'Refresh'}
+                        </button>
+                        {lastRefreshed && (
+                           <p className="text-[10px] text-center text-gray-400 mt-1.5">
+                              Update: {lastRefreshed.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                           </p>
+                        )}
                      </div>
                   </div>
                </div>
