@@ -666,14 +666,19 @@ export default function NikonDashboard() {
    const fetchConsumers = async () => {
       try {
          const map: Record<string, string> = {};
-         const { data: konsumenData, error: kErr } = await supabase.from('konsumen').select('*').order('created_at', { ascending: false });
-         if (kErr) console.error("Error fetch konsumen:", kErr.message);
+         // Konsumen table — via sbRead (proxy supabase-js tidak reliable)
+         const { data: konsumenData } = await sbRead<KonsumenData>({ table: 'konsumen', order: { col: 'created_at', ascending: false } });
          if (konsumenData) {
             setConsumersList(konsumenData);
             konsumenData.forEach(k => { if (k.nama_lengkap) map[k.nomor_wa] = k.nama_lengkap; });
          }
-         const { data: riwayatData, error: rErr } = await supabase.from('riwayat_pesan').select('nomor_wa, nama_profil_wa').neq('nama_profil_wa', 'Sistem Bot').order('created_at', { ascending: false });
-         if (rErr) console.error("Error fetch riwayat:", rErr.message);
+         // Kontak unik dari riwayat_pesan — via sbRead
+         const { data: riwayatData } = await sbRead<{ nomor_wa: string; nama_profil_wa: string }>({
+            table: 'riwayat_pesan',
+            select: 'nomor_wa, nama_profil_wa',
+            filters: [{ col: 'nama_profil_wa', op: 'neq', val: 'Sistem Bot' }],
+            order: { col: 'created_at', ascending: false },
+         });
          riwayatData?.forEach(r => { if (r.nomor_wa && !map[r.nomor_wa]) map[r.nomor_wa] = r.nama_profil_wa; });
          setConsumers(map);
       } catch (err) {
@@ -702,6 +707,31 @@ export default function NikonDashboard() {
       setMessages(data || []);
       setMessagesCount(count ?? data?.length ?? 0);
    };
+
+   /**
+    * Tarik SEMUA riwayat percakapan untuk satu kontak (tanpa filter tanggal).
+    * Dipanggil saat user memilih kontak di tab pesan agar history lengkap tampil.
+    * Hasilnya di-merge ke state messages: pesan kontak lain tetap utuh.
+    */
+   const fetchContactHistory = useCallback(async (wa: string) => {
+      const { data, error } = await sbRead<RiwayatPesan>({
+         table: 'riwayat_pesan',
+         filters: [{ col: 'nomor_wa', op: 'eq', val: wa }],
+         order: { col: 'created_at', ascending: false },
+         limit: 500,
+      });
+      if (error) {
+         console.error('[fetchContactHistory] error:', error.message);
+         return;
+      }
+      if (!data) return;
+      // Merge: pertahankan pesan kontak lain, timpa pesan kontak ini dengan data fresh
+      setMessages(prev => [
+         ...(data),
+         ...prev.filter(m => m.nomor_wa !== wa),
+      ]);
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
    const fetchTable = async <T,>(table: string, setter: (d: T[]) => void, options?: { dateFilter?: boolean; ascending?: boolean }) => {
       try {
          let query = supabase.from(table).select('*');
@@ -1153,6 +1183,15 @@ export default function NikonDashboard() {
 
    useEffect(() => {
       if (selectedWa) setTimeout(() => { scrollToBottom(); }, 300);
+   }, [selectedWa]);
+
+   // Saat kontak dipilih di tab pesan: tarik semua history percakapan kontak tersebut
+   // tanpa batasan tanggal, agar pesan lama juga tampil di jendela chat
+   useEffect(() => {
+      if (selectedWa && activeTabRef.current === 'messages') {
+         fetchContactHistory(selectedWa);
+      }
+   // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [selectedWa]);
 
    // --- LOGIN & LUPA PASSWORD LOGIC ---
