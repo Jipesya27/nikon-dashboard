@@ -56,9 +56,34 @@ const realtimeSupabase = typeof window !== 'undefined'
   : null;
 
 /**
+ * Helper untuk READ langsung ke server — bypass supabase-js proxy client
+ * yang tidak mengirim cookie dengan benar. Mirrors pola sbWrite.
+ */
+async function sbRead<T = unknown>(opts: {
+  table: string;
+  select?: string;
+  filters?: { col: string; op: 'eq'|'neq'|'gte'|'lte'|'gt'|'lt'|'like'|'ilike'|'in'; val: unknown }[];
+  order?: { col: string; ascending?: boolean };
+  limit?: number;
+  count?: boolean;
+}): Promise<{ data: T[] | null; count: number | null; error: { message: string } | null }> {
+  try {
+    const res = await fetch('/api/admin/sb-read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(opts),
+    });
+    const out = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    if (!res.ok) return { data: null, count: null, error: { message: out.error || JSON.stringify(out) } };
+    return { data: (out.data as T[]) ?? null, count: out.count ?? null, error: null };
+  } catch (err) {
+    return { data: null, count: null, error: { message: err instanceof Error ? err.message : String(err) } };
+  }
+}
+
+/**
  * Helper untuk semua operasi WRITE (insert/update/delete/upsert).
  * Bypass generic /api/admin/sb proxy (yang HTTP 500 untuk PATCH).
- * Untuk SELECT/GET tetap pakai `supabase` client biasa.
  */
 async function sbWrite<T = unknown>(opts: {
   action: 'insert' | 'update' | 'delete' | 'upsert';
@@ -657,20 +682,24 @@ export default function NikonDashboard() {
    };
 
    const fetchMessages = async () => {
-      try {
-         const [{ data, error }, { count, error: countError }] = await Promise.all([
-            supabase.from('riwayat_pesan').select('*').gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`).order('created_at', { ascending: false }),
-            supabase.from('riwayat_pesan').select('*', { count: 'exact', head: true }).gte('created_at', `${dateRange.start}T00:00:00`).lte('created_at', `${dateRange.end}T23:59:59`),
-         ]);
-         if (error) console.error("fetchMessages error:", error.message);
-         if (countError) console.error("fetchMessages count error:", countError.message);
-         setMessages(data || []);
-         setMessagesCount(count ?? data?.length ?? 0);
-      } catch (err) {
-         console.error("fetchMessages error:", err);
-         setMessages([]);
-         setMessagesCount(0);
+      // Pakai sbRead (direct server fetch) bukan supabase-js proxy
+      // karena supabase-js tidak mengirim cookie admin_session dengan benar
+      const { data, count, error } = await sbRead<RiwayatPesan>({
+         table: 'riwayat_pesan',
+         filters: [
+            { col: 'created_at', op: 'gte', val: `${dateRange.start}T00:00:00` },
+            { col: 'created_at', op: 'lte', val: `${dateRange.end}T23:59:59` },
+         ],
+         order: { col: 'created_at', ascending: false },
+         count: true,
+      });
+      if (error) {
+         console.error('fetchMessages error:', error.message);
+         setDataLoadError(`[pesan] ${error.message}`);
+         return;
       }
+      setMessages(data || []);
+      setMessagesCount(count ?? data?.length ?? 0);
    };
    const fetchTable = async <T,>(table: string, setter: (d: T[]) => void, options?: { dateFilter?: boolean; ascending?: boolean }) => {
       try {
