@@ -5424,87 +5424,105 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                            </div>
                         ) : (
                            <>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                 {filteredAffiliates.map(a => {
-                                    const isActive = a.akhir_kontrak ? new Date(a.akhir_kontrak) >= new Date() : true;
-                                    const initials = a.nama.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
-                                    return (
-                                       <div key={a.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                                          {/* Header strip navy */}
-                                          <div className="h-16 bg-gradient-to-r from-slate-700 to-slate-600 relative">
-                                             <div className="absolute top-1 right-2 text-xs font-bold px-2 py-0.5 rounded-full shadow"
-                                                style={{ background: isActive ? '#16a34a' : '#dc2626', color: '#fff' }}>
-                                                {isActive ? 'AKTIF' : 'NONAKTIF'}
-                                             </div>
-                                             <div className="absolute -bottom-8 left-4">
-                                                {a.foto_profil ? (
-                                                   // eslint-disable-next-line @next/next/no-img-element
-                                                   <img src={proxyImg(a.foto_profil) || a.foto_profil} alt={a.nama}
-                                                      className="w-16 h-16 object-cover rounded-full border-4 border-white shadow-md"
-                                                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                                ) : (
-                                                   <div className="w-16 h-16 rounded-full bg-slate-500 border-4 border-white shadow-md flex items-center justify-center font-bold text-white text-xl">{initials}</div>
-                                                )}
-                                             </div>
-                                          </div>
-
-                                          {/* Body */}
-                                          <div className="pt-10 pb-4 px-4 flex flex-col flex-1">
-                                             <p className="font-bold text-gray-900 text-base leading-tight truncate">{a.nama}</p>
-                                             <p className="text-xs text-gray-500 mt-0.5">📞 {a.phone}</p>
-                                             {a.alamat && (
-                                                <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">📍 {a.alamat}</p>
-                                             )}
-                                             {a.map && (
-                                                <a href={a.map} target="_blank" rel="noopener noreferrer"
-                                                   className="text-xs text-blue-500 hover:underline mt-0.5 truncate">🗺️ Lihat Maps</a>
-                                             )}
-
-                                             {/* Garis pemisah */}
-                                             <div className="border-t border-dashed border-gray-200 my-3" />
-
-                                             {/* Kontrak & fee */}
-                                             <div className="space-y-1.5 text-xs text-gray-600 flex-1">
-                                                <div className="flex justify-between">
-                                                   <span className="text-gray-400 font-semibold uppercase tracking-wide">Kontrak</span>
-                                                   <span className="text-right font-mono text-gray-700">
-                                                      {a.awal_kontrak ? a.awal_kontrak : '—'}<br/>
-                                                      {a.akhir_kontrak ? `s/d ${a.akhir_kontrak}` : ''}
-                                                   </span>
+                              {(() => {
+                                 // Palet warna kartu — setiap kartu dapat warna berbeda (cycling)
+                                 const CARD_PALETTES = [
+                                    { from: '#1e40af', to: '#3b82f6', avatar: '#2563eb', btn: '#1e40af' },  // biru
+                                    { from: '#065f46', to: '#10b981', avatar: '#059669', btn: '#065f46' },  // hijau
+                                    { from: '#6d28d9', to: '#a78bfa', avatar: '#7c3aed', btn: '#5b21b6' },  // violet
+                                    { from: '#be123c', to: '#fb7185', avatar: '#e11d48', btn: '#9f1239' },  // rose
+                                    { from: '#0f766e', to: '#2dd4bf', avatar: '#0d9488', btn: '#0f766e' },  // teal
+                                    { from: '#92400e', to: '#fbbf24', avatar: '#b45309', btn: '#78350f' },  // amber
+                                    { from: '#9d174d', to: '#f472b6', avatar: '#db2777', btn: '#831843' },  // pink
+                                    { from: '#1e3a5f', to: '#60a5fa', avatar: '#1d4ed8', btn: '#1e3a5f' },  // navy
+                                 ];
+                                 return (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                       {filteredAffiliates.map((a, idx) => {
+                                          const pal = CARD_PALETTES[idx % CARD_PALETTES.length];
+                                          const isActive = a.akhir_kontrak ? new Date(a.akhir_kontrak) >= new Date() : true;
+                                          const initials = a.nama.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
+                                          return (
+                                             <div key={a.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                                                {/* Header strip warna */}
+                                                <div className="h-16 relative" style={{ background: `linear-gradient(to right, ${pal.from}, ${pal.to})` }}>
+                                                   <div className="absolute top-1 right-2 text-xs font-bold px-2 py-0.5 rounded-full shadow"
+                                                      style={{ background: isActive ? '#16a34a' : '#dc2626', color: '#fff' }}>
+                                                      {isActive ? 'AKTIF' : 'NONAKTIF'}
+                                                   </div>
+                                                   <div className="absolute -bottom-8 left-4">
+                                                      {a.foto_profil ? (
+                                                         // eslint-disable-next-line @next/next/no-img-element
+                                                         <img src={proxyImg(a.foto_profil) || a.foto_profil} alt={a.nama}
+                                                            className="w-16 h-16 object-cover rounded-full border-4 border-white shadow-md"
+                                                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                      ) : (
+                                                         <div className="w-16 h-16 rounded-full border-4 border-white shadow-md flex items-center justify-center font-bold text-white text-xl"
+                                                            style={{ background: pal.avatar }}>{initials}</div>
+                                                      )}
+                                                   </div>
                                                 </div>
-                                                <div className="flex justify-between">
-                                                   <span className="text-gray-400 font-semibold uppercase tracking-wide">Fee ≤6Jam</span>
-                                                   <span className="font-mono font-semibold text-gray-800">{a.fee_max_6_jam ? `Rp ${fmtRp(a.fee_max_6_jam)}` : '—'}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                   <span className="text-gray-400 font-semibold uppercase tracking-wide">Fee &gt;6Jam</span>
-                                                   <span className="font-mono font-semibold text-gray-800">{a.fee_diatas_6_jam ? `Rp ${fmtRp(a.fee_diatas_6_jam)}` : '—'}</span>
-                                                </div>
-                                             </div>
 
-                                             {/* Aksi */}
-                                             <div className="mt-3 flex gap-1.5">
-                                                <button onClick={async () => {
-                                                   setSelectedAffiliate(a);
-                                                   setAffiliateView('detail');
-                                                   await fetchAffiliateDetail(a.id);
-                                                }} className="flex-1 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition shadow-sm">
-                                                   Detail
-                                                </button>
-                                                <button onClick={() => { setAffiliateFormData(a); setEditingAffiliateId(a.id); setAffiliateFotoProfilFile(null); setAffiliateFormOpen(true); }}
-                                                   className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-xs transition">
-                                                   ✏️
-                                                </button>
-                                                <button onClick={() => deleteAffiliate(a.id)}
-                                                   className="px-3 py-1.5 text-red-400 hover:text-red-700 hover:bg-red-50 border border-red-100 rounded-lg text-xs transition">
-                                                   🗑️
-                                                </button>
+                                                {/* Body */}
+                                                <div className="pt-10 pb-4 px-4 flex flex-col flex-1">
+                                                   <p className="font-bold text-gray-900 text-base leading-tight truncate">{a.nama}</p>
+                                                   <p className="text-xs text-gray-500 mt-0.5">📞 {a.phone}</p>
+                                                   {a.alamat && (
+                                                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">📍 {a.alamat}</p>
+                                                   )}
+                                                   {a.map && (
+                                                      <a href={a.map} target="_blank" rel="noopener noreferrer"
+                                                         className="text-xs text-blue-500 hover:underline mt-0.5 truncate">🗺️ Lihat Maps</a>
+                                                   )}
+
+                                                   {/* Garis pemisah */}
+                                                   <div className="border-t border-dashed border-gray-200 my-3" />
+
+                                                   {/* Kontrak & fee */}
+                                                   <div className="space-y-1.5 text-xs text-gray-600 flex-1">
+                                                      <div className="flex justify-between">
+                                                         <span className="text-gray-400 font-semibold uppercase tracking-wide">Kontrak</span>
+                                                         <span className="text-right font-mono text-gray-700">
+                                                            {a.awal_kontrak ? a.awal_kontrak : '—'}<br/>
+                                                            {a.akhir_kontrak ? `s/d ${a.akhir_kontrak}` : ''}
+                                                         </span>
+                                                      </div>
+                                                      <div className="flex justify-between">
+                                                         <span className="text-gray-400 font-semibold uppercase tracking-wide">Fee ≤6Jam</span>
+                                                         <span className="font-mono font-semibold text-gray-800">{a.fee_max_6_jam ? `Rp ${fmtRp(a.fee_max_6_jam)}` : '—'}</span>
+                                                      </div>
+                                                      <div className="flex justify-between">
+                                                         <span className="text-gray-400 font-semibold uppercase tracking-wide">Fee &gt;6Jam</span>
+                                                         <span className="font-mono font-semibold text-gray-800">{a.fee_diatas_6_jam ? `Rp ${fmtRp(a.fee_diatas_6_jam)}` : '—'}</span>
+                                                      </div>
+                                                   </div>
+
+                                                   {/* Aksi */}
+                                                   <div className="mt-3 flex gap-1.5">
+                                                      <button onClick={async () => {
+                                                         setSelectedAffiliate(a);
+                                                         setAffiliateView('detail');
+                                                         await fetchAffiliateDetail(a.id);
+                                                      }} className="flex-1 py-1.5 text-white rounded-lg text-xs font-bold transition shadow-sm hover:opacity-90"
+                                                         style={{ background: pal.btn }}>
+                                                         Detail
+                                                      </button>
+                                                      <button onClick={() => { setAffiliateFormData(a); setEditingAffiliateId(a.id); setAffiliateFotoProfilFile(null); setAffiliateFormOpen(true); }}
+                                                         className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-xs transition">
+                                                         ✏️
+                                                      </button>
+                                                      <button onClick={() => deleteAffiliate(a.id)}
+                                                         className="px-3 py-1.5 text-red-400 hover:text-red-700 hover:bg-red-50 border border-red-100 rounded-lg text-xs transition">
+                                                         🗑️
+                                                      </button>
+                                                   </div>
+                                                </div>
                                              </div>
-                                          </div>
-                                       </div>
-                                    );
-                                 })}
-                              </div>
+                                          );
+                                       })}
+                                    </div>
+                                 );
+                              })()}
                               <p className="text-xs text-gray-400 text-right mt-1">{filteredAffiliates.length} affiliate</p>
                            </>
                         )}
