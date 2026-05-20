@@ -830,19 +830,24 @@ export default function NikonDashboard() {
    useEffect(() => { if (isModalOpen) { setDualZoomG(1); setDualZoomN(1); } }, [isModalOpen]);
 
    // Restore session dari localStorage hanya di client (hindari hydration mismatch)
+   // Verifikasi cookie admin_session masih valid sebelum set isLoggedIn=true
    useEffect(() => {
-      try {
-         const saved = localStorage.getItem('nikon_karyawan');
-         if (saved) {
-            const user: Karyawan = JSON.parse(saved);
-            setCurrentUser(user);
-            setIsLoggedIn(true);
-         } else {
-            setLoading(false);
-         }
-      } catch {
-         setLoading(false);
-      }
+      const saved = localStorage.getItem('nikon_karyawan');
+      if (!saved) { setLoading(false); return; }
+      let user: Karyawan;
+      try { user = JSON.parse(saved); } catch { localStorage.removeItem('nikon_karyawan'); setLoading(false); return; }
+      fetch('/api/admin/auth', { cache: 'no-store' })
+         .then(res => {
+            if (res.ok) {
+               setCurrentUser(user);
+               setIsLoggedIn(true);
+            } else {
+               // Cookie expired — hapus localStorage agar login form muncul
+               localStorage.removeItem('nikon_karyawan');
+               setLoading(false);
+            }
+         })
+         .catch(() => { setLoading(false); });
    }, []);
 
    useEffect(() => {
