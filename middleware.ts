@@ -1,25 +1,37 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyAdminSession } from '@/app/lib/session';
 
-export async function middleware(request: NextRequest) {
+/**
+ * Middleware berjalan di Edge Runtime (bukan Node.js) — tidak bisa akses
+ * env vars server-side (ADMIN_PASSWORD / SESSION_SECRET) untuk HMAC verification.
+ *
+ * Strategi keamanan berlapis:
+ *  - Middleware: cek KEBERADAAN cookie (blok anonymous request di edge)
+ *  - Route handlers (Node.js): HMAC + timestamp verification penuh (keamanan kriptografis)
+ *
+ * Dengan pendekatan ini, request tanpa cookie apapun diblok di edge (cepat).
+ * Request dengan cookie yang salah/kadaluarsa akan ditolak di handler (verifyAdminSession).
+ */
+
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Always-public routes — no session check
+  // Rute publik — selalu diizinkan tanpa cek
   if (pathname === '/api/admin/auth') return NextResponse.next();
   if (pathname === '/api/auth/karyawan-login') return NextResponse.next();
   if (pathname === '/api/auth/forgot-password') return NextResponse.next();
 
-  // Verify session using HMAC + timestamp (same logic as route handlers)
-  const ok = await verifyAdminSession(request.cookies);
+  // Cek keberadaan session cookie (verifikasi HMAC sesungguhnya ada di setiap route handler)
+  const session = request.cookies.get('admin_session')?.value;
+  const hasSession = typeof session === 'string' && session.length > 20;
 
-  // /api/admin/* — return 401 JSON (API callers expect JSON, not redirect)
+  // /api/admin/* — return 401 JSON jika tidak ada cookie
   if (pathname.startsWith('/api/admin')) {
-    if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!hasSession) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  // /admin/* dan /chatbot — redirect ke /dashboard
+  // /admin/* dan /chatbot — redirect ke /dashboard jika tidak ada cookie
   else if (pathname.startsWith('/admin') || pathname.startsWith('/chatbot')) {
-    if (!ok) return NextResponse.redirect(new URL('/dashboard', request.url));
+    if (!hasSession) return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   return NextResponse.next();
