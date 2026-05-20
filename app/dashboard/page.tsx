@@ -5068,27 +5068,45 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
 
                   const doPrint = () => {
                      if (selectedDealerRows.length === 0) return;
-                     const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-                     const cardsHtml = selectedDealerRows.map(row => {
+                     const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                     const allCards = selectedDealerRows.map(row => {
                         const tv = colType >= 0 ? (row[colType] || '-') : '-';
                         const sv = colSN   >= 0 ? (row[colSN]   || '-') : '-';
                         const fv = colFoto >= 0 ? row[colFoto]  : '';
                         const fu = fv ? _resolveImg(fv) : '';
                         const imgHtml = fu && _isImg(fv)
-                           ? `<img src="${esc(fu)}" alt="foto" style="max-width:100%;max-height:100%;object-fit:contain;" />`
-                           : `<span style="color:#1a56db;font-style:italic;font-size:9pt;">foto kartu garansi</span>`;
-                        return `<div style="border:1.5px solid #333;page-break-inside:avoid;font-family:Arial,sans-serif;font-size:10pt;">
-<table style="width:100%;border-collapse:collapse;"><tbody>
-<tr><td style="border:1px solid #333;padding:3px 6px;width:40%;background:#f5f5f5;font-weight:600;">Type Barang</td><td style="border:1px solid #333;padding:3px 6px;font-weight:700;color:#1a56db;">${esc(tv)}</td></tr>
-<tr><td style="border:1px solid #333;padding:3px 6px;background:#f5f5f5;font-weight:600;">Serial Number</td><td style="border:1px solid #333;padding:3px 6px;font-weight:700;">${esc(sv)}</td></tr>
-</tbody></table>
-<div style="height:52mm;display:flex;align-items:center;justify-content:center;border-top:1px solid #ddd;background:#fafafa;overflow:hidden;">${imgHtml}</div>
-</div>`;
-                     }).join('');
-                     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Print Kartu Garansi Dealer</title>
-<style>body{margin:0;padding:10mm;}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8mm;}button{display:block;margin:16px auto;padding:8px 24px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:11pt;}@media print{button{display:none!important;}@page{size:A4 portrait;margin:10mm;}}</style>
-</head><body><div class="grid">${cardsHtml}</div>
-<button onclick="window.print()">🖨️ Print / Simpan PDF</button></body></html>`;
+                           ? `<img src="${esc(fu)}" alt="foto"/>`
+                           : `<span class="ph">foto kartu garansi</span>`;
+                        return `<div class="card"><table><tbody>
+<tr><td class="lbl">Type</td><td class="type">${esc(tv)}</td></tr>
+<tr><td class="lbl">S/N</td><td class="sn">${esc(sv)}</td></tr>
+</tbody></table><div class="img">${imgHtml}</div></div>`;
+                     });
+                     // kelompokkan 6 kartu per halaman
+                     const pages: string[] = [];
+                     for (let i = 0; i < allCards.length; i += 6) {
+                        pages.push(`<div class="pg">${allCards.slice(i, i + 6).join('')}</div>`);
+                     }
+                     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Print Kartu Garansi Dealer</title><style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;font-size:7pt;background:#fff;}
+.pg{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:2mm;width:200mm;height:287mm;page-break-after:always;}
+.pg:last-child{page-break-after:auto;}
+.card{border:1.5px solid #333;display:flex;flex-direction:column;overflow:hidden;}
+table{width:100%;border-collapse:collapse;flex-shrink:0;}
+td{border:1px solid #ccc;padding:1.5px 4px;vertical-align:middle;}
+.lbl{background:#f0f0f0;font-weight:600;width:30%;}
+.type{font-weight:700;color:#1a56db;}
+.sn{font-weight:700;}
+.img{flex:1;display:flex;align-items:center;justify-content:center;border-top:1px solid #ddd;background:#fafafa;overflow:hidden;min-height:0;}
+.img img{max-width:100%;max-height:100%;object-fit:contain;display:block;}
+.ph{color:#1a56db;font-style:italic;}
+.btn{display:block;margin:12px auto;padding:8px 28px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:11pt;}
+@media print{.btn{display:none!important;}@page{size:A4 portrait;margin:5mm;}}
+</style></head><body>
+${pages.join('')}
+<button class="btn" onclick="window.print()">🖨️ Print / Simpan PDF</button>
+</body></html>`;
                      const w = window.open('', '_blank', 'width=900,height=700');
                      if (!w) return;
                      w.document.open();
