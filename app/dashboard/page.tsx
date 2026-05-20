@@ -40,6 +40,22 @@ const supabase = createClient(
 );
 
 /**
+ * Realtime-only Supabase client — konek langsung ke Supabase (bukan proxy).
+ * Proxy /api/admin/sb hanya menangani HTTP REST; WebSocket untuk realtime
+ * harus konek ke URL Supabase asli. Anon key cukup untuk menerima notifikasi
+ * perubahan; data lengkap tetap di-fetch ulang via proxy yang terautentikasi.
+ */
+const realtimeSupabase = typeof window !== 'undefined'
+  ? createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+      }
+    )
+  : null;
+
+/**
  * Helper untuk semua operasi WRITE (insert/update/delete/upsert).
  * Bypass generic /api/admin/sb proxy (yang HTTP 500 untuk PATCH).
  * Untuk SELECT/GET tetap pakai `supabase` client biasa.
@@ -992,10 +1008,18 @@ export default function NikonDashboard() {
       };
       checkConnection();
 
-      const subscription = supabase.channel('messages-channel')
-         .on('postgres_changes', { event: '*', schema: 'public', table: 'riwayat_pesan' }, (payload) => {
-            if (payload.eventType === 'INSERT') setMessages(prev => [payload.new as RiwayatPesan, ...prev]);
-         }).subscribe();
+      // Realtime: pakai client langsung ke Supabase (bukan proxy) karena WebSocket
+      // tidak bisa melewati HTTP proxy. Saat ada perubahan di riwayat_pesan,
+      // fetch ulang via proxy yang terautentikasi agar data penuh ter-load.
+      const rt = realtimeSupabase;
+      if (!rt) return;
+      const subscription = rt.channel('messages-realtime')
+         .on('postgres_changes', { event: '*', schema: 'public', table: 'riwayat_pesan' }, () => {
+            fetchMessages();
+         }).subscribe((status) => {
+            if (status === 'SUBSCRIBED') console.log('[realtime] riwayat_pesan subscribed ✓');
+            if (status === 'CHANNEL_ERROR') console.warn('[realtime] riwayat_pesan channel error');
+         });
 
       return () => { subscription.unsubscribe(); };
       // eslint-disable-next-line react-hooks/exhaustive-deps
