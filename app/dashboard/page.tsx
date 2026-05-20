@@ -2587,6 +2587,14 @@ export default function NikonDashboard() {
             { id: 'botsettings', label: '⚙️ Bot Settings', count: botSettings.length },
             { id: 'autocomplete', label: '✏️ Saran Isian', count: undefined },
          ]
+      },
+      {
+         category: 'Halaman Admin',
+         tabs: [
+            { id: 'admin_events', label: '🗂️ Validasi Pembayaran Event (/admin/events)', count: undefined },
+            { id: 'admin_deposit', label: '💰 Pengembalian Deposit Event (/admin/events/deposit)', count: undefined },
+            { id: 'admin_attendance', label: '📋 Absensi Event (/admin/events/attendance)', count: undefined },
+         ]
       }
    ], [messages.length, consumersList.length, promos.length, claims.length, warranties.length, services.length, budgets.length, lendingRecords.length, karyawans.length, botSettings.length, events.length, eventRegistrations.length, dealerSheet?.rows.length, affiliates.length]);
 
@@ -2595,7 +2603,7 @@ export default function NikonDashboard() {
          ...group,
          tabs: group.tabs.filter(tab => {
             if (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') return true;
-            if (tab.id === 'userrole' || tab.id === 'autocomplete') return false;
+            if (tab.id === 'userrole' || tab.id === 'autocomplete' || tab.id === 'admin_events' || tab.id === 'admin_deposit' || tab.id === 'admin_attendance') return false;
             return (currentUser?.akses_halaman || []).includes(tab.id);
          })
       })).filter(group => group.tabs.length > 0);
