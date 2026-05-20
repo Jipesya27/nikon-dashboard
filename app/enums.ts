@@ -134,6 +134,7 @@ export type StatusPengembalianItem = typeof STATUS_PENGEMBALIAN_ITEM_OPTIONS[num
 
 // ============ ROLE KARYAWAN ============
 export const ROLE_OPTIONS = [
+  { value: 'Super Admin', label: 'Super Admin (Full access + Editor Teks Bot)' },
   { value: 'Admin', label: 'Admin (Full access)' },
   { value: 'Customer Service', label: 'Customer Service' },
   { value: 'Marketing', label: 'Marketing' },

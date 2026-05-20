@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { DEFAULT_TEMPLATES, applyTemplate, loadChatbotTemplates } from '@/app/lib/chatbotTemplate';
+import { DEFAULT_TEMPLATES, applyTemplate, loadChatbotTemplates, DB_KEY_PREFIX, TEMPLATE_CATEGORIES } from '@/app/lib/chatbotTemplate';
 import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang, BarangAset, Affiliate, AffiliateSkema, AffiliatePenjualan } from '@/app/index';
 import {
    VALIDASI_OPTIONS, STATUS_VALIDASI_GARANSI_OPTIONS, JENIS_GARANSI_OPTIONS, LAMA_GARANSI_OPTIONS,
@@ -299,6 +299,8 @@ export default function NikonDashboard() {
    const [printData, setPrintData] = useState<BudgetApproval | null>(null);
    const [printDownloading, setPrintDownloading] = useState(false);
    const [chatbotTemplates, setChatbotTemplates] = useState<Record<string, string>>({});
+   const [chatbotEditValues, setChatbotEditValues] = useState<Record<string, string>>({});
+   const [chatbotSaving, setChatbotSaving] = useState<Record<string, boolean>>({});
    const [isSubmitting, setIsSubmitting] = useState(false);
 
    // TRANSAKSI DEALER
@@ -875,7 +877,7 @@ export default function NikonDashboard() {
                fetchAutocomplete(),
                loadChatbotTemplates(supabase).then(setChatbotTemplates),
             ];
-            if (currentUser?.role === 'Admin') {
+            if (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') {
                promises.push(fetchKaryawans());
             }
             await Promise.all(promises);
@@ -1976,6 +1978,27 @@ export default function NikonDashboard() {
          setIsSubmitting(false); }
    };
 
+   const saveChatbotTemplate = async (key: string) => {
+      const text = chatbotEditValues[key] ?? (DEFAULT_TEMPLATES[key]?.template || '');
+      setChatbotSaving(prev => ({ ...prev, [key]: true }));
+      try {
+         const dbKey = `${DB_KEY_PREFIX}${key}`;
+         const { data: existing } = await supabase.from('pengaturan_bot').select('id').eq('nama_pengaturan', dbKey).maybeSingle();
+         if (existing?.id) {
+            const { error } = await sbWrite({ action: 'update', table: 'pengaturan_bot', data: { description: text }, match: { id: existing.id } });
+            if (error) throw new Error(error.message);
+         } else {
+            const { error } = await sbWrite({ action: 'insert', table: 'pengaturan_bot', data: { nama_pengaturan: dbKey, description: text, url_file: null } });
+            if (error) throw new Error(error.message);
+         }
+         setChatbotTemplates(prev => ({ ...prev, [key]: text }));
+      } catch (err: unknown) {
+         alert('Gagal menyimpan: ' + (err instanceof Error ? err.message : String(err)));
+      } finally {
+         setChatbotSaving(prev => ({ ...prev, [key]: false }));
+      }
+   };
+
    const handleSaveAsset = async (e: React.FormEvent) => {
       e.preventDefault();
       setIsSubmitting(true);
@@ -2571,7 +2594,7 @@ export default function NikonDashboard() {
       return ALL_TABS_GROUPED.map(group => ({
          ...group,
          tabs: group.tabs.filter(tab => {
-            if (currentUser?.role === 'Admin') return true;
+            if (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') return true;
             if (tab.id === 'userrole' || tab.id === 'autocomplete') return false;
             return (currentUser?.akses_halaman || []).includes(tab.id);
          })
@@ -2704,7 +2727,7 @@ export default function NikonDashboard() {
                               <span>🎟️ Daftar Event (Publik)</span>
                               <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                            </Link>
-                           {currentUser?.role === 'Admin' && (
+                           {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                               <Link href="/admin/google-auth" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
                                  <span>🔐 Google Drive Auth</span>
                                  <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
@@ -2955,8 +2978,8 @@ export default function NikonDashboard() {
                         {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}
                         {activeTab === 'services' && <button onClick={() => openModal('create', 'service')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Service</button>}
                         {activeTab === 'budgets' && <button onClick={() => openModal('create', 'budget')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Buat Proposal</button>}
-                        {activeTab === 'promos' && currentUser?.role === 'Admin' && <button onClick={() => openModal('create', 'promo')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Promo</button>}
-                        {activeTab === 'userrole' && currentUser?.role === 'Admin' && <button onClick={() => openModal('create', 'karyawan')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Karyawan</button>}
+                        {activeTab === 'promos' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && <button onClick={() => openModal('create', 'promo')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Promo</button>}
+                        {activeTab === 'userrole' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && <button onClick={() => openModal('create', 'karyawan')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Karyawan</button>}
                      </div>
                   </div>
                )}
@@ -3518,7 +3541,7 @@ export default function NikonDashboard() {
                                           </div>
                                        )}
                                     </div>
-                                    {currentUser?.role === 'Admin' && (
+                                    {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                                        <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                           <button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit Promo</button>
                                           <button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
@@ -3532,7 +3555,7 @@ export default function NikonDashboard() {
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal wrap-break-word">
                               <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                                 <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'status_aktif')}>Status {sortConfigPromos.column === 'status_aktif' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Produk Berlaku</th>{currentUser?.role === 'Admin' && <th className="px-4 py-3 text-left font-bold">Aksi</th>}</tr>
+                                 <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'status_aktif')}>Status {sortConfigPromos.column === 'status_aktif' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Produk Berlaku</th>{(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && <th className="px-4 py-3 text-left font-bold">Aksi</th>}</tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                  {sortedPromos.map((p: Promosi) => (
@@ -3541,7 +3564,7 @@ export default function NikonDashboard() {
                                        <td className="px-4 py-3">{p.tanggal_mulai} s/d {p.tanggal_selesai}</td>
                                        <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span></td>
                                        <td className="px-4 py-3 text-xs whitespace-normal">{(p.tipe_produk || []).map(tp => tp.nama_produk).join(', ')}</td>
-                                       {currentUser?.role === 'Admin' && (
+                                       {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                                           <td className="px-4 py-3"><div className="flex gap-3 items-center"><button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit</button><button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button></div></td>
                                        )}
                                     </tr>
@@ -4484,39 +4507,127 @@ export default function NikonDashboard() {
 
                {/* ======================= BOT SETTINGS ======================= */}
                {activeTab === 'botsettings' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     <p className="text-sm text-gray-600">Kelola pengaturan dan tautan yang digunakan oleh Chatbot.</p>
-                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                        <table className="w-full text-sm whitespace-normal wrap-break-word">
-                           <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                              <tr>
-                                 <th className="px-4 py-3 text-left font-bold">Nama Pengaturan</th>
-                                 <th className="px-4 py-3 text-left font-bold">URL / Value</th>
-                                 <th className="px-4 py-3 text-left font-bold">Deskripsi</th>
-                                 <th className="px-4 py-3 text-left font-bold">Aksi</th>
-                              </tr>
-                           </thead>
-                           <tbody className="divide-y divide-slate-200">
-                              {botSettings.map((setting: PengaturanBot) => (
-                                 <tr key={setting.id} className="hover:bg-gray-50 font-medium">
-                                    <td className="px-4 py-3 font-bold text-slate-800">{setting.nama_pengaturan}</td>
-                                    <td className="px-4 py-3">
-                                       {setting.url_file ? (
-                                          <a href={setting.url_file} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{setting.url_file}</a>
-                                       ) : (
-                                          <span className="text-gray-500 italic">-</span>
-                                       )}
-                                    </td>
-                                    <td className="px-4 py-3 text-gray-600">{setting.description || '-'}</td>
-                                    <td className="px-4 py-3 flex gap-3">
-                                       <button onClick={() => openModal('edit', 'botsettings', setting)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                       <button onClick={() => handleDelete('botsettings', setting.id!.toString())} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
-                                    </td>
+                  <div className="space-y-6 animate-fade-in text-gray-900">
+                     {/* ── SEKSI 1: Bot Settings (URL/value) ── */}
+                     <div className="space-y-2">
+                        <p className="text-sm text-gray-600">Kelola pengaturan dan tautan yang digunakan oleh Chatbot.</p>
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                           <table className="w-full text-sm whitespace-normal wrap-break-word">
+                              <thead className="bg-gray-50 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+                                 <tr>
+                                    <th className="px-4 py-3 text-left font-bold">Nama Pengaturan</th>
+                                    <th className="px-4 py-3 text-left font-bold">URL / Value</th>
+                                    <th className="px-4 py-3 text-left font-bold">Deskripsi</th>
+                                    <th className="px-4 py-3 text-left font-bold">Aksi</th>
                                  </tr>
-                              ))}
-                           </tbody>
-                        </table>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                 {botSettings.filter((s: PengaturanBot) => !s.nama_pengaturan?.startsWith(DB_KEY_PREFIX)).map((setting: PengaturanBot) => (
+                                    <tr key={setting.id} className="hover:bg-gray-50 font-medium">
+                                       <td className="px-4 py-3 font-bold text-slate-800">{setting.nama_pengaturan}</td>
+                                       <td className="px-4 py-3">
+                                          {setting.url_file ? (
+                                             <a href={setting.url_file} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{setting.url_file}</a>
+                                          ) : (
+                                             <span className="text-gray-500 italic">-</span>
+                                          )}
+                                       </td>
+                                       <td className="px-4 py-3 text-gray-600">{setting.description || '-'}</td>
+                                       <td className="px-4 py-3 flex gap-3">
+                                          <button onClick={() => openModal('edit', 'botsettings', setting)} className="text-black text-xs font-bold hover:underline">Edit</button>
+                                          <button onClick={() => handleDelete('botsettings', setting.id!.toString())} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
                      </div>
+
+                     {/* ── SEKSI 2: Editor Teks Chatbot — SUPER ADMIN ONLY ── */}
+                     {currentUser?.role === 'Super Admin' && (
+                        <div className="space-y-4">
+                           <div className="flex items-center gap-3">
+                              <h2 className="text-base font-bold text-gray-900">💬 Editor Teks Chatbot</h2>
+                              <span className="text-[10px] font-extrabold bg-black text-[#FFE500] px-2 py-0.5 rounded tracking-wider">SUPER ADMIN</span>
+                           </div>
+                           <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                              <p className="text-xs text-gray-700">Edit teks pesan WhatsApp yang dikirim chatbot. Teks disimpan ke database dan menggantikan teks default. Gunakan <code className="bg-white px-1 rounded">{'{nama}'}</code> untuk variabel. Baris kosong dapat menggunakan <code className="bg-white px-1 rounded">\n</code>.</p>
+                           </div>
+                           {TEMPLATE_CATEGORIES.map(cat => {
+                              const keys = Object.keys(DEFAULT_TEMPLATES).filter(k => DEFAULT_TEMPLATES[k].category === cat);
+                              if (keys.length === 0) return null;
+                              return (
+                                 <div key={cat} className="space-y-3">
+                                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-1">{cat}</h3>
+                                    {keys.map(key => {
+                                       const info = DEFAULT_TEMPLATES[key];
+                                       const currentVal = chatbotEditValues[key] ?? (chatbotTemplates[key] ?? info.template);
+                                       const isSaved = chatbotTemplates[key] !== undefined;
+                                       const isSaving = chatbotSaving[key] ?? false;
+                                       return (
+                                          <div key={key} className="bg-white rounded-lg border border-gray-200 p-4 space-y-2 shadow-sm">
+                                             <div className="flex items-start justify-between gap-2">
+                                                <div>
+                                                   <p className="font-bold text-sm text-gray-900">{info.label}</p>
+                                                   <p className="text-[11px] text-gray-500 font-mono mt-0.5">
+                                                      Variabel: {info.vars.length > 0 ? info.vars.map(v => `{${v}}`).join(', ') : 'tidak ada'}
+                                                   </p>
+                                                </div>
+                                                {isSaved && (
+                                                   <span className="text-[10px] font-extrabold bg-green-100 text-green-700 px-2 py-0.5 rounded whitespace-nowrap">● Custom</span>
+                                                )}
+                                             </div>
+                                             <textarea
+                                                rows={Math.max(3, (currentVal.match(/\n/g) || []).length + 2)}
+                                                className="w-full text-xs font-mono border border-gray-300 rounded p-2 focus:outline-none focus:border-[#FFE500] resize-y bg-gray-50"
+                                                value={currentVal}
+                                                onChange={e => setChatbotEditValues(prev => ({ ...prev, [key]: e.target.value }))}
+                                             />
+                                             <div className="flex items-center gap-3 justify-end">
+                                                {chatbotEditValues[key] !== undefined && chatbotEditValues[key] !== (chatbotTemplates[key] ?? info.template) && (
+                                                   <button
+                                                      type="button"
+                                                      onClick={() => setChatbotEditValues(prev => { const n = { ...prev }; delete n[key]; return n; })}
+                                                      className="text-xs text-gray-500 hover:underline"
+                                                   >Reset ke tersimpan</button>
+                                                )}
+                                                {isSaved && (
+                                                   <button
+                                                      type="button"
+                                                      onClick={async () => {
+                                                         if (!confirm('Hapus custom teks dan kembali ke default?')) return;
+                                                         setChatbotSaving(prev => ({ ...prev, [key]: true }));
+                                                         try {
+                                                            const dbKey = `${DB_KEY_PREFIX}${key}`;
+                                                            const { data: ex } = await supabase.from('pengaturan_bot').select('id').eq('nama_pengaturan', dbKey).maybeSingle();
+                                                            if (ex?.id) await sbWrite({ action: 'delete', table: 'pengaturan_bot', match: { id: ex.id } });
+                                                            setChatbotTemplates(prev => { const n = { ...prev }; delete n[key]; return n; });
+                                                            setChatbotEditValues(prev => { const n = { ...prev }; delete n[key]; return n; });
+                                                         } finally {
+                                                            setChatbotSaving(prev => ({ ...prev, [key]: false }));
+                                                         }
+                                                      }}
+                                                      className="text-xs text-red-500 hover:underline"
+                                                   >Hapus custom</button>
+                                                )}
+                                                <button
+                                                   type="button"
+                                                   disabled={isSaving}
+                                                   onClick={() => saveChatbotTemplate(key)}
+                                                   className="bg-[#FFE500] hover:bg-[#E5CE00] disabled:opacity-50 text-black text-xs font-bold px-3 py-1.5 rounded transition"
+                                                >
+                                                   {isSaving ? 'Menyimpan...' : 'Simpan'}
+                                                </button>
+                                             </div>
+                                          </div>
+                                       );
+                                    })}
+                                 </div>
+                              );
+                           })}
+                        </div>
+                     )}
                   </div>
                )}
 
@@ -4528,7 +4639,7 @@ export default function NikonDashboard() {
 
 
                {/* ======================= USER ROLE ======================= */}
-               {activeTab === 'userrole' && currentUser?.role === 'Admin' && (
+               {activeTab === 'userrole' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                   <div className="space-y-4 animate-fade-in text-gray-900">
                      <input type="text" title="Cari Karyawan" aria-label="Cari Karyawan" placeholder="🔍 Cari Username atau Nama Karyawan..." value={searchKaryawan} onChange={e => setSearchKaryawan(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
@@ -4546,7 +4657,7 @@ export default function NikonDashboard() {
                                        <td className="px-6 py-3">
                                           <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
                                        </td>
-                                       <td className="px-6 py-3 font-mono text-xs text-gray-600">{k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</td>
+                                       <td className="px-6 py-3 font-mono text-xs text-gray-600">{(k.role === 'Admin' || k.role === 'Super Admin') ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</td>
                                        <td className="px-6 py-3 flex gap-3">
                                           <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                           <button onClick={() => openModal('reset_pw', 'karyawan', k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
@@ -4568,7 +4679,7 @@ export default function NikonDashboard() {
                                  <div className="space-y-2 text-xs flex-1">
                                     <p><span className="font-bold w-20 inline-block">Role:</span> {k.role}</p>
                                     <p><span className="font-bold w-20 inline-block">Status:</span> <span className={`px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span></p>
-                                    <p><span className="font-bold w-20 inline-block">Akses:</span> {k.role === 'Admin' ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</p>
+                                    <p><span className="font-bold w-20 inline-block">Akses:</span> {(k.role === 'Admin' || k.role === 'Super Admin') ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</p>
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                     <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
@@ -4583,7 +4694,7 @@ export default function NikonDashboard() {
                )}
 
                {/* ======================= SARAN ISIAN (AUTOCOMPLETE) ======================= */}
-               {activeTab === 'autocomplete' && currentUser?.role === 'Admin' && (() => {
+               {activeTab === 'autocomplete' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (() => {
                   const AC_FIELDS = [
                      { key: 'tipe_barang', label: 'Tipe Barang', hint: 'Model kamera, lensa, aksesori' },
                      { key: 'nama_toko', label: 'Nama Toko / Dealer', hint: 'Nama toko resmi & tidak resmi' },
