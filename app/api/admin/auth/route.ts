@@ -27,12 +27,26 @@ function getClientIp(req: Request): string {
     || 'unknown';
 }
 
-// GET: cek apakah sesi admin masih valid (dipakai AdminGate)
+// GET: cek sesi admin + rolling renewal — perpanjang cookie setiap kali dicek
+// (dipanggil setiap 90 detik dari dashboard, sehingga sesi tetap aktif selama user aktif)
 export async function GET() {
   const cookieStore = await cookies();
   const ok = await verifyAdminSession(cookieStore);
   if (!ok) return NextResponse.json({ ok: false }, { status: 401 });
-  return NextResponse.json({ ok: true });
+
+  // Rolling session: issue token baru sehingga max-age direset
+  // Selama user aktif (90s check), sesi tidak pernah expired
+  const secret = process.env.ADMIN_PASSWORD || process.env.SESSION_SECRET || '';
+  const newToken = await buildSessionToken(secret);
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set('admin_session', newToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    path: '/',
+  });
+  return res;
 }
 
 export async function POST(req: Request) {

@@ -683,12 +683,13 @@ export default function NikonDashboard() {
 
    const fetchMessages = async () => {
       // Pakai sbRead (direct server fetch) bukan supabase-js proxy
-      // karena supabase-js tidak mengirim cookie admin_session dengan benar
+      // Gunakan today (UTC) sebagai end — bukan dateRange.end yg stale sejak komponen mount
+      const todayUTC = new Date().toISOString().split('T')[0];
       const { data, count, error } = await sbRead<RiwayatPesan>({
          table: 'riwayat_pesan',
          filters: [
             { col: 'created_at', op: 'gte', val: `${dateRange.start}T00:00:00` },
-            { col: 'created_at', op: 'lte', val: `${dateRange.end}T23:59:59` },
+            { col: 'created_at', op: 'lte', val: `${todayUTC}T23:59:59` },
          ],
          order: { col: 'created_at', ascending: false },
          count: true,
