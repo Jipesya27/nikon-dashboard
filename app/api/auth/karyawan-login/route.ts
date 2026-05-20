@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
-import { buildSessionToken } from '@/app/lib/session';
+import { buildSessionToken, SESSION_MAX_AGE_SECONDS } from '@/app/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: SESSION_MAX_AGE_SECONDS,
     path: '/',
   });
   return res;

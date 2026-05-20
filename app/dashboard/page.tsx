@@ -1143,7 +1143,7 @@ export default function NikonDashboard() {
          return;
       }
       const selected = sortedClaims.filter((c: ClaimPromo) => c.id_claim && selectedClaimIds.has(c.id_claim));
-      const headers = ['No', 'Nama (No. WA)', 'Alamat', 'No. Seri', 'Barang', 'Promo', 'Kodepos'];
+      const headers = ['No', 'Nama (No. WA)', 'Alamat', 'No. Seri', 'Barang', 'Promo', 'Kodepos', 'No Claim'];
       const csvRows = [headers.join(',')];
       selected.forEach((c: ClaimPromo, idx: number) => {
          const konsumen = consumersList.find(k => k.nomor_wa === c.nomor_wa);
@@ -1167,6 +1167,7 @@ export default function NikonDashboard() {
             esc(c.tipe_barang || ''),
             esc(promo || ''),
             esc(kodepos),
+            String(claimNumberMap.get(c.id_claim!) ?? ''),
          ].join(','));
       });
       const BOM = '﻿';
@@ -4511,27 +4512,30 @@ export default function NikonDashboard() {
                            {sortedEvents.map((evt: EventData) => {
                               const detailPreview = evt.detail_acara ? (evt.detail_acara.length > 100 ? evt.detail_acara.substring(0, 100) + '...' : evt.detail_acara) : '-';
                               return (
-                              <div key={evt.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="border-b border-gray-100 pb-3 mb-3">
-                                    <div className="flex items-center gap-2 mb-2">
-                                       <span className="font-bold text-lg text-gray-600 bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center text-center">{eventNumberMap.get(evt.id!)}</span>
-                                       <Image src={evt.image} alt="poster" width={48} height={64} className="w-12 h-16 object-cover rounded" />
-                                    </div>
-                                    <h3 className="font-bold text-base text-slate-800">{evt.title}</h3>
-                                    <p className="text-xs text-gray-500">{evt.date}</p>
+                              <div key={evt.id} className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] hover:shadow-md transition overflow-hidden">
+                                 {/* Full-width poster image */}
+                                 <div className="relative w-full h-52 bg-gray-100 shrink-0">
+                                    <Image src={evt.image} alt="poster" fill sizes="(max-width:768px)100vw,33vw" className="object-cover" />
+                                    <span className="absolute top-2 left-2 font-bold text-sm text-gray-700 bg-white/90 rounded-full w-7 h-7 flex items-center justify-center shadow-sm">{eventNumberMap.get(evt.id!)}</span>
+                                    <span className={`absolute top-2 right-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded ${evt.status === 'close' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.status === 'close' ? 'Tutup' : 'Aktif'}</span>
                                  </div>
+                                 <div className="p-4 flex flex-col flex-1">
+                                    <div className="border-b border-gray-100 pb-2 mb-3">
+                                       <h3 className="font-bold text-base text-slate-800 leading-tight">{evt.title}</h3>
+                                       <p className="text-xs text-gray-500 mt-0.5">{evt.date}</p>
+                                    </div>
                                  <div className="space-y-2 text-xs flex-1">
                                     <p><span className="font-bold w-20 inline-block">Detail:</span> {detailPreview}</p>
                                     <p><span className="font-bold w-20 inline-block">Harga:</span> {evt.price}</p>
                                     <p><span className="font-bold w-20 inline-block">Kuota:</span> {eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</p>
                                     <p><span className="font-bold w-20 inline-block">Peserta:</span> {eventRegistrationsCount[evt.title] || 0} orang</p>
-                                    <p><span className="font-bold w-20 inline-block">Status:</span> <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${evt.status === 'close' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.status === 'close' ? 'Tutup' : 'Aktif'}</span></p>
                                     {evt.bank_info && <p className="bg-blue-50 border border-blue-100 rounded p-2 mt-2"><span className="font-bold">Rekening:</span> {evt.bank_info}</p>}
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2 justify-end">
                                     <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                  </div>
+                                 </div>{/* end p-4 inner */}
                               </div>
                               );
                            })}
@@ -5048,7 +5052,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                               <h2 className="text-lg font-bold text-gray-800">{selectedAffiliate.nama}</h2>
                               <span className="text-xs text-gray-400">{selectedAffiliate.phone}</span>
                               <div className="ml-auto flex gap-2">
-                                 <button onClick={() => { setAffiliateFormData(selectedAffiliate); setEditingAffiliateId(selectedAffiliate.id); setAffiliateFormOpen(true); }}
+                                 <button onClick={() => { setAffiliateFormData(selectedAffiliate); setEditingAffiliateId(selectedAffiliate.id); setAffiliateFotoProfilFile(null); setAffiliateFormOpen(true); setAffiliateView('list'); }}
                                     className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-sm transition">✏️ Edit</button>
                                  <button onClick={doPrintAffiliate}
                                     className="px-4 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg text-sm font-bold shadow transition">🖨️ Cetak PDF</button>
@@ -5341,7 +5345,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                                    setAffiliateView('detail');
                                                    await fetchAffiliateDetail(a.id);
                                                 }} className="text-xs px-2.5 py-1 bg-yellow-400 hover:bg-yellow-500 text-black rounded font-bold transition">Detail</button>
-                                                <button onClick={() => { setAffiliateFormData(a); setEditingAffiliateId(a.id); setAffiliateFormOpen(true); }}
+                                                <button onClick={() => { setAffiliateFormData(a); setEditingAffiliateId(a.id); setAffiliateFotoProfilFile(null); setAffiliateFormOpen(true); }}
                                                    className="text-xs px-2.5 py-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded transition">Edit</button>
                                                 <button onClick={() => deleteAffiliate(a.id)}
                                                    className="text-xs px-2.5 py-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition">Hapus</button>

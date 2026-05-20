@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { buildSessionToken, verifyAdminSession } from '@/app/lib/session';
+import { buildSessionToken, verifyAdminSession, SESSION_MAX_AGE_SECONDS } from '@/app/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: SESSION_MAX_AGE_SECONDS,
       path: '/',
     });
     return res;
