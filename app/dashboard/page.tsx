@@ -687,14 +687,17 @@ export default function NikonDashboard() {
    };
 
    const fetchMessages = async () => {
-      // Pakai sbRead (direct server fetch) bukan supabase-js proxy
-      // Gunakan today (UTC) sebagai end — bukan dateRange.end yg stale sejak komponen mount
-      const todayUTC = new Date().toISOString().split('T')[0];
+      // Pakai sbRead (direct server fetch) bukan supabase-js proxy.
+      // Gunakan tanggal LOKAL browser (bukan UTC) agar pesan hari ini tidak terpotong.
+      // Di WIB (UTC+7), new Date().toISOString() masih menunjukkan tanggal KEMARIN UTC
+      // hingga jam 07:00 WIB — sehingga pesan yang dibuat setelah midnight WIB ter-exclude.
+      const d = new Date();
+      const todayLocal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const { data, count, error } = await sbRead<RiwayatPesan>({
          table: 'riwayat_pesan',
          filters: [
             { col: 'created_at', op: 'gte', val: `${dateRange.start}T00:00:00` },
-            { col: 'created_at', op: 'lte', val: `${todayUTC}T23:59:59` },
+            { col: 'created_at', op: 'lte', val: `${todayLocal}T23:59:59` },
          ],
          order: { col: 'created_at', ascending: false },
          count: true,
@@ -704,7 +707,14 @@ export default function NikonDashboard() {
          setDataLoadError(`[pesan] ${error.message}`);
          return;
       }
-      setMessages(data || []);
+      // Merge: jangan hapus pesan historis dari fetchContactHistory (di luar date range).
+      // Ganti hanya pesan yang ID-nya sudah ada di fresh data; sisanya dipertahankan.
+      setMessages(prev => {
+         const fresh = data || [];
+         const freshIds = new Set(fresh.map(m => m.id_pesan));
+         const extra = prev.filter(m => !freshIds.has(m.id_pesan) && !m.id_pesan?.startsWith('__opt_'));
+         return [...fresh, ...extra];
+      });
       setMessagesCount(count ?? data?.length ?? 0);
    };
 
@@ -2287,21 +2297,26 @@ export default function NikonDashboard() {
       setReplyToMessage(null);
       setTimeout(scrollToBottom, 50);
 
-      // --- Kirim + simpan ke DB di background ---
-      try {
-         await sendWhatsAppMessageViaFonnte(selectedWa, fullMessage);
-         await sbWrite({ action: 'update', table: 'riwayat_pesan', data: { bicara_dengan_cs: false }, match: { nomor_wa: selectedWa } });
-         const { error: insertErr } = await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: fullMessage, waktu_pesan: now, bicara_dengan_cs: false, created_at: now } });
-         if (insertErr) {
-            console.error('[handleSendReply] insert error:', insertErr.message);
-            alert('⚠️ Pesan terkirim via WA tapi gagal disimpan ke database:\n' + insertErr.message);
-         }
-      } catch (err) {
-         console.error('[handleSendReply] error:', err);
+      // --- Simpan ke DB dulu, TERLEPAS dari hasil Fonnte ---
+      // Urutan: insert DB → tampil di UI via polling, Fonnte = fire-and-forget
+      const { error: insertErr } = await sbWrite({
+         action: 'insert',
+         table: 'riwayat_pesan',
+         data: { nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: fullMessage, waktu_pesan: now, bicara_dengan_cs: false, created_at: now },
+      });
+      if (insertErr) {
+         console.error('[handleSendReply] insert error:', insertErr.message);
+         // Batalkan optimistic jika gagal simpan
+         setMessages(prev => prev.filter(m => m.id_pesan !== tempId));
+         alert('⚠️ Gagal menyimpan pesan ke database:\n' + insertErr.message);
+         return;
       }
 
-      // Hapus optimistic message & ganti dengan data real dari DB
-      fetchMessages();
+      // --- Fonnte + update flag CS — fire-and-forget, tidak memblokir UI ---
+      sendWhatsAppMessageViaFonnte(selectedWa, fullMessage)
+         .then(() => sbWrite({ action: 'update', table: 'riwayat_pesan', data: { bicara_dengan_cs: false }, match: { nomor_wa: selectedWa } }))
+         .catch(err => console.error('[handleSendReply] fonnte/update error:', err));
+      // Polling 5 detik akan replace optimistic dengan data real dari DB secara otomatis
    };
 
    const handleSendNewChat = async (e: React.FormEvent) => {
