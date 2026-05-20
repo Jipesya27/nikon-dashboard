@@ -1066,6 +1066,19 @@ export default function NikonDashboard() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [isLoggedIn, dateRange]);
 
+   // Polling cepat 5 detik khusus saat tab messages aktif
+   // (realtime WebSocket kadang tidak aktif tergantung konfigurasi Supabase)
+   useEffect(() => {
+      if (!isLoggedIn) return;
+      const id = setInterval(() => {
+         if (activeTabRef.current === 'messages') {
+            fetchMessages();
+         }
+      }, 5_000);
+      return () => clearInterval(id);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [isLoggedIn]);
+
    // Cek validity session setiap 90 detik — auto-logout jika cookie kadaluarsa
    // Ini menangani kasus user tetap di halaman melebihi 2 hari tanpa refresh
    useEffect(() => {
@@ -3242,6 +3255,11 @@ export default function NikonDashboard() {
                               <p className="text-[10px] text-gray-600 font-medium">{uniqueContacts.length} chat • {totalUnread} belum dibaca</p>
                            </div>
                            <div className="flex items-center gap-1">
+                              <button onClick={() => { fetchMessages(); fetchConsumers(); }} disabled={isRefreshing} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Refresh pesan" aria-label="Refresh pesan">
+                                 <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                 </svg>
+                              </button>
                               <button onClick={handleRunCleanup} disabled={isSubmitting} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Bersihkan Sesi Inaktif" aria-label="Bersihkan Sesi Inaktif">
                                  {isSubmitting ? '⏳' : '🧹'}
                               </button>
