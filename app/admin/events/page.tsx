@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -27,9 +27,9 @@ type Registration = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  menunggu_validasi: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  terdaftar: 'bg-green-500/20 text-green-400 border-green-500/30',
-  ditolak: 'bg-red-500/20 text-red-400 border-red-500/30',
+  menunggu_validasi: 'bg-yellow-50 text-yellow-700 border-yellow-300',
+  terdaftar: 'bg-green-50 text-green-700 border-green-300',
+  ditolak: 'bg-red-50 text-red-700 border-red-300',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -133,26 +133,32 @@ export default function AdminEventsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white font-sans">
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-2xl text-sm font-semibold border ${toast.type === 'success' ? 'bg-green-900/90 border-green-500/40 text-green-300' : 'bg-red-900/90 border-red-500/40 text-red-300'}`}>
+        <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-semibold border ${toast.type === 'success' ? 'bg-green-50 border-green-300 text-green-800' : 'bg-red-50 border-red-300 text-red-800'}`}>
           {toast.msg}
         </div>
       )}
 
       {/* Header */}
-      <header className="border-b border-white/10 bg-zinc-900 sticky top-0 z-40">
+      <header className="border-b border-gray-200 bg-white sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-[#FFE800] text-black font-extrabold px-2 py-1 text-lg">NIKON</div>
-            <span className="font-bold text-zinc-300 text-sm hidden sm:block">Admin · Validasi Pembayaran Event</span>
+            <div className="bg-[#FFE800] text-black font-extrabold px-2 py-1 text-lg tracking-wide">NIKON</div>
+            <div>
+              <p className="font-bold text-gray-900 text-sm">Validasi Pembayaran Event</p>
+              <p className="text-xs text-gray-400 hidden sm:block">Admin Panel</p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/admin/events/deposit" className="text-xs text-[#FFE800] border border-[#FFE800]/40 hover:bg-[#FFE800]/10 px-3 py-1.5 rounded-lg transition-all font-semibold">
+          <div className="flex items-center gap-2">
+            <Link href="/admin/events/deposit" className="text-xs font-semibold text-gray-700 border border-gray-300 hover:border-gray-400 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-all">
               Kelola Deposit →
             </Link>
-            <Link href="/dashboard" className="text-xs text-zinc-400 hover:text-white transition-colors">← Dashboard</Link>
+            <Link href="/admin/events/attendance" className="text-xs font-semibold text-gray-700 border border-gray-300 hover:border-gray-400 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-all">
+              Absensi →
+            </Link>
+            <Link href="/dashboard" className="text-xs text-gray-500 hover:text-gray-900 transition-colors ml-1">← Dashboard</Link>
           </div>
         </div>
       </header>
@@ -161,13 +167,13 @@ export default function AdminEventsPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Total', value: counts.all, color: 'text-white', bg: 'bg-zinc-800' },
-            { label: 'Menunggu Validasi', value: counts.menunggu_validasi, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-            { label: 'Terdaftar', value: counts.terdaftar, color: 'text-green-400', bg: 'bg-green-500/10' },
-            { label: 'Ditolak', value: counts.ditolak, color: 'text-red-400', bg: 'bg-red-500/10' },
+            { label: 'Total Pendaftar', value: counts.all, color: 'text-gray-900', border: 'border-l-gray-400', bg: 'bg-white' },
+            { label: 'Menunggu Validasi', value: counts.menunggu_validasi, color: 'text-yellow-600', border: 'border-l-yellow-400', bg: 'bg-white' },
+            { label: 'Terdaftar', value: counts.terdaftar, color: 'text-green-600', border: 'border-l-green-400', bg: 'bg-white' },
+            { label: 'Ditolak', value: counts.ditolak, color: 'text-red-600', border: 'border-l-red-400', bg: 'bg-white' },
           ].map(s => (
-            <div key={s.label} className={`${s.bg} rounded-xl p-4 border border-white/5`}>
-              <p className="text-xs text-zinc-500 uppercase tracking-wider">{s.label}</p>
+            <div key={s.label} className={`${s.bg} rounded-xl p-4 border border-gray-200 border-l-4 ${s.border} shadow-sm`}>
+              <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">{s.label}</p>
               <p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.value}</p>
             </div>
           ))}
@@ -180,12 +186,12 @@ export default function AdminEventsPage() {
             placeholder="Cari nama atau nomor WA..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="bg-zinc-900 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800] w-64"
+            className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] w-64 shadow-sm"
           />
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="bg-zinc-900 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-[#FFE800]"
+            className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-900 focus:outline-none focus:border-[#FFE800] shadow-sm"
           >
             <option value="all">Semua Status</option>
             <option value="menunggu_validasi">Menunggu Validasi</option>
@@ -195,49 +201,51 @@ export default function AdminEventsPage() {
           <select
             value={filterEvent}
             onChange={e => setFilterEvent(e.target.value)}
-            className="bg-zinc-900 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-[#FFE800]"
+            className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-900 focus:outline-none focus:border-[#FFE800] shadow-sm"
           >
             <option value="all">Semua Event</option>
             {uniqueEvents.map(ev => <option key={ev} value={ev}>{ev}</option>)}
           </select>
-          <button onClick={fetchRegistrations} className="bg-zinc-800 hover:bg-zinc-700 text-white text-sm px-4 py-2 rounded-lg border border-white/10 transition-all">
-            Refresh
+          <button onClick={fetchRegistrations} className="bg-white hover:bg-gray-50 text-gray-700 text-sm px-4 py-2 rounded-lg border border-gray-300 shadow-sm transition-all font-medium">
+            🔄 Refresh
           </button>
         </div>
 
-        {/* Table */}
+        {/* List */}
         {loading ? (
           <div className="flex justify-center items-center h-48">
             <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#FFE800]" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center text-zinc-600 py-16 text-sm">Tidak ada data pendaftaran.</div>
+          <div className="text-center text-gray-400 py-16 text-sm bg-white rounded-xl border border-gray-200 shadow-sm">
+            Tidak ada data pendaftaran.
+          </div>
         ) : (
           <div className="space-y-3">
             {filtered.map(reg => (
-              <div key={reg.id} className="bg-zinc-900 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all">
+              <div key={reg.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all hover:border-gray-300">
                 <div className="p-5 flex flex-col sm:flex-row gap-4">
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${STATUS_COLORS[reg.status_pendaftaran]}`}>
+                      <span className={`text-xs px-2.5 py-0.5 rounded-full border font-semibold ${STATUS_COLORS[reg.status_pendaftaran]}`}>
                         {STATUS_LABELS[reg.status_pendaftaran]}
                       </span>
                       {reg.payment_type === 'deposit' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 font-semibold">DEPOSIT</span>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-300 font-semibold">DEPOSIT</span>
                       )}
-                      <span className="text-xs text-zinc-500">{new Date(reg.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className="text-xs text-gray-400">{new Date(reg.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
 
-                    <h3 className="font-bold text-white text-lg">{reg.nama_lengkap}</h3>
-                    <p className="text-zinc-400 text-sm mt-0.5">{reg.event_name}</p>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-zinc-500">
+                    <h3 className="font-bold text-gray-900 text-lg">{reg.nama_lengkap}</h3>
+                    <p className="text-gray-500 text-sm mt-0.5">{reg.event_name}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-400">
                       <span>📱 {reg.nomor_wa}</span>
                       {reg.kabupaten_kotamadya && <span>📍 {reg.kabupaten_kotamadya}</span>}
                       {reg.tipe_kamera && <span>📷 {reg.tipe_kamera}</span>}
                     </div>
                     {reg.rejection_reason && (
-                      <p className="text-xs text-red-400 mt-2 bg-red-500/10 px-3 py-1.5 rounded-lg">Alasan: {reg.rejection_reason}</p>
+                      <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg">Alasan: {reg.rejection_reason}</p>
                     )}
                   </div>
 
@@ -249,13 +257,13 @@ export default function AdminEventsPage() {
                           const id = reg.bukti_transfer_url!.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1];
                           setPreviewUrl(id ? `/api/drive-file?id=${id}` : reg.bukti_transfer_url);
                         }}
-                        className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-lg border border-white/10 transition-all flex items-center gap-1"
+                        className="text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg border border-gray-300 transition-all flex items-center gap-1 font-medium shadow-sm"
                       >
                         🖼️ Lihat Bukti
                       </button>
                     )}
                     {reg.ticket_url && (
-                      <a href={reg.ticket_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-blue-900/40 hover:bg-blue-900/60 text-blue-300 px-3 py-1.5 rounded-lg border border-blue-500/30 transition-all flex items-center gap-1">
+                      <a href={reg.ticket_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 transition-all flex items-center gap-1 font-medium">
                         🎫 Lihat Tiket
                       </a>
                     )}
@@ -265,14 +273,14 @@ export default function AdminEventsPage() {
                         <button
                           onClick={() => handleApprove(reg.id)}
                           disabled={processingId === reg.id}
-                          className="text-xs bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold px-4 py-1.5 rounded-lg transition-all"
+                          className="text-xs bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold px-4 py-1.5 rounded-lg transition-all shadow-sm"
                         >
                           {processingId === reg.id ? '...' : '✓ Setujui'}
                         </button>
                         <button
                           onClick={() => setRejectModal({ id: reg.id, name: reg.nama_lengkap })}
                           disabled={processingId === reg.id}
-                          className="text-xs bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-4 py-1.5 rounded-lg transition-all"
+                          className="text-xs bg-white hover:bg-red-50 disabled:opacity-50 text-red-600 font-bold px-4 py-1.5 rounded-lg border border-red-300 transition-all"
                         >
                           ✕ Tolak
                         </button>
@@ -288,23 +296,25 @@ export default function AdminEventsPage() {
 
       {/* Preview Modal */}
       {previewUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setPreviewUrl(null)}>
-          <div className="relative max-w-2xl w-full" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-2">
-              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-400 hover:text-white underline">Buka di tab baru ↗</a>
-              <button onClick={() => setPreviewUrl(null)} className="text-zinc-400 hover:text-white text-sm">✕ Tutup</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setPreviewUrl(null)}>
+          <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline font-medium">↗ Buka di tab baru</a>
+              <button onClick={() => setPreviewUrl(null)} className="text-gray-400 hover:text-gray-700 text-sm font-bold">✕ Tutup</button>
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="Bukti Transfer"
-              className="w-full rounded-xl border border-white/10 shadow-2xl"
-              onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex'; }}
-            />
-            <div style={{ display: 'none' }} className="flex-col items-center justify-center gap-3 bg-zinc-900 border border-white/10 rounded-xl p-10 text-center">
-              <span className="text-4xl">📄</span>
-              <p className="text-zinc-400 text-sm">File tidak bisa di-preview (mungkin PDF).</p>
-              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded-lg border border-white/10">Buka File ↗</a>
+            <div className="p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt="Bukti Transfer"
+                className="w-full rounded-lg border border-gray-200"
+                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex'; }}
+              />
+              <div style={{ display: 'none' }} className="flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-10 text-center">
+                <span className="text-4xl">📄</span>
+                <p className="text-gray-500 text-sm">File tidak bisa di-preview (mungkin PDF).</p>
+                <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium">Buka File ↗</a>
+              </div>
             </div>
           </div>
         </div>
@@ -312,28 +322,28 @@ export default function AdminEventsPage() {
 
       {/* Reject Modal */}
       {rejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-            <h3 className="text-lg font-bold mb-1">Tolak Pendaftaran</h3>
-            <p className="text-zinc-400 text-sm mb-4">Tolak pendaftaran <strong className="text-white">{rejectModal.name}</strong>? Notifikasi akan dikirim via WhatsApp.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Tolak Pendaftaran</h3>
+            <p className="text-gray-500 text-sm mb-4">Tolak pendaftaran <strong className="text-gray-900">{rejectModal.name}</strong>? Notifikasi akan dikirim via WhatsApp.</p>
             <textarea
               value={rejectionReason}
               onChange={e => setRejectionReason(e.target.value)}
               placeholder="Alasan penolakan (opsional)"
               rows={3}
-              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-4 py-3 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-red-500 resize-none"
+              className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400 resize-none"
             />
             <div className="flex gap-3 mt-4">
               <button
                 onClick={() => { setRejectModal(null); setRejectionReason(''); }}
-                className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-all"
+                className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-semibold py-2.5 rounded-lg border border-gray-300 transition-all"
               >
                 Batal
               </button>
               <button
                 onClick={handleReject}
                 disabled={!!processingId}
-                className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-lg transition-all"
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-lg transition-all shadow-sm"
               >
                 {processingId ? '...' : 'Tolak & Kirim WA'}
               </button>

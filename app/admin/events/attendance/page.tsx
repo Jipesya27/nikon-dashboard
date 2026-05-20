@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
@@ -62,12 +62,10 @@ export default function AdminAttendancePage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAll();
-    // Try to load admin name from localStorage if available
     try {
       const u = localStorage.getItem('current_user');
       if (u) {
         const parsed = JSON.parse(u);
-         
         setAdminName(parsed.nama_karyawan || parsed.username || 'Admin');
       }
     } catch {}
@@ -82,7 +80,6 @@ export default function AdminAttendancePage() {
         body: JSON.stringify({ qr: qrText, attendedBy: adminName, sendWa: true }),
       });
       const data = await res.json();
-
       if (data.alreadyAttended) {
         setScanResult({ type: 'already', reg: data.registration, message: data.message });
       } else if (!res.ok) {
@@ -92,14 +89,12 @@ export default function AdminAttendancePage() {
       }
       fetchAll();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Network error';
-      setScanResult({ type: 'error', message });
+      setScanResult({ type: 'error', message: err instanceof Error ? err.message : 'Network error' });
     } finally {
       setProcessing(false);
     }
   }, [adminName, fetchAll]);
 
-  // QR scanner lifecycle
   useEffect(() => {
     if (scannerOpen) {
       const scanner = new Html5QrcodeScanner(
@@ -109,14 +104,13 @@ export default function AdminAttendancePage() {
       );
       scanner.render(
         (decoded) => {
-          // Debounce: ignore same scan within 3 seconds
           const now = Date.now();
           if (decoded === lastScanRef.current && now - lastScanTimeRef.current < 3000) return;
           lastScanRef.current = decoded;
           lastScanTimeRef.current = now;
           handleScan(decoded);
         },
-        () => { /* errors silenced */ }
+        () => {}
       );
       scannerRef.current = scanner;
       return () => {
@@ -153,7 +147,6 @@ export default function AdminAttendancePage() {
     }
   };
 
-  // Filtered registrations
   const filtered = registrations.filter(r => {
     if (selectedEventId !== 'all' && r.event_id !== selectedEventId) return false;
     if (searchQuery) {
@@ -172,28 +165,31 @@ export default function AdminAttendancePage() {
   const recentAttendees = registrations.filter(r => r.is_attended).slice(0, 8);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white font-sans">
-      <header className="border-b border-white/10 bg-zinc-900 sticky top-0 z-40">
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+      {/* Header */}
+      <header className="border-b border-gray-200 bg-white sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-[#FFE800] text-black font-extrabold px-2 py-1 text-lg">NIKON</div>
-            <span className="font-bold text-zinc-300 text-sm hidden sm:block">Admin · Absensi & Konfirmasi Kehadiran</span>
+            <div className="bg-[#FFE800] text-black font-extrabold px-2 py-1 text-lg tracking-wide">NIKON</div>
+            <div>
+              <p className="font-bold text-gray-900 text-sm">Absensi & Konfirmasi Kehadiran</p>
+              <p className="text-xs text-gray-400 hidden sm:block">Admin Panel</p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/admin/events" className="text-xs text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg">← Validasi Pembayaran</Link>
-            <Link href="/dashboard" className="text-xs text-zinc-400 hover:text-white">Dashboard</Link>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/events" className="text-xs text-gray-600 border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg font-medium transition-all">← Validasi Pembayaran</Link>
+            <Link href="/dashboard" className="text-xs text-gray-500 hover:text-gray-900 ml-1 transition-colors">Dashboard</Link>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-6 flex gap-3">
-          <span className="text-2xl">📷</span>
+        {/* Info Banner */}
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-6 flex gap-3">
+          <span className="text-xl">📷</span>
           <div className="flex-1">
-            <p className="font-semibold text-purple-300 text-sm">Absensi via Scan QR Code</p>
-            <p className="text-zinc-400 text-xs mt-0.5">
-              Scan QR pada tiket peserta untuk konfirmasi kehadiran. Sistem otomatis kirim notifikasi WhatsApp.
-            </p>
+            <p className="font-semibold text-purple-800 text-sm">Absensi via Scan QR Code</p>
+            <p className="text-purple-600 text-xs mt-0.5">Scan QR pada tiket peserta untuk konfirmasi kehadiran. Sistem otomatis kirim notifikasi WhatsApp.</p>
           </div>
         </div>
 
@@ -202,62 +198,62 @@ export default function AdminAttendancePage() {
           <select
             value={selectedEventId}
             onChange={e => setSelectedEventId(e.target.value)}
-            className="bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FFE800]"
+            className="bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] shadow-sm"
           >
             <option value="all">Semua Event</option>
             {events.map(ev => <option key={ev.id} value={ev.id}>{ev.event_title} — {ev.event_date}</option>)}
           </select>
           <input
             type="text"
-            placeholder="Cari nama/nomor WA..."
+            placeholder="Cari nama / nomor WA..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800]"
+            className="bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] shadow-sm"
           />
           <input
             type="text"
             placeholder="Nama admin yang scan..."
             value={adminName}
             onChange={e => setAdminName(e.target.value)}
-            className="bg-zinc-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800]"
+            className="bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] shadow-sm"
           />
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-zinc-900 border border-white/5 rounded-xl p-4">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider">Total Terdaftar</p>
-            <p className="text-3xl font-bold mt-1 text-white">{stats.total}</p>
+          <div className="bg-white border border-gray-200 border-l-4 border-l-gray-400 rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Total Terdaftar</p>
+            <p className="text-3xl font-bold mt-1 text-gray-900">{stats.total}</p>
           </div>
-          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider">Sudah Hadir</p>
-            <p className="text-3xl font-bold mt-1 text-green-400">{stats.attended}</p>
-            {stats.total > 0 && <p className="text-[10px] text-green-500 mt-1">{Math.round((stats.attended / stats.total) * 100)}% kehadiran</p>}
+          <div className="bg-white border border-gray-200 border-l-4 border-l-green-400 rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Sudah Hadir</p>
+            <p className="text-3xl font-bold mt-1 text-green-600">{stats.attended}</p>
+            {stats.total > 0 && <p className="text-[11px] text-green-500 mt-1 font-medium">{Math.round((stats.attended / stats.total) * 100)}% kehadiran</p>}
           </div>
-          <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider">Belum Hadir</p>
-            <p className="text-3xl font-bold mt-1 text-orange-400">{stats.pending}</p>
+          <div className="bg-white border border-gray-200 border-l-4 border-l-orange-400 rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Belum Hadir</p>
+            <p className="text-3xl font-bold mt-1 text-orange-600">{stats.pending}</p>
           </div>
         </div>
 
-        {/* Scanner Action */}
+        {/* Scanner Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="md:col-span-2 bg-linear-to-br from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-xl p-6">
-            <h3 className="font-bold text-lg mb-2 text-white">📷 Scanner QR Code</h3>
-            <p className="text-zinc-400 text-xs mb-4">Buka kamera HP/laptop untuk scan QR pada tiket peserta.</p>
+          <div className="md:col-span-2 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <h3 className="font-bold text-lg mb-1 text-gray-900">📷 Scanner QR Code</h3>
+            <p className="text-gray-500 text-xs mb-4">Buka kamera HP/laptop untuk scan QR pada tiket peserta.</p>
             {!scannerOpen ? (
               <button
                 onClick={() => { setScannerOpen(true); setScanResult(null); }}
-                className="w-full bg-[#FFE800] hover:bg-[#FFE800]/90 text-black font-bold py-3 rounded-lg transition-all"
+                className="w-full bg-[#FFE800] hover:bg-yellow-400 text-black font-bold py-3 rounded-lg transition-all shadow-sm"
               >
                 🎥 Mulai Scan QR
               </button>
             ) : (
               <div>
-                <div id="qr-scanner" className="rounded-lg overflow-hidden bg-black"></div>
+                <div id="qr-scanner" className="rounded-lg overflow-hidden border border-gray-200"></div>
                 <button
                   onClick={() => setScannerOpen(false)}
-                  className="mt-3 w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-2 rounded-lg"
+                  className="mt-3 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 rounded-lg border border-gray-200 transition-all"
                 >
                   ✕ Tutup Scanner
                 </button>
@@ -266,18 +262,18 @@ export default function AdminAttendancePage() {
           </div>
 
           {/* Manual Entry */}
-          <div className="bg-zinc-900 border border-white/10 rounded-xl p-6">
-            <h3 className="font-bold text-sm mb-2 text-white">⌨️ Input Manual</h3>
-            <p className="text-zinc-500 text-xs mb-4">Kalau QR tidak bisa di-scan, masukkan ID registrasi atau paste data QR.</p>
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <h3 className="font-bold text-sm mb-1 text-gray-900">⌨️ Input Manual</h3>
+            <p className="text-gray-500 text-xs mb-4">Kalau QR tidak bisa di-scan, masukkan ID registrasi atau paste data QR.</p>
             <form onSubmit={handleManualSubmit}>
               <input
                 type="text"
                 value={manualInput}
                 onChange={e => setManualInput(e.target.value)}
                 placeholder="UUID atau NIKON-EVT|..."
-                className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-[#FFE800] mb-2"
+                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] mb-2"
               />
-              <button type="submit" disabled={processing} className="w-full bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white text-sm font-bold py-2 rounded-lg">
+              <button type="submit" disabled={processing} className="w-full bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white text-sm font-bold py-2 rounded-lg transition-all">
                 {processing ? 'Memproses...' : 'Konfirmasi Manual'}
               </button>
             </form>
@@ -286,38 +282,38 @@ export default function AdminAttendancePage() {
 
         {/* Scan Result Modal */}
         {scanResult && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setScanResult(null)}>
-            <div onClick={e => e.stopPropagation()} className={`max-w-md w-full rounded-2xl p-6 shadow-2xl border-2 ${
-              scanResult.type === 'success' ? 'bg-green-900/40 border-green-500' :
-              scanResult.type === 'already' ? 'bg-yellow-900/40 border-yellow-500' :
-              'bg-red-900/40 border-red-500'
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setScanResult(null)}>
+            <div onClick={e => e.stopPropagation()} className={`max-w-md w-full rounded-2xl p-6 shadow-2xl border-2 bg-white ${
+              scanResult.type === 'success' ? 'border-green-400' :
+              scanResult.type === 'already' ? 'border-yellow-400' :
+              'border-red-400'
             }`}>
               <div className="text-center mb-4">
                 <div className="text-6xl mb-2">
                   {scanResult.type === 'success' ? '✅' : scanResult.type === 'already' ? '⚠️' : '❌'}
                 </div>
-                <h2 className="text-2xl font-bold">
+                <h2 className={`text-2xl font-bold ${scanResult.type === 'success' ? 'text-green-700' : scanResult.type === 'already' ? 'text-yellow-700' : 'text-red-700'}`}>
                   {scanResult.type === 'success' ? 'Berhasil Hadir!' : scanResult.type === 'already' ? 'Sudah Tercatat' : 'Gagal Konfirmasi'}
                 </h2>
               </div>
 
               {scanResult.reg && (
-                <div className="bg-black/30 rounded-lg p-4 mb-4 text-sm space-y-1">
-                  <p className="font-bold text-lg text-white">{scanResult.reg.nama_lengkap}</p>
-                  <p className="text-zinc-300">📅 {scanResult.reg.event_name}</p>
-                  <p className="text-zinc-400 text-xs">📱 {scanResult.reg.nomor_wa}</p>
-                  {scanResult.reg.tipe_kamera && <p className="text-zinc-400 text-xs">📷 {scanResult.reg.tipe_kamera}</p>}
+                <div className={`rounded-lg p-4 mb-4 text-sm space-y-1 border ${scanResult.type === 'success' ? 'bg-green-50 border-green-200' : scanResult.type === 'already' ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'}`}>
+                  <p className="font-bold text-lg text-gray-900">{scanResult.reg.nama_lengkap}</p>
+                  <p className="text-gray-600">📅 {scanResult.reg.event_name}</p>
+                  <p className="text-gray-400 text-xs">📱 {scanResult.reg.nomor_wa}</p>
+                  {scanResult.reg.tipe_kamera && <p className="text-gray-400 text-xs">📷 {scanResult.reg.tipe_kamera}</p>}
                   {scanResult.reg.is_attended && scanResult.reg.attended_at && (
-                    <p className="text-green-400 text-xs mt-2">✓ Hadir: {new Date(scanResult.reg.attended_at).toLocaleString('id-ID')}{scanResult.reg.attended_by ? ` oleh ${scanResult.reg.attended_by}` : ''}</p>
+                    <p className="text-green-600 text-xs mt-2">✓ Hadir: {new Date(scanResult.reg.attended_at).toLocaleString('id-ID')}{scanResult.reg.attended_by ? ` oleh ${scanResult.reg.attended_by}` : ''}</p>
                   )}
                 </div>
               )}
 
-              <p className="text-zinc-300 text-sm mb-4">{scanResult.message}</p>
+              <p className="text-gray-600 text-sm mb-4">{scanResult.message}</p>
 
               <button
                 onClick={() => setScanResult(null)}
-                className="w-full bg-[#FFE800] hover:bg-[#FFE800]/90 text-black font-bold py-3 rounded-lg"
+                className="w-full bg-[#FFE800] hover:bg-yellow-400 text-black font-bold py-3 rounded-lg transition-all shadow-sm"
               >
                 Lanjut Scan
               </button>
@@ -325,16 +321,16 @@ export default function AdminAttendancePage() {
           </div>
         )}
 
-        {/* Recent attendees */}
+        {/* Recent Attendees */}
         {recentAttendees.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3">⏱️ Hadir Terbaru</h3>
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">⏱️ Hadir Terbaru</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               {recentAttendees.map(r => (
-                <div key={r.id} className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
-                  <p className="font-bold text-sm text-white truncate">{r.nama_lengkap}</p>
-                  <p className="text-[11px] text-zinc-400 truncate">{r.event_name}</p>
-                  <p className="text-[10px] text-green-400 mt-1">{r.attended_at && new Date(r.attended_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}{r.attended_by ? ` · ${r.attended_by}` : ''}</p>
+                <div key={r.id} className="bg-white border border-green-200 border-l-4 border-l-green-400 rounded-lg p-3 shadow-sm">
+                  <p className="font-bold text-sm text-gray-900 truncate">{r.nama_lengkap}</p>
+                  <p className="text-[11px] text-gray-500 truncate">{r.event_name}</p>
+                  <p className="text-[10px] text-green-600 mt-1 font-medium">{r.attended_at && new Date(r.attended_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}{r.attended_by ? ` · ${r.attended_by}` : ''}</p>
                 </div>
               ))}
             </div>
@@ -343,53 +339,53 @@ export default function AdminAttendancePage() {
 
         {/* Full list */}
         <div>
-          <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-3">Daftar Peserta Terdaftar ({filtered.length})</h3>
+          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Daftar Peserta Terdaftar ({filtered.length})</h3>
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#FFE800]" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center text-zinc-600 py-12 text-sm">Tidak ada peserta sesuai filter.</div>
+            <div className="text-center text-gray-400 py-12 text-sm bg-white rounded-xl border border-gray-200 shadow-sm">Tidak ada peserta sesuai filter.</div>
           ) : (
-            <div className="bg-zinc-900 border border-white/5 rounded-xl overflow-hidden">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-zinc-800 border-b border-white/10">
+                  <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-zinc-500">Status</th>
-                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-zinc-500">Nama</th>
-                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-zinc-500">Event</th>
-                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-zinc-500">WA</th>
-                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-zinc-500">Hadir</th>
-                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-zinc-500">Aksi</th>
+                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-gray-500">Status</th>
+                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-gray-500">Nama</th>
+                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-gray-500">Event</th>
+                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-gray-500">WA</th>
+                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-gray-500">Waktu Hadir</th>
+                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-gray-500">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-gray-100">
                     {filtered.map(r => (
-                      <tr key={r.id} className="hover:bg-zinc-800/50">
+                      <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3">
                           {r.is_attended ? (
-                            <span className="text-[10px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded font-bold uppercase">✓ Hadir</span>
+                            <span className="text-[10px] bg-green-50 text-green-700 border border-green-300 px-2 py-1 rounded font-bold uppercase">✓ Hadir</span>
                           ) : (
-                            <span className="text-[10px] bg-orange-500/20 text-orange-400 border border-orange-500/30 px-2 py-1 rounded font-bold uppercase">Pending</span>
+                            <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-300 px-2 py-1 rounded font-bold uppercase">Pending</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-bold">{r.nama_lengkap}</td>
-                        <td className="px-4 py-3 text-zinc-400">{r.event_name}</td>
-                        <td className="px-4 py-3 text-zinc-400 text-xs">{r.nomor_wa}</td>
-                        <td className="px-4 py-3 text-xs text-zinc-400">
+                        <td className="px-4 py-3 font-bold text-gray-900">{r.nama_lengkap}</td>
+                        <td className="px-4 py-3 text-gray-500">{r.event_name}</td>
+                        <td className="px-4 py-3 text-gray-400 text-xs">{r.nomor_wa}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">
                           {r.attended_at ? (
                             <>
                               {new Date(r.attended_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                              {r.attended_by && <span className="block text-[10px] text-zinc-500">oleh {r.attended_by}</span>}
+                              {r.attended_by && <span className="block text-[10px] text-gray-400">oleh {r.attended_by}</span>}
                             </>
                           ) : '-'}
                         </td>
                         <td className="px-4 py-3">
                           {r.is_attended ? (
-                            <button onClick={() => handleUndo(r.id)} className="text-xs text-red-400 hover:text-red-300 hover:underline">Batalkan</button>
+                            <button onClick={() => handleUndo(r.id)} className="text-xs text-red-500 hover:text-red-700 hover:underline font-medium">Batalkan</button>
                           ) : (
-                            <button onClick={() => handleScan(r.id)} disabled={processing} className="text-xs bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded">✓ Tandai Hadir</button>
+                            <button onClick={() => handleScan(r.id)} disabled={processing} className="text-xs bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition-all">✓ Tandai Hadir</button>
                           )}
                         </td>
                       </tr>
