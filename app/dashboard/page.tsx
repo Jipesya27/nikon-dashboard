@@ -5430,8 +5430,8 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                     const initials = a.nama.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
                                     return (
                                        <div key={a.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                                          {/* Header strip kuning */}
-                                          <div className="h-16 bg-gradient-to-r from-yellow-400 to-yellow-300 relative">
+                                          {/* Header strip navy */}
+                                          <div className="h-16 bg-gradient-to-r from-slate-700 to-slate-600 relative">
                                              <div className="absolute top-1 right-2 text-xs font-bold px-2 py-0.5 rounded-full shadow"
                                                 style={{ background: isActive ? '#16a34a' : '#dc2626', color: '#fff' }}>
                                                 {isActive ? 'AKTIF' : 'NONAKTIF'}
@@ -5443,7 +5443,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                                       className="w-16 h-16 object-cover rounded-full border-4 border-white shadow-md"
                                                       onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                                 ) : (
-                                                   <div className="w-16 h-16 rounded-full bg-yellow-500 border-4 border-white shadow-md flex items-center justify-center font-bold text-black text-xl">{initials}</div>
+                                                   <div className="w-16 h-16 rounded-full bg-slate-500 border-4 border-white shadow-md flex items-center justify-center font-bold text-white text-xl">{initials}</div>
                                                 )}
                                              </div>
                                           </div>
@@ -5488,7 +5488,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                                                    setSelectedAffiliate(a);
                                                    setAffiliateView('detail');
                                                    await fetchAffiliateDetail(a.id);
-                                                }} className="flex-1 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg text-xs font-bold transition shadow-sm">
+                                                }} className="flex-1 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition shadow-sm">
                                                    Detail
                                                 </button>
                                                 <button onClick={() => { setAffiliateFormData(a); setEditingAffiliateId(a.id); setAffiliateFotoProfilFile(null); setAffiliateFormOpen(true); }}
