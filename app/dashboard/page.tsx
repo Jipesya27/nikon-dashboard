@@ -23,6 +23,15 @@ import EventReport from '@/app/components/EventReport';
 const supabase = createClient(
   typeof window !== 'undefined' ? (window.location.origin + '/api/admin/sb') : (process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder',
+  {
+    auth: {
+      // Matikan auto-refresh & session management bawaan supabase-js
+      // agar tidak mengirim request auth ke proxy custom kita yang tidak support auth endpoint
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  }
 );
 
 /**
@@ -240,6 +249,7 @@ export default function NikonDashboard() {
    const [chatFilter, setChatFilter] = useState<'all' | 'unread' | 'cs' | 'tagged' | 'pinned'>('all');
    const [tagMenuFor, setTagMenuFor] = useState<string | null>(null); // nomor_wa
    const [loading, setLoading] = useState(true);
+   const [dataLoadError, setDataLoadError] = useState<string | null>(null);
    const [activeTab, setActiveTab] = useState('dashboard');
    const [returnTab, setReturnTab] = useState<string | null>(null);
    const [isRefreshing, setIsRefreshing] = useState(false);
@@ -647,10 +657,15 @@ export default function NikonDashboard() {
          }
          query = query.order('created_at', { ascending: options?.ascending ?? false });
          const { data, error } = await query;
-         if (error) console.error(`fetch ${table}:`, error.message);
+         if (error) {
+            console.error(`fetch ${table}:`, error.message, error.code, error.details);
+            // Tandai error agar terlihat di UI
+            setDataLoadError(`[${table}] ${error.message || error.code || 'Unknown error'}`);
+         }
          setter((data || []) as T[]);
       } catch (err) {
          console.error(`fetch ${table}:`, err);
+         setDataLoadError(`[${table}] Network error`);
          setter([]);
       }
    };
@@ -894,6 +909,7 @@ export default function NikonDashboard() {
             }
          } catch { /* network issue — lanjutkan fetch */ }
          setLoading(true);
+         setDataLoadError(null);
          try {
             const promises = [
                fetchConsumers(),
@@ -2751,6 +2767,13 @@ export default function NikonDashboard() {
 
    return (
       <>
+         {/* Banner error jika data gagal dimuat — tampilkan pesan agar bisa diinvestigasi */}
+         {dataLoadError && (
+            <div className="fixed top-0 left-0 right-0 z-[9999] bg-red-600 text-white text-xs px-4 py-2 flex items-center justify-between shadow-lg">
+               <span>⚠️ Gagal memuat data: {dataLoadError}</span>
+               <button onClick={() => setDataLoadError(null)} className="ml-4 font-bold hover:opacity-75">✕</button>
+            </div>
+         )}
          <div className={`h-screen bg-gray-50 flex flex-col relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
 
                <Header
