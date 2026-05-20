@@ -2486,7 +2486,7 @@ export default function NikonDashboard() {
          category: 'Utama',
          tabs: [
             { id: 'dashboard', label: '🎯 Dashboard', count: undefined },
-            { id: 'messages', label: '💬 Pesan', count: messages.length },
+            { id: 'messages', label: '💬 Pesan', count: messagesCount || messages.length },
             { id: 'konsumen', label: '👥 Konsumen', count: consumersList.length },
          ]
       },
