@@ -222,7 +222,7 @@ serve(async (req)=>{
       await supabase.from('riwayat_pesan').update({
         bicara_dengan_cs: false
       }).eq('nomor_wa', nomorPengirim);
-      balasanBot = getMsg('MAIN_MENU', `Hi *{{nama_user}}* {{sapaan_id}},\nSelamat datang di layanan *Nikon Indonesia*.\n\nSilakan ketik *Nomor Menu* berikut sesuai kebutuhan Anda:\n\n*1.* Claim Promo\n*2.* Cek Status Claim\n*3.* Daftar Garansi Nikon\n*4.* Cek Status Garansi\n*5.* Cek Status Service\n*6.* Promo Nikon Terkini\n*7.* Alamat Service Center\n*8.* Daftar Dealer Resmi\n*9.* Hubungi CS\n\n_Balas dengan angka 1-9_`, {
+      balasanBot = getMsg('MAIN_MENU', `Hi *{{nama_user}}* {{sapaan_id}},\nSelamat datang di layanan *Nikon Indonesia*.\n\nSilakan ketik *Nomor Menu* berikut sesuai kebutuhan Anda:\n\n*1.* Claim Promo\n*2.* Cek Status Claim\n*3.* Daftar Garansi Nikon\n*4.* Cek Status Garansi\n*5.* Cek Status Service\n*6.* Promo Nikon Terkini\n*7.* Alamat Service Center\n*8.* Daftar Dealer Resmi\n*9.* Hubungi CS\n\n_Balas dengan angka 1-9_\nKetik *MENU* kapan saja untuk kembali ke menu utama.`, {
         nama_user: user.nama_lengkap || namaProfil,
         sapaan_id: sapaanID
       });
