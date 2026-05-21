@@ -1217,6 +1217,7 @@ export default function NikonDashboard() {
          const json = await res.json();
          if (res.ok && json.karyawan) {
             setCurrentUser(json.karyawan);
+            setLoading(true); // tampilkan spinner segera, cegah flash dashboard kosong sebelum data ter-load
             setIsLoggedIn(true);
             localStorage.setItem('nikon_karyawan', JSON.stringify(json.karyawan));
          } else {
