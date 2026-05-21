@@ -5,7 +5,8 @@ const securityHeaders = [
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'X-XSS-Protection', value: '1; mode=block' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+  // camera=(self) — izinkan kamera untuk halaman sendiri (QR scanner)
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
   {
     key: 'Content-Security-Policy',
     value: [
@@ -13,7 +14,8 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://drive.google.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
-      "connect-src 'self' https://*.supabase.co https://api.fonnte.com https://oauth2.googleapis.com https://www.googleapis.com https://docs.google.com",
+      // wss:// diperlukan untuk Supabase Realtime (WebSocket)
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.fonnte.com https://oauth2.googleapis.com https://www.googleapis.com https://docs.google.com",
       "font-src 'self'",
       "frame-src 'none'",
       "object-src 'none'",
