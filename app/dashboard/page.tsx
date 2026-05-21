@@ -190,19 +190,26 @@ export default function NikonDashboard() {
    const [searchClaim, setSearchClaim] = useState('');
    const [filterStatusWarna, setFilterStatusWarna] = useState<string>('Semua');
    const [filterDuplikat, setFilterDuplikat] = useState(false);
-   const [printedClaimIds, setPrintedClaimIds] = useState<Set<string>>(() => {
+   const [printedClaimDates, setPrintedClaimDates] = useState<Record<string, string[]>>(() => {
       if (typeof window !== 'undefined') {
          try {
-            const saved = localStorage.getItem('printedClaimIds');
-            if (saved) return new Set(JSON.parse(saved));
+            const saved = localStorage.getItem('printedClaimDates');
+            if (saved) return JSON.parse(saved) as Record<string, string[]>;
+            // Migrasi data lama (Set of IDs) → Record dengan tanggal hari ini
+            const old = localStorage.getItem('printedClaimIds');
+            if (old) {
+               const ids: string[] = JSON.parse(old);
+               const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
+               return Object.fromEntries(ids.map(id => [id, [today]]));
+            }
          } catch {}
       }
-      return new Set();
+      return {};
    });
 
    useEffect(() => {
-      localStorage.setItem('printedClaimIds', JSON.stringify([...printedClaimIds]));
-   }, [printedClaimIds]);
+      localStorage.setItem('printedClaimDates', JSON.stringify(printedClaimDates));
+   }, [printedClaimDates]);
 
    const [selectedClaimIds, setSelectedClaimIds] = useState<Set<string>>(new Set());
 
@@ -2599,7 +2606,11 @@ export default function NikonDashboard() {
       a.click();
       document.body.removeChild(a);
       if (c.id_claim) {
-         setPrintedClaimIds(prev => new Set([...prev, c.id_claim!]));
+         const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
+         setPrintedClaimDates(prev => ({
+            ...prev,
+            [c.id_claim!]: [...(prev[c.id_claim!] || []), today],
+         }));
       }
    };
 
@@ -2881,9 +2892,9 @@ export default function NikonDashboard() {
       {
          category: 'Halaman Admin',
          tabs: [
-            { id: 'admin_events', label: '🗂️ Validasi Pembayaran Event (/admin/events)', count: undefined },
-            { id: 'admin_deposit', label: '💰 Pengembalian Deposit Event (/admin/events/deposit)', count: undefined },
-            { id: 'admin_attendance', label: '📋 Absensi Event (/admin/events/attendance)', count: undefined },
+            { id: 'admin_events', label: '🗂️ Validasi Pembayaran Event', count: undefined },
+            { id: 'admin_deposit', label: '💰 Deposit & Refund Event', count: undefined },
+            { id: 'admin_attendance', label: '📋 Absensi Event', count: undefined },
          ]
       }
    ], [messages.length, consumersList.length, promos.length, claims.length, warranties.length, services.length, budgets.length, lendingRecords.length, karyawans.length, botSettings.length, events.length, eventRegistrations.length, dealerSheet?.rows.length, affiliates.length]);
@@ -2893,7 +2904,7 @@ export default function NikonDashboard() {
          ...group,
          tabs: group.tabs.filter(tab => {
             if (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') return true;
-            if (tab.id === 'userrole' || tab.id === 'autocomplete' || tab.id === 'admin_events' || tab.id === 'admin_deposit' || tab.id === 'admin_attendance') return false;
+            if (tab.id === 'userrole' || tab.id === 'autocomplete') return false;
             return (currentUser?.akses_halaman || []).includes(tab.id);
          })
       })).filter(group => group.tabs.length > 0);
@@ -2995,12 +3006,25 @@ export default function NikonDashboard() {
                         <div key={group.category} className="mb-4">
                            <h3 className="px-4 pt-2 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">{group.category}</h3>
                            <div className="space-y-1">
-                              {group.tabs.map(tab => (
-                                 <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between group ${activeTab === tab.id ? 'bg-[#FFE500] text-black shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}>
-                                    <span>{tab.label}</span>
-                                    {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${activeTab === tab.id ? 'bg-black/20' : 'bg-gray-200 text-gray-600'}`}>{tab.count}</span>}
-                                 </button>
-                              ))}
+                              {group.tabs.map(tab => {
+                                 const adminPageUrls: Record<string, string> = {
+                                    admin_events: '/admin/events',
+                                    admin_deposit: '/admin/events/deposit',
+                                    admin_attendance: '/admin/events/attendance',
+                                 };
+                                 const extUrl = adminPageUrls[tab.id];
+                                 return extUrl ? (
+                                    <a key={tab.id} href={extUrl} target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
+                                       <span>{tab.label}</span>
+                                       <svg className="w-3 h-3 text-gray-400 group-hover:text-gray-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                    </a>
+                                 ) : (
+                                    <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }} className={`w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between group ${activeTab === tab.id ? 'bg-[#FFE500] text-black shadow-md' : 'text-gray-700 hover:bg-gray-100'}`}>
+                                       <span>{tab.label}</span>
+                                       {tab.count !== undefined && <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${activeTab === tab.id ? 'bg-black/20' : 'bg-gray-200 text-gray-600'}`}>{tab.count}</span>}
+                                    </button>
+                                 );
+                              })}
                            </div>
                         </div>
                      ))}
@@ -3012,18 +3036,6 @@ export default function NikonDashboard() {
                            Halaman Lain
                         </h3>
                         <div className="space-y-1">
-                           <Link href="/admin/events" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
-                              <span>📅 Admin Events</span>
-                              <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                           </Link>
-                           <Link href="/admin/events/attendance" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
-                              <span>📋 Kehadiran Event</span>
-                              <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                           </Link>
-                           <Link href="/admin/events/deposit" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
-                              <span>💰 Deposit & Refund</span>
-                              <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                           </Link>
                            <Link href="/claim" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
                               <span>🎫 Form Claim (Publik)</span>
                               <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
@@ -3994,6 +4006,7 @@ export default function NikonDashboard() {
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">Nota / Garansi</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">MKT / FA</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">Catatan MKT</th>
+                                    <th className="px-3 py-3 text-center font-bold text-gray-600 w-28">Cetak Label</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">Aksi</th>
                                  </tr>
                               </thead>
@@ -4060,6 +4073,23 @@ export default function NikonDashboard() {
                                        </td>
                                        <td className="px-3 py-2.5 text-[11px] text-gray-600">{c.catatan_mkt || '-'}</td>
                                        <td className="px-3 py-2.5">
+                                          {c.id_claim && (printedClaimDates[c.id_claim]?.length > 0) ? (
+                                             <div className="flex flex-col gap-0.5">
+                                                {printedClaimDates[c.id_claim].map((d, i) => (
+                                                   <span key={i} className="inline-block bg-green-100 text-green-800 text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">✓ {d}</span>
+                                                ))}
+                                                {currentUser?.role === 'Super Admin' && (
+                                                   <button
+                                                      onClick={() => { if (c.id_claim) { const n = { ...printedClaimDates }; delete n[c.id_claim!]; setPrintedClaimDates(n); } }}
+                                                      className="text-[10px] text-red-400 hover:text-red-600 hover:underline text-left mt-0.5"
+                                                   >Reset</button>
+                                                )}
+                                             </div>
+                                          ) : (
+                                             <span className="text-[11px] text-gray-400">—</span>
+                                          )}
+                                       </td>
+                                       <td className="px-3 py-2.5">
                                           <div className="flex flex-col gap-1 min-w-[90px]">
                                              <button
                                                 onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))}
@@ -4067,15 +4097,6 @@ export default function NikonDashboard() {
                                              >
                                                 🏷️ Label
                                              </button>
-                                             {c.id_claim && printedClaimIds.has(c.id_claim) && (
-                                                <button
-                                                   onClick={() => { if (c.id_claim) { const s = new Set(printedClaimIds); s.delete(c.id_claim); setPrintedClaimIds(s); } }}
-                                                   title="Klik untuk batalkan tanda"
-                                                   className="inline-flex items-center gap-1 bg-green-100 text-green-700 border border-green-400 text-[10px] font-extrabold px-1.5 py-0.5 rounded hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-colors w-fit"
-                                                >
-                                                   ✓ Tercetak
-                                                </button>
-                                             )}
                                              <button onClick={() => { const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa); if (consumerObj) { setReturnTab('claims'); setActiveTab('konsumen'); openModal('edit', 'konsumen', consumerObj); } else { alert('Data konsumen tidak ditemukan.'); } }} className="text-orange-600 text-[11px] font-bold hover:underline text-left">📍 Alamat</button>
                                              <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-[11px] font-bold hover:underline text-left">📨 Status</button>
                                              <div className="flex gap-2 pt-0.5 border-t border-gray-100">
@@ -4134,29 +4155,18 @@ export default function NikonDashboard() {
                                     </div>
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end flex-wrap">
-                                    <div className="flex items-center gap-2">
-                                       <button onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="text-blue-600 text-xs font-bold hover:underline">Print Label</button>
-                                       <label className="flex items-center gap-1.5 cursor-pointer">
-                                          <input
-                                             type="checkbox"
-                                             title="Tandai Sudah Print"
-                                             aria-label="Tandai Sudah Print"
-                                             checked={c.id_claim ? printedClaimIds.has(c.id_claim) : false}
-                                             onChange={(e) => {
-                                                if (c.id_claim) {
-                                                   const newSet = new Set(printedClaimIds);
-                                                   if (e.target.checked) {
-                                                      newSet.add(c.id_claim);
-                                                   } else {
-                                                      newSet.delete(c.id_claim);
-                                                   }
-                                                   setPrintedClaimIds(newSet);
-                                                }
-                                             }}
-                                             className="w-4 h-4 cursor-pointer"
-                                          />
-                                          <span className="text-xs text-gray-600">Sudah Print</span>
-                                       </label>
+                                    <div className="flex flex-col gap-1">
+                                       <button onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="text-blue-600 text-xs font-bold hover:underline">🏷️ Print Label</button>
+                                       {c.id_claim && (printedClaimDates[c.id_claim]?.length > 0) && (
+                                          <div className="flex flex-col gap-0.5">
+                                             {printedClaimDates[c.id_claim].map((d, i) => (
+                                                <span key={i} className="text-[10px] bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded">✓ {d}</span>
+                                             ))}
+                                             {currentUser?.role === 'Super Admin' && (
+                                                <button onClick={() => { if (c.id_claim) { const n = { ...printedClaimDates }; delete n[c.id_claim!]; setPrintedClaimDates(n); } }} className="text-[10px] text-red-400 hover:underline text-left">Reset</button>
+                                             )}
+                                          </div>
+                                       )}
                                     </div>
                                     <button onClick={() => {
                                        const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
