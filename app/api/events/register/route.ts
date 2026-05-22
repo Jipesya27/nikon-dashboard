@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const FONNTE_TOKEN = process.env.FONNTE_TOKEN || '';
+const ADMIN_WA_NUMBER = process.env.ADMIN_WA_NUMBER || '';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
@@ -285,6 +286,20 @@ export async function POST(req: Request) {
     // konversi 08... ke 62... untuk Fonnte
     const waTarget = nomor_wa.startsWith('0') ? '62' + nomor_wa.slice(1) : nomor_wa;
     await kirimWA(waTarget, waMsg);
+
+    // Kirim notif WA ke Super Admin (best-effort)
+    if (ADMIN_WA_NUMBER) {
+      const pesanAdmin =
+        `🔔 *Pendaftar Event Baru!*\n\n` +
+        `📋 *Event:* ${event.event_title}\n` +
+        `👤 *Nama:* ${nama_lengkap}\n` +
+        `📱 *WhatsApp:* ${nomor_wa}\n` +
+        `📷 *Kamera:* ${tipe_kamera}\n` +
+        `📍 *Kota:* ${kabupaten_kotamadya}\n` +
+        `⏰ *Waktu Daftar:* ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n\n` +
+        `Status: *Menunggu Validasi* — silakan cek tab Event di dashboard.`;
+      await kirimWA(ADMIN_WA_NUMBER, pesanAdmin);
+    }
 
     return NextResponse.json({ success: true, message: 'Pendaftaran event berhasil dikirim!' });
   } catch (error: unknown) {
