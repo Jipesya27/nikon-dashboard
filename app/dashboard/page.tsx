@@ -212,6 +212,7 @@ export default function NikonDashboard() {
    }, [printedClaimDates]);
 
    const [selectedClaimIds, setSelectedClaimIds] = useState<Set<string>>(new Set());
+   const [resiUploadPreview, setResiUploadPreview] = useState<Array<{ id_claim: string; no_seri: string; nama: string; expedisi: string; nomor_resi: string }> | null>(null);
 
    const getClaimStatusColor = useCallback((c: ClaimPromo) => {
       const mkt = (c.validasi_by_mkt || '').trim().toLowerCase();
@@ -591,6 +592,7 @@ export default function NikonDashboard() {
    const fileInputRef = useRef<HTMLInputElement>(null);
    const messagesEndRef = useRef<HTMLDivElement>(null);
    const chatContainerRef = useRef<HTMLDivElement>(null);
+   const resiCsvInputRef = useRef<HTMLInputElement>(null);
 
    useEffect(() => {
       const el = chatContainerRef.current;
@@ -1345,7 +1347,7 @@ export default function NikonDashboard() {
          return;
       }
       const selected = sortedClaims.filter((c: ClaimPromo) => c.id_claim && selectedClaimIds.has(c.id_claim));
-      const headers = ['No', 'Nama (No. WA)', 'Alamat', 'No. Seri', 'Barang', 'Promo', 'Kodepos', 'No Claim'];
+      const headers = ['id_claim', 'No', 'Nama (No. WA)', 'Alamat', 'No. Seri', 'Barang', 'Promo', 'Kodepos', 'No Claim', 'Nama Expedisi', 'Nomor Resi'];
       const csvRows = [headers.join(',')];
       selected.forEach((c: ClaimPromo, idx: number) => {
          const konsumen = consumersList.find(k => k.nomor_wa === c.nomor_wa);
@@ -1362,6 +1364,7 @@ export default function NikonDashboard() {
          const promo = c.jenis_promosi || getNamaPromo(c.tipe_barang);
          const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
          csvRows.push([
+            esc(c.id_claim || ''),
             String(idx + 1),
             esc(namaWa),
             esc(alamat),
@@ -1370,6 +1373,8 @@ export default function NikonDashboard() {
             esc(promo || ''),
             esc(kodepos),
             String(claimNumberMap.get(c.id_claim!) ?? ''),
+            esc(c.nama_jasa_pengiriman || ''),
+            esc(c.nomor_resi || ''),
          ].join(','));
       });
       const BOM = '﻿';
@@ -1382,6 +1387,88 @@ export default function NikonDashboard() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+   };
+
+   const handleUploadResiCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+         const text = (ev.target?.result as string).replace(/^﻿/, '');
+         const rows = text.split(/\r?\n/).filter(r => r.trim());
+         if (rows.length < 2) { alert('CSV tidak valid atau kosong.'); return; }
+
+         const parseRow = (row: string): string[] => {
+            const result: string[] = [];
+            let inQuote = false, cur = '';
+            for (let i = 0; i < row.length; i++) {
+               const ch = row[i];
+               if (ch === '"') {
+                  if (inQuote && row[i + 1] === '"') { cur += '"'; i++; }
+                  else { inQuote = !inQuote; }
+               } else if (ch === ',' && !inQuote) { result.push(cur); cur = ''; }
+               else { cur += ch; }
+            }
+            result.push(cur);
+            return result;
+         };
+
+         const headerRow = parseRow(rows[0]);
+         const colIdx = (name: string) => headerRow.findIndex(h => h.trim().toLowerCase() === name.toLowerCase());
+         const idIdx = colIdx('id_claim');
+         const namaIdx = colIdx('nama (no. wa)');
+         const seriIdx = colIdx('no. seri');
+         const expedisiIdx = colIdx('nama expedisi');
+         const resiIdx = colIdx('nomor resi');
+
+         if (idIdx === -1 || expedisiIdx === -1 || resiIdx === -1) {
+            alert('Format CSV tidak valid. Pastikan menggunakan file hasil ekspor "Tanda Terima CSV".');
+            return;
+         }
+
+         const preview: Array<{ id_claim: string; no_seri: string; nama: string; expedisi: string; nomor_resi: string }> = [];
+         for (let i = 1; i < rows.length; i++) {
+            const cols = parseRow(rows[i]);
+            const id = cols[idIdx]?.trim();
+            const expedisi = cols[expedisiIdx]?.trim() || '';
+            const resi = cols[resiIdx]?.trim() || '';
+            if (!id || (!expedisi && !resi)) continue;
+            preview.push({
+               id_claim: id,
+               no_seri: cols[seriIdx]?.trim() || '',
+               nama: cols[namaIdx]?.trim() || '',
+               expedisi,
+               nomor_resi: resi,
+            });
+         }
+
+         if (preview.length === 0) {
+            alert('Tidak ada baris dengan Nama Expedisi atau Nomor Resi yang terisi.');
+            return;
+         }
+         setResiUploadPreview(preview);
+      };
+      reader.readAsText(file, 'UTF-8');
+      e.target.value = '';
+   };
+
+   const handleConfirmUploadResi = async () => {
+      if (!resiUploadPreview || resiUploadPreview.length === 0) return;
+      let successCount = 0;
+      let errorCount = 0;
+      for (const row of resiUploadPreview) {
+         const { error } = await sbWrite({
+            action: 'update',
+            table: 'claim_promo',
+            data: { nama_jasa_pengiriman: row.expedisi, nomor_resi: row.nomor_resi },
+            match: { id_claim: row.id_claim },
+         });
+         if (error) errorCount++;
+         else successCount++;
+      }
+      setResiUploadPreview(null);
+      fetchClaims();
+      alert(`Berhasil update ${successCount} claim${errorCount > 0 ? `, ${errorCount} gagal` : ''}.`);
    };
 
    const handlePrintPeminjamanPDF = (l: PeminjamanBarang) => {
@@ -3313,6 +3400,8 @@ export default function NikonDashboard() {
                            <>
                               <button onClick={handleExportCSVClaim} className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📥 Export CSV</button>
                               <button onClick={handleTandaTerimaCSV} className="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📋 Tanda Terima CSV</button>
+                              <button onClick={() => resiCsvInputRef.current?.click()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">⬆️ Upload Resi</button>
+                              <input ref={resiCsvInputRef} type="file" accept=".csv" className="hidden" onChange={handleUploadResiCSV} />
                               <button onClick={() => openModal('create', 'claim')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Claim</button>
                               </>
                         )}
@@ -6016,6 +6105,49 @@ ${pages.join('')}
                </main>
             </div>
          </div>
+
+         {/* MODAL UPLOAD RESI CSV */}
+         {resiUploadPreview && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setResiUploadPreview(null)}>
+               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                  <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                     <div>
+                        <h2 className="text-lg font-bold text-gray-900">Preview Upload Resi</h2>
+                        <p className="text-sm text-gray-500 mt-0.5">{resiUploadPreview.length} data akan diupdate</p>
+                     </div>
+                     <button onClick={() => setResiUploadPreview(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+                  </div>
+                  <div className="overflow-auto flex-1 px-6 py-4">
+                     <table className="w-full text-xs border-collapse">
+                        <thead>
+                           <tr className="bg-gray-50 text-gray-600 font-bold">
+                              <th className="px-3 py-2 text-left border border-gray-200">#</th>
+                              <th className="px-3 py-2 text-left border border-gray-200">No. Seri</th>
+                              <th className="px-3 py-2 text-left border border-gray-200">Nama</th>
+                              <th className="px-3 py-2 text-left border border-gray-200">Nama Expedisi</th>
+                              <th className="px-3 py-2 text-left border border-gray-200">Nomor Resi</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                           {resiUploadPreview.map((row, i) => (
+                              <tr key={row.id_claim} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                 <td className="px-3 py-2 border border-gray-200 text-gray-500">{i + 1}</td>
+                                 <td className="px-3 py-2 border border-gray-200 font-mono">{row.no_seri || '-'}</td>
+                                 <td className="px-3 py-2 border border-gray-200">{row.nama || '-'}</td>
+                                 <td className="px-3 py-2 border border-gray-200 font-semibold text-indigo-700">{row.expedisi || <span className="text-gray-400 italic">—</span>}</td>
+                                 <td className="px-3 py-2 border border-gray-200 font-mono text-green-700">{row.nomor_resi || <span className="text-gray-400 italic">—</span>}</td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </div>
+                  <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+                     <button onClick={() => setResiUploadPreview(null)} className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-bold text-sm hover:bg-gray-50 transition">Batal</button>
+                     <button onClick={handleConfirmUploadResi} className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition shadow-sm">✅ Konfirmasi Update</button>
+                  </div>
+               </div>
+            </div>
+         )}
 
          {/* MODALS */}
          {isModalOpen && (() => {
