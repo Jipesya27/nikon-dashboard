@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import Link from 'next/link';
 import { DEFAULT_NIKON_CONFIG, NikonPageConfig } from '@/app/lib/homepageTypes';
 
@@ -134,10 +134,6 @@ function Navbar() {
             <a href="#" className="text-sm font-semibold text-zinc-300 hover:text-[#ffe000] transition-colors uppercase tracking-wider">Produk</a>
             <a href="#services" className="text-sm font-semibold text-zinc-300 hover:text-[#ffe000] transition-colors uppercase tracking-wider">Layanan & Klaim</a>
             <a href="#events" className="text-sm font-semibold text-zinc-300 hover:text-[#ffe000] transition-colors uppercase tracking-wider">Nikon School</a>
-            <a href={WA_LINK}
-              className="hidden sm:flex items-center gap-2 bg-[#25D366]/90 hover:bg-[#25D366] text-white text-sm font-semibold px-4 py-2 rounded-full transition-all">
-              <IconWA /><span>WhatsApp</span>
-            </a>
           </div>
 
           <div className="md:hidden flex items-center">
@@ -154,11 +150,6 @@ function Navbar() {
             <a href="#" className="block px-3 py-4 text-base font-medium text-zinc-300 hover:text-[#ffe000] border-b border-zinc-900">Produk</a>
             <a href="#services" className="block px-3 py-4 text-base font-medium text-zinc-300 hover:text-[#ffe000] border-b border-zinc-900">Layanan & Klaim</a>
             <a href="#events" className="block px-3 py-4 text-base font-medium text-zinc-300 hover:text-[#ffe000] border-b border-zinc-900">Nikon School</a>
-            <div className="px-3 py-4">
-              <a href={WA_LINK} className="flex items-center justify-center gap-2 w-full bg-[#25D366] text-white px-6 py-3 font-bold uppercase tracking-wider text-sm">
-                <IconWA /> Chat WhatsApp
-              </a>
-            </div>
           </div>
         </div>
       )}
@@ -197,7 +188,7 @@ function HeroSection() {
             {cfg.hero_subtitle || 'Jelajahi batas baru fotografi dan videografi. Daftarkan garansi produk Anda lebih mudah dengan teknologi pemindai AI dari Nikon Indonesia.'}
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
-            <a href={WA_CLAIM}
+            <a href="/claim"
               className="bg-[#ffe000] text-black px-8 py-4 font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 group">
               Claim Promo <span className="group-hover:translate-x-1 transition-transform"><IconChevronRight /></span>
             </a>
@@ -236,9 +227,9 @@ function ServicesSection() {
       icon: <IconCheckCircle />,
       bg: null,
       title: 'Lacak Status Klaim',
-      desc: 'Pantau seluruh riwayat klaim garansi atau servis Anda. Sistem kami akan mengirimkan notifikasi otomatis ke WhatsApp Anda saat status berubah.',
-      cta: 'Cek Status via WA',
-      href: WA_SERVICE,
+      desc: 'Pantau seluruh riwayat klaim garansi atau servis Anda. Sistem kami akan mengirimkan notifikasi otomatis saat status berubah.',
+      cta: 'Cek Status Claim',
+      href: '/claim',
     },
   ];
 
@@ -449,11 +440,14 @@ function WACTASection() {
             </div>
           ))}
         </div>
-        <a href={WA_LINK}
-          className="inline-flex items-center gap-3 font-bold px-10 py-5 text-lg transition-all hover:bg-[#20bb58] text-white bg-[#25D366]"
-          style={{ boxShadow: '0 8px 32px rgba(37,211,102,0.3)' }}>
-          <IconWA /> Mulai Chat WhatsApp
-        </a>
+        <button
+          onClick={() => {
+            const btn = document.querySelector<HTMLButtonElement>('button[aria-label="Chat layanan Nikon"]');
+            btn?.click();
+          }}
+          className="inline-flex items-center gap-3 font-bold px-10 py-5 text-lg transition-all hover:bg-yellow-400 text-black bg-[#ffe000]">
+          Mulai Chat di Website
+        </button>
         <p className="text-zinc-600 text-xs mt-4">CS tersedia Senin–Jumat 10.00–16.00 · Sabtu 10.00–12.00 WIB</p>
       </div>
     </section>
@@ -474,17 +468,13 @@ function Footer() {
             <p className="text-zinc-500 text-sm max-w-sm mb-6 leading-relaxed">
               Mendukung para kreator, fotografer, dan videografer profesional dengan teknologi optik revolusioner. Distributor resmi Nikon Indonesia.
             </p>
-            <a href={WA_LINK}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[#25D366] hover:text-green-300 transition-colors">
-              <IconWA /> Chat WhatsApp
-            </a>
           </div>
           <div>
             <h4 className="text-white font-bold uppercase tracking-wider mb-4 text-sm">Layanan</h4>
             <ul className="space-y-2 text-sm text-zinc-500">
-              <li><a href={WA_GARANSI} className="hover:text-[#ffe000] transition-colors">Registrasi Garansi</a></li>
-              <li><a href={WA_CLAIM} className="hover:text-[#ffe000] transition-colors">Klaim Promo</a></li>
-              <li><a href={WA_SERVICE} className="hover:text-[#ffe000] transition-colors">Cek Status Servis</a></li>
+              <li><a href="/garansi" className="hover:text-[#ffe000] transition-colors">Registrasi Garansi</a></li>
+              <li><a href="/claim" className="hover:text-[#ffe000] transition-colors">Klaim Promo</a></li>
+              <li><a href="/claim" className="hover:text-[#ffe000] transition-colors">Cek Status Servis</a></li>
               <li><a href="/events/register" className="hover:text-[#ffe000] transition-colors">Jadwal Event</a></li>
             </ul>
           </div>
@@ -504,6 +494,222 @@ function Footer() {
         </div>
       </div>
     </footer>
+  );
+}
+
+// ── Web Chat Widget ───────────────────────────────────────────────────────────
+interface ChatMsg { role: 'user' | 'bot'; text: string; ts: number }
+
+function formatBotText(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  return lines.map((line, i) => {
+    const parts = line.split(/(\*[^*]+\*|https?:\/\/[^\s]+)/g);
+    const rendered = parts.map((part, j) => {
+      if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+        return <strong key={j}>{part.slice(1, -1)}</strong>;
+      }
+      if (part.startsWith('http')) {
+        return (
+          <a key={j} href={part} target="_blank" rel="noopener noreferrer"
+            className="text-[#ffe000] underline break-all">
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+    return <span key={i}>{rendered}{i < lines.length - 1 && <br />}</span>;
+  });
+}
+
+function WebChatWidget() {
+  const { WA_LINK } = useSite();
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState('');
+  const [typing, setTyping] = useState(false);
+  const [sessionId, setSessionId] = useState('');
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const welcomeSent = useRef(false);
+
+  useEffect(() => {
+    let sid = sessionStorage.getItem('nikon_chat_sid');
+    if (!sid) {
+      sid = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      sessionStorage.setItem('nikon_chat_sid', sid);
+    }
+    setSessionId(sid);
+    const saved = sessionStorage.getItem('nikon_chat_msgs');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.length > 0) { setMessages(parsed); welcomeSent.current = true; }
+      } catch { /* ignore */ }
+    }
+  }, []);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      sessionStorage.setItem('nikon_chat_msgs', JSON.stringify(messages.slice(-60)));
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (open && sessionId && !welcomeSent.current) {
+      welcomeSent.current = true;
+      doSend('MENU', false);
+    }
+    if (open) setTimeout(() => inputRef.current?.focus(), 150);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, sessionId]);
+
+  async function doSend(text: string, showUser: boolean) {
+    if (showUser) setMessages(prev => [...prev, { role: 'user', text, ts: Date.now() }]);
+    setTyping(true);
+    try {
+      const res = await fetch('/api/chat-web', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, session_id: sessionId }),
+      });
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: 'bot', text: data.reply || 'Ketik MENU untuk memulai.', ts: Date.now() }]);
+    } catch {
+      setMessages(prev => [...prev, { role: 'bot', text: 'Koneksi bermasalah. Silakan coba lagi atau gunakan WhatsApp.', ts: Date.now() }]);
+    } finally {
+      setTyping(false);
+    }
+  }
+
+  function send(text: string) {
+    const t = text.trim();
+    if (!t || typing || !sessionId) return;
+    setInput('');
+    doSend(t, true);
+  }
+
+  const quickReplies = [
+    { label: '🏠 Menu', value: 'MENU' },
+    { label: 'Claim Promo', value: '1' },
+    { label: 'Cek Claim', value: '2' },
+    { label: 'Daftar Garansi', value: '3' },
+    { label: 'Cek Garansi', value: '4' },
+  ];
+
+  return (
+    <>
+      {open && (
+        <div
+          className="fixed bottom-24 right-4 sm:right-6 z-[60] w-[calc(100vw-2rem)] max-w-[22rem] bg-zinc-950 border border-zinc-800 shadow-2xl flex flex-col overflow-hidden"
+          style={{ height: '32rem' }}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-800 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-[#ffe000] flex items-center justify-center shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+              <div>
+                <div className="text-white text-sm font-bold leading-none">Nikon CS</div>
+                <div className="text-zinc-400 text-xs flex items-center gap-1 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"/> Bot Online
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setOpen(false)} className="text-zinc-500 hover:text-white transition-colors p-1">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-0"
+            style={{ scrollbarWidth: 'thin', scrollbarColor: '#3f3f46 transparent' }}>
+            {messages.length === 0 && !typing && (
+              <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                <div className="w-12 h-12 bg-[#ffe000] flex items-center justify-center mb-3">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                </div>
+                <p className="text-white text-sm font-semibold mb-1">Halo! Ada yang bisa kami bantu?</p>
+                <p className="text-zinc-500 text-xs">Ketik pesan atau pilih menu di bawah</p>
+              </div>
+            )}
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] px-3 py-2 text-sm leading-relaxed ${
+                  msg.role === 'user'
+                    ? 'bg-[#ffe000] text-black font-medium rounded-tl-2xl rounded-tr-sm rounded-bl-2xl rounded-br-2xl'
+                    : 'bg-zinc-800 text-zinc-100 rounded-tl-sm rounded-tr-2xl rounded-bl-2xl rounded-br-2xl'
+                }`}>
+                  {msg.role === 'bot' ? formatBotText(msg.text) : msg.text}
+                </div>
+              </div>
+            ))}
+            {typing && (
+              <div className="flex justify-start">
+                <div className="bg-zinc-800 px-4 py-3 rounded-tl-sm rounded-tr-2xl rounded-bl-2xl rounded-br-2xl">
+                  <div className="flex gap-1 items-center">
+                    <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}/>
+                    <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}/>
+                    <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}/>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef}/>
+          </div>
+
+          {/* Quick reply chips */}
+          <div className="px-3 py-2 border-t border-zinc-800/50 flex gap-1.5 overflow-x-auto shrink-0"
+            style={{ scrollbarWidth: 'none' }}>
+            {quickReplies.map(q => (
+              <button key={q.value} onClick={() => send(q.value)} disabled={typing}
+                className="flex-shrink-0 text-xs px-2.5 py-1 border border-zinc-700 text-zinc-400 hover:border-[#ffe000] hover:text-[#ffe000] disabled:opacity-40 transition-colors whitespace-nowrap">
+                {q.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Input */}
+          <form onSubmit={e => { e.preventDefault(); send(input); }}
+            className="px-3 py-3 border-t border-zinc-800 flex gap-2 shrink-0">
+            <input ref={inputRef} type="text" value={input} onChange={e => setInput(e.target.value)}
+              placeholder="Ketik pesan atau nomor menu..."
+              className="flex-1 bg-zinc-900 border border-zinc-700 text-white text-sm px-3 py-2 outline-none focus:border-[#ffe000] placeholder-zinc-600 min-w-0"
+              disabled={typing}/>
+            <button type="submit" disabled={typing || !input.trim()}
+              className="px-3 py-2 bg-[#ffe000] text-black disabled:opacity-40 hover:bg-yellow-400 transition-colors shrink-0">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="m22 2-7 20-4-9-9-4 20-7z"/><path d="M22 2 11 13"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Floating toggle button */}
+      <button onClick={() => setOpen(v => !v)}
+        className="fixed bottom-6 right-4 sm:right-6 z-[60] w-14 h-14 bg-[#ffe000] text-black flex items-center justify-center shadow-lg hover:bg-yellow-400 transition-all hover:scale-105 active:scale-95"
+        aria-label="Chat layanan Nikon">
+        {open ? (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        ) : (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        )}
+      </button>
+    </>
   );
 }
 
@@ -532,7 +738,7 @@ export default function NikonPage() {
           <WACTASection />
         </main>
         <Footer />
-
+        <WebChatWidget />
       </div>
     </SiteContext.Provider>
   );
