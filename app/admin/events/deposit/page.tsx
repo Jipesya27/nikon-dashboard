@@ -129,6 +129,56 @@ export default function AdminDepositPage() {
     showToast(`${label} disalin: ${text}`);
   };
 
+  const handleExportCSV = () => {
+    if (filtered.length === 0) { showToast('Tidak ada data untuk diekspor.', 'error'); return; }
+    const esc = (s: string | null | undefined) => `"${(s ?? '').replace(/"/g, '""')}"`;
+    const fmtDate = (iso: string | null | undefined) => {
+      if (!iso) return '';
+      return new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+    const statusLabel = (r: typeof filtered[0]) => {
+      if (r.status_pengembalian_deposit === 'Processed') return 'Sudah Dikembalikan';
+      if (r.status_pengembalian_deposit === 'requested') return 'Menunggu Transfer';
+      return 'Belum Isi Rekening';
+    };
+    const headers = [
+      'No', 'Nama Lengkap', 'Nomor WA', 'Kota', 'Nama Event', 'Tanggal Event',
+      'Jumlah Deposit', 'Status Pengembalian', 'Nama Bank', 'No Rekening',
+      'Nama Pemilik Rekening', 'Tgl Daftar', 'Tgl Isi Rekening', 'Status Pendaftaran',
+      'Link Bukti Bayar Deposit',
+    ];
+    const rows = filtered.map((r, i) => [
+      String(i + 1),
+      esc(r.nama_lengkap),
+      esc(r.nomor_wa),
+      esc(r.kabupaten_kotamadya),
+      esc(r.event?.event_title || r.event_name),
+      esc(r.event?.event_date || ''),
+      esc(r.event?.deposit_amount || ''),
+      esc(statusLabel(r)),
+      esc(r.nama_bank),
+      esc(r.no_rekening),
+      esc(r.nama_pemilik_rekening),
+      esc(fmtDate(r.created_at)),
+      esc(fmtDate(r.refund_requested_at)),
+      esc(r.status_pendaftaran),
+      esc(r.bukti_transfer_url),
+    ].join(','));
+    const BOM = '﻿';
+    const csv = BOM + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const tgl = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `deposit_event_${tgl}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`${filtered.length} data berhasil diekspor ke CSV.`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
       {/* Toast */}
@@ -196,6 +246,13 @@ export default function AdminDepositPage() {
           </button>
           <button onClick={() => setFilterStatus('all')} className="bg-white hover:bg-gray-50 text-gray-700 text-sm px-4 py-2 rounded-lg border border-gray-300 shadow-sm font-medium transition-all">
             Reset Filter
+          </button>
+          <button
+            onClick={handleExportCSV}
+            disabled={filtered.length === 0}
+            className="bg-[#FFE800] hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-black text-sm px-4 py-2 rounded-lg border border-yellow-300 shadow-sm font-bold transition-all flex items-center gap-1.5"
+          >
+            ⬇️ Export CSV <span className="text-xs font-normal opacity-70">({filtered.length})</span>
           </button>
         </div>
 
