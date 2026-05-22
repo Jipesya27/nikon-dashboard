@@ -4889,7 +4889,7 @@ export default function NikonDashboard() {
                                     return (
                                     <tr key={evt.id} className={`border-l-4 ${closed ? 'border-l-red-400' : 'border-l-green-500'} hover:bg-gray-50 transition-colors`}>
                                        <td className="px-3 py-2.5 text-center font-bold text-gray-500 text-xs">{eventNumberMap.get(evt.id!)}</td>
-                                       <td className="px-3 py-2.5 text-center"><Image src={evt.image} alt="poster" width={40} height={56} className="w-10 h-14 object-cover rounded shadow-sm" /></td>
+                                       <td className="px-3 py-2.5 text-center"><Image src={toDriveProxy(evt.image)} alt="poster" width={40} height={56} className="w-10 h-14 object-cover rounded shadow-sm" /></td>
                                        <td className="px-3 py-2.5 font-bold text-slate-800">{evt.title}</td>
                                        <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{evt.date}</td>
                                        <td className="px-3 py-2.5 text-xs text-gray-600">{evt.detail_acara || '-'}</td>
@@ -4919,7 +4919,7 @@ export default function NikonDashboard() {
                               <div key={evt.id} className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] hover:shadow-md transition overflow-hidden">
                                  {/* Full-width poster image */}
                                  <div className="relative w-full h-52 bg-gray-100 shrink-0">
-                                    <Image src={evt.image} alt="poster" fill sizes="(max-width:768px)100vw,33vw" className="object-cover" />
+                                    <Image src={toDriveProxy(evt.image)} alt="poster" fill sizes="(max-width:768px)100vw,33vw" className="object-cover" />
                                     <span className="absolute top-2 left-2 font-bold text-sm text-gray-700 bg-white/90 rounded-full w-7 h-7 flex items-center justify-center shadow-sm">{eventNumberMap.get(evt.id!)}</span>
                                     <span className={`absolute top-2 right-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded ${evt.status === 'close' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.status === 'close' ? 'Tutup' : 'Aktif'}</span>
                                  </div>
@@ -7780,7 +7780,7 @@ ${pages.join('')}
                                        <label className="label-form">Poster Event {getVal('event_image', 'image') ? '(Upload ulang akan mengganti)' : ''}</label>
                                        {getVal('event_image', 'image') && !eventImageFile && (
                                           // eslint-disable-next-line @next/next/no-img-element
-                                          <img src={getVal('event_image', 'image')} alt="Poster saat ini" className="w-32 h-44 object-cover rounded-lg border border-gray-200 mb-2" />
+                                          <img src={toDriveProxy(getVal('event_image', 'image'))} alt="Poster saat ini" className="w-32 h-44 object-cover rounded-lg border border-gray-200 mb-2" />
                                        )}
                                        <input
                                           type="file"
