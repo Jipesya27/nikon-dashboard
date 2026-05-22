@@ -211,6 +211,19 @@ export default function NikonDashboard() {
       localStorage.setItem('printedClaimDates', JSON.stringify(printedClaimDates));
    }, [printedClaimDates]);
 
+   const [sentStatusClaimIds, setSentStatusClaimIds] = useState<Set<string>>(() => {
+      if (typeof window !== 'undefined') {
+         try {
+            const saved = localStorage.getItem('sentStatusClaimIds');
+            if (saved) return new Set<string>(JSON.parse(saved));
+         } catch {}
+      }
+      return new Set<string>();
+   });
+   useEffect(() => {
+      localStorage.setItem('sentStatusClaimIds', JSON.stringify([...sentStatusClaimIds]));
+   }, [sentStatusClaimIds]);
+
    const [selectedClaimIds, setSelectedClaimIds] = useState<Set<string>>(new Set());
    const [resiUploadPreview, setResiUploadPreview] = useState<Array<{ id_claim: string; no_seri: string; nama: string; expedisi: string; nomor_resi: string }> | null>(null);
 
@@ -221,15 +234,18 @@ export default function NikonDashboard() {
       if (mkt === 'double input') return 'Merah';
       if (mkt === 'tidak valid') return 'Merah';
       if (isPending(mkt)) return 'Putih';
-      if (c.nomor_resi && c.nomor_resi.trim() !== '' && c.nomor_resi.trim().toUpperCase() !== 'BELUM_DIISI') return 'Hijau';
+      const hasResi = !!(c.nomor_resi && c.nomor_resi.trim() !== '' && c.nomor_resi.trim().toUpperCase() !== 'BELUM_DIISI');
+      if (hasResi && c.id_claim && sentStatusClaimIds.has(c.id_claim)) return 'Teal';
+      if (hasResi) return 'Hijau';
       if (mkt === 'valid' && fa === 'valid') return 'Pink';
       if (mkt === 'valid' && isPending(fa)) return 'Biru';
       if (mkt === 'hold' && fa !== 'valid') return 'Orange';
       return 'Putih';
-   }, []);
+   }, [sentStatusClaimIds]);
 
    const getBadgeStyle = (color: string) => {
       switch(color) {
+         case 'Teal': return 'bg-teal-100 text-teal-800 border border-teal-300';
          case 'Hijau': return 'bg-green-100 text-green-800 border border-green-200';
          case 'Pink': return 'bg-pink-100 text-pink-800 border border-pink-200';
          case 'Biru': return 'bg-blue-100 text-blue-800 border border-blue-200';
@@ -241,6 +257,7 @@ export default function NikonDashboard() {
 
    const getBadgeLabel = (color: string) => {
       switch(color) {
+         case 'Teal': return '✅ Resi Terkirim';
          case 'Hijau': return 'Selesai';
          case 'Pink': return 'Tunggu Resi';
          case 'Biru': return 'Tunggu FA Cek';
@@ -2432,6 +2449,10 @@ export default function NikonDashboard() {
       const msg = getText('statusClaim', { nomor_seri: c.nomor_seri, tipe_barang: c.tipe_barang, status_mkt: c.validasi_by_mkt, status_fa: c.validasi_by_fa, jasa_kirim: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '', catatan_mkt: c.catatan_mkt || '' });
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
       await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false, created_at: new Date().toISOString() } });
+      // Tandai "Resi Terkirim" HANYA jika status sekarang adalah Selesai (Hijau)
+      if (c.id_claim && getClaimStatusColor(c) === 'Hijau') {
+         setSentStatusClaimIds(prev => new Set([...prev, c.id_claim!]));
+      }
       alert('Pesan status berhasil dikirim!');
       fetchMessages();
    };
@@ -2772,13 +2793,13 @@ export default function NikonDashboard() {
    }, [filteredPromos, sortConfigPromos, consumers, getSortFunction]);
    
    const claimStatusCounts = useMemo(() => {
-      const counts: Record<string, number> = { Putih: 0, Merah: 0, Orange: 0, Biru: 0, Pink: 0, Hijau: 0 };
+      const counts: Record<string, number> = { Putih: 0, Merah: 0, Orange: 0, Biru: 0, Pink: 0, Hijau: 0, Teal: 0 };
       claims.forEach(c => {
          const color = getClaimStatusColor(c);
          if (counts[color] !== undefined) counts[color]++;
       });
       return counts;
-   }, [claims]);
+   }, [claims, getClaimStatusColor]);
 
    const duplicateClaimIds = useMemo(() => {
       const duplicatesToMark = new Set<string>();
@@ -4028,6 +4049,7 @@ export default function NikonDashboard() {
                            <option value="Biru">Tunggu FA Cek (Biru)</option>
                            <option value="Pink">Tunggu Resi (Pink)</option>
                            <option value="Hijau">Selesai (Hijau)</option>
+                           <option value="Teal">Resi Terkirim (Teal)</option>
                         </select>
                         <button
                            onClick={() => setFilterDuplikat(v => !v)}
@@ -4046,6 +4068,7 @@ export default function NikonDashboard() {
                            { key: 'Biru', label: 'Tunggu FA', count: claimStatusCounts.Biru, color: 'text-blue-700', bar: 'bg-blue-500', ring: 'ring-blue-400' },
                            { key: 'Pink', label: 'Tunggu Resi', count: claimStatusCounts.Pink, color: 'text-pink-700', bar: 'bg-pink-400', ring: 'ring-pink-400' },
                            { key: 'Hijau', label: 'Selesai', count: claimStatusCounts.Hijau, color: 'text-green-700', bar: 'bg-green-500', ring: 'ring-green-400' },
+                           { key: 'Teal', label: 'Resi Terkirim', count: claimStatusCounts.Teal, color: 'text-teal-700', bar: 'bg-teal-500', ring: 'ring-teal-400' },
                         ] as { key: string; label: string; count: number; color: string; bar: string; ring: string }[]).map(s => (
                            <button
                               key={s.key}
@@ -4111,6 +4134,7 @@ export default function NikonDashboard() {
                                        Biru: 'border-l-blue-500',
                                        Pink: 'border-l-pink-400',
                                        Hijau: 'border-l-green-500',
+                                       Teal: 'border-l-teal-500',
                                     };
                                     return (
                                     <tr key={c.id_claim} className={`border-l-4 ${borderColorMap[statusColor] || 'border-l-gray-200'} hover:bg-gray-50 transition-colors ${isDuplicate ? 'bg-red-50' : ''} ${isSelected ? '!bg-yellow-50' : ''}`}>
