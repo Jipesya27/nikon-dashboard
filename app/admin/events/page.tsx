@@ -296,24 +296,35 @@ export default function AdminEventsPage() {
 
       {/* Preview Modal */}
       {previewUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setPreviewUrl(null)}>
-          <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline font-medium">↗ Buka di tab baru</a>
-              <button onClick={() => setPreviewUrl(null)} className="text-gray-400 hover:text-gray-700 text-sm font-bold">✕ Tutup</button>
-            </div>
-            <div className="p-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={previewUrl}
-                alt="Bukti Transfer"
-                className="w-full rounded-lg border border-gray-200"
-                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex'; }}
-              />
-              <div style={{ display: 'none' }} className="flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-10 text-center">
-                <span className="text-4xl">📄</span>
-                <p className="text-gray-500 text-sm">File tidak bisa di-preview (mungkin PDF).</p>
-                <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium">Buka File ↗</a>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setPreviewUrl(null)}>
+          {/* Tombol close floating — selalu terlihat */}
+          <button
+            onClick={() => setPreviewUrl(null)}
+            aria-label="Tutup preview"
+            className="fixed top-4 right-4 z-[60] w-11 h-11 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all border border-gray-200"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="flex items-center justify-center min-h-full p-4 pt-16" onClick={e => e.stopPropagation()}>
+            <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline font-medium">↗ Buka di tab baru</a>
+              </div>
+              <div className="p-4 overflow-y-auto max-h-[80vh]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewUrl}
+                  alt="Bukti Transfer"
+                  className="w-full rounded-lg border border-gray-200"
+                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex'; }}
+                />
+                <div style={{ display: 'none' }} className="flex-col items-center justify-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-10 text-center">
+                  <span className="text-4xl">📄</span>
+                  <p className="text-gray-500 text-sm">File tidak bisa di-preview (mungkin PDF).</p>
+                  <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium">Buka File ↗</a>
+                </div>
               </div>
             </div>
           </div>
