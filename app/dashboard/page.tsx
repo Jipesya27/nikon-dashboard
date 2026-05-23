@@ -3093,7 +3093,7 @@ export default function NikonDashboard() {
                <button onClick={() => setDataLoadError(null)} className="font-bold hover:opacity-75 px-1">✕</button>
             </div>
          )}
-         <div className={`h-screen bg-gray-50 flex flex-col relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
+         <div className={`h-screen bg-gray-50 flex flex-col relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`} style={{ height: '100dvh' }}>
 
                <Header
                   sidebarOpen={sidebarOpen}
@@ -3658,8 +3658,8 @@ export default function NikonDashboard() {
                            const isPinned = pinnedChats.includes(selectedWa);
                            return (
                            <>
-                              {/* Chat Header - mobile friendly */}
-                              <div className="px-2 py-2 bg-[#f0f2f5] border-b border-gray-300 flex items-center gap-2 shrink-0 shadow-sm z-10">
+                              {/* Chat Header - sticky agar selalu terlihat saat scroll di mobile */}
+                              <div className="px-2 py-2 bg-[#f0f2f5] border-b border-gray-300 flex items-center gap-2 shrink-0 shadow-sm sticky top-0 z-20">
                                  {/* Tombol kembali - besar & mudah diklik */}
                                  <button
                                     aria-label="Kembali ke daftar chat"
@@ -3728,7 +3728,7 @@ export default function NikonDashboard() {
                                     </div>
                                  </div>
                               </div>
-                              <div ref={chatContainerRef} className="flex-1 px-3 py-4 overflow-y-auto space-y-2 relative scroll-smooth bg-[url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')] bg-size-[400px] bg-repeat">
+                              <div ref={chatContainerRef} className="flex-1 min-h-0 px-3 py-4 overflow-y-auto space-y-2 relative scroll-smooth bg-[url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')] bg-size-[400px] bg-repeat">
                                  {currentChatThread.map((msg: RiwayatPesan, index: number) => (
                                     <div key={msg.id_pesan || index} className={`flex items-end gap-2 ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
                                        {/* Tombol balas - selalu tampil di mobile */}
