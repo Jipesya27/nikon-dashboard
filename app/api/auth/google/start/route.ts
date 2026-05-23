@@ -18,6 +18,7 @@ export async function GET(req: Request) {
   authUrl.searchParams.set('scope', [
     'https://www.googleapis.com/auth/drive',
     'https://www.googleapis.com/auth/cloud-vision',
+    'https://www.googleapis.com/auth/contacts',
   ].join(' '));
   authUrl.searchParams.set('access_type', 'offline');
   authUrl.searchParams.set('prompt', 'consent'); // wajib agar refresh_token selalu di-issue

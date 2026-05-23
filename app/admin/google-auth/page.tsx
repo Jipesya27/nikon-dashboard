@@ -81,8 +81,8 @@ function GoogleAuthInner() {
           <div className="inline-flex items-center justify-center w-14 h-14 bg-black rounded-xl mb-3">
             <span className="text-white font-bold text-xl">N</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Google Drive Auth Helper</h1>
-          <p className="text-gray-800 text-sm mt-1 font-medium">Regenerate Refresh Token untuk Upload Drive</p>
+          <h1 className="text-2xl font-bold text-gray-900">Google Auth Helper</h1>
+          <p className="text-gray-800 text-sm mt-1 font-medium">Refresh Token untuk Drive + Google Contacts</p>
         </div>
 
         {/* Error display */}
@@ -137,15 +137,29 @@ function GoogleAuthInner() {
 
             {/* Instruksi update */}
             <div className="bg-white border-2 border-gray-200 rounded-xl p-5">
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3">📝 Update di 3 Tempat</h3>
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3">📝 Update di Vercel</h3>
               <ol className="space-y-3 text-sm text-gray-900">
                 <li className="flex gap-2">
                   <span className="font-bold text-blue-700 shrink-0">1.</span>
                   <div>
-                    <strong>Vercel (Production):</strong>
-                    <p className="text-xs text-gray-800 font-medium mt-1">
-                      Buka dashboard Vercel → Settings → Environment Variables → edit <code className="bg-gray-100 px-1 rounded">GOOGLE_REFRESH_TOKEN</code> → paste token → Save → <strong>Redeploy</strong>.
+                    <strong>Vercel → Environment Variables:</strong>
+                    <p className="text-xs text-gray-800 font-medium mt-1 mb-2">
+                      Buka Vercel → Settings → Environment Variables, lalu update / tambah ketiga variabel ini dengan token yang sama di atas:
                     </p>
+                    <div className="space-y-1.5">
+                      {['GOOGLE_REFRESH_TOKEN', 'GOOGLE_CONTACTS_REFRESH_TOKEN'].map(k => (
+                        <div key={k} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                          <code className="text-xs font-mono text-gray-900 flex-1">{k}</code>
+                          <button
+                            onClick={() => copy(k)}
+                            className="text-[10px] font-bold text-blue-600 hover:text-blue-800 shrink-0"
+                          >
+                            copy nama
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-700 mt-2">Setelah semua diisi → klik <strong>Save</strong> → <strong>Redeploy</strong>.</p>
                   </div>
                 </li>
                 <li className="flex gap-2">
@@ -208,7 +222,7 @@ function GoogleAuthInner() {
               href="/api/auth/google/start"
               className="block w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-base text-center transition shadow-lg"
             >
-              🔐 Connect Google Drive — Authorize Now
+              🔐 Authorize Google (Drive + Contacts)
             </a>
 
             <Link href="/dashboard" className="block text-center text-sm font-bold text-gray-700 hover:text-gray-900 transition">
