@@ -194,7 +194,7 @@ export async function POST(req: Request) {
     // Ambil detail event
     const { data: event } = await supabase
       .from('events')
-      .select('id, event_title, event_status, event_partisipant_stock, event_payment_tipe, event_date')
+      .select('id, event_title, event_status, event_partisipant_stock, event_payment_tipe, event_date, event_price, event_speaker, event_speaker_genre, event_description, event_image')
       .eq('id', event_id)
       .maybeSingle();
 
@@ -245,29 +245,146 @@ export async function POST(req: Request) {
     const fileName = `EventReg_${event.event_title}_${nama_lengkap}_${Date.now()}.${ext}`;
     const buktiUrl = await uploadToDrive(fileBukti, fileName, accessToken);
 
-    // Insert registrasi
-    const { error: insertError } = await supabase.from('event_registrations').insert({
-      event_id,
-      event_name: event.event_title,
-      nama_lengkap,
-      nomor_wa,
-      email,
-      tipe_kamera,
-      kabupaten_kotamadya,
-      payment_type: event.event_payment_tipe || 'regular',
-      bukti_transfer_url: buktiUrl,
-      status_pendaftaran: 'menunggu_validasi',
-      nama_bank,
-      no_rekening,
-      nama_pemilik_rekening,
-    });
+    // Insert registrasi — return id untuk nomor tiket
+    const { data: insertedReg, error: insertError } = await supabase
+      .from('event_registrations')
+      .insert({
+        event_id,
+        event_name: event.event_title,
+        nama_lengkap,
+        nomor_wa,
+        email,
+        tipe_kamera,
+        kabupaten_kotamadya,
+        payment_type: event.event_payment_tipe || 'regular',
+        bukti_transfer_url: buktiUrl,
+        status_pendaftaran: 'menunggu_validasi',
+        nama_bank,
+        no_rekening,
+        nama_pemilik_rekening,
+      })
+      .select('id')
+      .single();
 
     if (insertError) {
       return NextResponse.json({ error: 'Gagal menyimpan pendaftaran: ' + insertError.message }, { status: 500 });
     }
 
+    // Format nomor tiket dari UUID atau integer
+    const rawId = insertedReg?.id ?? '';
+    const ticketNo = typeof rawId === 'number'
+      ? `EVT-${String(rawId).padStart(6, '0')}`
+      : `EVT-${String(rawId).replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+
+    const hargaFormatted = event.event_price
+      ? `Rp ${Number(event.event_price).toLocaleString('id-ID')}`
+      : 'Gratis';
+
+    // ── HTML Tiket Email ───────────────────────────────────────────────────
+    const ticketHtml = `<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tiket Event ${event.event_title}</title></head>
+<body style="margin:0;padding:20px 8px;background:#1a1a1a;font-family:Arial,Helvetica,sans-serif">
+<div style="max-width:580px;margin:0 auto">
+
+  <!-- Header Nikon -->
+  <div style="background:#111;padding:20px 24px 16px;border-radius:12px 12px 0 0;text-align:center">
+    <div style="display:inline-block;background:#FFE000;padding:4px 14px;border-radius:4px;margin-bottom:10px">
+      <span style="font-size:18px;font-weight:900;color:#000;letter-spacing:3px">NIKON</span>
+    </div>
+    <p style="color:#ccc;font-size:12px;margin:0;letter-spacing:1px;text-transform:uppercase">Tiket Pendaftaran Event</p>
+  </div>
+
+  <!-- Event Banner -->
+  ${event.event_image ? `<div style="background:#222;height:160px;overflow:hidden">
+    <img src="${event.event_image}" alt="${event.event_title}" style="width:100%;height:100%;object-fit:cover;opacity:0.85">
+  </div>` : `<div style="background:linear-gradient(135deg,#222,#333);height:80px;display:flex;align-items:center;justify-content:center">
+    <span style="color:#FFE000;font-size:32px">📷</span>
+  </div>`}
+
+  <!-- Ticket body -->
+  <div style="background:#fff;padding:24px">
+
+    <!-- Event title & date -->
+    <h1 style="font-size:20px;font-weight:900;color:#111;margin:0 0 4px;line-height:1.3">${event.event_title}</h1>
+    ${event.event_speaker ? `<p style="margin:0 0 16px;font-size:13px;color:#666">🎤 ${event.event_speaker}${event.event_speaker_genre ? ` · ${event.event_speaker_genre}` : ''}</p>` : '<div style="margin-bottom:16px"></div>'}
+
+    <!-- Info grid -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+      <tr style="background:#f9f9f9">
+        <td style="padding:10px 12px;font-size:12px;color:#888;width:38%;border-bottom:1px solid #eee">📅 Tanggal</td>
+        <td style="padding:10px 12px;font-size:13px;font-weight:700;color:#111;border-bottom:1px solid #eee">${event.event_date || '-'}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 12px;font-size:12px;color:#888;border-bottom:1px solid #eee">💰 Harga</td>
+        <td style="padding:10px 12px;font-size:13px;font-weight:700;color:#111;border-bottom:1px solid #eee">${hargaFormatted}</td>
+      </tr>
+      <tr style="background:#f9f9f9">
+        <td style="padding:10px 12px;font-size:12px;color:#888;border-bottom:1px solid #eee">💳 Tipe Pembayaran</td>
+        <td style="padding:10px 12px;font-size:13px;font-weight:700;color:#111;border-bottom:1px solid #eee;text-transform:capitalize">${event.event_payment_tipe || 'regular'}</td>
+      </tr>
+    </table>
+
+    <!-- Dashed separator (ticket style) -->
+    <div style="border-top:2px dashed #ddd;margin:20px -24px;position:relative">
+      <div style="position:absolute;left:-12px;top:-12px;width:24px;height:24px;background:#fff;border-radius:50%;border:2px dashed #ddd"></div>
+      <div style="position:absolute;right:-12px;top:-12px;width:24px;height:24px;background:#fff;border-radius:50%;border:2px dashed #ddd"></div>
+    </div>
+
+    <!-- Peserta info -->
+    <p style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px">Data Peserta</p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+      <tr>
+        <td style="padding:7px 0;font-size:12px;color:#888;width:38%">Nama Lengkap</td>
+        <td style="padding:7px 0;font-size:13px;font-weight:700;color:#111">${nama_lengkap}</td>
+      </tr>
+      <tr>
+        <td style="padding:7px 0;font-size:12px;color:#888">No. WhatsApp</td>
+        <td style="padding:7px 0;font-size:13px;color:#333">${nomor_wa}</td>
+      </tr>
+      <tr>
+        <td style="padding:7px 0;font-size:12px;color:#888">Kamera</td>
+        <td style="padding:7px 0;font-size:13px;color:#333">${tipe_kamera}</td>
+      </tr>
+      <tr>
+        <td style="padding:7px 0;font-size:12px;color:#888">Kota</td>
+        <td style="padding:7px 0;font-size:13px;color:#333">${kabupaten_kotamadya}</td>
+      </tr>
+      <tr>
+        <td style="padding:7px 0;font-size:12px;color:#888">Waktu Daftar</td>
+        <td style="padding:7px 0;font-size:13px;color:#333">${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+      </tr>
+    </table>
+
+    <!-- Nomor Tiket -->
+    <div style="background:#111;border-radius:8px;padding:16px;text-align:center;margin-bottom:16px">
+      <p style="margin:0 0 4px;font-size:11px;color:#999;letter-spacing:2px;text-transform:uppercase">Nomor Tiket</p>
+      <p style="margin:0;font-size:26px;font-weight:900;letter-spacing:4px;color:#FFE000;font-family:monospace">${ticketNo}</p>
+    </div>
+
+    <!-- Status badge -->
+    <div style="background:#FFF8E1;border:1px solid #FFD740;border-radius:8px;padding:14px 16px">
+      <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#F57F17">⏳ Status: Menunggu Validasi Pembayaran</p>
+      <p style="margin:0;font-size:12px;color:#795548;line-height:1.5">
+        Bukti pembayaran Anda sedang diverifikasi oleh tim kami.<br>
+        Konfirmasi akan dikirim ke email ini dalam <strong>1–2 hari kerja</strong>.<br>
+        Simpan nomor tiket ini sebagai referensi.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div style="background:#111;padding:16px 24px;border-radius:0 0 12px 12px;text-align:center">
+    <p style="color:#666;font-size:11px;margin:0 0 4px">Nikon Service Center — Alta Nikon Indo</p>
+    <p style="color:#444;font-size:10px;margin:0">Email ini dikirim otomatis, mohon jangan dibalas. Pertanyaan? Hubungi kami via WhatsApp.</p>
+  </div>
+
+</div>
+</body></html>`;
+
     // Notif ke peserta & admin (channel: WA / Email / keduanya)
-    const pesanWA = `Halo *${nama_lengkap}*,\n\nPendaftaran Anda untuk event *${event.event_title}* telah kami terima ✅\n\nStatus: *Menunggu Validasi*\n\nKami akan memverifikasi bukti pembayaran Anda. Notifikasi konfirmasi akan dikirim dalam 1-2 hari kerja.\n\nTerima kasih.`;
+    const pesanWA = `Halo *${nama_lengkap}*,\n\nPendaftaran Anda untuk event *${event.event_title}* telah kami terima ✅\n\nNo. Tiket: *${ticketNo}*\nStatus: *Menunggu Validasi*\n\nKami akan memverifikasi bukti pembayaran Anda. Konfirmasi akan dikirim dalam 1–2 hari kerja.\n\nTerima kasih.`;
     const pesanAdmin =
       `🔔 *Pendaftar Event Baru!*\n\n` +
       `📋 *Event:* ${event.event_title}\n` +
@@ -276,13 +393,20 @@ export async function POST(req: Request) {
       `📧 *Email:* ${email || '-'}\n` +
       `📷 *Kamera:* ${tipe_kamera}\n` +
       `📍 *Kota:* ${kabupaten_kotamadya}\n` +
+      `🎫 *No. Tiket:* ${ticketNo}\n` +
       `⏰ *Waktu Daftar:* ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n\n` +
       `Status: *Menunggu Validasi* — silakan cek tab Event di dashboard.`;
 
     // konversi 08... ke 62... untuk WA
     const waTarget = nomor_wa.startsWith('0') ? '62' + nomor_wa.slice(1) : nomor_wa;
     await sendNotif(
-      { phone: waTarget, email, message: pesanWA, subject: `Pendaftaran Event ${event.event_title} Diterima` },
+      {
+        phone: waTarget,
+        email,
+        message: pesanWA,
+        subject: `🎫 Tiket Pendaftaran — ${event.event_title}`,
+        html: ticketHtml,
+      },
       { message: pesanAdmin, subject: `🔔 Pendaftar Event Baru — ${event.event_title}` },
     );
 

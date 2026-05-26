@@ -140,10 +140,12 @@ export interface NotifTarget {
   phone?: string;
   /** Recipient email address. */
   email?: string | null;
-  /** Plain-text message (WA markdown: *bold* supported). */
+  /** Plain-text message (WA markdown: *bold* supported). Also used as email body fallback. */
   message: string;
   /** Email subject line. Defaults to 'Notifikasi Nikon'. */
   subject?: string;
+  /** Custom HTML for email body. If omitted, message text is used. */
+  html?: string;
 }
 
 /**
@@ -173,6 +175,7 @@ export async function sendNotif(consumer: NotifTarget, admin?: NotifTarget): Pro
       consumer.email,
       consumer.subject || 'Notifikasi Nikon',
       consumer.message,
+      consumer.html,
     ));
   }
 
@@ -189,6 +192,7 @@ export async function sendNotif(consumer: NotifTarget, admin?: NotifTarget): Pro
         adminMail,
         admin.subject || 'Notifikasi Admin — Nikon',
         admin.message,
+        admin.html,
       ));
     }
   }
