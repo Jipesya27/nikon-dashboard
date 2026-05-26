@@ -104,7 +104,14 @@ async function sendEmail(to: string, subject: string, message: string, customHtm
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  if (!host || !user || !pass || !to) return;
+  if (!host || !user || !pass) {
+    console.warn('[notify] SMTP env vars tidak lengkap — email tidak dikirim. Pastikan SMTP_HOST, SMTP_USER, SMTP_PASS sudah diset dan server sudah di-restart.');
+    return;
+  }
+  if (!to) {
+    console.warn('[notify] sendEmail dipanggil tapi alamat email kosong — skip.');
+    return;
+  }
 
   try {
     const transporter = nodemailer.createTransport({
@@ -114,14 +121,15 @@ async function sendEmail(to: string, subject: string, message: string, customHtm
       auth: { user, pass },
     } as Parameters<typeof nodemailer.createTransport>[0]);
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"${process.env.SMTP_FROM_NAME || 'Nikon Service Center'}" <${process.env.SMTP_FROM || user}>`,
       to,
       subject,
       html: buildEmailHtml(message, customHtml),
     });
+    console.log(`[notify] Email terkirim → ${to} | subject: "${subject}" | id: ${info.messageId}`);
   } catch (e) {
-    console.error('[notify] Gagal kirim email (non-kritis):', e);
+    console.error('[notify] Gagal kirim email:', e instanceof Error ? e.message : e);
   }
 }
 
@@ -151,6 +159,8 @@ export async function sendNotif(consumer: NotifTarget, admin?: NotifTarget): Pro
 
   const doWA    = channel === 'wa_only'    || channel === 'wa_and_email';
   const doEmail = channel === 'email_only' || channel === 'wa_and_email';
+
+  console.log(`[notify] channel=${channel} | consumer.email=${consumer.email || '-'} | doWA=${doWA} | doEmail=${doEmail}`);
 
   const tasks: Promise<void>[] = [];
 
