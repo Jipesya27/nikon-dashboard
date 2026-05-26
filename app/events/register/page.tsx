@@ -18,6 +18,12 @@ type EventItem = {
   registered_count: number;
 };
 
+function toPosterProxy(url?: string): string | undefined {
+  if (!url) return undefined;
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return m ? `/api/events/image?id=${m[1]}` : url;
+}
+
 const ID_MONTHS: Record<string, number> = {
   januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
   juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
@@ -338,7 +344,7 @@ export default function EventRegisterPage() {
                     {evt.event_image ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={evt.event_image}
+                        src={toPosterProxy(evt.event_image)}
                         alt={evt.event_title}
                         className="w-full aspect-[3/4] object-contain group-hover:scale-[1.02] transition-transform duration-300"
                       />
@@ -433,7 +439,7 @@ export default function EventRegisterPage() {
                 <div className="relative w-full bg-black flex-shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={descEvent.event_image}
+                    src={toPosterProxy(descEvent.event_image)}
                     alt={descEvent.event_title}
                     className="w-full object-contain"
                     style={{ maxHeight: '60vh' }}
