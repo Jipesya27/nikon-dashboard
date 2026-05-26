@@ -11,7 +11,7 @@ type EventItem = {
   event_description?: string;
   event_speaker?: string;
   event_speaker_genre?: string;
-  event_payment_tipe: 'regular' | 'deposit';
+  event_payment_tipe: 'regular' | 'deposit' | 'gratis';
   deposit_amount?: string;
   bank_info?: string;
   event_partisipant_stock: number;
@@ -73,7 +73,7 @@ export default function EventRegisterPage() {
 
   // Marketplace filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterPayment, setFilterPayment] = useState<'all' | 'regular' | 'deposit'>('all');
+  const [filterPayment, setFilterPayment] = useState<'all' | 'regular' | 'deposit' | 'gratis'>('all');
   const [filterGenre, setFilterGenre] = useState<string>('Semua');
   const [sortBy, setSortBy] = useState<'newest' | 'soonest' | 'price_asc' | 'price_desc'>('soonest');
   const [descEvent, setDescEvent] = useState<EventItem | null>(null);
@@ -150,7 +150,8 @@ export default function EventRegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedEvent) return;
-    if (!fileBukti) {
+    const isGratis = selectedEvent.event_payment_tipe === 'gratis';
+    if (!isGratis && !fileBukti) {
       setErrorMsg('Harap unggah bukti transfer pembayaran.');
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
       return;
@@ -162,7 +163,7 @@ export default function EventRegisterPage() {
       const fd = new FormData();
       fd.append('event_id', selectedEvent.id);
       Object.entries(formData).forEach(([k, v]) => fd.append(k, v));
-      fd.append('bukti_transfer', fileBukti);
+      if (fileBukti) fd.append('bukti_transfer', fileBukti);
 
       const res = await fetch('/api/events/register', { method: 'POST', body: fd });
       const result = await res.json();
@@ -282,6 +283,7 @@ export default function EventRegisterPage() {
                 { v: 'all',     l: 'Semua Tipe', i: '🎟️' },
                 { v: 'regular', l: 'Regular',    i: '🎫' },
                 { v: 'deposit', l: 'Deposit',    i: '💎' },
+                { v: 'gratis',  l: 'Gratis',     i: '🆓' },
               ] as const).map(opt => {
                 const active = filterPayment === opt.v;
                 return (
@@ -370,6 +372,11 @@ export default function EventRegisterPage() {
                       {evt.event_payment_tipe === 'deposit' && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FFE500] text-black text-[10px] font-bold uppercase shadow-md">
                           💎 Refundable
+                        </span>
+                      )}
+                      {evt.event_payment_tipe === 'gratis' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-500 text-white text-[10px] font-bold uppercase shadow-md">
+                          🆓 Gratis
                         </span>
                       )}
                     </div>
@@ -543,10 +550,13 @@ export default function EventRegisterPage() {
                   {selectedEvent.event_payment_tipe === 'deposit' && (
                     <p className="text-xs text-amber-700 mt-1 font-medium">⚠️ Event ini berbayar deposit (bisa di-refund setelah hadir)</p>
                   )}
+                  {selectedEvent.event_payment_tipe === 'gratis' && (
+                    <p className="text-xs text-green-700 mt-1 font-medium">🆓 Event ini GRATIS — tidak perlu bukti transfer</p>
+                  )}
                 </div>
                 <button type="button" onClick={() => { setStep('list'); setSelectedEvent(null); }} className="text-xs font-semibold text-gray-600 hover:text-gray-900 underline shrink-0">Ganti</button>
               </div>
-              {selectedEvent.bank_info && (
+              {selectedEvent.bank_info && selectedEvent.event_payment_tipe !== 'gratis' && (
                 <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-xs font-bold text-gray-800 mb-1">💳 Info Pembayaran:</p>
                   <p className="text-sm text-gray-900 font-mono">{selectedEvent.bank_info}</p>
@@ -634,7 +644,8 @@ export default function EventRegisterPage() {
               </div>
             )}
 
-            {/* UPLOAD */}
+            {/* UPLOAD — hanya tampil jika bukan gratis */}
+            {selectedEvent.event_payment_tipe !== 'gratis' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
                 <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">{selectedEvent.event_payment_tipe === 'deposit' ? 3 : 2}</div>
@@ -672,6 +683,7 @@ export default function EventRegisterPage() {
                 </button>
               </div>
             </div>
+            )}
 
             <button
               type="submit"

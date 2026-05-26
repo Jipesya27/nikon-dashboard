@@ -163,19 +163,6 @@ export async function POST(req: Request) {
     for (const [k, v] of Object.entries(required)) {
       if (!v) return NextResponse.json({ error: `Field '${k}' wajib diisi.` }, { status: 400 });
     }
-    if (!fileBukti) {
-      return NextResponse.json({ error: 'Bukti transfer wajib diunggah.' }, { status: 400 });
-    }
-
-    // Validasi tipe dan ukuran file bukti transfer
-    const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-    if (!ALLOWED_MIME_TYPES.includes(fileBukti.type)) {
-      return NextResponse.json({ error: 'File bukti transfer: tipe tidak diizinkan. Gunakan JPG, PNG, WEBP, GIF, atau PDF.' }, { status: 400 });
-    }
-    if (fileBukti.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: 'File bukti transfer: ukuran maksimal 10 MB.' }, { status: 400 });
-    }
 
     // Validasi panjang input
     if (nama_lengkap && nama_lengkap.length > 150) return NextResponse.json({ error: 'Nama terlalu panjang.' }, { status: 400 });
@@ -231,6 +218,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nomor WhatsApp ini sudah terdaftar di event ini.' }, { status: 400 });
     }
 
+    // Validasi tipe dan ukuran file bukti transfer (hanya jika bukan gratis)
+    const isGratis = event.event_payment_tipe === 'gratis';
+    if (!isGratis && !fileBukti) {
+      return NextResponse.json({ error: 'Bukti transfer wajib diunggah.' }, { status: 400 });
+    }
+    if (fileBukti) {
+      const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+      if (!ALLOWED_MIME_TYPES.includes(fileBukti.type)) {
+        return NextResponse.json({ error: 'File bukti transfer: tipe tidak diizinkan. Gunakan JPG, PNG, WEBP, GIF, atau PDF.' }, { status: 400 });
+      }
+      if (fileBukti.size > MAX_FILE_SIZE) {
+        return NextResponse.json({ error: 'File bukti transfer: ukuran maksimal 10 MB.' }, { status: 400 });
+      }
+    }
+
     // Validasi deposit field
     const isDeposit = event.event_payment_tipe === 'deposit';
     if (isDeposit && (!nama_bank || !no_rekening || !nama_pemilik_rekening)) {
@@ -239,11 +242,14 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // Upload bukti transfer ke Drive
-    const accessToken = await getAccessToken();
-    const ext = fileBukti.name.split('.').pop() || 'jpg';
-    const fileName = `EventReg_${event.event_title}_${nama_lengkap}_${Date.now()}.${ext}`;
-    const buktiUrl = await uploadToDrive(fileBukti, fileName, accessToken);
+    // Upload bukti transfer ke Drive (skip untuk event gratis)
+    let buktiUrl = '';
+    if (!isGratis && fileBukti) {
+      const accessToken = await getAccessToken();
+      const ext = fileBukti.name.split('.').pop() || 'jpg';
+      const fileName = `EventReg_${event.event_title}_${nama_lengkap}_${Date.now()}.${ext}`;
+      buktiUrl = await uploadToDrive(fileBukti, fileName, accessToken);
+    }
 
     // Insert registrasi — return id untuk nomor tiket
     const { data: insertedReg, error: insertError } = await supabase
@@ -363,14 +369,22 @@ export async function POST(req: Request) {
     </div>
 
     <!-- Status badge -->
-    <div style="background:#FFF8E1;border:1px solid #FFD740;border-radius:8px;padding:14px 16px">
+    ${isGratis
+      ? `<div style="background:#E8F5E9;border:1px solid #81C784;border-radius:8px;padding:14px 16px">
+      <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#2E7D32">🆓 Event Gratis — Menunggu Konfirmasi</p>
+      <p style="margin:0;font-size:12px;color:#4CAF50;line-height:1.5">
+        Event ini <strong>gratis</strong>! Tim kami akan mengirimkan konfirmasi kehadiran.<br>
+        Simpan nomor tiket ini sebagai referensi.
+      </p>
+    </div>`
+      : `<div style="background:#FFF8E1;border:1px solid #FFD740;border-radius:8px;padding:14px 16px">
       <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#F57F17">⏳ Status: Menunggu Validasi Pembayaran</p>
       <p style="margin:0;font-size:12px;color:#795548;line-height:1.5">
         Bukti pembayaran Anda sedang diverifikasi oleh tim kami.<br>
         Konfirmasi akan dikirim ke email ini dalam <strong>1–2 hari kerja</strong>.<br>
         Simpan nomor tiket ini sebagai referensi.
       </p>
-    </div>
+    </div>`}
 
   </div>
 
@@ -384,7 +398,9 @@ export async function POST(req: Request) {
 </body></html>`;
 
     // Notif ke peserta & admin (channel: WA / Email / keduanya)
-    const pesanWA = `Halo *${nama_lengkap}*,\n\nPendaftaran Anda untuk event *${event.event_title}* telah kami terima ✅\n\nNo. Tiket: *${ticketNo}*\nStatus: *Menunggu Validasi*\n\nKami akan memverifikasi bukti pembayaran Anda. Konfirmasi akan dikirim dalam 1–2 hari kerja.\n\nTerima kasih.`;
+    const pesanWA = isGratis
+      ? `Halo *${nama_lengkap}*,\n\nPendaftaran Anda untuk event *${event.event_title}* telah kami terima ✅\n\nNo. Tiket: *${ticketNo}*\nStatus: *Menunggu Konfirmasi*\n\nEvent ini gratis! Konfirmasi kehadiran akan dikirim oleh tim kami.\n\nTerima kasih.`
+      : `Halo *${nama_lengkap}*,\n\nPendaftaran Anda untuk event *${event.event_title}* telah kami terima ✅\n\nNo. Tiket: *${ticketNo}*\nStatus: *Menunggu Validasi*\n\nKami akan memverifikasi bukti pembayaran Anda. Konfirmasi akan dikirim dalam 1–2 hari kerja.\n\nTerima kasih.`;
     const pesanAdmin =
       `🔔 *Pendaftar Event Baru!*\n\n` +
       `📋 *Event:* ${event.event_title}\n` +

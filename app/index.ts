@@ -19,7 +19,7 @@ export interface EventRegistration {
    email?: string | null;
    tipe_kamera?: string | null;
    kabupaten_kotamadya?: string | null;
-   payment_type?: 'regular' | 'deposit';
+   payment_type?: 'regular' | 'deposit' | 'gratis';
    status_pendaftaran?: 'menunggu_validasi' | 'terdaftar' | 'ditolak';
    rejection_reason?: string | null;
    bukti_transfer_url?: string | null;
