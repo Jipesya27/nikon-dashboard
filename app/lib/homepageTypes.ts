@@ -8,6 +8,8 @@ export interface NikonPageConfig {
    hero_title_3:      string; // baris 3 hero (slate-300)
    hero_subtitle:     string; // paragraf di bawah judul
    announcement_text: string; // teks bar pengumuman kuning
+   promo_url:         string; // URL langsung halaman/PDF promo terbaru
+   dealer_url:        string; // URL langsung halaman dealer resmi
 }
 
 export const DEFAULT_NIKON_CONFIG: NikonPageConfig = {
@@ -17,6 +19,8 @@ export const DEFAULT_NIKON_CONFIG: NikonPageConfig = {
    hero_title_3:      'Anda.',
    hero_subtitle:     'Alta Nikindo — distributor resmi Nikon Indonesia. Produk orisinal, garansi resmi, dan layanan purna jual terpercaya untuk fotografer profesional hingga pemula.',
    announcement_text: '🤖 Chatbot WhatsApp aktif — Claim promo, registrasi garansi & cek status service via WA.',
+   promo_url:         '',
+   dealer_url:        '',
 };
 
 export interface CompLayout {

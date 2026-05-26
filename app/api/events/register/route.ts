@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendNotif } from '@/app/lib/notify';
 
 export const dynamic = 'force-dynamic';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const FONNTE_TOKEN = process.env.FONNTE_TOKEN || '';
-const ADMIN_WA_NUMBER = process.env.ADMIN_WA_NUMBER || '';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
@@ -67,20 +66,6 @@ async function uploadToDrive(file: File, fileName: string, accessToken: string):
 
 
   return `https://drive.google.com/uc?id=${data.id}&export=view`;
-}
-
-async function kirimWA(nomor: string, pesan: string) {
-  try {
-    const res = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: { Authorization: FONNTE_TOKEN },
-      body: new URLSearchParams({ target: nomor, message: pesan }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) console.error('Fonnte kirimWA HTTP error:', res.status, await res.text());
-  } catch (e) {
-    console.error('Gagal kirim WA (non-kritis):', e);
-  }
 }
 
 // Parse tanggal Indonesia "1 Juli 2026" → Date
@@ -165,7 +150,7 @@ export async function POST(req: Request) {
     const event_id            = (formData.get('event_id') as string)?.trim();
     const nama_lengkap        = (formData.get('nama_lengkap') as string)?.trim();
     const nomor_wa_input      = (formData.get('nomor_wa') as string)?.trim() || '';
-    const email               = (formData.get('email') as string)?.trim() || null;
+    const email               = (formData.get('email') as string)?.trim().toLowerCase() || null;
     const tipe_kamera         = (formData.get('tipe_kamera') as string)?.trim();
     const kabupaten_kotamadya = (formData.get('kabupaten_kotamadya') as string)?.trim();
     const nama_bank           = (formData.get('nama_bank') as string)?.trim() || null;
@@ -174,7 +159,7 @@ export async function POST(req: Request) {
 
     const fileBukti = formData.get('bukti_transfer') as File | null;
 
-    const required = { event_id, nama_lengkap, nomor_wa_input, tipe_kamera, kabupaten_kotamadya };
+    const required = { event_id, nama_lengkap, nomor_wa_input, email, tipe_kamera, kabupaten_kotamadya };
     for (const [k, v] of Object.entries(required)) {
       if (!v) return NextResponse.json({ error: `Field '${k}' wajib diisi.` }, { status: 400 });
     }
@@ -281,25 +266,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Gagal menyimpan pendaftaran: ' + insertError.message }, { status: 500 });
     }
 
-    // Kirim notif WA ke peserta (best-effort)
-    const waMsg = `Halo *${nama_lengkap}*,\n\nPendaftaran Anda untuk event *${event.event_title}* telah kami terima ✅\n\nStatus: *Menunggu Validasi*\n\nKami akan memverifikasi bukti pembayaran Anda. Notifikasi konfirmasi akan dikirim via WhatsApp dalam 1-2 hari kerja.\n\nTerima kasih.`;
-    // konversi 08... ke 62... untuk Fonnte
-    const waTarget = nomor_wa.startsWith('0') ? '62' + nomor_wa.slice(1) : nomor_wa;
-    await kirimWA(waTarget, waMsg);
+    // Notif ke peserta & admin (channel: WA / Email / keduanya)
+    const pesanWA = `Halo *${nama_lengkap}*,\n\nPendaftaran Anda untuk event *${event.event_title}* telah kami terima ✅\n\nStatus: *Menunggu Validasi*\n\nKami akan memverifikasi bukti pembayaran Anda. Notifikasi konfirmasi akan dikirim dalam 1-2 hari kerja.\n\nTerima kasih.`;
+    const pesanAdmin =
+      `🔔 *Pendaftar Event Baru!*\n\n` +
+      `📋 *Event:* ${event.event_title}\n` +
+      `👤 *Nama:* ${nama_lengkap}\n` +
+      `📱 *WhatsApp:* ${nomor_wa}\n` +
+      `📧 *Email:* ${email || '-'}\n` +
+      `📷 *Kamera:* ${tipe_kamera}\n` +
+      `📍 *Kota:* ${kabupaten_kotamadya}\n` +
+      `⏰ *Waktu Daftar:* ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n\n` +
+      `Status: *Menunggu Validasi* — silakan cek tab Event di dashboard.`;
 
-    // Kirim notif WA ke Super Admin (best-effort)
-    if (ADMIN_WA_NUMBER) {
-      const pesanAdmin =
-        `🔔 *Pendaftar Event Baru!*\n\n` +
-        `📋 *Event:* ${event.event_title}\n` +
-        `👤 *Nama:* ${nama_lengkap}\n` +
-        `📱 *WhatsApp:* ${nomor_wa}\n` +
-        `📷 *Kamera:* ${tipe_kamera}\n` +
-        `📍 *Kota:* ${kabupaten_kotamadya}\n` +
-        `⏰ *Waktu Daftar:* ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n\n` +
-        `Status: *Menunggu Validasi* — silakan cek tab Event di dashboard.`;
-      await kirimWA(ADMIN_WA_NUMBER, pesanAdmin);
-    }
+    // konversi 08... ke 62... untuk WA
+    const waTarget = nomor_wa.startsWith('0') ? '62' + nomor_wa.slice(1) : nomor_wa;
+    await sendNotif(
+      { phone: waTarget, email, message: pesanWA, subject: `Pendaftaran Event ${event.event_title} Diterima` },
+      { message: pesanAdmin, subject: `🔔 Pendaftar Event Baru — ${event.event_title}` },
+    );
 
     return NextResponse.json({ success: true, message: 'Pendaftaran event berhasil dikirim!' });
   } catch (error: unknown) {

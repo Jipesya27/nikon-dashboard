@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendNotif } from '@/app/lib/notify';
 
 export const dynamic = 'force-dynamic';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const FONNTE_TOKEN    = process.env.FONNTE_TOKEN || '';
-const ADMIN_WA_NUMBER = process.env.ADMIN_WA_NUMBER || '';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
@@ -69,20 +68,6 @@ async function uploadToDrive(file: File, fileName: string, accessToken: string):
   return `https://drive.google.com/uc?id=${data.id}&export=view`;
 }
 
-async function kirimWA(nomor: string, pesan: string) {
-  try {
-    const res = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: { Authorization: FONNTE_TOKEN },
-      body: new URLSearchParams({ target: nomor, message: pesan }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) console.error('Fonnte kirimWA HTTP error:', res.status, await res.text());
-  } catch (e) {
-    console.error('Gagal kirim WA (non-kritis):', e);
-  }
-}
-
 function normalizePhone(phone: string): string[] {
   const variants = [phone];
   if (phone.startsWith('62')) variants.push('0' + phone.slice(2), '+' + phone);
@@ -125,6 +110,7 @@ export async function GET(req: Request) {
       konsumen: {
         nomor_wa: konsumen.nomor_wa,
         nama_lengkap: clean(konsumen.nama_lengkap),
+        email: clean(konsumen.email),
         // NIK tidak dikirim ke client karena merupakan data sensitif PII
         alamat_rumah: clean(konsumen.alamat_rumah),
         kelurahan: clean(konsumen.kelurahan),
@@ -154,6 +140,7 @@ export async function POST(req: Request) {
 
     // Data Diri Pendaftar (→ tabel konsumen)
     const phone               = (formData.get('phone') as string)?.trim();
+    const email               = (formData.get('email') as string)?.trim().toLowerCase() || null;
     const nama_lengkap        = (formData.get('nama_lengkap') as string)?.trim();
     const nik                 = (formData.get('nik') as string)?.trim();
     const alamat_rumah        = (formData.get('alamat_rumah') as string)?.trim();
@@ -224,6 +211,7 @@ export async function POST(req: Request) {
       const { error: insertErr } = await supabase.from('konsumen').insert({
         nomor_wa: normalizedPhone,
         nama_lengkap,
+        email: email || null,
         nik: nik || null,
         alamat_rumah,
         kelurahan,
@@ -243,7 +231,7 @@ export async function POST(req: Request) {
 
     // 1. UPDATE tabel konsumen dengan data diri terbaru
     //    NIK opsional: hanya update kalau diisi, supaya tidak menimpa NIK lama dengan kosong
-    const konsumenUpdate: Record<string, string> = {
+    const konsumenUpdate: Record<string, string | null> = {
       nama_lengkap,
       alamat_rumah,
       kelurahan,
@@ -253,7 +241,8 @@ export async function POST(req: Request) {
       kodepos,
       updated_at: new Date().toISOString(),
     };
-    if (nik) konsumenUpdate.nik = nik;
+    if (nik)    konsumenUpdate.nik   = nik;
+    if (email)  konsumenUpdate.email = email;
 
     const { error: updateKonsumenError } = await supabase
       .from('konsumen')
@@ -315,18 +304,27 @@ export async function POST(req: Request) {
       .update({ status_langkah: nextStatus })
       .eq('nomor_wa', matchedPhone);
 
-    // 5. Notif WA ke ADMIN
-    if (ADMIN_WA_NUMBER) {
-      const pesanAdmin = `🔔 *Claim Promo Baru!*\n\n👤 ${nama_lengkap}\n📱 ${matchedPhone}\n📦 ${tipe_barang}\n🔢 ${nomor_seri}\n🎁 ${jenis_promosi || '-'}\n🏪 ${nama_toko}\n📅 ${tanggal_pembelian || '-'}\n\nVerifikasi di Dashboard → tab Claim`;
-      kirimWA(ADMIN_WA_NUMBER, pesanAdmin);
-    }
-
-    // 6. Kirim notifikasi WA ke pendaftar
+    // 5+6. Notif ke konsumen & admin (channel: WA / Email / keduanya)
     const pesanWA = nextStatus === 'START'
       ? `Pengisian data Claim Promo berhasil dan dokumen telah diterima! 🎉\n\nNotifikasi update status Claim akan kami kirim ke nomor *${nomor_wa_update}*.\n\nProses verifikasi memerlukan waktu maksimal 14 hari kerja. Terima kasih.\n\nKetik *MENU* untuk kembali ke menu utama.`
       : `Pengisian data Claim Promo berhasil dan dokumen telah diterima! 🎉\n\n*Untuk notifikasi update status Claim*, apakah Anda ingin menggunakan nomor WA ini, atau mendaftarkan nomor lain? Ketik *INI* atau *NOMOR LAIN*?`;
 
-    await kirimWA(matchedPhone, pesanWA);
+    const pesanAdmin =
+      `🔔 *Claim Promo Baru!*\n\n` +
+      `👤 *Nama:* ${nama_lengkap}\n` +
+      `📱 *WhatsApp:* ${matchedPhone}\n` +
+      `📧 *Email:* ${email || '-'}\n` +
+      `📦 *Produk:* ${tipe_barang}\n` +
+      `🔢 *No. Seri:* ${nomor_seri}\n` +
+      `🎁 *Promosi:* ${jenis_promosi || '-'}\n` +
+      `🏪 *Toko:* ${nama_toko}\n` +
+      `📅 *Tgl Beli:* ${tanggal_pembelian || '-'}\n\n` +
+      `Verifikasi di Dashboard → tab Claim`;
+
+    await sendNotif(
+      { phone: matchedPhone, email, message: pesanWA, subject: 'Claim Promo Anda Telah Diterima — Nikon' },
+      { message: pesanAdmin, subject: '🔔 Claim Promo Baru — Nikon' },
+    );
 
     return NextResponse.json({ success: true, message: 'Data claim berhasil dikirim!' });
   } catch (error: unknown) {

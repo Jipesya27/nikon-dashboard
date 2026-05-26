@@ -7,6 +7,7 @@ import AddressFields from '@/app/components/AddressFields';
 type Recipient = 'sendiri' | 'orang_lain';
 
 type FormState = {
+  email: string;
   nama_lengkap: string;
   nik: string;
   alamat_rumah: string;
@@ -26,7 +27,7 @@ type FormState = {
 };
 
 const EMPTY_FORM: FormState = {
-  nama_lengkap: '', nik: '', alamat_rumah: '', kelurahan: '', kecamatan: '',
+  email: '', nama_lengkap: '', nik: '', alamat_rumah: '', kelurahan: '', kecamatan: '',
   kabupaten_kotamadya: '', provinsi: '', kodepos: '',
   nama_penerima_claim: '', nomor_wa_update: '', alamat_pengiriman: '',
   tipe_barang: '', nomor_seri: '', jenis_promosi: '',
@@ -345,6 +346,29 @@ function ClaimForm() {
                   className="px-3 py-2 text-xs bg-gray-200 rounded-lg text-gray-600 hover:bg-gray-300 transition-colors">
                   Ganti
                 </button>
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>
+                Alamat Email Aktif {req}
+                <span className="text-gray-500 text-xs font-normal ml-1">— backup notifikasi jika WhatsApp tidak aktif</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                  </svg>
+                </span>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  placeholder="nama@email.com"
+                  className={inputCls + " pl-9"}
+                />
               </div>
             </div>
 
