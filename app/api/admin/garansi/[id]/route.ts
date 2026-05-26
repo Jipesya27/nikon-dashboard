@@ -1,26 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendNotif } from '@/app/lib/notify';
 
 export const dynamic = 'force-dynamic';
-
-const FONNTE_TOKEN = process.env.FONNTE_TOKEN || '';
 
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
-}
-
-async function kirimWA(nomor: string, pesan: string) {
-  try {
-    await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: { Authorization: FONNTE_TOKEN },
-      body: new URLSearchParams({ target: nomor, message: pesan }),
-      signal: AbortSignal.timeout(8000),
-    });
-  } catch { /* non-kritis */ }
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -44,7 +32,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (error) throw error;
 
-    // Kirim notif WA ke konsumen jika status final
+    // Kirim notif ke konsumen jika status final
     const status = body.validasi_by_mkt || body.validasi_by_fa;
     if (status === 'Valid' || status === 'Tidak Valid') {
       const targetWa = data.nomor_wa_update || data.nomor_wa;
@@ -52,7 +40,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const pesan = status === 'Valid'
           ? `✅ *Registrasi Garansi Anda DISETUJUI!*\n\nHalo ${data.nama_pendaftar},\n\nGaransi untuk produk *${data.tipe_barang}* (No. Seri: ${data.nomor_seri}) telah *terdaftar dan valid*.\n\nGaransi Anda aktif selama ${data.lama_garansi || '...'} dengan tipe ${data.jenis_garansi || '...'}. Terima kasih! 🎉`
           : `❌ *Registrasi Garansi Tidak Dapat Diproses*\n\nHalo ${data.nama_pendaftar},\n\nMohon maaf, registrasi garansi untuk produk *${data.tipe_barang}* tidak dapat diverifikasi.\n\nAlasan: ${body.catatan_mkt || body.catatan_fa || 'Data tidak sesuai'}\n\nHubungi CS kami untuk informasi lebih lanjut.`;
-        await kirimWA(targetWa, pesan);
+
+        // Ambil email konsumen dari tabel konsumen
+        const supabaseClient = getSupabase();
+        const { data: konsumenRow } = await supabaseClient
+          .from('konsumen')
+          .select('email')
+          .eq('nomor_wa', data.nomor_wa)
+          .maybeSingle();
+        const konsumenEmail: string | null = konsumenRow?.email || null;
+
+        const subjek = status === 'Valid'
+          ? '✅ Registrasi Garansi Anda Disetujui — Nikon'
+          : '❌ Registrasi Garansi Tidak Dapat Diproses — Nikon';
+        await sendNotif({ phone: targetWa, email: konsumenEmail, message: pesan, subject: subjek });
       }
     }
 

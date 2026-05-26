@@ -107,6 +107,374 @@ function IconWA() {
     </svg>
   );
 }
+function IconSearch() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+    </svg>
+  );
+}
+function IconTag() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/>
+      <circle cx="7.5" cy="7.5" r="0.5" fill="currentColor"/>
+    </svg>
+  );
+}
+function IconStore() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+      <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/>
+      <path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7"/>
+    </svg>
+  );
+}
+function IconFileText() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+      <path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>
+    </svg>
+  );
+}
+
+// ── Cek Status Modal ──────────────────────────────────────────────────────────
+type ModalType = 'claim' | 'garansi';
+interface CekResult {
+  id: string; produk: string; nomor_seri: string;
+  tgl_beli: string; tgl_daftar: string; label: string; color: string;
+  promosi?: string; penerima?: string;
+}
+
+const COLOR_MAP: Record<string, string> = {
+  green:  'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  red:    'bg-red-500/15 text-red-400 border-red-500/30',
+  yellow: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
+  blue:   'bg-blue-500/15 text-blue-400 border-blue-500/30',
+};
+
+function CekStatusModal({ type, onClose }: { type: ModalType; onClose: () => void }) {
+  const [phone, setPhone]       = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [results, setResults]   = useState<CekResult[] | null>(null);
+  const [errMsg, setErrMsg]     = useState('');
+  const [notFound, setNotFound] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 80);
+    // Close on Escape
+    const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, [onClose]);
+
+  async function handleCek(e: React.FormEvent) {
+    e.preventDefault();
+    const p = phone.replace(/[^0-9]/g, '');
+    if (p.length < 8) { setErrMsg('Nomor WA minimal 8 digit.'); return; }
+    setLoading(true); setErrMsg(''); setResults(null); setNotFound(false);
+    try {
+      const res  = await fetch(`/api/cek-status?phone=${encodeURIComponent(p)}&type=${type}`);
+      const data = await res.json();
+      if (!res.ok || data.error) { setErrMsg(data.error || 'Gagal mengambil data.'); return; }
+      if (!data.found) { setNotFound(true); return; }
+      setResults(data.data);
+    } catch {
+      setErrMsg('Koneksi bermasalah. Coba lagi.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function fmtDate(iso: string) {
+    if (!iso || iso === '-') return '-';
+    try { return new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
+    catch { return iso; }
+  }
+
+  const title = type === 'claim' ? 'Cek Status Claim' : 'Cek Status Garansi';
+  const icon  = type === 'claim'
+    ? <IconSearch />
+    : <IconShield />;
+  const iconColor = type === 'claim' ? 'text-blue-400' : 'text-purple-400';
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+         onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Panel */}
+      <div className="relative z-10 w-full max-w-lg bg-zinc-900 border border-zinc-700 shadow-2xl flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center ${type === 'claim' ? 'bg-blue-500/10' : 'bg-purple-500/10'} ${iconColor}`}>
+              {icon}
+            </div>
+            <h3 className="text-white font-bold text-lg">{title}</h3>
+          </div>
+          <button onClick={onClose}
+            className="text-zinc-500 hover:text-white transition-colors p-1.5 hover:bg-zinc-800">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 min-h-0">
+          <p className="text-zinc-400 text-sm mb-5">
+            Masukkan nomor WhatsApp yang digunakan saat mendaftar.
+          </p>
+
+          {/* Input form */}
+          <form onSubmit={handleCek} className="flex gap-2 mb-5">
+            <div className="flex-1 flex items-center bg-zinc-950 border border-zinc-700 focus-within:border-[#ffe000] transition-colors">
+              <span className="px-3 text-zinc-500 text-sm font-mono shrink-0">+62</span>
+              <div className="w-px h-6 bg-zinc-700 shrink-0" />
+              <input
+                ref={inputRef}
+                type="tel"
+                value={phone}
+                onChange={e => { setPhone(e.target.value); setErrMsg(''); }}
+                placeholder="81234567890"
+                className="flex-1 bg-transparent text-white text-sm px-3 py-3 outline-none placeholder-zinc-600"
+              />
+            </div>
+            <button type="submit" disabled={loading}
+              className="px-5 py-3 bg-[#ffe000] text-black font-bold text-sm uppercase tracking-wider disabled:opacity-50 hover:bg-yellow-400 transition-colors shrink-0 flex items-center gap-2">
+              {loading
+                ? <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                : <IconSearch />}
+              {loading ? '' : 'Cek'}
+            </button>
+          </form>
+
+          {/* Error */}
+          {errMsg && (
+            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 px-4 py-3 text-red-400 text-sm mb-4">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+              </svg>
+              {errMsg}
+            </div>
+          )}
+
+          {/* Not Found */}
+          {notFound && (
+            <div className="text-center py-8 text-zinc-500">
+              <div className="text-4xl mb-3">🔍</div>
+              <p className="font-semibold text-white mb-1">Data tidak ditemukan</p>
+              <p className="text-sm">Nomor ini belum memiliki data {type === 'claim' ? 'claim' : 'garansi'} terdaftar.</p>
+            </div>
+          )}
+
+          {/* Results */}
+          {results && results.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-zinc-400 text-xs uppercase tracking-widest font-bold">
+                {results.length} data ditemukan
+              </p>
+              {results.map((r, i) => (
+                <div key={i} className="bg-zinc-950 border border-zinc-800 p-4">
+                  {/* Status badge */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <p className="text-white font-bold text-sm">{r.produk || '-'}</p>
+                      <p className="text-zinc-500 text-xs font-mono mt-0.5">{r.nomor_seri || '-'}</p>
+                    </div>
+                    <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 border ${COLOR_MAP[r.color] || COLOR_MAP.yellow}`}>
+                      {r.label}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-zinc-500">
+                    <span>Tgl. Beli: <span className="text-zinc-400">{fmtDate(r.tgl_beli)}</span></span>
+                    <span>Tgl. Daftar: <span className="text-zinc-400">{fmtDate(r.tgl_daftar)}</span></span>
+                    {r.promosi && r.promosi !== '-' && (
+                      <span className="col-span-2">Promo: <span className="text-zinc-400">{r.promosi}</span></span>
+                    )}
+                    {r.penerima && r.penerima !== '-' && (
+                      <span className="col-span-2">Penerima: <span className="text-zinc-400">{r.penerima}</span></span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-zinc-800 shrink-0 flex items-center justify-between">
+          <p className="text-zinc-600 text-xs">ID Klaim / Garansi ditampilkan untuk referensi.</p>
+          <button onClick={onClose}
+            className="text-sm text-zinc-400 hover:text-white transition-colors font-medium">
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Consumer Quick Access Section ─────────────────────────────────────────────
+function ConsumerAccessSection() {
+  const { cfg } = useSite();
+  const base    = `https://wa.me/${cfg.wa_number}`;
+  const [modalType, setModalType] = useState<ModalType | null>(null);
+
+  // Promo & Dealer: pakai URL dari config, fallback ke WA jika kosong
+  const promoHref  = cfg.promo_url  || `${base}?text=Halo%2C%20saya%20ingin%20cek%20promo%20Nikon%20terbaru`;
+  const dealerHref = cfg.dealer_url || `${base}?text=Halo%2C%20saya%20ingin%20cek%20dealer%20resmi%20Nikon%20terdekat`;
+
+  const actions = [
+    {
+      key: 'claim-promo',
+      icon: <IconGift />,
+      iconColor: 'text-[#ffe000]',
+      iconBg: 'bg-[#ffe000]/10 border-[#ffe000]/20',
+      badge: 'Ajukan', badgeColor: 'bg-[#ffe000] text-black',
+      title: 'Claim Promo',
+      desc: 'Ajukan klaim hadiah, cashback, atau aksesori gratis dari pembelian produk Nikon Anda.',
+      cta: 'Ajukan Klaim',
+      href: '/claim', external: false, modal: null as ModalType | null,
+    },
+    {
+      key: 'form-garansi',
+      icon: <IconFileText />,
+      iconColor: 'text-emerald-400',
+      iconBg: 'bg-emerald-400/10 border-emerald-400/20',
+      badge: 'Daftar', badgeColor: 'bg-emerald-500 text-white',
+      title: 'Isi Form Garansi',
+      desc: 'Daftarkan garansi resmi produk Nikon Anda secara online. OCR AI membaca nota otomatis.',
+      cta: 'Isi Formulir',
+      href: '/garansi', external: false, modal: null as ModalType | null,
+    },
+    {
+      key: 'cek-promo',
+      icon: <IconTag />,
+      iconColor: 'text-orange-400',
+      iconBg: 'bg-orange-400/10 border-orange-400/20',
+      badge: 'Info', badgeColor: 'bg-orange-500 text-white',
+      title: 'Cek Link Promo',
+      desc: 'Lihat langsung daftar promo yang sedang berjalan dan link pendaftaran resminya.',
+      cta: 'Lihat Promo',
+      href: promoHref, external: true, modal: null as ModalType | null,
+    },
+    {
+      key: 'cek-claim',
+      icon: <IconSearch />,
+      iconColor: 'text-blue-400',
+      iconBg: 'bg-blue-400/10 border-blue-400/20',
+      badge: 'Status', badgeColor: 'bg-blue-500 text-white',
+      title: 'Cek Status Claim',
+      desc: 'Pantau perkembangan klaim promo Anda secara real-time langsung di halaman ini.',
+      cta: 'Cek Sekarang',
+      href: null, external: false, modal: 'claim' as ModalType,
+    },
+    {
+      key: 'cek-garansi',
+      icon: <IconShield />,
+      iconColor: 'text-purple-400',
+      iconBg: 'bg-purple-400/10 border-purple-400/20',
+      badge: 'Status', badgeColor: 'bg-purple-500 text-white',
+      title: 'Cek Status Garansi',
+      desc: 'Verifikasi dan pantau status garansi produk Nikon yang sudah Anda daftarkan.',
+      cta: 'Cek Sekarang',
+      href: null, external: false, modal: 'garansi' as ModalType,
+    },
+    {
+      key: 'cek-dealer',
+      icon: <IconStore />,
+      iconColor: 'text-teal-400',
+      iconBg: 'bg-teal-400/10 border-teal-400/20',
+      badge: 'Lokasi', badgeColor: 'bg-teal-500 text-white',
+      title: 'Cek Dealer Resmi',
+      desc: 'Temukan dealer dan toko resmi Nikon terdekat untuk pembelian produk original bersertifikat.',
+      cta: 'Cari Dealer',
+      href: dealerHref, external: true, modal: null as ModalType | null,
+    },
+  ];
+
+  return (
+    <>
+      {/* Modal */}
+      {modalType && (
+        <CekStatusModal type={modalType} onClose={() => setModalType(null)} />
+      )}
+
+      <section className="py-16 bg-zinc-950 border-b border-zinc-800 relative">
+        {/* Yellow top accent bar */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ffe000] via-[#ffe000]/60 to-transparent" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Section header */}
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-px flex-1 bg-zinc-800" />
+              <span className="text-[#ffe000] text-xs font-bold uppercase tracking-widest px-3 py-1 border border-[#ffe000]/30 bg-[#ffe000]/5">
+                Layanan Konsumen
+              </span>
+              <div className="h-px flex-1 bg-zinc-800" />
+            </div>
+            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-white text-center">
+              Akses Cepat Semua Layanan
+            </h2>
+          </div>
+
+          {/* 6 cards grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
+            {actions.map(action => {
+              const inner = (
+                <>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`w-12 h-12 rounded-full border flex items-center justify-center shrink-0 ${action.iconBg} ${action.iconColor}`}>
+                      {action.icon}
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm ${action.badgeColor}`}>
+                      {action.badge}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2 group-hover:text-[#ffe000] transition-colors">
+                    {action.title}
+                  </h3>
+                  <p className="text-zinc-400 text-sm leading-relaxed flex-grow mb-5">
+                    {action.desc}
+                  </p>
+                  <div className={`flex items-center gap-1.5 text-sm font-bold uppercase tracking-wider group-hover:translate-x-1.5 transition-transform mt-auto ${action.iconColor}`}>
+                    {action.cta}
+                    <IconChevronRight />
+                  </div>
+                </>
+              );
+
+              const cardClass = 'group flex flex-col bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:-translate-y-1 transition-all duration-200 p-6 min-h-[200px] cursor-pointer text-left w-full';
+
+              if (action.modal) {
+                return (
+                  <button key={action.key} onClick={() => setModalType(action.modal!)} className={cardClass}>
+                    {inner}
+                  </button>
+                );
+              }
+              return (
+                <a key={action.key} href={action.href!}
+                  target={action.external ? '_blank' : undefined}
+                  rel={action.external ? 'noopener noreferrer' : undefined}
+                  className={cardClass}>
+                  {inner}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
 
 // ── Navbar ───────────────────────────────────────────────────────────────────
 function Navbar() {
@@ -165,7 +533,7 @@ function HeroSection() {
       <div className="absolute inset-0 z-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="https://images.unsplash.com/photo-1516961642265-531546e84af2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80"
+          src="/hero-nikon.jpg"
           alt="Hero Background"
           className="w-full h-full object-cover opacity-50 grayscale mix-blend-luminosity"
         />
@@ -733,6 +1101,7 @@ export default function NikonPage() {
         <Navbar />
         <main>
           <HeroSection />
+          <ConsumerAccessSection />
           <ServicesSection />
           <EventsSection />
           <WACTASection />

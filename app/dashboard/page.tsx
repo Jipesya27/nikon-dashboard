@@ -389,6 +389,11 @@ export default function NikonDashboard() {
    const [chatbotSaving, setChatbotSaving] = useState<Record<string, boolean>>({});
    const [isSubmitting, setIsSubmitting] = useState(false);
 
+   // NOTIFICATION CHANNEL
+   const [notifChannel, setNotifChannel] = useState<'wa_only' | 'email_only' | 'wa_and_email'>('wa_only');
+   const [notifChannelSaving, setNotifChannelSaving] = useState(false);
+   const [notifChannelMsg, setNotifChannelMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
    // TRANSAKSI DEALER
    const [dealerSheet, setDealerSheet] = useState<{ headers: string[]; rows: string[][]; sheetName: string } | null>(null);
    const [dealerLoading, setDealerLoading] = useState(false);
@@ -863,7 +868,15 @@ export default function NikonDashboard() {
       }
    }, [isScannerOpen, handleMarkAttendance]);
 
-   const fetchBotSettings = async () => { const { data } = await supabase.from('pengaturan_bot').select('*'); setBotSettings(data || []); };
+   const fetchBotSettings = async () => {
+     const { data } = await supabase.from('pengaturan_bot').select('*');
+     setBotSettings(data || []);
+     // Sync notif_channel state dari DB
+     const row = (data || []).find((r: { nama_pengaturan: string }) => r.nama_pengaturan === 'notif_channel');
+     if (row?.description && ['wa_only', 'email_only', 'wa_and_email'].includes(row.description)) {
+       setNotifChannel(row.description as 'wa_only' | 'email_only' | 'wa_and_email');
+     }
+   };
 
    const fetchAutocomplete = async () => {
       const { data } = await supabase.from('autocomplete_items').select('*').order('field_key').order('value');
@@ -2321,6 +2334,28 @@ export default function NikonDashboard() {
          alert('Gagal menyimpan pengaturan bot: ' + message);
       } finally {
          setIsSubmitting(false); }
+   };
+
+   const saveNotifChannel = async (value: 'wa_only' | 'email_only' | 'wa_and_email') => {
+      setNotifChannelSaving(true);
+      setNotifChannelMsg(null);
+      try {
+         const { data: existing } = await supabase.from('pengaturan_bot').select('id').eq('nama_pengaturan', 'notif_channel').maybeSingle();
+         if (existing?.id) {
+            const { error } = await sbWrite({ action: 'update', table: 'pengaturan_bot', data: { description: value }, match: { id: existing.id } });
+            if (error) throw new Error(error.message);
+         } else {
+            const { error } = await sbWrite({ action: 'insert', table: 'pengaturan_bot', data: { nama_pengaturan: 'notif_channel', description: value, url_file: null } });
+            if (error) throw new Error(error.message);
+         }
+         setNotifChannel(value);
+         setNotifChannelMsg({ ok: true, text: 'Berhasil disimpan!' });
+         setTimeout(() => setNotifChannelMsg(null), 3000);
+      } catch (err: unknown) {
+         setNotifChannelMsg({ ok: false, text: 'Gagal: ' + (err instanceof Error ? err.message : String(err)) });
+      } finally {
+         setNotifChannelSaving(false);
+      }
    };
 
    const saveChatbotTemplate = async (key: string) => {
@@ -5040,6 +5075,104 @@ export default function NikonDashboard() {
                {/* ======================= BOT SETTINGS ======================= */}
                {activeTab === 'botsettings' && (
                   <div className="space-y-6 animate-fade-in text-gray-900">
+
+                     {/* ── SEKSI 0: Saluran Notifikasi ── */}
+                     <div className="bg-white rounded-xl border-2 border-yellow-300 shadow-sm p-5 space-y-4">
+                        <div className="flex items-center gap-3">
+                           <span className="text-xl">📣</span>
+                           <div>
+                              <h2 className="text-base font-bold text-gray-900">Saluran Notifikasi Konsumen</h2>
+                              <p className="text-xs text-gray-500 mt-0.5">Pilih lewat mana sistem mengirim notifikasi ke konsumen &amp; admin (claim, garansi, event).</p>
+                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                           {([
+                              {
+                                 value: 'wa_only' as const,
+                                 icon: '💬',
+                                 label: 'WhatsApp Saja',
+                                 desc: 'Kirim via Fonnte. Butuh WA aktif & token Fonnte.',
+                                 color: 'green',
+                              },
+                              {
+                                 value: 'email_only' as const,
+                                 icon: '📧',
+                                 label: 'Email Saja',
+                                 desc: 'Kirim via SMTP. Butuh konfigurasi SMTP_HOST, SMTP_USER, SMTP_PASS.',
+                                 color: 'blue',
+                              },
+                              {
+                                 value: 'wa_and_email' as const,
+                                 icon: '💬📧',
+                                 label: 'WhatsApp & Email',
+                                 desc: 'Kirim ke dua saluran sekaligus. Membutuhkan WA aktif + SMTP.',
+                                 color: 'purple',
+                              },
+                           ] as { value: 'wa_only' | 'email_only' | 'wa_and_email'; icon: string; label: string; desc: string; color: string }[]).map(opt => {
+                              const isActive = notifChannel === opt.value;
+                              const borderCls = isActive
+                                 ? opt.color === 'green'  ? 'border-green-500 bg-green-50'
+                                 : opt.color === 'blue'   ? 'border-blue-500 bg-blue-50'
+                                 :                          'border-purple-500 bg-purple-50'
+                                 : 'border-gray-200 bg-white hover:border-gray-400';
+                              const ringCls = isActive
+                                 ? opt.color === 'green'  ? 'bg-green-500'
+                                 : opt.color === 'blue'   ? 'bg-blue-500'
+                                 :                          'bg-purple-500'
+                                 : 'bg-gray-300';
+                              return (
+                                 <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => saveNotifChannel(opt.value)}
+                                    disabled={notifChannelSaving}
+                                    className={`w-full text-left rounded-lg border-2 p-4 transition-all duration-150 cursor-pointer disabled:opacity-60 ${borderCls}`}
+                                 >
+                                    <div className="flex items-center gap-2 mb-1">
+                                       <span className={`w-3.5 h-3.5 rounded-full flex-shrink-0 ${ringCls}`} />
+                                       <span className="font-bold text-sm text-gray-900">{opt.icon} {opt.label}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 leading-snug">{opt.desc}</p>
+                                 </button>
+                              );
+                           })}
+                        </div>
+
+                        {/* Status */}
+                        <div className="flex items-center gap-3">
+                           {notifChannelSaving && <span className="text-xs text-gray-500 animate-pulse">Menyimpan...</span>}
+                           {notifChannelMsg && (
+                              <span className={`text-xs font-semibold ${notifChannelMsg.ok ? 'text-green-600' : 'text-red-600'}`}>
+                                 {notifChannelMsg.text}
+                              </span>
+                           )}
+                           <div className="ml-auto text-xs text-gray-400">
+                              Aktif sekarang: <span className="font-bold text-gray-700">
+                                 {notifChannel === 'wa_only' ? '💬 WhatsApp Saja'
+                                 : notifChannel === 'email_only' ? '📧 Email Saja'
+                                 : '💬📧 WhatsApp & Email'}
+                              </span>
+                           </div>
+                        </div>
+
+                        {/* Instruksi SMTP */}
+                        {(notifChannel === 'email_only' || notifChannel === 'wa_and_email') && (
+                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-gray-700 space-y-1">
+                              <p className="font-bold text-blue-800">⚙️ Konfigurasi Email diperlukan di file <code>.env.local</code>:</p>
+                              <pre className="bg-white rounded p-2 text-[11px] overflow-x-auto border border-blue-100 text-gray-800">{`SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=akunemail@gmail.com
+SMTP_PASS=app_password_16_karakter
+SMTP_FROM_NAME=Nikon Service Center
+SMTP_FROM=akunemail@gmail.com
+ADMIN_EMAIL=email_admin@gmail.com`}</pre>
+                              <p className="text-gray-500">Untuk Gmail: aktifkan 2FA lalu buat <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-blue-600 underline">App Password</a>. Untuk provider lain, sesuaikan SMTP_HOST &amp; SMTP_PORT.</p>
+                           </div>
+                        )}
+                     </div>
+
                      {/* ── SEKSI 1: Bot Settings (URL/value) ── */}
                      <div className="space-y-2">
                         <p className="text-sm text-gray-600">Kelola pengaturan dan tautan yang digunakan oleh Chatbot.</p>
