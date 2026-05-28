@@ -45,13 +45,14 @@ export async function POST(req: Request) {
 
         for (const msg of messages) {
           const m = msg as Record<string, unknown>;
+          const msgType = m.type as string;
 
-          // Only handle text messages
-          if (m.type !== 'text') continue;
+          // Hanya proses teks dan gambar
+          const isSupportedType = ['text', 'image', 'document', 'video', 'audio'].includes(msgType);
+          if (!isSupportedType) continue;
 
           const from = m.from as string;
           const timestamp = m.timestamp as string;
-          const text = (m.text as Record<string, string>)?.body ?? '';
 
           const contact = (contacts as Record<string, unknown>[]).find(
             (c) => (c.wa_id as string) === from
@@ -63,6 +64,35 @@ export async function POST(req: Request) {
           const normalizedWa = nomor_wa.startsWith('62')
             ? nomor_wa
             : `62${nomor_wa.slice(-12)}`;
+
+          // Ambil isi pesan berdasarkan tipe
+          let text = '';
+          let mediaUrl = '';
+
+          if (msgType === 'text') {
+            text = (m.text as Record<string, string>)?.body ?? '';
+          } else {
+            // Gambar / dokumen / video / audio
+            const mediaObj = m[msgType] as Record<string, string> | undefined;
+            const mediaId = mediaObj?.id;
+            const caption = mediaObj?.caption ?? '';
+            text = caption || `[${msgType}]`;
+
+            if (mediaId) {
+              try {
+                // Step 1: ambil URL dari Meta Media API
+                const metaRes = await fetch(
+                  `https://graph.facebook.com/v25.0/${mediaId}`,
+                  { headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}` } }
+                );
+                const metaData = await metaRes.json() as Record<string, string>;
+                mediaUrl = metaData.url ?? '';
+                console.log(`[WEBHOOK] Media ${msgType} URL:`, mediaUrl ? 'OK' : 'GAGAL');
+              } catch (e) {
+                console.error('[WEBHOOK] Gagal ambil media URL:', e);
+              }
+            }
+          }
 
           // STEP 1: Pastikan konsumen ada (FK ke tabel konsumen)
           const { data: konsumen, error: konsumenError } = await supabase
@@ -98,7 +128,7 @@ export async function POST(req: Request) {
           }
 
           // STEP 2: Simpan pesan ke riwayat_pesan
-          const { error } = await supabase.from('riwayat_pesan').insert([{
+          const pesanRecord: Record<string, unknown> = {
             nomor_wa: normalizedWa,
             nama_profil_wa: senderName,
             arah_pesan: 'IN',
@@ -106,7 +136,10 @@ export async function POST(req: Request) {
             waktu_pesan: new Date(Number(timestamp) * 1000).toISOString(),
             bicara_dengan_cs: false,
             created_at: new Date().toISOString(),
-          }]);
+          };
+          if (mediaUrl) pesanRecord.url_media = mediaUrl;
+
+          const { error } = await supabase.from('riwayat_pesan').insert([pesanRecord]);
 
           if (error) {
             console.error('[WEBHOOK] Failed to save message:', error.message);
@@ -126,6 +159,7 @@ export async function POST(req: Request) {
               sender: normalizedWa,
               message: text,
               name: senderName,
+              url_file: mediaUrl || undefined,
               skip_save: true, // sudah disimpan di atas
             }),
           }).catch((err) => console.error('[WEBHOOK] Gagal panggil edge function:', err));
