@@ -35,6 +35,7 @@ interface ReadPayload {
   filters?: ReadFilter[];
   order?: { col: string; ascending?: boolean };
   limit?: number;
+  offset?: number; // pagination: row index to start from (0-based)
   count?: boolean; // return exact count alongside data
 }
 
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { table, select = '*', filters = [], order, limit, count } = payload;
+  const { table, select = '*', filters = [], order, limit, offset, count } = payload;
 
   if (!table) {
     return NextResponse.json({ error: 'table wajib diisi' }, { status: 400 });
@@ -77,7 +78,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (order) q = q.order(order.col, { ascending: order.ascending ?? false });
-    if (limit) q = q.limit(limit);
+    // range(from, to) inklusif kedua ujung; jika ada offset pakai range, jika tidak pakai limit biasa
+    if (typeof offset === 'number' && limit) {
+      q = q.range(offset, offset + limit - 1);
+    } else if (limit) {
+      q = q.limit(limit);
+    }
 
     const { data, error, count: rowCount } = await q;
 

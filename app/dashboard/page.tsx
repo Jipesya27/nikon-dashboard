@@ -66,6 +66,7 @@ async function sbRead<T = unknown>(opts: {
   filters?: { col: string; op: 'eq'|'neq'|'gte'|'lte'|'gt'|'lt'|'like'|'ilike'|'in'; val: unknown }[];
   order?: { col: string; ascending?: boolean };
   limit?: number;
+  offset?: number;
   count?: boolean;
 }): Promise<{ data: T[] | null; count: number | null; error: { message: string } | null }> {
   try {
@@ -338,6 +339,12 @@ export default function NikonDashboard() {
    const [selectedWa, setSelectedWa] = useState<string | null>(null);
    const [replyText, setReplyText] = useState('');
    const [replyToMessage, setReplyToMessage] = useState<RiwayatPesan | null>(null);
+   // Pagination riwayat chat per-kontak
+   const [chatHasMore, setChatHasMore] = useState<Record<string, boolean>>({});
+   const [chatLoadedCount, setChatLoadedCount] = useState<Record<string, number>>({});
+   const [chatLoadingMore, setChatLoadingMore] = useState(false);
+   // Toggle tampilkan pesan sistem (WA template, notifikasi otomatis)
+   const [showSystemMessages, setShowSystemMessages] = useState(true);
    const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
    const [isScannerOpen, setIsScannerOpen] = useState(false);
    const [newChatWa, setNewChatWa] = useState('');
@@ -754,27 +761,44 @@ export default function NikonDashboard() {
    };
 
    /**
-    * Tarik SEMUA riwayat percakapan untuk satu kontak (tanpa filter tanggal).
-    * Dipanggil saat user memilih kontak di tab pesan agar history lengkap tampil.
-    * Hasilnya di-merge ke state messages: pesan kontak lain tetap utuh.
+    * Tarik riwayat percakapan satu kontak dengan pagination (50 pesan per halaman).
+    * offset=0 → load awal (50 terbaru), offset>0 → muat lebih banyak pesan lama.
+    * Hasilnya di-merge ke state messages; pesan kontak lain tetap utuh.
     */
-   const fetchContactHistory = useCallback(async (wa: string) => {
+   const CHAT_PAGE_SIZE = 50;
+   const fetchContactHistory = useCallback(async (wa: string, offset = 0) => {
       const { data, error } = await sbRead<RiwayatPesan>({
          table: 'riwayat_pesan',
          filters: [{ col: 'nomor_wa', op: 'eq', val: wa }],
-         order: { col: 'created_at', ascending: false },
-         limit: 500,
+         order: { col: 'waktu_pesan', ascending: false },
+         limit: CHAT_PAGE_SIZE + 1, // ambil satu ekstra untuk deteksi "ada lebih"
+         offset,
       });
       if (error) {
          console.error('[fetchContactHistory] error:', error.message);
          return;
       }
-      if (!data) return;
-      // Merge: pertahankan pesan kontak lain, timpa pesan kontak ini dengan data fresh
-      setMessages(prev => [
-         ...(data),
-         ...prev.filter(m => m.nomor_wa !== wa),
-      ]);
+      const raw = data ?? [];
+      const hasMore = raw.length > CHAT_PAGE_SIZE;
+      const page = hasMore ? raw.slice(0, CHAT_PAGE_SIZE) : raw;
+
+      setChatHasMore(prev => ({ ...prev, [wa]: hasMore }));
+      setChatLoadedCount(prev => ({ ...prev, [wa]: (offset === 0 ? 0 : (prev[wa] || 0)) + page.length }));
+
+      if (offset === 0) {
+         // Load awal: ganti semua pesan kontak ini
+         setMessages(prev => [
+            ...page,
+            ...prev.filter(m => m.nomor_wa !== wa),
+         ]);
+      } else {
+         // Load lebih: prepend pesan-pesan lebih lama (currentChatThread akan sort ASC otomatis)
+         setMessages(prev => {
+            const existingIds = new Set(prev.map(m => m.id_pesan).filter(Boolean) as string[]);
+            const newOld = page.filter(m => !m.id_pesan || !existingIds.has(m.id_pesan));
+            return [...newOld, ...prev];
+         });
+      }
    // eslint-disable-next-line react-hooks/exhaustive-deps
    }, []);
    const fetchTable = async <T,>(table: string, setter: (d: T[]) => void, options?: { dateFilter?: boolean; ascending?: boolean }) => {
@@ -2797,7 +2821,10 @@ export default function NikonDashboard() {
 
    const currentChatThread = useMemo(() => {
       if (!selectedWa) return [];
-      const filtered = messages.filter((m: RiwayatPesan) => m.nomor_wa === selectedWa);
+      const filtered = messages.filter((m: RiwayatPesan) =>
+         m.nomor_wa === selectedWa &&
+         (showSystemMessages || m.jenis_pesan !== 'system'),
+      );
       // De-duplikasi: hapus optimistic message (__opt_) jika sudah ada pesan real
       // dengan isi dan waktu yang sama (selisih < 10 detik)
       const optimistic = filtered.filter(m => m.id_pesan?.startsWith('__opt_'));
@@ -2817,7 +2844,7 @@ export default function NikonDashboard() {
          const dateB = new Date(b.waktu_pesan || b.created_at || 0).getTime();
          return dateA - dateB;
       });
-   }, [selectedWa, messages]);
+   }, [selectedWa, messages, showSystemMessages]);
 
    const filteredPromos = useMemo(() => promos.filter((p: Promosi) => {
       const name = (p.nama_promo || "").toLowerCase();
@@ -3755,10 +3782,44 @@ export default function NikonDashboard() {
                                     {uniqueContacts.find(c => c.nomor_wa === selectedWa)?.bicara_dengan_cs && (
                                        <button onClick={() => handleSelesaiCS(selectedWa)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm whitespace-nowrap">Tandai Selesai</button>
                                     )}
+                                    <button
+                                       onClick={() => setShowSystemMessages(v => !v)}
+                                       title={showSystemMessages ? 'Sembunyikan pesan sistem' : 'Tampilkan pesan sistem'}
+                                       aria-label="Toggle pesan sistem"
+                                       className={`p-2 rounded-lg transition text-xs ${showSystemMessages ? 'text-blue-600 bg-blue-100' : 'text-gray-400 hover:bg-gray-200'}`}
+                                    >🤖</button>
                                  </div>
                               </div>
                               <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto space-y-3 relative scroll-smooth bg-[url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')] bg-size-[400px] bg-repeat">
+                                 {/* Tombol muat pesan lebih lama */}
+                                 {selectedWa && chatHasMore[selectedWa] && (
+                                    <div className="flex justify-center mb-1">
+                                       <button
+                                          onClick={async () => {
+                                             setChatLoadingMore(true);
+                                             await fetchContactHistory(selectedWa, chatLoadedCount[selectedWa] || 0);
+                                             setChatLoadingMore(false);
+                                          }}
+                                          disabled={chatLoadingMore}
+                                          className="bg-white/80 backdrop-blur-sm text-gray-600 text-xs px-4 py-1.5 rounded-full shadow-sm hover:bg-white border border-gray-200 disabled:opacity-50 transition"
+                                       >
+                                          {chatLoadingMore ? '⏳ Memuat...' : '↑ Muat pesan lebih lama'}
+                                       </button>
+                                    </div>
+                                 )}
                                  {currentChatThread.map((msg: RiwayatPesan, index: number) => (
+                                    msg.jenis_pesan === 'system' ? (
+                                       /* Pesan sistem: pill abu-abu di tengah, tidak bisa dibalas */
+                                       <div key={msg.id_pesan || index} className="flex justify-center">
+                                          <div className="bg-black/10 backdrop-blur-sm text-gray-700 text-[11px] px-3 py-1 rounded-full shadow-sm max-w-[85%] text-center leading-relaxed">
+                                             <span className="mr-1 opacity-70">🤖</span>
+                                             <span>{msg.isi_pesan}</span>
+                                             <span className="ml-2 text-gray-500 text-[9px]">
+                                                {(() => { const d = new Date(msg.waktu_pesan || msg.created_at || 0); return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }); })()}
+                                             </span>
+                                          </div>
+                                       </div>
+                                    ) : (
                                     <div key={msg.id_pesan || index} className={`group flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
                                        <div className={`max-w-[85%] md:max-w-[70%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'}`}>
                                           <button
@@ -3793,6 +3854,7 @@ export default function NikonDashboard() {
                                           </div>
                                        </div>
                                     </div>
+                                    ) /* tutup branch ternary else */
                                  ))}
                                  <div ref={messagesEndRef} />
                               </div>

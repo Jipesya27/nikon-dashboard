@@ -111,7 +111,36 @@ async function sendWA(
         signal: AbortSignal.timeout(8000),
       },
     );
-    if (!res.ok) console.error('[notify] Meta WA error:', res.status, await res.text());
+    if (!res.ok) {
+      console.error('[notify] Meta WA error:', res.status, await res.text());
+      return;
+    }
+    // Log pesan sistem ke riwayat_pesan agar tampil di tab chat dashboard.
+    // Fire-and-forget — gagal log tidak memblokir alur utama.
+    // FK ke konsumen mungkin gagal untuk peserta event yang belum pernah chat; .catch() menangani ini.
+    const displayText = template
+      ? `Notifikasi terkirim: ${template.name}`
+      : pesan;
+    const now = new Date().toISOString();
+    void (async () => {
+      try {
+        await createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        )
+          .from('riwayat_pesan')
+          .insert({
+            nomor_wa: target,
+            nama_profil_wa: 'Sistem',
+            arah_pesan: 'OUT',
+            isi_pesan: displayText,
+            waktu_pesan: now,
+            created_at: now,
+            bicara_dengan_cs: false,
+            jenis_pesan: 'system',
+          });
+      } catch { /* non-kritis, FK mungkin gagal untuk non-konsumen */ }
+    })();
   } catch (e) {
     console.error('[notify] Gagal kirim WA (non-kritis):', e);
   }
