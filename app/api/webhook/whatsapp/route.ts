@@ -1,82 +1,126 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// Server-side: use service_role key to bypass RLS
+function generateKonsumenID() {
+  const randomDigits = Math.floor(100000 + Math.random() * 900000);
+  return `AN${randomDigits}`;
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// GET: Meta webhook verification (hub challenge)
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const mode = searchParams.get('hub.mode');
+  const token = searchParams.get('hub.verify_token');
+  const challenge = searchParams.get('hub.challenge');
+
+  if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    console.log('[WEBHOOK] Meta verification successful');
+    return new Response(challenge, { status: 200 });
+  }
+
+  console.warn('[WEBHOOK] Meta verification failed — token mismatch');
+  return new Response('Forbidden', { status: 403 });
+}
+
+// POST: Meta WhatsApp Business Cloud API incoming messages
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Fonnte webhook payload structure
-    const {
-      webhook_id,
-      message_type,
-      phone,
-      sender,
-      message,
-      timestamp,
-      is_group,
-      group_id,
-      group_name
-    } = body;
-
-    // Only process incoming text messages from individual contacts
-    if (message_type !== 'incoming_message' || is_group) {
+    if (body.object !== 'whatsapp_business_account') {
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    if (!phone || !message) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    for (const entry of body.entry ?? []) {
+      for (const change of entry.changes ?? []) {
+        if (change.field !== 'messages') continue;
+
+        const value = change.value;
+        const messages: unknown[] = value.messages ?? [];
+        const contacts: unknown[] = value.contacts ?? [];
+
+        for (const msg of messages) {
+          const m = msg as Record<string, unknown>;
+
+          // Only handle text messages
+          if (m.type !== 'text') continue;
+
+          const from = m.from as string;
+          const timestamp = m.timestamp as string;
+          const text = (m.text as Record<string, string>)?.body ?? '';
+
+          const contact = (contacts as Record<string, unknown>[]).find(
+            (c) => (c.wa_id as string) === from
+          );
+          const senderName =
+            ((contact?.profile as Record<string, string>)?.name) || from;
+
+          const nomor_wa = from.replace(/\D/g, '');
+          const normalizedWa = nomor_wa.startsWith('62')
+            ? nomor_wa
+            : `62${nomor_wa.slice(-12)}`;
+
+          // STEP 1: Pastikan konsumen ada (FK ke tabel konsumen)
+          const { data: konsumen, error: konsumenError } = await supabase
+            .from('konsumen')
+            .select('nomor_wa, id_konsumen')
+            .eq('nomor_wa', normalizedWa)
+            .single();
+
+          if (konsumenError && konsumenError.code !== 'PGRST116') {
+            console.error('[WEBHOOK] Error cek konsumen:', konsumenError.message);
+          }
+
+          if (!konsumen) {
+            const newID = generateKonsumenID();
+            const { error: createErr } = await supabase.from('konsumen').insert({
+              nomor_wa: normalizedWa,
+              id_konsumen: newID,
+              status_langkah: 'START',
+              nama_lengkap: senderName,
+              nik: 'BELUM_DIISI',
+              alamat_rumah: 'BELUM_DIISI',
+              kelurahan: 'BELUM_DIISI',
+              kecamatan: 'BELUM_DIISI',
+              kabupaten_kotamadya: 'BELUM_DIISI',
+              provinsi: 'BELUM_DIISI',
+              kodepos: 'BELUM_DIISI',
+            });
+            if (createErr) {
+              console.error('[WEBHOOK] Gagal buat konsumen:', createErr.message);
+            } else {
+              console.log('[WEBHOOK] Konsumen baru dibuat:', normalizedWa, newID);
+            }
+          }
+
+          // STEP 2: Simpan pesan ke riwayat_pesan
+          const { error } = await supabase.from('riwayat_pesan').insert([{
+            nomor_wa: normalizedWa,
+            nama_profil_wa: senderName,
+            arah_pesan: 'IN',
+            isi_pesan: text,
+            waktu_pesan: new Date(Number(timestamp) * 1000).toISOString(),
+            bicara_dengan_cs: false,
+            created_at: new Date().toISOString(),
+          }]);
+
+          if (error) {
+            console.error('[WEBHOOK] Failed to save message:', error.message);
+          } else {
+            console.log('[WEBHOOK] Pesan tersimpan:', normalizedWa, text.substring(0, 50));
+          }
+        }
+      }
     }
 
-    // Normalize phone number (remove non-digits, add country code if needed)
-    const nomor_wa = phone.replace(/\D/g, '');
-    const normalizedWa = nomor_wa.startsWith('62') ? nomor_wa : `62${nomor_wa.slice(-12)}`;
-
-    // Save incoming message to database
-    const { error } = await supabase.from('riwayat_pesan').insert([{
-      nomor_wa: normalizedWa,
-      nama_profil_wa: sender || normalizedWa,
-      arah_pesan: 'IN',
-      isi_pesan: message,
-      waktu_pesan: new Date(timestamp * 1000).toISOString(),
-      bicara_dengan_cs: false,
-      created_at: new Date().toISOString()
-    }]);
-
-    if (error) {
-      console.error('[WEBHOOK] Error saving incoming message:', error);
-      return NextResponse.json(
-        { error: 'Failed to save message', details: error.message },
-        { status: 500 }
-      );
-    }
-
-    console.log('[WEBHOOK] Incoming message saved:', {
-      nomor_wa: normalizedWa,
-      sender,
-      message: message.substring(0, 50) + (message.length > 50 ? '...' : '')
-    });
-
-    return NextResponse.json({ success: true, message: 'Message saved' }, { status: 200 });
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[WEBHOOK] Error processing WhatsApp webhook:', message);
-    return NextResponse.json(
-      { error: 'Internal server error', details: message },
-      { status: 500 }
-    );
+    console.error('[WEBHOOK] Error:', message);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-export async function GET(req: Request) {
-  // Fonnte webhook verification
-  const { searchParams } = new URL(req.url);
-  const token = searchParams.get('token');
-
-  // You can optionally verify the token here if Fonnte provides one
-  return NextResponse.json({ status: 'Webhook endpoint active' }, { status: 200 });
 }
