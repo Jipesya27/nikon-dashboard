@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
-import { sendWATemplate } from '@/app/lib/notify';
+import { sendWAOtpTemplate } from '@/app/lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,11 +44,12 @@ export async function POST(req: Request) {
 
   await supabase.from('karyawan').update({ password: hash }).eq('id_karyawan', karyawan.id_karyawan);
 
-  // Kirim via Meta WA template (bekerja tanpa 24h window)
-  await sendWATemplate(
+  // Kirim via Meta WA AUTHENTICATION template (bekerja tanpa 24h window)
+  // notif_kode_akun = AUTHENTICATION template dengan COPY_CODE button
+  await sendWAOtpTemplate(
     karyawan.nomor_wa,
-    'notif_password_reset',
-    [karyawan.nama_karyawan, tempPw],
+    'notif_kode_akun',
+    tempPw,
   ).catch(() => null); // fire-and-forget, jangan gagalkan request utama
 
   return NextResponse.json({ success: true });

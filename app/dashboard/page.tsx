@@ -17,6 +17,7 @@ import {
 import Header from '@/app/Header';
 import AddressFields from '@/app/components/AddressFields';
 import EventReport from '@/app/components/EventReport';
+import WaTemplatesTab from '@/app/components/WaTemplatesTab';
 
 // Client-side: proxy through /api/admin/sb (validates admin session, uses service_role).
 // SSR/prerender: fall back to real URL (no queries happen server-side; all fetches are in useEffect).
@@ -3033,6 +3034,7 @@ export default function NikonDashboard() {
             { id: 'userrole', label: '🔐 User Role', count: karyawans.length },
             { id: 'botsettings', label: '⚙️ Bot Settings', count: botSettings.length },
             { id: 'autocomplete', label: '✏️ Saran Isian', count: undefined },
+            { id: 'wa_templates', label: '💬 WA Templates', count: undefined },
          ]
       },
       {
@@ -3050,7 +3052,7 @@ export default function NikonDashboard() {
          ...group,
          tabs: group.tabs.filter(tab => {
             if (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') return true;
-            if (tab.id === 'userrole' || tab.id === 'autocomplete') return false;
+            if (tab.id === 'userrole' || tab.id === 'autocomplete' || tab.id === 'wa_templates') return false;
             return (currentUser?.akses_halaman || []).includes(tab.id);
          })
       })).filter(group => group.tabs.length > 0);
@@ -5490,6 +5492,11 @@ ADMIN_EMAIL=email_admin@gmail.com`}</pre>
                      </div>
                   );
                })()}
+
+               {/* ======================= WA TEMPLATES ======================= */}
+               {activeTab === 'wa_templates' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                  <WaTemplatesTab />
+               )}
 
                {/* ======================= AFFILIATE ======================= */}
                {activeTab === 'affiliate' && (() => {

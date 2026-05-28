@@ -129,6 +129,57 @@ export async function sendWATemplate(
   await sendWA(nomor, '', { name: templateName, params });
 }
 
+/**
+ * Kirim WA AUTHENTICATION template (OTP / kode akses sementara).
+ * Format berbeda dari UTILITY template — kode dikirim ke parameter tombol,
+ * bukan ke body. Template harus punya OTP button dengan otp_type="COPY_CODE".
+ *
+ * @param nomor        - Nomor WA tujuan (format 62xxx atau 08xxx)
+ * @param templateName - Nama template AUTHENTICATION (e.g. 'notif_kode_akun')
+ * @param code         - Kode / password sementara yang akan dikirim
+ */
+export async function sendWAOtpTemplate(
+  nomor: string,
+  templateName: string,
+  code: string,
+): Promise<void> {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN || '';
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+  if (!token || !phoneNumberId || !nomor) return;
+  const target = toWaE164(nomor);
+
+  const body = {
+    messaging_product: 'whatsapp',
+    to: target,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: 'id' },
+      components: [{
+        type: 'button',
+        sub_type: 'copy_code',
+        index: '0',
+        parameters: [{ type: 'coupon_code', coupon_code: code }],
+      }],
+    },
+  };
+
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(8000),
+      },
+    );
+    if (!res.ok) console.error('[notify] Meta WA OTP error:', res.status, await res.text());
+  } catch (e) {
+    console.error('[notify] Gagal kirim WA OTP (non-kritis):', e);
+  }
+}
+
 // ─── Email via SMTP ─────────────────────────────────────────────────────────
 
 function waMarkdownToHtml(text: string): string {
