@@ -192,26 +192,8 @@ export default function NikonDashboard() {
    const [searchClaim, setSearchClaim] = useState('');
    const [filterStatusWarna, setFilterStatusWarna] = useState<string>('Semua');
    const [filterDuplikat, setFilterDuplikat] = useState(false);
-   const [printedClaimDates, setPrintedClaimDates] = useState<Record<string, string[]>>(() => {
-      if (typeof window !== 'undefined') {
-         try {
-            const saved = localStorage.getItem('printedClaimDates');
-            if (saved) return JSON.parse(saved) as Record<string, string[]>;
-            // Migrasi data lama (Set of IDs) → Record dengan tanggal hari ini
-            const old = localStorage.getItem('printedClaimIds');
-            if (old) {
-               const ids: string[] = JSON.parse(old);
-               const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
-               return Object.fromEntries(ids.map(id => [id, [today]]));
-            }
-         } catch {}
-      }
-      return {};
-   });
-
-   useEffect(() => {
-      localStorage.setItem('printedClaimDates', JSON.stringify(printedClaimDates));
-   }, [printedClaimDates]);
+   // tanggal_cetak kini disimpan permanen di kolom claim_promo.tanggal_cetak (Supabase)
+   // — tidak lagi pakai localStorage
 
    const [sentStatusClaimIds, setSentStatusClaimIds] = useState<Set<string>>(() => {
       if (typeof window !== 'undefined') {
@@ -2778,10 +2760,16 @@ export default function NikonDashboard() {
       document.body.removeChild(a);
       if (c.id_claim) {
          const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
-         setPrintedClaimDates(prev => ({
-            ...prev,
-            [c.id_claim!]: [...(prev[c.id_claim!] || []), today],
-         }));
+         const newDates = [...(c.tanggal_cetak || []), today];
+         // Update lokal langsung (feedback instan)
+         setClaims(prev => prev.map(cl => cl.id_claim === c.id_claim ? { ...cl, tanggal_cetak: newDates } : cl));
+         // Simpan permanen ke Supabase
+         sbWrite({
+            action: 'update',
+            table: 'claim_promo',
+            data: { tanggal_cetak: newDates },
+            match: { id_claim: c.id_claim },
+         }).catch(e => console.error('[printLabel] simpan tanggal_cetak error:', e));
       }
    };
 
@@ -4298,14 +4286,18 @@ export default function NikonDashboard() {
                                        </td>
                                        <td className="px-3 py-2.5 text-[11px] text-gray-600">{c.catatan_mkt || '-'}</td>
                                        <td className="px-3 py-2.5">
-                                          {c.id_claim && (printedClaimDates[c.id_claim]?.length > 0) ? (
+                                          {(c.tanggal_cetak?.length ?? 0) > 0 ? (
                                              <div className="flex flex-col gap-0.5">
-                                                {printedClaimDates[c.id_claim].map((d, i) => (
+                                                {c.tanggal_cetak!.map((d, i) => (
                                                    <span key={i} className="inline-block bg-green-100 text-green-800 text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">✓ {d}</span>
                                                 ))}
                                                 {currentUser?.role === 'Super Admin' && (
                                                    <button
-                                                      onClick={() => { if (c.id_claim) { const n = { ...printedClaimDates }; delete n[c.id_claim!]; setPrintedClaimDates(n); } }}
+                                                      onClick={async () => {
+                                                         if (!c.id_claim) return;
+                                                         setClaims(prev => prev.map(cl => cl.id_claim === c.id_claim ? { ...cl, tanggal_cetak: [] } : cl));
+                                                         await sbWrite({ action: 'update', table: 'claim_promo', data: { tanggal_cetak: [] }, match: { id_claim: c.id_claim } });
+                                                      }}
                                                       className="text-[10px] text-red-400 hover:text-red-600 hover:underline text-left mt-0.5"
                                                    >Reset</button>
                                                 )}
@@ -4382,13 +4374,17 @@ export default function NikonDashboard() {
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end flex-wrap">
                                     <div className="flex flex-col gap-1">
                                        <button onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="text-blue-600 text-xs font-bold hover:underline">🏷️ Print Label</button>
-                                       {c.id_claim && (printedClaimDates[c.id_claim]?.length > 0) && (
+                                       {(c.tanggal_cetak?.length ?? 0) > 0 && (
                                           <div className="flex flex-col gap-0.5">
-                                             {printedClaimDates[c.id_claim].map((d, i) => (
+                                             {c.tanggal_cetak!.map((d, i) => (
                                                 <span key={i} className="text-[10px] bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded">✓ {d}</span>
                                              ))}
                                              {currentUser?.role === 'Super Admin' && (
-                                                <button onClick={() => { if (c.id_claim) { const n = { ...printedClaimDates }; delete n[c.id_claim!]; setPrintedClaimDates(n); } }} className="text-[10px] text-red-400 hover:underline text-left">Reset</button>
+                                                <button onClick={async () => {
+                                                   if (!c.id_claim) return;
+                                                   setClaims(prev => prev.map(cl => cl.id_claim === c.id_claim ? { ...cl, tanggal_cetak: [] } : cl));
+                                                   await sbWrite({ action: 'update', table: 'claim_promo', data: { tanggal_cetak: [] }, match: { id_claim: c.id_claim } });
+                                                }} className="text-[10px] text-red-400 hover:underline text-left">Reset</button>
                                              )}
                                           </div>
                                        )}
