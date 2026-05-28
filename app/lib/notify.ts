@@ -62,27 +62,52 @@ export function invalidateNotifCache() {
 
 // ─── WhatsApp via Meta Cloud API ────────────────────────────────────────────
 
-async function sendWA(nomor: string, pesan: string) {
+function toWaE164(nomor: string): string {
+  if (nomor.startsWith('+')) return nomor.slice(1);
+  if (nomor.startsWith('0')) return '62' + nomor.slice(1);
+  return nomor;
+}
+
+async function sendWA(
+  nomor: string,
+  pesan: string,
+  template?: { name: string; params: string[] },
+) {
   const token = process.env.WHATSAPP_ACCESS_TOKEN || '';
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
   if (!token || !phoneNumberId || !nomor) return;
-  // Pastikan format 62xxx
-  const target = nomor.startsWith('0') ? '62' + nomor.slice(1) : nomor;
+  const target = toWaE164(nomor);
+
+  let body: unknown;
+  if (template) {
+    body = {
+      messaging_product: 'whatsapp',
+      to: target,
+      type: 'template',
+      template: {
+        name: template.name,
+        language: { code: 'id' },
+        components: template.params.length > 0
+          ? [{ type: 'body', parameters: template.params.map(p => ({ type: 'text', text: p })) }]
+          : [],
+      },
+    };
+  } else {
+    body = {
+      messaging_product: 'whatsapp',
+      to: target,
+      type: 'text',
+      text: { body: pesan },
+    };
+  }
+
   try {
     const res = await fetch(
       `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`,
       {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: target,
-          type: 'text',
-          text: { body: pesan },
-        }),
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(8000),
       },
     );
@@ -90,6 +115,18 @@ async function sendWA(nomor: string, pesan: string) {
   } catch (e) {
     console.error('[notify] Gagal kirim WA (non-kritis):', e);
   }
+}
+
+/**
+ * Kirim WA template langsung ke nomor manapun (tanpa channel settings).
+ * Gunakan untuk notifikasi satu arah ke konsumen di luar 24h window.
+ */
+export async function sendWATemplate(
+  nomor: string,
+  templateName: string,
+  params: string[],
+): Promise<void> {
+  await sendWA(nomor, '', { name: templateName, params });
 }
 
 // ─── Email via SMTP ─────────────────────────────────────────────────────────
@@ -144,14 +181,19 @@ async function sendEmail(to: string, subject: string, message: string, customHtm
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export interface NotifTarget {
-  /** WA number in 62xxx format (for Fonnte). */
+  /** WA number — format 62xxx atau 08xxx (otomatis dikonversi). */
   phone?: string;
   /** Recipient email address. */
   email?: string | null;
-  /** Plain-text message (WA markdown: *bold* supported). */
+  /** Plain-text message (untuk email; WA pakai waTemplate jika ada). */
   message: string;
   /** Email subject line. Defaults to 'Notifikasi Nikon'. */
   subject?: string;
+  /**
+   * Meta WA template. Jika diisi, WA dikirim sebagai template message
+   * (bekerja di luar 24-jam window). Jika tidak diisi, pakai free-form text.
+   */
+  waTemplate?: { name: string; params: string[] };
 }
 
 /**
@@ -172,7 +214,7 @@ export async function sendNotif(consumer: NotifTarget, admin?: NotifTarget): Pro
 
   // ── Consumer ──────────────────────────────────
   if (consumer.phone && doWA) {
-    tasks.push(sendWA(consumer.phone, consumer.message));
+    tasks.push(sendWA(consumer.phone, consumer.message, consumer.waTemplate));
   }
   if (consumer.email && doEmail) {
     tasks.push(sendEmail(

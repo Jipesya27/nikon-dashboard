@@ -38,8 +38,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const targetWa = data.nomor_wa_update || data.nomor_wa;
       if (targetWa) {
         const pesan = status === 'Valid'
-          ? `✅ *Registrasi Garansi Anda DISETUJUI!*\n\nHalo ${data.nama_pendaftar},\n\nGaransi untuk produk *${data.tipe_barang}* (No. Seri: ${data.nomor_seri}) telah *terdaftar dan valid*.\n\nGaransi Anda aktif selama ${data.lama_garansi || '...'} dengan tipe ${data.jenis_garansi || '...'}. Terima kasih! 🎉`
-          : `❌ *Registrasi Garansi Tidak Dapat Diproses*\n\nHalo ${data.nama_pendaftar},\n\nMohon maaf, registrasi garansi untuk produk *${data.tipe_barang}* tidak dapat diverifikasi.\n\nAlasan: ${body.catatan_mkt || body.catatan_fa || 'Data tidak sesuai'}\n\nHubungi CS kami untuk informasi lebih lanjut.`;
+          ? `Halo ${data.nama_pendaftar}, registrasi garansi untuk produk ${data.tipe_barang} (No. Seri: ${data.nomor_seri}) telah DISETUJUI. Garansi aktif selama ${data.lama_garansi || '-'} dengan tipe ${data.jenis_garansi || '-'}. Terima kasih!`
+          : `Halo ${data.nama_pendaftar}, mohon maaf registrasi garansi untuk produk ${data.tipe_barang} tidak dapat diverifikasi. Alasan: ${body.catatan_mkt || body.catatan_fa || 'Data tidak sesuai'}. Hubungi CS kami untuk informasi lebih lanjut.`;
 
         // Ambil email konsumen dari tabel konsumen
         const supabaseClient = getSupabase();
@@ -53,7 +53,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const subjek = status === 'Valid'
           ? '✅ Registrasi Garansi Anda Disetujui — Nikon'
           : '❌ Registrasi Garansi Tidak Dapat Diproses — Nikon';
-        await sendNotif({ phone: targetWa, email: konsumenEmail, message: pesan, subject: subjek });
+
+        const alasan = body.catatan_mkt || body.catatan_fa || 'Data tidak sesuai';
+        const waTemplate = status === 'Valid'
+          ? { name: 'notif_garansi_approved', params: [data.nama_pendaftar || '-', data.tipe_barang, data.nomor_seri, data.lama_garansi || '-', data.jenis_garansi || '-'] }
+          : { name: 'notif_garansi_rejected', params: [data.nama_pendaftar || '-', data.tipe_barang, alasan] };
+
+        await sendNotif({ phone: targetWa, email: konsumenEmail, message: pesan, subject: subjek, waTemplate });
       }
     }
 

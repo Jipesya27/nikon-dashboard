@@ -1,28 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { DEFAULT_TEMPLATES, applyTemplate, loadChatbotTemplates } from '@/app/lib/chatbotTemplate';
 import { generateTicket } from '@/app/lib/generate-ticket';
+import { sendWATemplate } from '@/app/lib/notify';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-async function sendWhatsApp(targetWa: string, message: string) {
-  const { error } = await supabase.functions.invoke('send-wa', {
-    body: { target: targetWa, message },
-  });
-  if (error) console.error('WA send error:', error);
-}
-
 export async function POST(req: NextRequest) {
   try {
     const { registrationId, action, rejectionReason } = await req.json();
-    const dbTemplates: Record<string, string> = await loadChatbotTemplates(supabase).catch(() => ({}));
-    const getText = (key: string, vars: Record<string, string>) => {
-      const tmpl = dbTemplates[key] ?? DEFAULT_TEMPLATES[key]?.template ?? '';
-      return applyTemplate(tmpl, vars);
-    };
 
     if (!registrationId || !action) {
       return NextResponse.json({ error: 'Missing registrationId or action' }, { status: 400 });
@@ -53,9 +41,10 @@ export async function POST(req: NextRequest) {
         .eq('id', registrationId);
 
       try {
-        await sendWhatsApp(
+        await sendWATemplate(
           reg.nomor_wa,
-          getText('eventRegistrationRejected', { nama: reg.nama_lengkap, eventTitle: reg.event_name, reason: rejectionReason || '' })
+          'notif_event_rejected',
+          [reg.nama_lengkap, reg.event_name, rejectionReason || 'Pembayaran tidak valid'],
         );
       } catch (waErr) {
         console.error('WA notify (reject) failed:', waErr);
@@ -90,9 +79,10 @@ export async function POST(req: NextRequest) {
       .eq('id', registrationId);
 
     try {
-      await sendWhatsApp(
+      await sendWATemplate(
         reg.nomor_wa,
-        getText('eventRegistrationApproved', { nama: reg.nama_lengkap, eventTitle: reg.event_name, ticketLink: ticketUrl })
+        'notif_event_approved',
+        [reg.nama_lengkap, reg.event_name, ticketUrl],
       );
     } catch (waErr) {
       console.error('WA notify (approve) failed:', waErr);

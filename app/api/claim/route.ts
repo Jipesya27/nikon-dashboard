@@ -305,9 +305,7 @@ export async function POST(req: Request) {
       .eq('nomor_wa', matchedPhone);
 
     // 5+6. Notif ke konsumen & admin (channel: WA / Email / keduanya)
-    const pesanWA = nextStatus === 'START'
-      ? `Pengisian data Claim Promo berhasil dan dokumen telah diterima! 🎉\n\nNotifikasi update status Claim akan kami kirim ke nomor *${nomor_wa_update}*.\n\nProses verifikasi memerlukan waktu maksimal 14 hari kerja. Terima kasih.\n\nKetik *MENU* untuk kembali ke menu utama.`
-      : `Pengisian data Claim Promo berhasil dan dokumen telah diterima! 🎉\n\n*Untuk notifikasi update status Claim*, apakah Anda ingin menggunakan nomor WA ini, atau mendaftarkan nomor lain? Ketik *INI* atau *NOMOR LAIN*?`;
+    const pesanWA = `Pengisian data Claim Promo Anda berhasil dan dokumen telah diterima. Proses verifikasi memerlukan waktu maksimal 14 hari kerja. Ketik MENU untuk kembali ke menu utama.`;
 
     const pesanAdmin =
       `🔔 *Claim Promo Baru!*\n\n` +
@@ -322,7 +320,11 @@ export async function POST(req: Request) {
       `Verifikasi di Dashboard → tab Claim`;
 
     await sendNotif(
-      { phone: matchedPhone, email, message: pesanWA, subject: 'Claim Promo Anda Telah Diterima — Nikon' },
+      {
+        phone: matchedPhone, email, message: pesanWA,
+        subject: 'Claim Promo Anda Telah Diterima — Nikon',
+        waTemplate: { name: 'notif_claim_received', params: [] },
+      },
       { message: pesanAdmin, subject: '🔔 Claim Promo Baru — Nikon' },
     );
 

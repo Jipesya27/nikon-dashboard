@@ -37,9 +37,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (status === 'Valid' || status === 'Tidak Valid') {
       const targetWa = data.nomor_wa_update || data.nomor_wa;
       if (targetWa) {
+        const namaPenerima = data.nama_penerima_claim || data.nama_pendaftar || '-';
         const pesan = status === 'Valid'
-          ? `✅ *Claim Promo Anda DISETUJUI!*\n\nHalo ${data.nama_penerima_claim || data.nama_pendaftar},\n\nKlaim promo untuk produk *${data.tipe_barang}* (No. Seri: ${data.nomor_seri}) telah *diverifikasi dan valid*.\n\nHadiah akan segera diproses ke alamat pengiriman yang Anda daftarkan. Terima kasih! 🎉`
-          : `❌ *Claim Promo Anda Tidak Dapat Diproses*\n\nHalo ${data.nama_penerima_claim || data.nama_pendaftar},\n\nMohon maaf, klaim promo untuk produk *${data.tipe_barang}* tidak dapat diverifikasi.\n\nAlasan: ${body.catatan_mkt || body.catatan_fa || 'Data tidak sesuai'}\n\nHubungi CS kami untuk informasi lebih lanjut.`;
+          ? `Halo ${namaPenerima}, klaim promo untuk produk ${data.tipe_barang} (No. Seri: ${data.nomor_seri}) telah DISETUJUI. Hadiah akan segera diproses ke alamat pengiriman yang Anda daftarkan. Terima kasih!`
+          : `Halo ${namaPenerima}, mohon maaf klaim promo untuk produk ${data.tipe_barang} tidak dapat diverifikasi. Alasan: ${body.catatan_mkt || body.catatan_fa || 'Data tidak sesuai'}. Hubungi CS kami untuk informasi lebih lanjut.`;
 
         // Ambil email konsumen dari tabel konsumen
         const supabaseClient = getSupabase();
@@ -53,7 +54,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const subjek = status === 'Valid'
           ? '✅ Claim Promo Anda Disetujui — Nikon'
           : '❌ Claim Promo Tidak Dapat Diproses — Nikon';
-        await sendNotif({ phone: targetWa, email: konsumenEmail, message: pesan, subject: subjek });
+
+        const alasan = body.catatan_mkt || body.catatan_fa || 'Data tidak sesuai';
+        const waTemplate = status === 'Valid'
+          ? { name: 'notif_claim_approved', params: [namaPenerima, data.tipe_barang, data.nomor_seri] }
+          : { name: 'notif_claim_rejected', params: [namaPenerima, data.tipe_barang, alasan] };
+
+        await sendNotif({ phone: targetWa, email: konsumenEmail, message: pesan, subject: subjek, waTemplate });
       }
     }
 

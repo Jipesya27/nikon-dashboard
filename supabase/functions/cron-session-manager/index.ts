@@ -1,22 +1,38 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const FONNTE_TOKEN = Deno.env.get("FONNTE_TOKEN") || "";
+const WHATSAPP_ACCESS_TOKEN    = Deno.env.get("WHATSAPP_ACCESS_TOKEN")    || "";
+const WHATSAPP_PHONE_NUMBER_ID  = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID")  || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+function toE164(nomor: string): string {
+  if (nomor.startsWith('+')) return nomor.slice(1);
+  if (nomor.startsWith('0')) return '62' + nomor.slice(1);
+  return nomor;
+}
+
 async function balasKeWA(nomorTujuan: string, isiPesan: string) {
-  const params = new URLSearchParams();
-  params.append("target", nomorTujuan);
-  params.append("message", isiPesan);
+  // Pengguna masih dalam sesi aktif (last message < 60 menit) → free-form OK
   try {
-    await fetch("https://api.fonnte.com/send", {
-      method: "POST",
-      headers: { "Authorization": FONNTE_TOKEN, "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString(),
-    });
-  } catch (err) { console.error("Gagal kontak Fonnte API:", err); }
+    await fetch(
+      `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: toE164(nomorTujuan),
+          type: "text",
+          text: { body: isiPesan },
+        }),
+      },
+    );
+  } catch (err) { console.error("Gagal kirim WA:", err); }
 }
 
 function replacePlaceholders(template: string, data: Record<string, string>) {

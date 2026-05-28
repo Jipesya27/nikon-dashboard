@@ -1,53 +1,91 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Token akan otomatis diambil dari Supabase Secrets
-const FONNTE_TOKEN = Deno.env.get("FONNTE_TOKEN") || "";
+const WHATSAPP_ACCESS_TOKEN   = Deno.env.get("WHATSAPP_ACCESS_TOKEN")   || "";
+const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") || "";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function toE164(nomor: string): string {
+  if (nomor.startsWith('+')) return nomor.slice(1);
+  if (nomor.startsWith('0')) return '62' + nomor.slice(1);
+  return nomor;
+}
+
 serve(async (req) => {
-  // Handle CORS Preflight untuk Vercel
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { target, message } = await req.json();
+    const { target, message, templateName, params } = await req.json();
 
-    if (!target || !message) {
-        return new Response(JSON.stringify({ error: "Target dan message wajib diisi" }), { 
-            status: 400, 
-            headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        });
+    if (!target) {
+      return new Response(
+        JSON.stringify({ error: "target wajib diisi" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    const params = new URLSearchParams();
-    params.append('target', target);
-    params.append('message', message);
+    const to = toE164(target);
 
-    // Hit ke API Fonnte dari Server Supabase
-    const response = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': FONNTE_TOKEN,
-        'Content-Type': 'application/x-www-form-urlencoded'
+    let body: unknown;
+
+    if (templateName) {
+      // Template message — bekerja di luar 24-jam window
+      const paramsArr: string[] = Array.isArray(params) ? params : [];
+      body = {
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: 'id' },
+          components: paramsArr.length > 0
+            ? [{ type: 'body', parameters: paramsArr.map((p: string) => ({ type: 'text', text: p })) }]
+            : [],
+        },
+      };
+    } else {
+      // Free-form message — hanya dalam 24-jam customer service window
+      if (!message) {
+        return new Response(
+          JSON.stringify({ error: "message atau templateName wajib diisi" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      body = {
+        messaging_product: 'whatsapp',
+        to,
+        type: 'text',
+        text: { body: message },
+      };
+    }
+
+    const response = await fetch(
+      `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
       },
-      body: params.toString()
-    });
+    );
 
     const result = await response.json();
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
+      status: response.ok ? 200 : 500,
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({ error: (error as Error).message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   }
 });

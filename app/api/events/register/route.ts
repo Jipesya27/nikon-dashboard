@@ -267,7 +267,7 @@ export async function POST(req: Request) {
     }
 
     // Notif ke peserta & admin (channel: WA / Email / keduanya)
-    const pesanWA = `Halo *${nama_lengkap}*,\n\nPendaftaran Anda untuk event *${event.event_title}* telah kami terima ✅\n\nStatus: *Menunggu Validasi*\n\nKami akan memverifikasi bukti pembayaran Anda. Notifikasi konfirmasi akan dikirim dalam 1-2 hari kerja.\n\nTerima kasih.`;
+    const pesanWA = `Halo ${nama_lengkap}, pendaftaran Anda untuk event ${event.event_title} telah kami terima. Status: Menunggu Validasi. Kami akan memverifikasi bukti pembayaran Anda. Notifikasi konfirmasi akan dikirim dalam 1-2 hari kerja. Terima kasih.`;
     const pesanAdmin =
       `🔔 *Pendaftar Event Baru!*\n\n` +
       `📋 *Event:* ${event.event_title}\n` +
@@ -282,7 +282,11 @@ export async function POST(req: Request) {
     // konversi 08... ke 62... untuk WA
     const waTarget = nomor_wa.startsWith('0') ? '62' + nomor_wa.slice(1) : nomor_wa;
     await sendNotif(
-      { phone: waTarget, email, message: pesanWA, subject: `Pendaftaran Event ${event.event_title} Diterima` },
+      {
+        phone: waTarget, email, message: pesanWA,
+        subject: `Pendaftaran Event ${event.event_title} Diterima`,
+        waTemplate: { name: 'notif_event_register', params: [nama_lengkap, event.event_title] },
+      },
       { message: pesanAdmin, subject: `🔔 Pendaftar Event Baru — ${event.event_title}` },
     );
 

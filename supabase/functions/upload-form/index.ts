@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const FONNTE_TOKEN = Deno.env.get("FONNTE_TOKEN") || "xYsGrYetdkLXoK72dDtc";
+const WHATSAPP_ACCESS_TOKEN    = Deno.env.get("WHATSAPP_ACCESS_TOKEN")    || "";
+const WHATSAPP_PHONE_NUMBER_ID  = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID")  || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://hfqnlttxxrqarmpvtnhu.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") || "";
@@ -55,11 +56,32 @@ async function uploadToGoogleDrive(file: File, fileName: string, accessToken: st
   return `https://drive.google.com/uc?id=${data.id}&export=view`;
 }
 
+function toE164(nomor: string): string {
+  if (nomor.startsWith('+')) return nomor.slice(1);
+  if (nomor.startsWith('0')) return '62' + nomor.slice(1);
+  return nomor;
+}
+
 async function balasKeWA(nomorTujuan: string, isiPesan: string) {
-  await fetch("https://api.fonnte.com/send", {
-    method: "POST", headers: { "Authorization": FONNTE_TOKEN },
-    body: new URLSearchParams({ target: nomorTujuan, message: isiPesan }),
-  });
+  // User sedang dalam sesi upload aktif → free-form OK
+  try {
+    await fetch(
+      `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: toE164(nomorTujuan),
+          type: "text",
+          text: { body: isiPesan },
+        }),
+      },
+    );
+  } catch (err) { console.error("Gagal kirim WA:", err); }
 }
 
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
