@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { whatsappMessages } from '@/app/whatsappMessages';
 import { uploadToGoogleDrive } from '@/app/lib/google-drive';
+import { sendWATemplate } from '@/app/lib/notify';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-
-async function sendWhatsApp(targetWa: string, message: string) {
-  const { error } = await supabase.functions.invoke('send-wa', {
-    body: { target: targetWa, message },
-  });
-  if (error) console.error('WA send error:', error);
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -56,10 +49,11 @@ export async function POST(req: NextRequest) {
       .eq('id', registrationId);
 
     if (refundUrl) {
-      await sendWhatsApp(
+      await sendWATemplate(
         reg.nomor_wa,
-        whatsappMessages.depositRefundReady(reg.nama_lengkap, reg.event_name, refundUrl)
-      );
+        'notif_deposit_refund',
+        [reg.nama_lengkap, reg.event_name, refundUrl],
+      ).catch(e => console.error('WA deposit-refund notify failed:', e));
     }
 
     return NextResponse.json({ success: true, refundUrl });

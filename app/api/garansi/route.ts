@@ -297,7 +297,7 @@ export async function POST(req: Request) {
     await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', matchedPhone);
 
     // Notif ke konsumen & admin (channel: WA / Email / keduanya)
-    const pesanWA = `Pendaftaran Garansi berhasil dan dokumen telah diterima! 🎉\n\nAdmin akan memverifikasi data Anda dalam maksimal 14 hari kerja dan menghubungi Anda.\n\nTerima kasih!`;
+    const pesanWA = `Pendaftaran Garansi Anda berhasil dan dokumen telah diterima. Admin akan memverifikasi data Anda dalam maksimal 14 hari kerja dan menghubungi Anda. Terima kasih telah mendaftar garansi Nikon!`;
     const pesanAdmin =
       `🔔 *Registrasi Garansi Baru!*\n\n` +
       `👤 *Nama:* ${nama_lengkap}\n` +
@@ -310,7 +310,11 @@ export async function POST(req: Request) {
       `Verifikasi di Dashboard → tab Garansi`;
 
     await sendNotif(
-      { phone: matchedPhone, email, message: pesanWA, subject: 'Registrasi Garansi Anda Diterima — Nikon' },
+      {
+        phone: matchedPhone, email, message: pesanWA,
+        subject: 'Registrasi Garansi Anda Diterima — Nikon',
+        waTemplate: { name: 'notif_garansi_received', params: [] },
+      },
       { message: pesanAdmin, subject: '🔔 Registrasi Garansi Baru — Nikon' },
     );
 

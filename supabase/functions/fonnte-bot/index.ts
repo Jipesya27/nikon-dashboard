@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const FONNTE_TOKEN = Deno.env.get("FONNTE_TOKEN") || "xYsGrYetdkLXoK72dDtc";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://hfqnlttxxrqarmpvtnhu.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") ?? "";
+const WHATSAPP_ACCESS_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN") ?? "";
+const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 // Fungsi Generate ID (AN + 6 Digit Random)
 function generateKonsumenID() {
@@ -31,22 +32,32 @@ function replacePlaceholders(template, data) {
   // Convert literal \n to actual newline characters
   return result.replace(/\\n/g, '\n');
 }
-async function balasKeWA(nomorTujuan, isiPesan, urlFile) {
-  const params = new URLSearchParams();
-  params.append("target", nomorTujuan);
-  params.append("message", isiPesan);
-  if (urlFile) params.append("url", urlFile);
+async function balasKeWA(nomorTujuan: string, isiPesan: string, _urlFile?: string) {
   try {
-    await fetch("https://api.fonnte.com/send", {
-      method: "POST",
-      headers: {
-        "Authorization": FONNTE_TOKEN,
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: params.toString()
-    });
+    const res = await fetch(
+      `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: nomorTujuan,
+          type: "text",
+          text: { body: isiPesan },
+        }),
+      }
+    );
+    const result = await res.json();
+    if (!res.ok) {
+      console.error("[META API] Gagal kirim pesan:", JSON.stringify(result));
+    } else {
+      console.log("[META API] Pesan terkirim ke:", nomorTujuan);
+    }
   } catch (err) {
-    console.error("Gagal kontak Fonnte API:", err);
+    console.error("[META API] Error:", err);
   }
 }
 async function logErrorToDB(context: string, message: string, detail: unknown) {
@@ -115,6 +126,7 @@ serve(async (req)=>{
     const nomorPengirim = body.sender;
     const isiPesanWA = (body.message || "").trim();
     const namaProfil = body.name || "Konsumen";
+    const skipSave = body.skip_save === true; // flag dari Next.js webhook (sudah disimpan di sana)
     const waktuSekarang = new Date().toISOString();
     if (!nomorPengirim) {
       console.error("[INDICATOR 4] Error: Nomor pengirim (sender) tidak ditemukan dalam payload.");
@@ -169,20 +181,24 @@ serve(async (req)=>{
       user.id_konsumen = newID;
     }
     // ================================================================
-    // STEP 2: Sekarang aman insert ke riwayat_pesan (FK sudah terpenuhi)
+    // STEP 2: Simpan pesan masuk ke riwayat_pesan (skip jika sudah disimpan di Next.js webhook)
     // ================================================================
-    console.log("[INDICATOR 6] Menyimpan pesan masuk ke riwayat_pesan...");
-    const { data: insertedData, error: insertError } = await supabase.from('riwayat_pesan').insert({
-      nomor_wa: nomorPengirim,
-      nama_profil_wa: namaProfil,
-      arah_pesan: 'IN',
-      isi_pesan: isiPesanWA || "[Media/File]",
-      waktu_pesan: waktuSekarang
-    }).select();
-    if (insertError) {
-      console.error("[INDICATOR 6b] Gagal simpan riwayat_pesan:", insertError);
+    if (!skipSave) {
+      console.log("[INDICATOR 6] Menyimpan pesan masuk ke riwayat_pesan...");
+      const { data: insertedData, error: insertError } = await supabase.from('riwayat_pesan').insert({
+        nomor_wa: nomorPengirim,
+        nama_profil_wa: namaProfil,
+        arah_pesan: 'IN',
+        isi_pesan: isiPesanWA || "[Media/File]",
+        waktu_pesan: waktuSekarang
+      }).select();
+      if (insertError) {
+        console.error("[INDICATOR 6b] Gagal simpan riwayat_pesan:", insertError);
+      } else {
+        console.log("[INDICATOR 6c] Berhasil simpan riwayat_pesan:", JSON.stringify(insertedData));
+      }
     } else {
-      console.log("[INDICATOR 6c] Berhasil simpan riwayat_pesan:", JSON.stringify(insertedData));
+      console.log("[INDICATOR 6] skip_save=true, lewati penyimpanan pesan masuk.");
     }
     // ================================================================
     // STEP 3: Proses logika bot

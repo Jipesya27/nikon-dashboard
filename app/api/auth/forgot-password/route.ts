@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
+import { sendWAOtpTemplate } from '@/app/lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,17 +44,13 @@ export async function POST(req: Request) {
 
   await supabase.from('karyawan').update({ password: hash }).eq('id_karyawan', karyawan.id_karyawan);
 
-  // Send via Fonnte
-  const message = `Halo *${karyawan.nama_karyawan}*,\n\nPassword Anda telah di-reset. Gunakan password sementara berikut:\n\n*Password Baru:* \`${tempPw}\`\n\nSegera ganti password Anda setelah berhasil login.\n\nhttps://www.altanikindo.web.id/`;
-
-  await fetch('https://api.fonnte.com/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.FONNTE_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ target: karyawan.nomor_wa, message }),
-  }).catch(() => null); // fire-and-forget, don't fail if WA fails
+  // Kirim via Meta WA AUTHENTICATION template (bekerja tanpa 24h window)
+  // notif_kode_akun = AUTHENTICATION template dengan COPY_CODE button
+  await sendWAOtpTemplate(
+    karyawan.nomor_wa,
+    'notif_kode_akun',
+    tempPw,
+  ).catch(() => null); // fire-and-forget, jangan gagalkan request utama
 
   return NextResponse.json({ success: true });
 }

@@ -1,11 +1,13 @@
 /**
  * notify.ts — Shared notification dispatcher (server-only).
  * Reads `notif_channel` from pengaturan_bot and dispatches to
- * WhatsApp (Fonnte) and/or email (SMTP via nodemailer).
+ * WhatsApp (Meta Cloud API) and/or email (SMTP via nodemailer).
  *
  * Channel values: 'wa_only' | 'email_only' | 'wa_and_email'
  * Default: 'wa_only'
  *
+ * Required env vars for WA:
+ *   WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID
  * Required env vars for email:
  *   SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS
  *   SMTP_FROM (optional, defaults to SMTP_USER)
@@ -58,21 +60,123 @@ export function invalidateNotifCache() {
   _cache = null;
 }
 
-// ─── WhatsApp via Fonnte ────────────────────────────────────────────────────
+// ─── WhatsApp via Meta Cloud API ────────────────────────────────────────────
 
-async function sendWA(nomor: string, pesan: string) {
-  const token = process.env.FONNTE_TOKEN || '';
-  if (!token || !nomor) return;
+function toWaE164(nomor: string): string {
+  if (nomor.startsWith('+')) return nomor.slice(1);
+  if (nomor.startsWith('0')) return '62' + nomor.slice(1);
+  return nomor;
+}
+
+async function sendWA(
+  nomor: string,
+  pesan: string,
+  template?: { name: string; params: string[] },
+) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN || '';
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+  if (!token || !phoneNumberId || !nomor) return;
+  const target = toWaE164(nomor);
+
+  let body: unknown;
+  if (template) {
+    body = {
+      messaging_product: 'whatsapp',
+      to: target,
+      type: 'template',
+      template: {
+        name: template.name,
+        language: { code: 'id' },
+        components: template.params.length > 0
+          ? [{ type: 'body', parameters: template.params.map(p => ({ type: 'text', text: p })) }]
+          : [],
+      },
+    };
+  } else {
+    body = {
+      messaging_product: 'whatsapp',
+      to: target,
+      type: 'text',
+      text: { body: pesan },
+    };
+  }
+
   try {
-    const res = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: { Authorization: token },
-      body: new URLSearchParams({ target: nomor, message: pesan }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) console.error('[notify] Fonnte error:', res.status, await res.text());
+    const res = await fetch(
+      `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(8000),
+      },
+    );
+    if (!res.ok) console.error('[notify] Meta WA error:', res.status, await res.text());
   } catch (e) {
     console.error('[notify] Gagal kirim WA (non-kritis):', e);
+  }
+}
+
+/**
+ * Kirim WA template langsung ke nomor manapun (tanpa channel settings).
+ * Gunakan untuk notifikasi satu arah ke konsumen di luar 24h window.
+ */
+export async function sendWATemplate(
+  nomor: string,
+  templateName: string,
+  params: string[],
+): Promise<void> {
+  await sendWA(nomor, '', { name: templateName, params });
+}
+
+/**
+ * Kirim WA AUTHENTICATION template (OTP / kode akses sementara).
+ * Format berbeda dari UTILITY template — kode dikirim ke parameter tombol,
+ * bukan ke body. Template harus punya OTP button dengan otp_type="COPY_CODE".
+ *
+ * @param nomor        - Nomor WA tujuan (format 62xxx atau 08xxx)
+ * @param templateName - Nama template AUTHENTICATION (e.g. 'notif_kode_akun')
+ * @param code         - Kode / password sementara yang akan dikirim
+ */
+export async function sendWAOtpTemplate(
+  nomor: string,
+  templateName: string,
+  code: string,
+): Promise<void> {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN || '';
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+  if (!token || !phoneNumberId || !nomor) return;
+  const target = toWaE164(nomor);
+
+  const body = {
+    messaging_product: 'whatsapp',
+    to: target,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: 'id' },
+      components: [{
+        type: 'button',
+        sub_type: 'copy_code',
+        index: '0',
+        parameters: [{ type: 'coupon_code', coupon_code: code }],
+      }],
+    },
+  };
+
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(8000),
+      },
+    );
+    if (!res.ok) console.error('[notify] Meta WA OTP error:', res.status, await res.text());
+  } catch (e) {
+    console.error('[notify] Gagal kirim WA OTP (non-kritis):', e);
   }
 }
 
@@ -104,14 +208,7 @@ async function sendEmail(to: string, subject: string, message: string, customHtm
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  if (!host || !user || !pass) {
-    console.warn('[notify] SMTP env vars tidak lengkap — email tidak dikirim. Pastikan SMTP_HOST, SMTP_USER, SMTP_PASS sudah diset dan server sudah di-restart.');
-    return;
-  }
-  if (!to) {
-    console.warn('[notify] sendEmail dipanggil tapi alamat email kosong — skip.');
-    return;
-  }
+  if (!host || !user || !pass || !to) return;
 
   try {
     const transporter = nodemailer.createTransport({
@@ -121,22 +218,21 @@ async function sendEmail(to: string, subject: string, message: string, customHtm
       auth: { user, pass },
     } as Parameters<typeof nodemailer.createTransport>[0]);
 
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: `"${process.env.SMTP_FROM_NAME || 'Nikon Service Center'}" <${process.env.SMTP_FROM || user}>`,
       to,
       subject,
       html: buildEmailHtml(message, customHtml),
     });
-    console.log(`[notify] Email terkirim → ${to} | subject: "${subject}" | id: ${info.messageId}`);
   } catch (e) {
-    console.error('[notify] Gagal kirim email:', e instanceof Error ? e.message : e);
+    console.error('[notify] Gagal kirim email (non-kritis):', e);
   }
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export interface NotifTarget {
-  /** WA number in 62xxx format (for Fonnte). */
+  /** WA number — format 62xxx atau 08xxx (otomatis dikonversi). */
   phone?: string;
   /** Recipient email address. */
   email?: string | null;
@@ -146,6 +242,11 @@ export interface NotifTarget {
   subject?: string;
   /** Custom HTML for email body. If omitted, message text is used. */
   html?: string;
+  /**
+   * Meta WA template. Jika diisi, WA dikirim sebagai template message
+   * (bekerja di luar 24-jam window). Jika tidak diisi, pakai free-form text.
+   */
+  waTemplate?: { name: string; params: string[] };
 }
 
 /**
@@ -162,13 +263,11 @@ export async function sendNotif(consumer: NotifTarget, admin?: NotifTarget): Pro
   const doWA    = channel === 'wa_only'    || channel === 'wa_and_email';
   const doEmail = channel === 'email_only' || channel === 'wa_and_email';
 
-  console.log(`[notify] channel=${channel} | consumer.email=${consumer.email || '-'} | doWA=${doWA} | doEmail=${doEmail}`);
-
   const tasks: Promise<void>[] = [];
 
   // ── Consumer ──────────────────────────────────
   if (consumer.phone && doWA) {
-    tasks.push(sendWA(consumer.phone, consumer.message));
+    tasks.push(sendWA(consumer.phone, consumer.message, consumer.waTemplate));
   }
   if (consumer.email && doEmail) {
     tasks.push(sendEmail(
@@ -192,7 +291,6 @@ export async function sendNotif(consumer: NotifTarget, admin?: NotifTarget): Pro
         adminMail,
         admin.subject || 'Notifikasi Admin — Nikon',
         admin.message,
-        admin.html,
       ));
     }
   }

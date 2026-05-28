@@ -17,6 +17,7 @@ import {
 import Header from '@/app/Header';
 import AddressFields from '@/app/components/AddressFields';
 import EventReport from '@/app/components/EventReport';
+import WaTemplatesTab from '@/app/components/WaTemplatesTab';
 
 // Client-side: proxy through /api/admin/sb (validates admin session, uses service_role).
 // SSR/prerender: fall back to real URL (no queries happen server-side; all fetches are in useEffect).
@@ -606,8 +607,11 @@ export default function NikonDashboard() {
    // --- MULTIMEDIA HELPERS ---
    const isImageUrl = (text: string) => {
       if (!text) return false;
-      const urlPattern = /https?:\/\/[^\s]+?\.(jpg|jpeg|png|gif|webp|bmp)/i;
-      return urlPattern.test(text);
+      // Ekstensi gambar umum
+      const extPattern = /https?:\/\/[^\s]+?\.(jpg|jpeg|png|gif|webp|bmp)/i;
+      // Google Drive view link (dari WhatsApp attachment)
+      const drivePattern = /https:\/\/drive\.google\.com\/uc\?id=[^\s]+/i;
+      return extPattern.test(text) || drivePattern.test(text);
    };
 
    // REFS
@@ -3030,6 +3034,7 @@ export default function NikonDashboard() {
             { id: 'userrole', label: '🔐 User Role', count: karyawans.length },
             { id: 'botsettings', label: '⚙️ Bot Settings', count: botSettings.length },
             { id: 'autocomplete', label: '✏️ Saran Isian', count: undefined },
+            { id: 'wa_templates', label: '💬 WA Templates', count: undefined },
          ]
       },
       {
@@ -3047,7 +3052,7 @@ export default function NikonDashboard() {
          ...group,
          tabs: group.tabs.filter(tab => {
             if (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') return true;
-            if (tab.id === 'userrole' || tab.id === 'autocomplete') return false;
+            if (tab.id === 'userrole' || tab.id === 'autocomplete' || tab.id === 'wa_templates') return false;
             return (currentUser?.akses_halaman || []).includes(tab.id);
          })
       })).filter(group => group.tabs.length > 0);
@@ -3128,7 +3133,7 @@ export default function NikonDashboard() {
                <button onClick={() => setDataLoadError(null)} className="font-bold hover:opacity-75 px-1">✕</button>
             </div>
          )}
-         <div className={`h-screen bg-gray-50 flex flex-col relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`} style={{ height: '100dvh' }}>
+         <div className={`h-screen bg-gray-50 flex flex-col relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`}>
 
                <Header
                   sidebarOpen={sidebarOpen}
@@ -3538,16 +3543,16 @@ export default function NikonDashboard() {
                               <p className="text-[10px] text-gray-600 font-medium">{uniqueContacts.length} chat • {totalUnread} belum dibaca</p>
                            </div>
                            <div className="flex items-center gap-1">
-                              <button onClick={() => { fetchMessages(); fetchConsumers(); }} disabled={isRefreshing} className="w-11 h-11 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-xl transition" title="Refresh pesan" aria-label="Refresh pesan">
-                                 <svg className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <button onClick={() => { fetchMessages(); fetchConsumers(); }} disabled={isRefreshing} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Refresh pesan" aria-label="Refresh pesan">
+                                 <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                  </svg>
                               </button>
-                              <button onClick={handleRunCleanup} disabled={isSubmitting} className="w-11 h-11 flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 active:bg-red-100 rounded-xl transition text-lg" title="Bersihkan Sesi Inaktif" aria-label="Bersihkan Sesi Inaktif">
+                              <button onClick={handleRunCleanup} disabled={isSubmitting} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Bersihkan Sesi Inaktif" aria-label="Bersihkan Sesi Inaktif">
                                  {isSubmitting ? '⏳' : '🧹'}
                               </button>
-                              <button onClick={() => setIsNewChatModalOpen(true)} aria-label="Pesan Baru" title="Pesan Baru" className="w-11 h-11 flex items-center justify-center bg-[#FFE500] text-black rounded-xl shadow-sm hover:bg-[#E5CE00] active:bg-[#cdb800] transition">
-                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4"/></svg>
+                              <button onClick={() => setIsNewChatModalOpen(true)} aria-label="Pesan Baru" title="Pesan Baru" className="w-9 h-9 flex items-center justify-center bg-[#FFE500] text-black rounded-lg shadow-sm hover:bg-[#E5CE00] transition">
+                                 <span className="text-lg font-bold">+</span>
                               </button>
                            </div>
                         </div>
@@ -3555,8 +3560,8 @@ export default function NikonDashboard() {
                         {/* Search */}
                         <div className="px-3 py-2.5 bg-white shrink-0 border-b border-gray-100">
                            <div className="relative">
-                              <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                              <input type="text" title="Cari chat" aria-label="Cari chat" placeholder="Cari nama atau nomor..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border border-gray-200 bg-gray-50 rounded-xl pl-10 pr-3 py-3 text-sm outline-none focus:ring-2 focus:ring-[#FFE500] focus:bg-white transition" />
+                              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                              <input type="text" title="Cari chat" aria-label="Cari chat" placeholder="Cari nama atau nomor..." value={searchChat} onChange={e => setSearchChat(e.target.value)} className="w-full border border-gray-200 bg-gray-50 rounded-lg pl-10 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#FFE500] focus:bg-white transition" />
                            </div>
                         </div>
 
@@ -3575,7 +3580,7 @@ export default function NikonDashboard() {
                                     <button
                                        key={opt.k}
                                        onClick={() => setChatFilter(opt.k)}
-                                       className={`px-3 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${active ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 active:bg-gray-200'}`}
+                                       className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all ${active ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                                     >
                                        {opt.l} {opt.n > 0 && <span className={`ml-1 px-1.5 rounded-full ${active ? 'bg-white/20' : 'bg-white text-gray-700'}`}>{opt.n}</span>}
                                     </button>
@@ -3605,72 +3610,71 @@ export default function NikonDashboard() {
                                  <div
                                     key={c.nomor_wa}
                                     onClick={() => setSelectedWa(c.nomor_wa)}
-                                    className={`group flex items-center gap-3 px-3 py-3 cursor-pointer transition-all border-b border-gray-100 active:bg-gray-100 ${isSelected ? 'bg-[#fff7d6]' : 'hover:bg-gray-50'}`}
+                                    className={`group flex items-start gap-3 px-3 py-2.5 cursor-pointer transition-all border-b border-gray-50 hover:bg-gray-50 ${isSelected ? 'bg-[#fff7d6]' : ''}`}
                                  >
                                     <div className="relative shrink-0">
-                                       <div className="w-13 h-13 rounded-full bg-linear-to-br from-[#FFE500] to-yellow-400 flex items-center justify-center font-bold text-black text-xl uppercase shadow-sm">
+                                       <div className="w-12 h-12 rounded-full bg-linear-to-br from-[#FFE500] to-yellow-400 flex items-center justify-center font-bold text-black text-lg uppercase shadow-sm">
                                           {profileName.substring(0, 1)}
                                        </div>
                                        {isPinned && (
-                                          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-700 text-white text-[9px] flex items-center justify-center shadow-sm">📌</div>
-                                       )}
-                                       {c.bicara_dengan_cs && (
-                                          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 border-2 border-white animate-pulse"></div>
+                                          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-700 text-white text-[10px] flex items-center justify-center shadow-sm">📌</div>
                                        )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                       <div className="flex justify-between items-center">
+                                       <div className="flex justify-between items-baseline">
                                           <h4 className={`text-sm truncate ${isNew ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>{profileName}</h4>
-                                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                          <span className={`text-[10px] font-medium shrink-0 ml-2 ${isNew ? 'text-green-600 font-bold' : 'text-gray-500'}`}>
+                                             {new Date(c.waktu_pesan || c.created_at || 0).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                          </span>
+                                       </div>
+                                       <div className="flex justify-between items-center gap-2 mt-0.5">
+                                          <p className={`text-xs truncate flex-1 ${isNew ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
+                                             {c.arah_pesan === 'OUT' && <span className="text-gray-500 mr-1">↗</span>}
+                                             {c.isi_pesan}
+                                          </p>
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                             {c.bicara_dengan_cs && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title="CS Aktif"></span>}
                                              {isNew && (
-                                                <span className="bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center">{unread}</span>
+                                                <span className="bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-4.5 text-center">{unread}</span>
                                              )}
-                                             <span className={`text-[10px] font-medium ${isNew ? 'text-green-600 font-bold' : 'text-gray-400'}`}>
-                                                {new Date(c.waktu_pesan || c.created_at || 0).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                                             </span>
                                           </div>
                                        </div>
-                                       <p className={`text-xs truncate mt-0.5 ${isNew ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
-                                          {c.arah_pesan === 'OUT' && <span className="text-gray-400 mr-1">↗</span>}
-                                          {c.isi_pesan}
-                                       </p>
-                                       <div className="flex items-center gap-1.5 mt-1.5">
+                                       <div className="flex items-center gap-1 mt-1">
                                           {tagInfo && tagInfo.key && (
                                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${tagInfo.bg} ${tagInfo.text}`}>
                                                 <span className={`w-1.5 h-1.5 rounded-full ${tagInfo.dot}`}></span>
                                                 {tagInfo.label}
                                              </span>
                                           )}
-                                          {/* Action buttons: selalu tampil di mobile */}
-                                          <div className="ml-auto flex items-center gap-1">
+                                          <div className="ml-auto opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5">
                                              <button
                                                 onClick={(e) => { e.stopPropagation(); togglePin(c.nomor_wa); }}
-                                                className={`w-8 h-8 flex items-center justify-center rounded-lg transition active:scale-90 ${isPinned ? 'text-amber-600 bg-amber-50' : 'text-gray-400 hover:bg-gray-100'}`}
+                                                className="p-1 rounded hover:bg-gray-200"
                                                 title={isPinned ? 'Unpin' : 'Pin chat'}
                                                 aria-label="Pin"
                                              >
-                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.828.722a.5.5 0 01.354.146l4.95 4.95a.5.5 0 010 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 01.16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 01-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 010-.707c.688-.687 1.673-.766 2.375-.72a5.922 5.922 0 011.013.16l3.134-3.133a2.772 2.772 0 01-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 01.353-.146z"/></svg>
+                                                <svg className={`w-3 h-3 ${isPinned ? 'text-amber-600' : 'text-gray-500'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.828.722a.5.5 0 01.354.146l4.95 4.95a.5.5 0 010 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 01.16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 01-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 010-.707c.688-.687 1.673-.766 2.375-.72a5.922 5.922 0 011.013.16l3.134-3.133a2.772 2.772 0 01-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 01.353-.146z"/></svg>
                                              </button>
                                              <button
                                                 onClick={(e) => { e.stopPropagation(); setTagMenuFor(tagMenuFor === c.nomor_wa ? null : c.nomor_wa); }}
-                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 active:bg-gray-200 transition active:scale-90"
+                                                className="p-1 rounded hover:bg-gray-200"
                                                 title="Beri tag"
                                                 aria-label="Beri tag"
                                              >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                                                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
                                              </button>
                                           </div>
                                        </div>
                                        {/* Tag menu inline */}
                                        {tagMenuFor === c.nomor_wa && (
-                                          <div className="mt-2 bg-white border border-gray-200 rounded-xl shadow-lg p-2 space-y-1" onClick={e => e.stopPropagation()}>
+                                          <div className="mt-2 bg-white border border-gray-300 rounded-lg shadow-lg p-1.5 space-y-0.5" onClick={e => e.stopPropagation()}>
                                              {TAG_PRESETS.map(t => (
                                                 <button
                                                    key={t.key}
                                                    onClick={() => setTag(c.nomor_wa, t.key)}
-                                                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm active:bg-gray-200 transition ${tag === t.key ? 'bg-gray-100 font-bold' : 'hover:bg-gray-50'}`}
+                                                   className={`w-full flex items-center gap-2 px-2 py-1 rounded text-xs hover:bg-gray-100 transition ${tag === t.key ? 'bg-gray-100 font-bold' : ''}`}
                                                 >
-                                                   <span className={`w-2.5 h-2.5 rounded-full ${t.dot}`}></span>
+                                                   <span className={`w-2 h-2 rounded-full ${t.dot}`}></span>
                                                    <span className={t.text}>{t.label}</span>
                                                    {tag === t.key && <span className="ml-auto text-gray-700">✓</span>}
                                                 </button>
@@ -3693,46 +3697,33 @@ export default function NikonDashboard() {
                            const isPinned = pinnedChats.includes(selectedWa);
                            return (
                            <>
-                              {/* Chat Header - sticky agar selalu terlihat saat scroll di mobile */}
-                              <div className="px-2 py-2 bg-[#f0f2f5] border-b border-gray-300 flex items-center gap-2 shrink-0 shadow-sm sticky top-0 z-20">
-                                 {/* Tombol kembali - besar & mudah diklik */}
-                                 <button
-                                    aria-label="Kembali ke daftar chat"
-                                    onClick={() => setSelectedWa(null)}
-                                    className="md:hidden w-11 h-11 flex items-center justify-center text-gray-700 active:bg-gray-200 rounded-xl transition shrink-0"
-                                 >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7"/></svg>
-                                 </button>
-                                 <div className="w-10 h-10 rounded-full bg-linear-to-br from-[#FFE500] to-yellow-400 flex items-center justify-center font-bold text-black uppercase shadow-sm shrink-0">
-                                    {getRealProfileName(selectedWa).substring(0, 1)}
-                                 </div>
-                                 <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5">
-                                       <h3 className="font-bold text-gray-900 text-sm leading-tight truncate">{getRealProfileName(selectedWa)}</h3>
-                                       {tagInfo && tagInfo.key && (
-                                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${tagInfo.bg} ${tagInfo.text} shrink-0`}>
-                                             <span className={`w-1.5 h-1.5 rounded-full ${tagInfo.dot}`}></span>
-                                             {tagInfo.label}
-                                          </span>
-                                       )}
+                              <div className="px-4 py-2.5 bg-[#f0f2f5] border-b border-gray-300 flex justify-between items-center shrink-0 shadow-sm z-10">
+                                 <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <button aria-label="Kembali" onClick={() => setSelectedWa(null)} className="md:hidden p-1 -ml-2 text-gray-700 hover:bg-gray-200 rounded-full transition shrink-0">
+                                       <span className="text-xl">←</span>
+                                    </button>
+                                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-[#FFE500] to-yellow-400 flex items-center justify-center font-bold text-black uppercase shadow-sm shrink-0">
+                                       {getRealProfileName(selectedWa).substring(0, 1)}
                                     </div>
-                                    <p className="text-[10px] text-gray-500 font-medium">{selectedWa}</p>
+                                    <div className="min-w-0 flex-1">
+                                       <div className="flex items-center gap-2">
+                                          <h3 className="font-bold text-gray-900 leading-tight truncate">{getRealProfileName(selectedWa)}</h3>
+                                          {tagInfo && tagInfo.key && (
+                                             <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${tagInfo.bg} ${tagInfo.text} shrink-0`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${tagInfo.dot}`}></span>
+                                                {tagInfo.label}
+                                             </span>
+                                          )}
+                                       </div>
+                                       <p className="text-[11px] font-medium text-gray-600">{selectedWa}</p>
+                                    </div>
                                  </div>
-                                 {/* Action buttons kanan */}
                                  <div className="flex items-center gap-1 shrink-0">
-                                    {uniqueContacts.find(c => c.nomor_wa === selectedWa)?.bicara_dengan_cs && (
-                                       <button
-                                          onClick={() => handleSelesaiCS(selectedWa)}
-                                          className="bg-emerald-500 active:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap"
-                                       >
-                                          ✓ Selesai
-                                       </button>
-                                    )}
                                     <button
                                        onClick={() => togglePin(selectedWa)}
                                        title={isPinned ? 'Unpin chat' : 'Pin chat'}
                                        aria-label="Pin"
-                                       className={`w-10 h-10 flex items-center justify-center rounded-xl transition active:scale-90 ${isPinned ? 'text-amber-600 bg-amber-100' : 'text-gray-500 hover:bg-gray-200'}`}
+                                       className={`p-2 rounded-lg transition ${isPinned ? 'text-amber-600 bg-amber-100' : 'text-gray-600 hover:bg-gray-200'}`}
                                     >
                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.828.722a.5.5 0 01.354.146l4.95 4.95a.5.5 0 010 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 01.16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 01-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 010-.707c.688-.687 1.673-.766 2.375-.72a5.922 5.922 0 011.013.16l3.134-3.133a2.772 2.772 0 01-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 01.353-.146z"/></svg>
                                     </button>
@@ -3741,19 +3732,19 @@ export default function NikonDashboard() {
                                           onClick={() => setTagMenuFor(tagMenuFor === selectedWa ? null : selectedWa)}
                                           title="Atur tag"
                                           aria-label="Atur tag"
-                                          className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition"
+                                          className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 transition"
                                        >
                                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
                                        </button>
                                        {tagMenuFor === selectedWa && (
-                                          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-1.5 space-y-0.5 z-20 min-w-44">
+                                          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl p-1.5 space-y-0.5 z-20 min-w-45">
                                              {TAG_PRESETS.map(t => (
                                                 <button
                                                    key={t.key}
                                                    onClick={() => setTag(selectedWa, t.key)}
-                                                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm active:bg-gray-200 transition ${selectedTag === t.key ? 'bg-gray-100 font-bold' : 'hover:bg-gray-50'}`}
+                                                   className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-gray-100 transition ${selectedTag === t.key ? 'bg-gray-100 font-bold' : ''}`}
                                                 >
-                                                   <span className={`w-2.5 h-2.5 rounded-full ${t.dot}`}></span>
+                                                   <span className={`w-2 h-2 rounded-full ${t.dot}`}></span>
                                                    <span className={t.text}>{t.label}</span>
                                                    {selectedTag === t.key && <span className="ml-auto text-gray-700">✓</span>}
                                                 </button>
@@ -3761,86 +3752,70 @@ export default function NikonDashboard() {
                                           </div>
                                        )}
                                     </div>
+                                    {uniqueContacts.find(c => c.nomor_wa === selectedWa)?.bicara_dengan_cs && (
+                                       <button onClick={() => handleSelesaiCS(selectedWa)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm whitespace-nowrap">Tandai Selesai</button>
+                                    )}
                                  </div>
                               </div>
-                              <div ref={chatContainerRef} className="flex-1 min-h-0 px-3 py-4 overflow-y-auto space-y-2 relative scroll-smooth bg-[url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')] bg-size-[400px] bg-repeat">
+                              <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto space-y-3 relative scroll-smooth bg-[url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')] bg-size-[400px] bg-repeat">
                                  {currentChatThread.map((msg: RiwayatPesan, index: number) => (
-                                    <div key={msg.id_pesan || index} className={`flex items-end gap-2 ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
-                                       {/* Tombol balas - selalu tampil di mobile */}
-                                       {msg.arah_pesan === 'IN' && (
+                                    <div key={msg.id_pesan || index} className={`group flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
+                                       <div className={`max-w-[85%] md:max-w-[70%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'}`}>
                                           <button
                                              onClick={() => setReplyToMessage(msg)}
-                                             className="w-8 h-8 flex items-center justify-center rounded-full bg-white/80 shadow-sm active:bg-gray-100 transition shrink-0 mb-5"
+                                             className={`absolute top-1 ${msg.arah_pesan === 'OUT' ? '-left-8' : '-right-8'} opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-gray-200`}
                                              title="Balas" aria-label="Balas"
                                           >
                                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v6M3 10l6 6M3 10l6-6" /></svg>
                                           </button>
-                                       )}
-                                       <div className={`max-w-[80%] md:max-w-[68%] p-3 text-sm rounded-2xl shadow-sm ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-gray-900 rounded-br-sm' : 'bg-white text-gray-900 rounded-bl-sm'}`}>
-                                          {isImageUrl(msg.isi_pesan) ? (
-                                             <div className="cursor-pointer relative w-56 h-56" onClick={() => openImageViewer(msg.isi_pesan)}>
-                                                <Image src={msg.isi_pesan} alt="Media" layout="fill" className="rounded-xl object-cover mb-1" onLoadingComplete={scrollToBottom} />
+                                          {msg.url_media ? (
+                                             // Gambar dari WhatsApp (disimpan permanen di Google Drive)
+                                             <div>
+                                                <div className="cursor-pointer relative w-64 h-64" onClick={() => openImageViewer(msg.url_media!)}>
+                                                   <Image src={msg.url_media} alt="Media" layout="fill" className="rounded-md object-cover mb-1" onLoadingComplete={scrollToBottom} />
+                                                </div>
+                                                {msg.isi_pesan && !['[image]','[document]','[video]','[audio]'].includes(msg.isi_pesan) && (
+                                                   <p className="text-xs mt-1 text-gray-600 italic">{msg.isi_pesan}</p>
+                                                )}
+                                             </div>
+                                          ) : isImageUrl(msg.isi_pesan) ? (
+                                             <div className="cursor-pointer relative w-64 h-64" onClick={() => openImageViewer(msg.isi_pesan)}>
+                                                <Image src={msg.isi_pesan} alt="Media" layout="fill" className="rounded-md object-cover mb-1" onLoadingComplete={scrollToBottom} />
                                              </div>
                                           ) : (
-                                             <p className="whitespace-pre-wrap leading-relaxed">{msg.isi_pesan}</p>
+                                             <p className="whitespace-pre-wrap leading-relaxed font-medium">{msg.isi_pesan}</p>
                                           )}
-                                          <div className="text-[9px] mt-1.5 text-right text-gray-400 font-medium">
+                                          <div className="text-[9px] mt-1 text-right text-gray-500 font-bold">
                                              {(() => {
                                                 const d = new Date(msg.waktu_pesan || msg.created_at || 0);
                                                 return isNaN(d.getTime()) ? '-' : `${d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
                                              })()}
                                           </div>
                                        </div>
-                                       {/* Tombol balas untuk pesan keluar */}
-                                       {msg.arah_pesan === 'OUT' && (
-                                          <button
-                                             onClick={() => setReplyToMessage(msg)}
-                                             className="w-8 h-8 flex items-center justify-center rounded-full bg-white/80 shadow-sm active:bg-gray-100 transition shrink-0 mb-5"
-                                             title="Balas" aria-label="Balas"
-                                          >
-                                             <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v6M3 10l6 6M3 10l6-6" /></svg>
-                                          </button>
-                                       )}
                                     </div>
                                  ))}
                                  <div ref={messagesEndRef} />
                               </div>
-                              {/* Input area */}
-                              <div className="shrink-0 bg-[#f0f2f5] border-t border-gray-200">
+                              <div className="shrink-0">
                                  {replyToMessage && (
-                                    <div className="px-3 pt-2.5 pb-1 flex items-start gap-2">
-                                       <div className="flex-1 bg-white rounded-xl p-3 border-l-4 border-[#FFE500]">
-                                          <p className="text-xs font-bold text-[#b5880a]">
+                                    <div className="px-4 pt-3 pb-1 bg-gray-50 border-t border-gray-200 flex items-start gap-2">
+                                       <div className="flex-1 bg-white rounded-lg p-2.5 border-l-4 border-[#FFE500]">
+                                          <p className="text-[11px] font-bold text-[#b5880a]">
                                              {replyToMessage.arah_pesan === 'OUT' ? 'Anda' : getRealProfileName(replyToMessage.nomor_wa)}
                                           </p>
-                                          <p className="text-xs text-gray-600 truncate mt-0.5">{replyToMessage.isi_pesan.substring(0, 100)}</p>
+                                          <p className="text-xs text-gray-600 truncate">{replyToMessage.isi_pesan.substring(0, 100)}</p>
                                        </div>
-                                       <button
-                                          aria-label="Tutup Balasan"
-                                          onClick={() => setReplyToMessage(null)}
-                                          className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 active:bg-gray-200 transition"
-                                       >
+                                       <button aria-label="Tutup Balasan" onClick={() => setReplyToMessage(null)} className="text-gray-400 hover:text-gray-600 p-1">
                                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                        </button>
                                     </div>
                                  )}
-                                 <form onSubmit={handleSendReply} className="px-3 py-3 flex gap-2 items-end">
-                                    <div className="flex-1">
-                                       <input
-                                          type="text"
-                                          value={replyText}
-                                          onChange={e => setReplyText(e.target.value)}
-                                          placeholder="Ketik pesan..."
-                                          className="w-full bg-white text-gray-900 rounded-2xl px-4 py-3 text-sm outline-none shadow-sm focus:ring-2 focus:ring-[#FFE500] border border-gray-200"
-                                       />
+                                 <form onSubmit={handleSendReply} className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3 items-center">
+                                    <div className="flex-1 relative">
+                                       <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="w-full border-none bg-white text-gray-900 rounded-full px-5 py-2.5 text-sm outline-none shadow-inner focus:ring-2 focus:ring-[#FFE500]" />
                                     </div>
-                                    <button
-                                       type="submit"
-                                       disabled={!replyText.trim()}
-                                       className="bg-[#FFE500] active:bg-[#cdb800] text-black w-12 h-12 rounded-2xl flex items-center justify-center disabled:opacity-40 transition shadow-sm shrink-0"
-                                       aria-label="Kirim"
-                                    >
-                                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                                    <button type="submit" disabled={!replyText.trim()} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 transition shadow-md" aria-label="Kirim">
+                                       <span className="text-xl">▶️</span>
                                     </button>
                                  </form>
                               </div>
@@ -4964,7 +4939,7 @@ export default function NikonDashboard() {
                                     return (
                                     <tr key={evt.id} className={`border-l-4 ${closed ? 'border-l-red-400' : 'border-l-green-500'} hover:bg-gray-50 transition-colors`}>
                                        <td className="px-3 py-2.5 text-center font-bold text-gray-500 text-xs">{eventNumberMap.get(evt.id!)}</td>
-                                       <td className="px-3 py-2.5 text-center"><Image src={toDriveProxy(evt.image)} alt="poster" width={40} height={56} className="w-10 h-14 object-cover rounded shadow-sm" /></td>
+                                       <td className="px-3 py-2.5 text-center"><Image src={evt.image} alt="poster" width={40} height={56} className="w-10 h-14 object-cover rounded shadow-sm" /></td>
                                        <td className="px-3 py-2.5 font-bold text-slate-800">{evt.title}</td>
                                        <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{evt.date}</td>
                                        <td className="px-3 py-2.5 text-xs text-gray-600">{evt.detail_acara || '-'}</td>
@@ -4994,7 +4969,7 @@ export default function NikonDashboard() {
                               <div key={evt.id} className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] hover:shadow-md transition overflow-hidden">
                                  {/* Full-width poster image */}
                                  <div className="relative w-full h-52 bg-gray-100 shrink-0">
-                                    <Image src={toDriveProxy(evt.image)} alt="poster" fill sizes="(max-width:768px)100vw,33vw" className="object-cover" />
+                                    <Image src={evt.image} alt="poster" fill sizes="(max-width:768px)100vw,33vw" className="object-cover" />
                                     <span className="absolute top-2 left-2 font-bold text-sm text-gray-700 bg-white/90 rounded-full w-7 h-7 flex items-center justify-center shadow-sm">{eventNumberMap.get(evt.id!)}</span>
                                     <span className={`absolute top-2 right-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded ${evt.status === 'close' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.status === 'close' ? 'Tutup' : 'Aktif'}</span>
                                  </div>
@@ -5517,6 +5492,11 @@ ADMIN_EMAIL=email_admin@gmail.com`}</pre>
                      </div>
                   );
                })()}
+
+               {/* ======================= WA TEMPLATES ======================= */}
+               {activeTab === 'wa_templates' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                  <WaTemplatesTab />
+               )}
 
                {/* ======================= AFFILIATE ======================= */}
                {activeTab === 'affiliate' && (() => {
@@ -7953,7 +7933,7 @@ ${pages.join('')}
                                        <label className="label-form">Poster Event {getVal('event_image', 'image') ? '(Upload ulang akan mengganti)' : ''}</label>
                                        {getVal('event_image', 'image') && !eventImageFile && (
                                           // eslint-disable-next-line @next/next/no-img-element
-                                          <img src={toDriveProxy(getVal('event_image', 'image'))} alt="Poster saat ini" className="w-32 h-44 object-cover rounded-lg border border-gray-200 mb-2" />
+                                          <img src={getVal('event_image', 'image')} alt="Poster saat ini" className="w-32 h-44 object-cover rounded-lg border border-gray-200 mb-2" />
                                        )}
                                        <input
                                           type="file"

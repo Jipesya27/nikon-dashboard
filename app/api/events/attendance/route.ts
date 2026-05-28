@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendWATemplate } from '@/app/lib/notify';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-
-async function sendWhatsApp(targetWa: string, message: string) {
-  try {
-    await supabase.functions.invoke('send-wa', { body: { target: targetWa, message } });
-  } catch (err) {
-    console.error('WA send error:', err);
-  }
-}
 
 // Parse QR data: format "NIKON-EVT|{registrationId}|{eventTitle}"
 function parseQrData(raw: string): { registrationId: string; eventTitle: string } | null {
@@ -118,8 +111,8 @@ export async function POST(req: NextRequest) {
 
     // Kirim WA notifikasi (opsional)
     if (sendWa && reg.nomor_wa) {
-      const msg = `Halo *${reg.nama_lengkap}*,\n\nKehadiran Anda di event *${reg.event_name}* sudah dikonfirmasi. ✅\n\nSelamat menikmati acara!\n\nSalam,\nNikon Indonesia`;
-      sendWhatsApp(reg.nomor_wa, msg).catch(e => console.error('WA attendance notify gagal:', e));
+      sendWATemplate(reg.nomor_wa, 'notif_event_attendance', [reg.nama_lengkap, reg.event_name])
+        .catch(e => console.error('WA attendance notify gagal:', e));
     }
 
     return NextResponse.json({
