@@ -24,6 +24,22 @@ const SiteContext = createContext<SiteCtx>({
 });
 const useSite = () => useContext(SiteContext);
 
+function useInView(threshold = 0.12) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setInView(true); obs.disconnect(); } },
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return [ref, inView] as const;
+}
+
 interface EventItem {
   id: string;
   event_title: string;
@@ -325,6 +341,7 @@ function ConsumerAccessSection() {
   const { cfg } = useSite();
   const base    = `https://wa.me/${cfg.wa_number}`;
   const [modalType, setModalType] = useState<ModalType | null>(null);
+  const [gridRef, gridInView] = useInView();
 
   // Promo & Dealer: pakai URL dari config, fallback ke WA jika kosong
   const promoHref  = cfg.promo_url  || `${base}?text=Halo%2C%20saya%20ingin%20cek%20promo%20Nikon%20terbaru`;
@@ -426,8 +443,8 @@ function ConsumerAccessSection() {
           </div>
 
           {/* 6 cards grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
-            {actions.map(action => {
+          <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
+            {actions.map((action, i) => {
               const inner = (
                 <>
                   <div className="flex items-start justify-between mb-4">
@@ -453,20 +470,26 @@ function ConsumerAccessSection() {
 
               const cardClass = 'group flex flex-col bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:-translate-y-1 transition-all duration-200 p-6 min-h-[200px] cursor-pointer text-left w-full';
 
-              if (action.modal) {
-                return (
-                  <button key={action.key} onClick={() => setModalType(action.modal!)} className={cardClass}>
-                    {inner}
-                  </button>
-                );
-              }
-              return (
-                <a key={action.key} href={action.href!}
+              const card = action.modal ? (
+                <button onClick={() => setModalType(action.modal!)} className={cardClass}>
+                  {inner}
+                </button>
+              ) : (
+                <a href={action.href!}
                   target={action.external ? '_blank' : undefined}
                   rel={action.external ? 'noopener noreferrer' : undefined}
                   className={cardClass}>
                   {inner}
                 </a>
+              );
+
+              return (
+                <div
+                  key={action.key}
+                  className={`transition-all duration-700 ${gridInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+                  style={{ transitionDelay: `${i * 70}ms`, transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+                  {card}
+                </div>
               );
             })}
           </div>
@@ -543,19 +566,19 @@ function HeroSection() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-12 md:mt-0">
         <div className="max-w-2xl">
-          <span className="inline-block py-1 px-3 border border-[#ffe000] text-[#ffe000] text-xs font-bold uppercase tracking-widest mb-6 bg-zinc-950/50 backdrop-blur-sm">
+          <span className="inline-block py-1 px-3 border border-[#ffe000] text-[#ffe000] text-xs font-bold uppercase tracking-widest mb-6 bg-zinc-950/50 backdrop-blur-sm motion-fade-up" style={{ animationDelay: '0ms' }}>
             Sistem CRM Pintar Terbaru
           </span>
-          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[1.1] mb-6 text-white">
+          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[1.1] mb-6 text-white motion-fade-up" style={{ animationDelay: '150ms' }}>
             {cfg.hero_title_1 || 'Unstoppable'}<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-500">
               {cfg.hero_title_2 || 'Performance.'}
             </span>
           </h1>
-          <p className="text-lg md:text-xl text-zinc-400 mb-10 max-w-lg leading-relaxed">
+          <p className="text-lg md:text-xl text-zinc-400 mb-10 max-w-lg leading-relaxed motion-fade-up" style={{ animationDelay: '280ms' }}>
             {cfg.hero_subtitle || 'Jelajahi batas baru fotografi dan videografi. Daftarkan garansi produk Anda lebih mudah dengan teknologi pemindai AI dari Nikon Indonesia.'}
           </p>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 motion-fade-up" style={{ animationDelay: '420ms' }}>
             <a href="/claim"
               className="bg-[#ffe000] text-black px-8 py-4 font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 group">
               Claim Promo <span className="group-hover:translate-x-1 transition-transform"><IconChevronRight /></span>
@@ -574,6 +597,7 @@ function HeroSection() {
 // ── Services Section ──────────────────────────────────────────────────────────
 function ServicesSection() {
   const { WA_SERVICE } = useSite();
+  const [cardsRef, cardsInView] = useInView();
   const cards = [
     {
       icon: <IconShield />,
@@ -613,24 +637,29 @@ function ServicesSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {cards.map(card => (
-            <a key={card.title} href={card.href}
-              className="bg-zinc-950 p-8 border border-zinc-800 hover:border-[#ffe000] hover:-translate-y-2 transition-all duration-300 group cursor-pointer relative overflow-hidden flex flex-col h-full">
-              {card.bg && (
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity text-white">
-                  {card.bg}
+        <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          {cards.map((card, i) => (
+            <div
+              key={card.title}
+              className={`h-full transition-all duration-700 ${cardsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+              style={{ transitionDelay: `${i * 100}ms`, transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+              <a href={card.href}
+                className="bg-zinc-950 p-8 border border-zinc-800 hover:border-[#ffe000] hover:-translate-y-2 transition-all duration-300 group cursor-pointer relative overflow-hidden flex flex-col h-full">
+                {card.bg && (
+                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity text-white">
+                    {card.bg}
+                  </div>
+                )}
+                <div className="text-[#ffe000] mb-6 bg-zinc-900/50 w-14 h-14 flex items-center justify-center rounded-full">
+                  {card.icon}
                 </div>
-              )}
-              <div className="text-[#ffe000] mb-6 bg-zinc-900/50 w-14 h-14 flex items-center justify-center rounded-full">
-                {card.icon}
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-white">{card.title}</h3>
-              <p className="text-zinc-400 text-sm mb-8 leading-relaxed flex-grow">{card.desc}</p>
-              <div className="flex items-center text-[#ffe000] text-sm font-bold uppercase tracking-wider group-hover:translate-x-2 transition-transform mt-auto">
-                {card.cta} <IconChevronRight />
-              </div>
-            </a>
+                <h3 className="text-xl font-bold mb-3 text-white">{card.title}</h3>
+                <p className="text-zinc-400 text-sm mb-8 leading-relaxed flex-grow">{card.desc}</p>
+                <div className="flex items-center text-[#ffe000] text-sm font-bold uppercase tracking-wider group-hover:translate-x-2 transition-transform mt-auto">
+                  {card.cta} <IconChevronRight />
+                </div>
+              </a>
+            </div>
           ))}
         </div>
       </div>
@@ -790,9 +819,13 @@ function EventsSection() {
 // ── WA CTA ────────────────────────────────────────────────────────────────────
 function WACTASection() {
   const { WA_LINK } = useSite();
+  const [ref, inView] = useInView(0.2);
   return (
     <section className="py-20 px-6 bg-zinc-900 border-t border-zinc-800">
-      <div className="max-w-4xl mx-auto text-center">
+      <div
+        ref={ref}
+        className={`max-w-4xl mx-auto text-center transition-all duration-700 ${inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+        style={{ transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
         <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-4 uppercase tracking-tighter">
           Semua Layanan Tersedia<br />
           <span className="text-[#ffe000]">via WhatsApp</span>
