@@ -606,8 +606,11 @@ export default function NikonDashboard() {
    // --- MULTIMEDIA HELPERS ---
    const isImageUrl = (text: string) => {
       if (!text) return false;
-      const urlPattern = /https?:\/\/[^\s]+?\.(jpg|jpeg|png|gif|webp|bmp)/i;
-      return urlPattern.test(text);
+      // Ekstensi gambar umum
+      const extPattern = /https?:\/\/[^\s]+?\.(jpg|jpeg|png|gif|webp|bmp)/i;
+      // Google Drive view link (dari WhatsApp attachment)
+      const drivePattern = /https:\/\/drive\.google\.com\/uc\?id=[^\s]+/i;
+      return extPattern.test(text) || drivePattern.test(text);
    };
 
    // REFS
@@ -3763,7 +3766,17 @@ export default function NikonDashboard() {
                                           >
                                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v6M3 10l6 6M3 10l6-6" /></svg>
                                           </button>
-                                          {isImageUrl(msg.isi_pesan) ? (
+                                          {msg.url_media ? (
+                                             // Gambar dari WhatsApp (disimpan permanen di Google Drive)
+                                             <div>
+                                                <div className="cursor-pointer relative w-64 h-64" onClick={() => openImageViewer(msg.url_media!)}>
+                                                   <Image src={msg.url_media} alt="Media" layout="fill" className="rounded-md object-cover mb-1" onLoadingComplete={scrollToBottom} />
+                                                </div>
+                                                {msg.isi_pesan && !['[image]','[document]','[video]','[audio]'].includes(msg.isi_pesan) && (
+                                                   <p className="text-xs mt-1 text-gray-600 italic">{msg.isi_pesan}</p>
+                                                )}
+                                             </div>
+                                          ) : isImageUrl(msg.isi_pesan) ? (
                                              <div className="cursor-pointer relative w-64 h-64" onClick={() => openImageViewer(msg.isi_pesan)}>
                                                 <Image src={msg.isi_pesan} alt="Media" layout="fill" className="rounded-md object-cover mb-1" onLoadingComplete={scrollToBottom} />
                                              </div>
