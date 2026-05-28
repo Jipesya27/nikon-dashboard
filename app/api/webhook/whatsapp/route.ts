@@ -113,6 +113,22 @@ export async function POST(req: Request) {
           } else {
             console.log('[WEBHOOK] Pesan tersimpan:', normalizedWa, text.substring(0, 50));
           }
+
+          // STEP 3: Forward ke Edge Function untuk proses bot logic & kirim balasan
+          const edgeFnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/fonnte-bot`;
+          fetch(edgeFnUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            },
+            body: JSON.stringify({
+              sender: normalizedWa,
+              message: text,
+              name: senderName,
+              skip_save: true, // sudah disimpan di atas
+            }),
+          }).catch((err) => console.error('[WEBHOOK] Gagal panggil edge function:', err));
         }
       }
     }
