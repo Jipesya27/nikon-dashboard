@@ -1,11 +1,13 @@
 /**
  * notify.ts — Shared notification dispatcher (server-only).
  * Reads `notif_channel` from pengaturan_bot and dispatches to
- * WhatsApp (Fonnte) and/or email (SMTP via nodemailer).
+ * WhatsApp (Meta Cloud API) and/or email (SMTP via nodemailer).
  *
  * Channel values: 'wa_only' | 'email_only' | 'wa_and_email'
  * Default: 'wa_only'
  *
+ * Required env vars for WA:
+ *   WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID
  * Required env vars for email:
  *   SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS
  *   SMTP_FROM (optional, defaults to SMTP_USER)
@@ -58,19 +60,33 @@ export function invalidateNotifCache() {
   _cache = null;
 }
 
-// ─── WhatsApp via Fonnte ────────────────────────────────────────────────────
+// ─── WhatsApp via Meta Cloud API ────────────────────────────────────────────
 
 async function sendWA(nomor: string, pesan: string) {
-  const token = process.env.FONNTE_TOKEN || '';
-  if (!token || !nomor) return;
+  const token = process.env.WHATSAPP_ACCESS_TOKEN || '';
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+  if (!token || !phoneNumberId || !nomor) return;
+  // Pastikan format 62xxx
+  const target = nomor.startsWith('0') ? '62' + nomor.slice(1) : nomor;
   try {
-    const res = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: { Authorization: token },
-      body: new URLSearchParams({ target: nomor, message: pesan }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) console.error('[notify] Fonnte error:', res.status, await res.text());
+    const res = await fetch(
+      `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: target,
+          type: 'text',
+          text: { body: pesan },
+        }),
+        signal: AbortSignal.timeout(8000),
+      },
+    );
+    if (!res.ok) console.error('[notify] Meta WA error:', res.status, await res.text());
   } catch (e) {
     console.error('[notify] Gagal kirim WA (non-kritis):', e);
   }
