@@ -98,6 +98,7 @@ export type EventStatusEnum = typeof EVENT_STATUS_OPTIONS[number]['value'];
 export const PAYMENT_TYPE_OPTIONS = [
   { value: 'regular', label: 'Regular (Non-refundable)' },
   { value: 'deposit', label: 'Deposit (Refundable setelah hadir)' },
+  { value: 'gratis', label: 'Gratis (Tidak perlu bayar)' },
 ] as const;
 export type PaymentType = typeof PAYMENT_TYPE_OPTIONS[number]['value'];
 

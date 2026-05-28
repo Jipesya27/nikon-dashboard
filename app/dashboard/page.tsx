@@ -6654,7 +6654,7 @@ ${pages.join('')}
                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div>
                                              <label className="label-form">Tipe Pembayaran</label>
-                                             <select aria-label="Tipe pembayaran" value={registrationForm.payment_type || 'regular'} onChange={e => setRegistrationForm({ ...registrationForm, payment_type: e.target.value as 'regular' | 'deposit' })} className="input-form">
+                                             <select aria-label="Tipe pembayaran" value={registrationForm.payment_type || 'regular'} onChange={e => setRegistrationForm({ ...registrationForm, payment_type: e.target.value as 'regular' | 'deposit' | 'gratis' })} className="input-form">
                                                 {PAYMENT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                              </select>
                                           </div>

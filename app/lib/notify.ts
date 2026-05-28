@@ -236,10 +236,12 @@ export interface NotifTarget {
   phone?: string;
   /** Recipient email address. */
   email?: string | null;
-  /** Plain-text message (untuk email; WA pakai waTemplate jika ada). */
+  /** Plain-text message (WA markdown: *bold* supported). Also used as email body fallback. */
   message: string;
   /** Email subject line. Defaults to 'Notifikasi Nikon'. */
   subject?: string;
+  /** Custom HTML for email body. If omitted, message text is used. */
+  html?: string;
   /**
    * Meta WA template. Jika diisi, WA dikirim sebagai template message
    * (bekerja di luar 24-jam window). Jika tidak diisi, pakai free-form text.
@@ -272,6 +274,7 @@ export async function sendNotif(consumer: NotifTarget, admin?: NotifTarget): Pro
       consumer.email,
       consumer.subject || 'Notifikasi Nikon',
       consumer.message,
+      consumer.html,
     ));
   }
 
