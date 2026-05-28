@@ -1,5 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import {
+  getAccessToken,
+  getOrCreateFolder,
+  uploadBufferToDrive,
+  ROOT_FOLDER_ID,
+} from '@/app/lib/googleDrive';
 
 function generateKonsumenID() {
   const randomDigits = Math.floor(100000 + Math.random() * 900000);
@@ -80,16 +86,32 @@ export async function POST(req: Request) {
 
             if (mediaId) {
               try {
-                // Step 1: ambil URL dari Meta Media API
+                // Step 1: ambil info media dari Meta (URL temporary + mime_type)
                 const metaRes = await fetch(
                   `https://graph.facebook.com/v25.0/${mediaId}`,
                   { headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}` } }
                 );
                 const metaData = await metaRes.json() as Record<string, string>;
-                mediaUrl = metaData.url ?? '';
-                console.log(`[WEBHOOK] Media ${msgType} URL:`, mediaUrl ? 'OK' : 'GAGAL');
+                const tempUrl  = metaData.url ?? '';
+                const mimeType = metaData.mime_type ?? 'application/octet-stream';
+
+                if (tempUrl) {
+                  // Step 2: download file dari Meta
+                  const dlRes = await fetch(tempUrl, {
+                    headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}` },
+                  });
+                  const buffer = await dlRes.arrayBuffer();
+
+                  // Step 3: upload permanen ke Google Drive folder message_attachment
+                  const gToken   = await getAccessToken();
+                  const folderId = await getOrCreateFolder('message_attachment', ROOT_FOLDER_ID, gToken);
+                  const ext      = mimeType.split('/')[1]?.split(';')[0] ?? 'bin';
+                  const fileName = `wa_${normalizedWa}_${Date.now()}.${ext}`;
+                  mediaUrl = await uploadBufferToDrive(buffer, mimeType, fileName, folderId, gToken);
+                  console.log(`[WEBHOOK] Media ${msgType} → Drive:`, mediaUrl);
+                }
               } catch (e) {
-                console.error('[WEBHOOK] Gagal ambil media URL:', e);
+                console.error('[WEBHOOK] Gagal upload media ke Drive:', e);
               }
             }
           }
