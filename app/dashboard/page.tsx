@@ -228,8 +228,7 @@ export default function NikonDashboard() {
       if (mkt === 'tidak valid') return 'Merah';
       if (isPending(mkt)) return 'Putih';
       const hasResi = !!(c.nomor_resi && c.nomor_resi.trim() !== '' && c.nomor_resi.trim().toUpperCase() !== 'BELUM_DIISI');
-      if (hasResi && c.id_claim && sentStatusClaimIds.has(c.id_claim)) return 'Teal';
-      if (hasResi) return 'Hijau';
+      if (hasResi) return 'Teal';
       if (mkt === 'valid' && fa === 'valid') return 'Pink';
       if (mkt === 'valid' && isPending(fa)) return 'Biru';
       if (mkt === 'hold' && fa !== 'valid') return 'Orange';
