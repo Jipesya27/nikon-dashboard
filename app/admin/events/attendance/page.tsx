@@ -304,7 +304,7 @@ export default function AdminAttendancePage() {
                   <p className="text-gray-400 text-xs">📱 {scanResult.reg.nomor_wa}</p>
                   {scanResult.reg.tipe_kamera && <p className="text-gray-400 text-xs">📷 {scanResult.reg.tipe_kamera}</p>}
                   {scanResult.reg.is_attended && scanResult.reg.attended_at && (
-                    <p className="text-green-600 text-xs mt-2">✓ Hadir: {new Date(scanResult.reg.attended_at).toLocaleString('id-ID')}{scanResult.reg.attended_by ? ` oleh ${scanResult.reg.attended_by}` : ''}</p>
+                    <p className="text-green-600 text-xs mt-2">✓ Hadir: {new Date(scanResult.reg.attended_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}{scanResult.reg.attended_by ? ` oleh ${scanResult.reg.attended_by}` : ''}</p>
                   )}
                 </div>
               )}
@@ -330,7 +330,7 @@ export default function AdminAttendancePage() {
                 <div key={r.id} className="bg-white border border-green-200 border-l-4 border-l-green-400 rounded-lg p-3 shadow-sm">
                   <p className="font-bold text-sm text-gray-900 truncate">{r.nama_lengkap}</p>
                   <p className="text-[11px] text-gray-500 truncate">{r.event_name}</p>
-                  <p className="text-[10px] text-green-600 mt-1 font-medium">{r.attended_at && new Date(r.attended_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}{r.attended_by ? ` · ${r.attended_by}` : ''}</p>
+                  <p className="text-[10px] text-green-600 mt-1 font-medium">{r.attended_at && new Date(r.attended_at).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' })}{r.attended_by ? ` · ${r.attended_by}` : ''}</p>
                 </div>
               ))}
             </div>
@@ -376,7 +376,7 @@ export default function AdminAttendancePage() {
                         <td className="px-4 py-3 text-xs text-gray-500">
                           {r.attended_at ? (
                             <>
-                              {new Date(r.attended_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              {new Date(r.attended_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                               {r.attended_by && <span className="block text-[10px] text-gray-400">oleh {r.attended_by}</span>}
                             </>
                           ) : '-'}
