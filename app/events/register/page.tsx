@@ -11,7 +11,7 @@ type EventItem = {
   event_description?: string;
   event_speaker?: string;
   event_speaker_genre?: string;
-  event_payment_tipe: 'regular' | 'deposit';
+  event_payment_tipe: 'regular' | 'deposit' | 'gratis';
   deposit_amount?: string;
   bank_info?: string;
   event_partisipant_stock: number;
@@ -76,7 +76,7 @@ export default function EventRegisterPage() {
 
   // Marketplace filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterPayment, setFilterPayment] = useState<'all' | 'regular' | 'deposit'>('all');
+  const [filterPayment, setFilterPayment] = useState<'all' | 'regular' | 'deposit' | 'gratis'>('all');
   const [filterGenre, setFilterGenre] = useState<string>('Semua');
   const [sortBy, setSortBy] = useState<'newest' | 'soonest' | 'price_asc' | 'price_desc'>('soonest');
   const [descEvent, setDescEvent] = useState<EventItem | null>(null);
@@ -153,7 +153,8 @@ export default function EventRegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedEvent) return;
-    if (!fileBukti) {
+    const isGratis = selectedEvent.event_payment_tipe === 'gratis';
+    if (!isGratis && !fileBukti) {
       setErrorMsg('Harap unggah bukti transfer pembayaran.');
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
       return;
@@ -165,7 +166,7 @@ export default function EventRegisterPage() {
       const fd = new FormData();
       fd.append('event_id', selectedEvent.id);
       Object.entries(formData).forEach(([k, v]) => fd.append(k, v));
-      fd.append('bukti_transfer', fileBukti);
+      if (!isGratis && fileBukti) fd.append('bukti_transfer', fileBukti);
 
       const res = await fetch('/api/events/register', { method: 'POST', body: fd });
       const result = await res.json();
@@ -285,6 +286,7 @@ export default function EventRegisterPage() {
                 { v: 'all',     l: 'Semua Tipe', i: '🎟️' },
                 { v: 'regular', l: 'Regular',    i: '🎫' },
                 { v: 'deposit', l: 'Deposit',    i: '💎' },
+                { v: 'gratis',  l: 'Gratis',     i: '🎁' },
               ] as const).map(opt => {
                 const active = filterPayment === opt.v;
                 return (
@@ -637,7 +639,8 @@ export default function EventRegisterPage() {
               </div>
             )}
 
-            {/* UPLOAD */}
+            {/* UPLOAD — hanya untuk event berbayar */}
+            {selectedEvent.event_payment_tipe !== 'gratis' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
                 <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">{selectedEvent.event_payment_tipe === 'deposit' ? 3 : 2}</div>
@@ -675,6 +678,7 @@ export default function EventRegisterPage() {
                 </button>
               </div>
             </div>
+            )}
 
             <button
               type="submit"
