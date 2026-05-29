@@ -212,3 +212,119 @@ input[type="file"].input-form {
 .badge-danger {
   @apply bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-semibold;
 }
+
+/* ── Motion (Emil Kowalski style) ─────────────────────────────────────────── */
+@keyframes motion-fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.motion-fade-up {
+  animation: motion-fade-up 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-fade-up {
+    animation: none;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ── Nikon /nikon — Energik & Playful animations ───────────────────────── */
+@keyframes bounce-in {
+  0%   { opacity:0; transform:translateY(44px) scale(0.82); }
+  55%  { opacity:1; transform:translateY(-10px) scale(1.05); }
+  75%  { transform:translateY(5px) scale(0.97); }
+  90%  { transform:translateY(-2px) scale(1.01); }
+  100% { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes spin-in {
+  0%   { opacity:0; transform:rotate(-200deg) scale(0.3); }
+  65%  { transform:rotate(15deg) scale(1.18); }
+  82%  { transform:rotate(-5deg) scale(0.96); }
+  100% { opacity:1; transform:rotate(0deg) scale(1); }
+}
+@keyframes float-y {
+  0%,100% { transform:translateY(0); }
+  50%     { transform:translateY(-14px); }
+}
+@keyframes shimmer {
+  0%   { transform:translateX(-110%) skewX(-22deg); }
+  100% { transform:translateX(260%) skewX(-22deg); }
+}
+@keyframes glow-pulse {
+  0%,100% { box-shadow:0 0 14px rgba(255,224,0,.45),0 0 28px rgba(255,224,0,.2); }
+  50%     { box-shadow:0 0 32px rgba(255,224,0,.95),0 0 64px rgba(255,224,0,.5),0 0 96px rgba(255,224,0,.25); }
+}
+@keyframes dot-drift {
+  0%   { background-position:0 0; }
+  100% { background-position:48px 48px; }
+}
+@keyframes gradient-x {
+  0%,100% { background-position:0% 50%; }
+  50%     { background-position:100% 50%; }
+}
+@keyframes slide-left {
+  from { opacity:0; transform:translateX(-60px) scale(0.94); }
+  to   { opacity:1; transform:translateX(0) scale(1); }
+}
+@keyframes slide-right {
+  from { opacity:0; transform:translateX(60px) scale(0.94); }
+  to   { opacity:1; transform:translateX(0) scale(1); }
+}
+@keyframes sticker-pop {
+  0%   { opacity:0; transform:scale(0.15) rotate(-14deg); }
+  60%  { transform:scale(1.2) rotate(5deg); }
+  80%  { transform:scale(0.93) rotate(-2deg); }
+  100% { opacity:1; transform:scale(1) rotate(0deg); }
+}
+@keyframes bounce-down {
+  0%,100% { transform:translateY(0); opacity:.5; }
+  50%     { transform:translateY(10px); opacity:1; }
+}
+@keyframes badge-ping {
+  0%   { transform:scale(1); opacity:.7; }
+  80%  { transform:scale(2.2); opacity:0; }
+  100% { transform:scale(1); opacity:0; }
+}
+@keyframes word-pop {
+  0%   { opacity:0; transform:translateY(30px) scale(0.8) rotate(-3deg); }
+  60%  { transform:translateY(-6px) scale(1.06) rotate(1deg); }
+  100% { opacity:1; transform:translateY(0) scale(1) rotate(0deg); }
+}
+.n-float        { animation:float-y 3.2s ease-in-out infinite; }
+.n-glow         { animation:glow-pulse 2s ease-in-out infinite; }
+.n-bounce-arrow { animation:bounce-down 1.2s ease-in-out infinite; }
+.n-shimmer-btn  { position:relative; overflow:hidden; }
+.n-shimmer-btn::after {
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.38) 50%,transparent 100%);
+  transform:translateX(-110%) skewX(-22deg);
+  animation:shimmer 2.4s ease-in-out infinite;
+  pointer-events:none;
+}
+.n-dot-bg {
+  background-image:radial-gradient(circle,rgba(255,224,0,.13) 1.5px,transparent 1.5px);
+  background-size:48px 48px;
+  animation:dot-drift 7s linear infinite;
+}
+.n-gradient-bg {
+  background:linear-gradient(135deg,#18181b 0%,#27272a 35%,#1c1c08 65%,#18181b 100%);
+  background-size:300% 300%;
+  animation:gradient-x 7s ease-in-out infinite;
+}
+.n-text-gradient {
+  background:linear-gradient(90deg,#fff 0%,#ffe000 35%,#fff 65%,#ffe000 100%);
+  background-size:220% auto;
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:gradient-x 3.5s linear infinite;
+}
+@media (prefers-reduced-motion:reduce) {
+  .n-float,.n-glow,.n-bounce-arrow,.n-dot-bg,.n-gradient-bg,.n-text-gradient { animation:none!important; }
+  .n-shimmer-btn::after { display:none; }
+}

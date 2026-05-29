@@ -73,12 +73,19 @@ function countParams(text: string): number {
 
 // ─── Create Form state type ───────────────────────────────────────────────────
 
+interface ButtonItem {
+  type: 'URL' | 'QUICK_REPLY';
+  text: string;
+  url: string;
+}
+
 interface FormState {
   name: string;
   category: TemplateCategory;
   body: string;
   examples: string[];
   isAuth: boolean;
+  buttons: ButtonItem[];
 }
 
 const INIT_FORM: FormState = {
@@ -87,7 +94,23 @@ const INIT_FORM: FormState = {
   body: '',
   examples: [],
   isAuth: false,
+  buttons: [],
 };
+
+const REQUIRED_TEMPLATES = [
+  { name: 'notif_garansi_received',  cat: 'UTILITY',        params: 0, desc: 'Konfirmasi penerimaan form garansi',                                    urlInParam: false },
+  { name: 'notif_garansi_approved',  cat: 'UTILITY',        params: 5, desc: 'Garansi disetujui — nama, produk, S/N, masa garansi, jenis garansi',    urlInParam: false },
+  { name: 'notif_garansi_rejected',  cat: 'UTILITY',        params: 3, desc: 'Garansi ditolak — nama, produk, alasan',                                urlInParam: false },
+  { name: 'notif_claim_received',    cat: 'UTILITY',        params: 0, desc: 'Konfirmasi penerimaan form claim promo',                                 urlInParam: false },
+  { name: 'notif_claim_approved',    cat: 'UTILITY',        params: 3, desc: 'Claim disetujui — nama penerima, produk, S/N',                          urlInParam: false },
+  { name: 'notif_claim_rejected',    cat: 'UTILITY',        params: 3, desc: 'Claim ditolak — nama, produk, alasan',                                  urlInParam: false },
+  { name: 'notif_daftar_event',      cat: 'UTILITY',        params: 2, desc: 'Registrasi event diterima — nama, judul event',                         urlInParam: false },
+  { name: 'notif_event_approved',    cat: 'UTILITY',        params: 3, desc: 'Tiket event — nama, event, URL tiket (⚠️ gunakan tombol URL)',          urlInParam: true  },
+  { name: 'notif_event_rejected',    cat: 'UTILITY',        params: 3, desc: 'Event ditolak — nama, event, alasan',                                   urlInParam: false },
+  { name: 'notif_event_attendance',  cat: 'UTILITY',        params: 2, desc: 'Kehadiran dikonfirmasi — nama, event',                                  urlInParam: false },
+  { name: 'notif_deposit_refund',    cat: 'UTILITY',        params: 3, desc: 'Deposit dikembalikan — nama, event, URL bukti (⚠️ gunakan tombol URL)', urlInParam: true  },
+  { name: 'notif_kode_akun',         cat: 'AUTHENTICATION', params: 0, desc: 'Kode akses / reset password karyawan (AUTHENTICATION, OTP button)',     urlInParam: false },
+] as const;
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -103,6 +126,7 @@ export default function WaTemplatesTab() {
   const [deleting, setDeleting]     = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null); // template name to confirm
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showRequired, setShowRequired] = useState(false);
   const prevParamCount = useRef(0);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -149,6 +173,7 @@ export default function WaTemplatesTab() {
       isAuth,
       body: isAuth ? '' : f.body,
       examples: isAuth ? [] : f.examples,
+      buttons: isAuth ? [] : f.buttons,
     }));
     prevParamCount.current = 0;
   };
@@ -181,6 +206,11 @@ export default function WaTemplatesTab() {
         setFormError(`Isi semua ${paramCount} contoh nilai untuk variabel {{1}}–{{${paramCount}}}.`);
         return;
       }
+      for (let bi = 0; bi < form.buttons.length; bi++) {
+        const btn = form.buttons[bi];
+        if (!btn.text.trim()) { setFormError(`Teks tombol ${bi + 1} wajib diisi.`); return; }
+        if (btn.type === 'URL' && !btn.url.trim()) { setFormError(`URL untuk tombol ${bi + 1} wajib diisi.`); return; }
+      }
       const components: TemplateComponent[] = [
         {
           type: 'BODY',
@@ -190,6 +220,16 @@ export default function WaTemplatesTab() {
           } as unknown as TemplateComponent),
         },
       ];
+      if (form.buttons.length > 0) {
+        components.push({
+          type: 'BUTTONS',
+          buttons: form.buttons.map(b => ({
+            type: b.type,
+            text: b.text.trim(),
+            ...(b.type === 'URL' ? { url: b.url.trim() } : {}),
+          })),
+        });
+      }
       payload = { name, language: 'id', category: form.category, components };
     }
 
@@ -448,6 +488,53 @@ export default function WaTemplatesTab() {
         </ul>
       </div>
 
+      {/* ── Required Templates Checklist ── */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <button
+          onClick={() => setShowRequired(v => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition">
+          <div className="flex items-center gap-2">
+            <span className="text-base">📋</span>
+            <span className="text-sm font-bold text-gray-900">Template yang Dibutuhkan Sistem</span>
+            <span className="text-xs text-gray-500">({REQUIRED_TEMPLATES.length} template)</span>
+          </div>
+          <span className="text-gray-400 text-xs">{showRequired ? '▲ Sembunyikan' : '▼ Lihat Checklist'}</span>
+        </button>
+        {showRequired && (
+          <div className="px-5 pb-5">
+            <p className="text-xs text-gray-500 mb-3">
+              Template ini harus dibuat di Meta agar notifikasi sistem berjalan.
+              <span className="text-green-600 font-semibold"> ✅ = sudah ada</span>, <span className="text-red-500 font-semibold">❌ = belum dibuat</span>.
+            </p>
+            <div className="space-y-1.5">
+              {REQUIRED_TEMPLATES.map(t => {
+                const exists = templates.some(mt => mt.name === t.name);
+                return (
+                  <div key={t.name} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg ${exists ? 'bg-green-50' : 'bg-red-50'}`}>
+                    <span className="mt-0.5 shrink-0 text-sm">{exists ? '✅' : '❌'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-gray-800">{t.name}</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${t.cat === 'AUTHENTICATION' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {t.cat}
+                        </span>
+                        {t.params > 0 && (
+                          <span className="text-[10px] text-gray-500">{t.params} param</span>
+                        )}
+                        {t.urlInParam && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">⚠️ URL</span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{t.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* ── Create modal ── */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -561,6 +648,64 @@ export default function WaTemplatesTab() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Buttons */}
+              {!form.isAuth && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold text-gray-700">
+                      Tombol CTA <span className="text-gray-400 font-normal">(opsional, maks. 3)</span>
+                    </label>
+                    {form.buttons.length < 3 && (
+                      <button type="button"
+                        onClick={() => setForm(f => ({ ...f, buttons: [...f.buttons, { type: 'URL', text: '', url: '' }] }))}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 transition">
+                        + Tambah Tombol
+                      </button>
+                    )}
+                  </div>
+                  {form.buttons.length === 0 && (
+                    <p className="text-xs text-gray-400 italic">Belum ada tombol. Tambahkan untuk template yang menyertakan link.</p>
+                  )}
+                  <div className="space-y-2">
+                    {form.buttons.map((btn, bi) => (
+                      <div key={bi} className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50">
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={btn.type}
+                            onChange={e => setForm(f => {
+                              const b = [...f.buttons];
+                              b[bi] = { ...b[bi], type: e.target.value as 'URL' | 'QUICK_REPLY', url: '' };
+                              return { ...f, buttons: b };
+                            })}
+                            className="text-xs font-bold border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-yellow-400">
+                            <option value="URL">🔗 URL</option>
+                            <option value="QUICK_REPLY">↩ Quick Reply</option>
+                          </select>
+                          <button type="button"
+                            onClick={() => setForm(f => ({ ...f, buttons: f.buttons.filter((_, j) => j !== bi) }))}
+                            className="text-xs text-gray-400 hover:text-red-500 transition ml-auto">
+                            Hapus
+                          </button>
+                        </div>
+                        <input type="text" value={btn.text} maxLength={25}
+                          onChange={e => setForm(f => { const b = [...f.buttons]; b[bi] = { ...b[bi], text: e.target.value }; return { ...f, buttons: b }; })}
+                          placeholder="Teks tombol (maks. 25 karakter)"
+                          className="w-full border border-gray-200 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                        {btn.type === 'URL' && (
+                          <input type="url" value={btn.url}
+                            onChange={e => setForm(f => { const b = [...f.buttons]; b[bi] = { ...b[bi], url: e.target.value }; return { ...f, buttons: b }; })}
+                            placeholder="https://example.com/halaman"
+                            className="w-full border border-gray-200 rounded px-2.5 py-1.5 text-sm font-mono bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {form.buttons.some(b => b.type === 'URL') && (
+                    <p className="text-[11px] text-amber-600 mt-1.5">⚠️ URL harus dapat diakses secara publik agar Meta dapat memverifikasinya saat review template.</p>
+                  )}
                 </div>
               )}
 

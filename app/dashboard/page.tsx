@@ -1522,10 +1522,10 @@ export default function NikonDashboard() {
 
    const handlePrintPeminjamanPDF = (l: PeminjamanBarang) => {
       const tglPinjam = l.tanggal_peminjaman
-         ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
-         : new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+         ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'long', year: 'numeric' })
+         : new Date().toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'long', year: 'numeric' });
       const tglEstimasi = l.tanggal_estimasi_pengembalian
-         ? new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+         ? new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'long', year: 'numeric' })
          : '-';
       const itemsHtml = l.items_dipinjam.map((item, idx) => {
          const accs = [item.accs1, item.accs2, item.accs3, item.accs4, item.accs5, item.accs6, item.accs7]
@@ -2303,7 +2303,7 @@ export default function NikonDashboard() {
             event_title: ef.event_title ?? ef.title,
             event_date: ef.event_date ?? ef.date,
             event_price: ef.event_price ?? ef.price,
-            event_image: ef.event_image ?? ef.image,
+            event_image: ef.event_image ?? ef.image ?? null,
             event_description: ef.event_description ?? ef.detail_acara,
             event_partisipant_stock: parseInt(ef.event_partisipant_stock ?? ef.stock ?? 0) || 0,
             event_status: ef.event_status ?? ef.status ?? 'In stock',
@@ -2711,7 +2711,7 @@ export default function NikonDashboard() {
       ctx.fillStyle = '#000000';
       ctx.font = '14px Arial';
       ctx.textAlign = 'right';
-      const dateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
+      const dateStr = new Date().toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
       ctx.fillText(dateStr, canvas.width - 30, 45);
       ctx.textAlign = 'left';
       const isUntukOrangLain = !!(c.nama_penerima_claim);
@@ -2768,7 +2768,7 @@ export default function NikonDashboard() {
       a.click();
       document.body.removeChild(a);
       if (c.id_claim) {
-         const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
+         const today = new Date().toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
          const newDates = [...(c.tanggal_cetak || []), today];
          // Update lokal langsung (feedback instan)
          setClaims(prev => prev.map(cl => cl.id_claim === c.id_claim ? { ...cl, tanggal_cetak: newDates } : cl));
@@ -2958,7 +2958,7 @@ export default function NikonDashboard() {
       if (!createdAt) return '-';
       const d = new Date(createdAt);
       if (isNaN(d.getTime())) return '-';
-      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+      return d.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' });
    };
 
    const formatTglBeli = (val?: string) => {
@@ -3267,7 +3267,7 @@ export default function NikonDashboard() {
                         </button>
                         {lastRefreshed && (
                            <p className="text-[10px] text-center text-gray-400 mt-1.5">
-                              Update: {lastRefreshed.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              Update: {lastRefreshed.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                            </p>
                         )}
                      </div>
@@ -3491,7 +3491,9 @@ export default function NikonDashboard() {
                               </>
                         )}
                         {activeTab === 'botsettings' && <button onClick={() => openModal('create', 'botsettings')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Pengaturan</button>}
+                       {activeTab === 'events' && <button onClick={() => fetchEvents()} className="bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-3 py-2 rounded-md font-bold text-sm transition shadow-sm" title="Refresh data event">🔄</button>}
                        {activeTab === 'events' && <button onClick={() => openModal('create', 'event')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Event</button>}
+                       {activeTab === 'eventregistrations' && <button onClick={() => fetchEventRegistrations()} className="bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-3 py-2 rounded-md font-bold text-sm transition shadow-sm" title="Refresh data peserta">🔄</button>}
                        {activeTab === 'eventregistrations' && <button onClick={() => setIsScannerOpen(true)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📷 Scan QR Kehadiran</button>}
                         {activeTab === 'eventregistrations' && <button onClick={() => openModal('create', 'eventregistration')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Peserta</button>}
                         {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}
@@ -3648,7 +3650,7 @@ export default function NikonDashboard() {
                                        <div className="flex justify-between items-baseline">
                                           <h4 className={`text-sm truncate ${isNew ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>{profileName}</h4>
                                           <span className={`text-[10px] font-medium shrink-0 ml-2 ${isNew ? 'text-green-600 font-bold' : 'text-gray-500'}`}>
-                                             {new Date(c.waktu_pesan || c.created_at || 0).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                             {new Date(c.waktu_pesan || c.created_at || 0).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' })}
                                           </span>
                                        </div>
                                        <div className="flex justify-between items-center gap-2 mt-0.5">
@@ -3812,7 +3814,7 @@ export default function NikonDashboard() {
                                              <span className="mr-1 opacity-70">🤖</span>
                                              <span>{msg.isi_pesan}</span>
                                              <span className="ml-2 text-gray-500 text-[9px]">
-                                                {(() => { const d = new Date(msg.waktu_pesan || msg.created_at || 0); return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }); })()}
+                                                {(() => { const d = new Date(msg.waktu_pesan || msg.created_at || 0); return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }); })()}
                                              </span>
                                           </div>
                                        </div>
@@ -3846,7 +3848,7 @@ export default function NikonDashboard() {
                                           <div className="text-[9px] mt-1 text-right text-gray-500 font-bold">
                                              {(() => {
                                                 const d = new Date(msg.waktu_pesan || msg.created_at || 0);
-                                                return isNaN(d.getTime()) ? '-' : `${d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+                                                return isNaN(d.getTime()) ? '-' : `${d.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' })}`;
                                              })()}
                                           </div>
                                        </div>
@@ -4567,7 +4569,7 @@ export default function NikonDashboard() {
                                        <td className="px-6 py-3">
                                           <span className="px-2 py-1 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span>
                                        </td>
-                                       <td className="px-6 py-3 font-bold text-gray-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</td>
+                                       <td className="px-6 py-3 font-bold text-gray-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-'}</td>
                                        <td className="px-6 py-3 flex gap-3">
                                           <button onClick={() => openModal('edit', 'service', s)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                           <button onClick={() => handleDelete('service', s.id_service!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
@@ -4587,7 +4589,7 @@ export default function NikonDashboard() {
                                  </div>
                                  <div className="space-y-2 text-xs flex-1">
                                     <p><span className="font-bold w-20 inline-block">Status:</span> <span className="px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span></p>
-                                    <p><span className="font-bold w-20 inline-block">Update:</span> {s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</p>
+                                    <p><span className="font-bold w-20 inline-block">Update:</span> {s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-'}</p>
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                     <button onClick={() => openModal('edit', 'service', s)} className="text-black text-xs font-bold hover:underline">Edit</button>
@@ -4790,14 +4792,14 @@ export default function NikonDashboard() {
                                              })}
                                           </ul>
                                        </td>
-                                       <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</td>
+                                       <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-'}</td>
                                        <td className="px-3 py-2.5 text-xs whitespace-nowrap">
                                           {l.tanggal_estimasi_pengembalian ? (
-                                             <><p className="text-gray-700">{new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID')}</p>
+                                             <><p className="text-gray-700">{new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' })}</p>
                                              {l.reminder_sent_at && <p className="text-[10px] text-green-600 font-bold">✓ Reminder terkirim</p>}</>
                                           ) : <span className="text-gray-400 italic">-</span>}
                                        </td>
-                                       <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</td>
+                                       <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-'}</td>
                                        <td className="px-3 py-2.5 text-center">
                                           <span className={`px-2 py-1 rounded text-[10px] font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
                                        </td>
@@ -4826,8 +4828,8 @@ export default function NikonDashboard() {
                                     <span className={`mt-2 inline-block px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
                                  </div>
                                  <div className="space-y-2 text-xs flex-1">
-                                    <p><span className="font-bold w-24 inline-block">Tgl Pinjam:</span> {l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</p>
-                                    <p><span className="font-bold w-24 inline-block">Tgl Kembali:</span> {l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</p>
+                                    <p><span className="font-bold w-24 inline-block">Tgl Pinjam:</span> {l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-'}</p>
+                                    <p><span className="font-bold w-24 inline-block">Tgl Kembali:</span> {l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-'}</p>
                                     <div className="font-bold mt-2">Barang:</div>
                                     <ul className="pl-2 space-y-1.5">
                                        {l.items_dipinjam.map((item, idx) => {
@@ -6774,7 +6776,7 @@ ${pages.join('')}
                                           </div>
                                           {registrationForm.is_attended && registrationForm.attended_at && (
                                              <div className="md:col-span-2">
-                                                <p className="text-[11px] text-green-700 font-bold">✓ Tercatat hadir pada: {new Date(registrationForm.attended_at).toLocaleString('id-ID')}</p>
+                                                <p className="text-[11px] text-green-700 font-bold">✓ Tercatat hadir pada: {new Date(registrationForm.attended_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</p>
                                              </div>
                                           )}
                                        </div>
@@ -8039,11 +8041,11 @@ ${pages.join('')}
                                  </div>
                                  <div className="text-right">
                                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Tgl Pinjam</p>
-                                    <p className="text-xs text-white font-bold mt-0.5">{lendingForm.tanggal_peminjaman ? new Date(lendingForm.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</p>
+                                    <p className="text-xs text-white font-bold mt-0.5">{lendingForm.tanggal_peminjaman ? new Date(lendingForm.tanggal_peminjaman).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }) : '-'}</p>
                                     {lendingForm.tanggal_estimasi_pengembalian && (
                                        <>
                                           <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mt-2">Estimasi</p>
-                                          <p className="text-xs text-amber-300 font-bold mt-0.5">{new Date(lendingForm.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID')}</p>
+                                          <p className="text-xs text-amber-300 font-bold mt-0.5">{new Date(lendingForm.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' })}</p>
                                        </>
                                     )}
                                  </div>
@@ -8242,7 +8244,7 @@ ${pages.join('')}
                               />
                               <p className="text-[11px] text-gray-800 mt-1 font-medium">📅 Reminder WhatsApp akan otomatis dikirim ke peminjam <strong>3 hari sebelum</strong> tanggal ini.</p>
                               {lendingForm.reminder_sent_at && (
-                                 <p className="text-[11px] text-green-700 font-bold mt-1">✓ Reminder sudah terkirim pada {new Date(lendingForm.reminder_sent_at).toLocaleString('id-ID')}</p>
+                                 <p className="text-[11px] text-green-700 font-bold mt-1">✓ Reminder sudah terkirim pada {new Date(lendingForm.reminder_sent_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</p>
                               )}
                            </div>
                            <div>

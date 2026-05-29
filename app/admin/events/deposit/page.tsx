@@ -134,7 +134,7 @@ export default function AdminDepositPage() {
     const esc = (s: string | null | undefined) => `"${(s ?? '').replace(/"/g, '""')}"`;
     const fmtDate = (iso: string | null | undefined) => {
       if (!iso) return '';
-      return new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+      return new Date(iso).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' });
     };
     const statusLabel = (r: typeof filtered[0]) => {
       if (r.status_pengembalian_deposit === 'Processed') return 'Sudah Dikembalikan';
@@ -283,9 +283,9 @@ export default function AdminDepositPage() {
                           ) : (
                             <span className="text-xs px-2.5 py-0.5 rounded-full border font-semibold bg-gray-100 text-gray-600 border-gray-300">Belum Isi Rekening</span>
                           )}
-                          <span className="text-[11px] text-gray-400">Daftar: {new Date(reg.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                          <span className="text-[11px] text-gray-400">Daftar: {new Date(reg.created_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' })}</span>
                           {reg.refund_requested_at && (
-                            <span className="text-[11px] text-gray-400">· Isi rekening: {new Date(reg.refund_requested_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</span>
+                            <span className="text-[11px] text-gray-400">· Isi rekening: {new Date(reg.refund_requested_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short' })}</span>
                           )}
                         </div>
 

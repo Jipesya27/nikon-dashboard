@@ -234,7 +234,7 @@ export default function AdminEventsPage() {
                       {reg.payment_type === 'deposit' && (
                         <span className="text-xs px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-300 font-semibold">DEPOSIT</span>
                       )}
-                      <span className="text-xs text-gray-400">{new Date(reg.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className="text-xs text-gray-400">{new Date(reg.created_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
 
                     <h3 className="font-bold text-gray-900 text-lg">{reg.nama_lengkap}</h3>
