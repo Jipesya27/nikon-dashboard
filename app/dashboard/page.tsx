@@ -1778,7 +1778,7 @@ export default function NikonDashboard() {
          setEditingId((item as Karyawan)?.id_karyawan || null);
       }
       else if (type === 'event') {
-         setEventForm((item as EventData) || { status: 'aktif', stock: 0 });
+         setEventForm((item as EventData) || { event_status: 'In stock', stock: 0 });
          setEditingId((item as EventData)?.id || null);
          setEventImageFile(null);
       }
@@ -1805,7 +1805,7 @@ export default function NikonDashboard() {
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' });
       setBotSettingsForm({});
       setAssetForm({});
-      setEventForm({ status: 'aktif', stock: 0 });
+      setEventForm({ event_status: 'In stock', stock: 0 });
       setRegistrationForm({ status: 'Pending Payment' });
       setEventImageFile(null);
       setEditingId(null);
