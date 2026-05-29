@@ -3491,7 +3491,9 @@ export default function NikonDashboard() {
                               </>
                         )}
                         {activeTab === 'botsettings' && <button onClick={() => openModal('create', 'botsettings')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Pengaturan</button>}
+                       {activeTab === 'events' && <button onClick={() => fetchEvents()} className="bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-3 py-2 rounded-md font-bold text-sm transition shadow-sm" title="Refresh data event">🔄</button>}
                        {activeTab === 'events' && <button onClick={() => openModal('create', 'event')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Event</button>}
+                       {activeTab === 'eventregistrations' && <button onClick={() => fetchEventRegistrations()} className="bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-3 py-2 rounded-md font-bold text-sm transition shadow-sm" title="Refresh data peserta">🔄</button>}
                        {activeTab === 'eventregistrations' && <button onClick={() => setIsScannerOpen(true)} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">📷 Scan QR Kehadiran</button>}
                         {activeTab === 'eventregistrations' && <button onClick={() => openModal('create', 'eventregistration')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Peserta</button>}
                         {activeTab === 'warranties' && <button onClick={() => openModal('create', 'warranty')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Tambah Garansi</button>}

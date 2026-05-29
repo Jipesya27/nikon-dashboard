@@ -590,14 +590,18 @@ function HeroSection() {
 function EventsSection() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/events/register')
+  const loadEvents = (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true); else setLoading(true);
+    fetch('/api/events/register', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setEvents((d.events || []).filter((e: EventItem) => e.status !== 'close' && e.status !== 'Out of stock')))
       .catch(() => setEvents([]))
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => { setLoading(false); setRefreshing(false); });
+  };
+
+  useEffect(() => { loadEvents(); }, []);
 
   return (
     <section id="events" className="py-24 bg-zinc-950">
@@ -609,10 +613,22 @@ function EventsSection() {
             </h2>
             <p className="text-zinc-400 text-lg">Tingkatkan skill fotografi Anda dan bergabunglah dengan komunitas.</p>
           </div>
-          <a href="/events/register"
-            className="hidden md:block border border-zinc-600 text-white px-6 py-3 font-bold uppercase tracking-wider text-sm hover:bg-zinc-800 transition-colors">
-            Lihat Semua Jadwal
-          </a>
+          <div className="hidden md:flex items-center gap-3">
+            <button
+              onClick={() => loadEvents(true)}
+              disabled={refreshing}
+              title="Refresh data event"
+              className="border border-zinc-700 text-zinc-400 px-3 py-3 hover:bg-zinc-800 hover:text-white transition-colors disabled:opacity-40"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={refreshing ? 'animate-spin' : ''}>
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>
+              </svg>
+            </button>
+            <a href="/events/register"
+              className="border border-zinc-600 text-white px-6 py-3 font-bold uppercase tracking-wider text-sm hover:bg-zinc-800 transition-colors">
+              Lihat Semua Jadwal
+            </a>
+          </div>
         </div>
 
         {loading && (
