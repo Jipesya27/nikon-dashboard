@@ -1778,7 +1778,7 @@ export default function NikonDashboard() {
          setEditingId((item as Karyawan)?.id_karyawan || null);
       }
       else if (type === 'event') {
-         setEventForm((item as EventData) || { event_status: 'In stock', stock: 0 });
+         setEventForm((item as EventData) || { status: 'In stock', stock: 0 });
          setEditingId((item as EventData)?.id || null);
          setEventImageFile(null);
       }
