@@ -56,14 +56,6 @@ interface EventItem {
 }
 
 // ── SVG Icons ────────────────────────────────────────────────────────────────
-function IconCamera({ size = 24 }: { size?: number }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-      <circle cx="12" cy="13" r="3"/>
-    </svg>
-  );
-}
 function IconShield() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -94,14 +86,6 @@ function IconMenu() {
       <line x1="4" x2="20" y1="12" y2="12"/>
       <line x1="4" x2="20" y1="6" y2="6"/>
       <line x1="4" x2="20" y1="18" y2="18"/>
-    </svg>
-  );
-}
-function IconCheckCircle() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-      <polyline points="22 4 12 14.01 9 11.01"/>
     </svg>
   );
 }
@@ -423,7 +407,7 @@ function ConsumerAccessSection() {
         <CekStatusModal type={modalType} onClose={() => setModalType(null)} />
       )}
 
-      <section className="py-16 bg-zinc-950 border-b border-zinc-800 relative">
+      <section id="services" className="py-16 bg-zinc-950 border-b border-zinc-800 relative">
         {/* Yellow top accent bar */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ffe000] via-[#ffe000]/60 to-transparent" />
 
@@ -594,78 +578,6 @@ function HeroSection() {
   );
 }
 
-// ── Services Section ──────────────────────────────────────────────────────────
-function ServicesSection() {
-  const { WA_SERVICE } = useSite();
-  const [cardsRef, cardsInView] = useInView();
-  const cards = [
-    {
-      icon: <IconShield />,
-      bg: <IconCamera size={120} />,
-      title: 'Registrasi Garansi Online',
-      desc: 'Daftarkan kamera Z series atau lensa Nikkor Anda. Sistem OCR otomatis membaca Nomor Seri dan tanggal pembelian dari foto struk toko Anda.',
-      cta: 'Mulai Registrasi',
-      href: '/garansi',
-    },
-    {
-      icon: <IconGift />,
-      bg: null,
-      title: 'Klaim Promo & Merchandise',
-      desc: 'Ajukan klaim hadiah eksklusif langsung dari form online ini. Status pengiriman hadiah diperbarui secara real-time oleh tim kami.',
-      cta: 'Ajukan Klaim Sekarang',
-      href: '/claim',
-    },
-    {
-      icon: <IconCheckCircle />,
-      bg: null,
-      title: 'Lacak Status Klaim',
-      desc: 'Pantau seluruh riwayat klaim garansi atau servis Anda. Sistem kami akan mengirimkan notifikasi otomatis saat status berubah.',
-      cta: 'Cek Status Claim',
-      href: '/claim',
-    },
-  ];
-
-  return (
-    <section id="services" className="py-24 bg-zinc-900 border-y border-zinc-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4 text-white">
-            Layanan Cerdas Nikon
-          </h2>
-          <p className="text-zinc-400 max-w-2xl mx-auto text-lg">
-            Kami mendesain ulang cara Anda mendaftarkan garansi dan klaim promosi. Cukup unggah foto nota Anda, sistem OCR AI kami akan memproses sisanya secara otomatis.
-          </p>
-        </div>
-
-        <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {cards.map((card, i) => (
-            <div
-              key={card.title}
-              className={`h-full transition-all duration-700 ${cardsInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-              style={{ transitionDelay: `${i * 100}ms`, transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
-              <a href={card.href}
-                className="bg-zinc-950 p-8 border border-zinc-800 hover:border-[#ffe000] hover:-translate-y-2 transition-all duration-300 group cursor-pointer relative overflow-hidden flex flex-col h-full">
-                {card.bg && (
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity text-white">
-                    {card.bg}
-                  </div>
-                )}
-                <div className="text-[#ffe000] mb-6 bg-zinc-900/50 w-14 h-14 flex items-center justify-center rounded-full">
-                  {card.icon}
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-white">{card.title}</h3>
-                <p className="text-zinc-400 text-sm mb-8 leading-relaxed flex-grow">{card.desc}</p>
-                <div className="flex items-center text-[#ffe000] text-sm font-bold uppercase tracking-wider group-hover:translate-x-2 transition-transform mt-auto">
-                  {card.cta} <IconChevronRight />
-                </div>
-              </a>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 // ── Events Section ────────────────────────────────────────────────────────────
 function EventsSection() {
@@ -1135,7 +1047,6 @@ export default function NikonPage() {
         <main>
           <HeroSection />
           <ConsumerAccessSection />
-          <ServicesSection />
           <EventsSection />
           <WACTASection />
         </main>
