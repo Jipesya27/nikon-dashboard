@@ -4609,8 +4609,8 @@ export default function NikonDashboard() {
                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                         {([
                            { label: 'Total Proposal', count: budgets.length, color: 'text-gray-900', bar: 'bg-gray-400' },
-                           { label: 'Total Anggaran', count: `Rp ${budgets.reduce((s,b) => s + Number(b.total_cost||0), 0).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}`, color: 'text-blue-700', bar: 'bg-blue-500', isText: true },
-                           { label: 'Rerata / Proposal', count: budgets.length ? `Rp ${Math.round(budgets.reduce((s,b) => s + Number(b.total_cost||0), 0) / budgets.length).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}` : 'Rp 0', color: 'text-amber-700', bar: 'bg-amber-400', isText: true },
+                           { label: 'Total Anggaran', count: `Rp ${budgets.reduce((s,b) => s + Number(b.total_cost||0), 0).toLocaleString('id-ID')}`, color: 'text-blue-700', bar: 'bg-blue-500', isText: true },
+                           { label: 'Rerata / Proposal', count: budgets.length ? `Rp ${Math.round(budgets.reduce((s,b) => s + Number(b.total_cost||0), 0) / budgets.length).toLocaleString('id-ID')}` : 'Rp 0', color: 'text-amber-700', bar: 'bg-amber-400', isText: true },
                         ] as { label: string; count: number | string; color: string; bar: string; isText?: boolean }[]).map(s => (
                            <div key={s.label} className="bg-white rounded-xl p-3 border-2 border-gray-200 shadow-sm">
                               <div className={`w-full h-1 rounded-full mb-2 ${s.bar}`}></div>
@@ -4638,7 +4638,7 @@ export default function NikonDashboard() {
                                        <td className="px-3 py-2.5 font-mono font-bold text-slate-800 text-xs">{b.proposal_no}</td>
                                        <td className="px-3 py-2.5 font-bold text-sm">{b.title}</td>
                                        <td className="px-3 py-2.5 text-xs text-gray-700">{b.period}</td>
-                                       <td className="px-3 py-2.5 text-xs font-bold text-gray-800">Rp {Number(b.total_cost).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</td>
+                                       <td className="px-3 py-2.5 text-xs font-bold text-gray-800">Rp {Number(b.total_cost).toLocaleString('id-ID')}</td>
                                        <td className="px-3 py-2.5">
                                           <div className="flex flex-col gap-1">
                                              <button onClick={() => setPrintData(b)} className="text-emerald-600 text-[11px] font-bold hover:underline text-left">🖨️ Print PDF</button>
@@ -4663,7 +4663,7 @@ export default function NikonDashboard() {
                                  </div>
                                  <div className="space-y-2 text-xs flex-1">
                                     <p><span className="font-bold w-20 inline-block">Periode:</span> {b.period}</p>
-                                    <p><span className="font-bold w-20 inline-block">Total:</span> Rp {Number(b.total_cost).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</p>
+                                    <p><span className="font-bold w-20 inline-block">Total:</span> Rp {Number(b.total_cost).toLocaleString('id-ID')}</p>
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
                                     <button onClick={() => setPrintData(b)} className="text-emerald-600 text-xs font-bold hover:underline">🖨️ Print</button>
@@ -6833,7 +6833,7 @@ ${pages.join('')}
                            {(() => {
                               const items = budgetForm.items || [];
                               const totalCost = items.reduce((sum, it) => sum + (Number(it.value) || 0), 0);
-                              const fmtRp = (n: number) => 'Rp ' + n.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+                              const fmtRp = (n: number) => 'Rp ' + n.toLocaleString('id-ID');
                               const updateItem = (idx: number, patch: Partial<BudgetItem>) => {
                                  const newItems = [...items];
                                  const merged = { ...newItems[idx], ...patch };
@@ -8563,7 +8563,7 @@ ${pages.join('')}
 
          {/* PROPOSAL PDF PREVIEW MODAL */}
          {printData && (() => {
-            const fmtNum = (n: number) => n.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+            const fmtNum = (n: number) => n.toLocaleString('id-ID');
             const items = printData.items || [];
             const isPettyCashItem = (it: typeof items[0]) => {
                if (it.item_type === 'petty') return true;
