@@ -1805,7 +1805,7 @@ export default function NikonDashboard() {
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' });
       setBotSettingsForm({});
       setAssetForm({});
-      setEventForm({ event_status: 'In stock', stock: 0 });
+      setEventForm({ status: 'In stock', stock: 0 });
       setRegistrationForm({ status: 'Pending Payment' });
       setEventImageFile(null);
       setEditingId(null);
