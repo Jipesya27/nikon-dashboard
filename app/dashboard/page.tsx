@@ -2303,7 +2303,7 @@ export default function NikonDashboard() {
             event_title: ef.event_title ?? ef.title,
             event_date: ef.event_date ?? ef.date,
             event_price: ef.event_price ?? ef.price,
-            event_image: ef.event_image ?? ef.image,
+            event_image: ef.event_image ?? ef.image ?? null,
             event_description: ef.event_description ?? ef.detail_acara,
             event_partisipant_stock: parseInt(ef.event_partisipant_stock ?? ef.stock ?? 0) || 0,
             event_status: ef.event_status ?? ef.status ?? 'In stock',
