@@ -55,6 +55,13 @@ interface EventItem {
   status?: string;
 }
 
+function driveImgSrc(url?: string): string | undefined {
+  if (!url) return undefined;
+  const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]{10,100})/) || url.match(/\/d\/([a-zA-Z0-9_-]{10,100})/);
+  if (idMatch) return `/api/events/image?id=${idMatch[1]}`;
+  return url;
+}
+
 // ── SVG Icons ────────────────────────────────────────────────────────────────
 function IconShield() {
   return (
@@ -686,7 +693,7 @@ function EventsSection() {
                     </span>
                     {ev.event_image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={ev.event_image} alt={ev.event_title}
+                      <img src={driveImgSrc(ev.event_image)} alt={ev.event_title}
                         className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 grayscale hover:grayscale-0" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-zinc-800">
