@@ -40,6 +40,50 @@ function useInView(threshold = 0.12) {
   return [ref, inView] as const;
 }
 
+function WordReveal({ text, className = '', baseDelay = 0 }: { text: string; className?: string; baseDelay?: number }) {
+  const [ref, inView] = useInView(0.1);
+  const words = text.split(' ');
+  return (
+    <span ref={ref} className={className}>
+      {words.map((word, i) => (
+        <span key={i} style={{ display: 'inline-block', overflow: 'hidden', marginRight: '0.28em' }}>
+          <span style={{
+            display: 'inline-block',
+            animation: inView ? `word-pop 0.55s cubic-bezier(0.34,1.56,0.64,1) both` : 'none',
+            animationDelay: `${baseDelay + i * 85}ms`,
+            opacity: inView ? undefined : 0,
+          }}>
+            {word}
+          </span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function TiltCard({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  const ref = useRef<HTMLDivElement>(null);
+  function onMove(e: React.MouseEvent<HTMLDivElement>) {
+    const el = ref.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    el.style.transform = `perspective(700px) rotateY(${x * 14}deg) rotateX(${-y * 10}deg) scale(1.05)`;
+    el.style.transition = 'transform 0.08s ease';
+  }
+  function onLeave() {
+    const el = ref.current; if (!el) return;
+    el.style.transform = 'perspective(700px) rotateY(0deg) rotateX(0deg) scale(1)';
+    el.style.transition = 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1)';
+  }
+  return (
+    <div ref={ref} onMouseMove={onMove} onMouseLeave={onLeave} className={className}
+      style={{ transformStyle: 'preserve-3d', willChange: 'transform', ...style }}>
+      {children}
+    </div>
+  );
+}
+
 interface EventItem {
   id: string;
   event_title: string;
@@ -439,7 +483,8 @@ function ConsumerAccessSection() {
               const inner = (
                 <>
                   <div className="flex items-start justify-between mb-4">
-                    <div className={`w-12 h-12 rounded-full border flex items-center justify-center shrink-0 ${action.iconBg} ${action.iconColor}`}>
+                    <div className={`w-12 h-12 rounded-full border flex items-center justify-center shrink-0 ${action.iconBg} ${action.iconColor} group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300`}
+                      style={gridInView ? { animation: `spin-in 0.7s cubic-bezier(0.34,1.56,0.64,1) both`, animationDelay: `${i * 80 + 120}ms` } : { opacity: 0 }}>
                       {action.icon}
                     </div>
                     <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm ${action.badgeColor}`}>
@@ -459,7 +504,7 @@ function ConsumerAccessSection() {
                 </>
               );
 
-              const cardClass = 'group flex flex-col bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:-translate-y-1 transition-all duration-200 p-6 min-h-[200px] cursor-pointer text-left w-full';
+              const cardClass = 'group flex flex-col bg-zinc-900 border border-zinc-800 hover:border-zinc-600 transition-colors p-6 min-h-[200px] cursor-pointer text-left w-full h-full';
 
               const card = action.modal ? (
                 <button onClick={() => setModalType(action.modal!)} className={cardClass}>
@@ -475,11 +520,11 @@ function ConsumerAccessSection() {
               );
 
               return (
-                <div
-                  key={action.key}
-                  className={`transition-all duration-700 ${gridInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-                  style={{ transitionDelay: `${i * 70}ms`, transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
-                  {card}
+                <div key={action.key}
+                  style={gridInView ? { animation: `bounce-in 0.65s cubic-bezier(0.34,1.56,0.64,1) both`, animationDelay: `${i * 75}ms` } : { opacity: 0 }}>
+                  <TiltCard className="h-full">
+                    {card}
+                  </TiltCard>
                 </div>
               );
             })}
@@ -541,42 +586,65 @@ function Navbar() {
 
 // ── Hero ─────────────────────────────────────────────────────────────────────
 function HeroSection() {
-  const { cfg, WA_CLAIM } = useSite();
+  const { cfg } = useSite();
   return (
-    <section className="relative pt-20 pb-32 flex items-center min-h-[95vh]">
+    <section className="relative pt-20 pb-32 flex items-center min-h-[95vh] overflow-hidden">
+      {/* Background image */}
       <div className="absolute inset-0 z-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/hero-nikon.jpg"
-          alt="Hero Background"
-          className="w-full h-full object-cover opacity-50 grayscale mix-blend-luminosity"
-        />
+        <img src="/hero-nikon.jpg" alt="Hero Background"
+          className="w-full h-full object-cover opacity-50 grayscale mix-blend-luminosity" />
         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/90 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
       </div>
+      {/* Animated dot grid overlay */}
+      <div className="absolute inset-0 z-[1] n-dot-bg opacity-60 pointer-events-none" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-12 md:mt-0">
         <div className="max-w-2xl">
-          <span className="inline-block py-1 px-3 border border-[#ffe000] text-[#ffe000] text-xs font-bold uppercase tracking-widest mb-6 bg-zinc-950/50 backdrop-blur-sm motion-fade-up" style={{ animationDelay: '0ms' }}>
-            Sistem CRM Pintar Terbaru
-          </span>
-          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[1.1] mb-6 text-white motion-fade-up" style={{ animationDelay: '150ms' }}>
-            {cfg.hero_title_1 || 'Unstoppable'}<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-500">
-              {cfg.hero_title_2 || 'Performance.'}
+          {/* Badge with ping */}
+          <div className="inline-flex items-center gap-2 mb-6"
+            style={{ animation: 'bounce-in 0.7s cubic-bezier(0.34,1.56,0.64,1) both', animationDelay: '0ms' }}>
+            <span className="relative flex items-center justify-center w-2.5 h-2.5">
+              <span className="absolute inline-flex w-full h-full rounded-full bg-[#ffe000] opacity-75" style={{ animation: 'badge-ping 1.8s ease-out infinite' }} />
+              <span className="relative w-2 h-2 rounded-full bg-[#ffe000]" />
+            </span>
+            <span className="py-1 px-3 border border-[#ffe000] text-[#ffe000] text-xs font-bold uppercase tracking-widest bg-zinc-950/50 backdrop-blur-sm">
+              Sistem CRM Pintar Terbaru
+            </span>
+          </div>
+
+          {/* Title with WordReveal */}
+          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[1.1] mb-6">
+            <WordReveal text={cfg.hero_title_1 || 'Unstoppable'} className="text-white block" baseDelay={100} />
+            <span className="block mt-1 n-text-gradient" style={{ fontSize: 'inherit', fontWeight: 'inherit', lineHeight: 'inherit' }}>
+              <WordReveal text={cfg.hero_title_2 || 'Performance.'} baseDelay={340} />
             </span>
           </h1>
-          <p className="text-lg md:text-xl text-zinc-400 mb-10 max-w-lg leading-relaxed motion-fade-up" style={{ animationDelay: '280ms' }}>
+
+          <p className="text-lg md:text-xl text-zinc-400 mb-10 max-w-lg leading-relaxed"
+            style={{ animation: 'bounce-in 0.7s cubic-bezier(0.34,1.56,0.64,1) both', animationDelay: '520ms' }}>
             {cfg.hero_subtitle || 'Jelajahi batas baru fotografi dan videografi. Daftarkan garansi produk Anda lebih mudah dengan teknologi pemindai AI dari Nikon Indonesia.'}
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 motion-fade-up" style={{ animationDelay: '420ms' }}>
+
+          <div className="flex flex-col sm:flex-row gap-4"
+            style={{ animation: 'bounce-in 0.7s cubic-bezier(0.34,1.56,0.64,1) both', animationDelay: '650ms' }}>
             <a href="/claim"
-              className="bg-[#ffe000] text-black px-8 py-4 font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 group">
+              className="n-shimmer-btn n-glow bg-[#ffe000] text-black px-8 py-4 font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 group">
               Claim Promo <span className="group-hover:translate-x-1 transition-transform"><IconChevronRight /></span>
             </a>
             <a href="#services"
               className="bg-transparent border border-zinc-600 text-white px-8 py-4 font-bold uppercase tracking-wider hover:bg-zinc-800 transition-all text-center">
               Layanan Purnajual
+            </a>
+          </div>
+
+          {/* Bouncing scroll arrow */}
+          <div className="mt-16 flex justify-start">
+            <a href="#services" className="n-bounce-arrow text-zinc-500 hover:text-[#ffe000] transition-colors">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
             </a>
           </div>
         </div>
@@ -667,9 +735,10 @@ function EventsSection() {
                 desc: 'Jelajahi sudut kota dengan gaya klasik modern. Hands-on langsung kamera Zfc terbaru bersama komunitas.',
                 cta: 'Daftar Sekarang',
               },
-            ].map(ev => (
+            ].map((ev, idx) => (
               <div key={ev.title}
-                className="group cursor-pointer bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 hover:border-zinc-600 transition-colors flex flex-col md:flex-row">
+                className="group cursor-pointer bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 hover:border-zinc-600 transition-colors flex flex-col md:flex-row"
+                style={{ animation: `${idx % 2 === 0 ? 'slide-left' : 'slide-right'} 0.65s cubic-bezier(0.34,1.56,0.64,1) both`, animationDelay: `${idx * 100}ms` }}>
                 <div className="relative md:w-2/5 h-64 md:h-auto overflow-hidden">
                   <span className={`absolute top-4 left-4 ${ev.badgeBg} text-[10px] font-bold px-3 py-1 z-10 uppercase tracking-widest`}>
                     {ev.badge}
@@ -697,12 +766,13 @@ function EventsSection() {
 
         {!loading && events.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {events.slice(0, 4).map(ev => {
+            {events.slice(0, 4).map((ev, idx) => {
               const slots = ev.event_partisipant_stock - (ev.registered_count || 0);
               const isFull = slots <= 0;
               return (
                 <a key={ev.id} href="/events/register"
-                  className="group cursor-pointer bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 hover:border-zinc-600 transition-colors flex flex-col md:flex-row">
+                  className="group cursor-pointer bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 hover:border-zinc-600 transition-colors flex flex-col md:flex-row"
+                  style={{ animation: `${idx % 2 === 0 ? 'slide-left' : 'slide-right'} 0.65s cubic-bezier(0.34,1.56,0.64,1) both`, animationDelay: `${idx * 100}ms` }}>
                   <div className="relative md:w-2/5 h-64 md:h-auto overflow-hidden">
                     <span className="absolute top-4 left-4 bg-[#ffe000] text-black text-[10px] font-bold px-3 py-1 z-10 uppercase tracking-widest">
                       {ev.event_speaker_genre || 'Event'}
@@ -753,37 +823,39 @@ function EventsSection() {
 
 // ── WA CTA ────────────────────────────────────────────────────────────────────
 function WACTASection() {
-  const { WA_LINK } = useSite();
   const [ref, inView] = useInView(0.2);
   return (
-    <section className="py-20 px-6 bg-zinc-900 border-t border-zinc-800">
-      <div
-        ref={ref}
-        className={`max-w-4xl mx-auto text-center transition-all duration-700 ${inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-        style={{ transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
-        <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-4 uppercase tracking-tighter">
+    <section className="relative py-20 px-6 overflow-hidden n-gradient-bg border-t border-zinc-800">
+      <div className="absolute inset-0 n-dot-bg opacity-50 pointer-events-none" />
+      <div ref={ref} className="relative z-10 max-w-4xl mx-auto text-center">
+        <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-4 uppercase tracking-tighter"
+          style={inView ? { animation: 'bounce-in 0.7s cubic-bezier(0.34,1.56,0.64,1) both' } : { opacity: 0 }}>
           Semua Layanan Tersedia<br />
-          <span className="text-[#ffe000]">via WhatsApp</span>
+          <span className="n-text-gradient">via WhatsApp</span>
         </h2>
-        <p className="text-zinc-400 text-base max-w-xl mx-auto mb-10 leading-relaxed">
+        <p className="text-zinc-400 text-base max-w-xl mx-auto mb-10 leading-relaxed"
+          style={inView ? { animation: 'bounce-in 0.7s cubic-bezier(0.34,1.56,0.64,1) both', animationDelay: '120ms' } : { opacity: 0 }}>
           Chatbot kami siap membantu kapan saja. Tidak perlu download aplikasi — cukup kirim pesan dan ikuti panduan dari bot.
         </p>
         <div className="flex flex-wrap justify-center gap-3 mb-10">
-          {['Claim Promo', 'Registrasi Garansi', 'Cek Status Service', 'Tanya CS'].map(f => (
+          {['Claim Promo', 'Registrasi Garansi', 'Cek Status Service', 'Tanya CS'].map((f, i) => (
             <div key={f}
-              className="flex items-center gap-2 rounded-sm px-5 py-2 text-sm font-medium border border-zinc-700 bg-zinc-950 text-zinc-300">
+              className="flex items-center gap-2 rounded-sm px-5 py-2 text-sm font-medium border border-zinc-600 bg-zinc-950/70 text-zinc-300 backdrop-blur-sm"
+              style={inView ? { animation: `bounce-in 0.6s cubic-bezier(0.34,1.56,0.64,1) both`, animationDelay: `${240 + i * 80}ms` } : { opacity: 0 }}>
               <span className="text-[#ffe000]">✓</span> {f}
             </div>
           ))}
         </div>
-        <button
-          onClick={() => {
-            const btn = document.querySelector<HTMLButtonElement>('button[aria-label="Chat layanan Nikon"]');
-            btn?.click();
-          }}
-          className="inline-flex items-center gap-3 font-bold px-10 py-5 text-lg transition-all hover:bg-yellow-400 text-black bg-[#ffe000]">
-          Mulai Chat di Website
-        </button>
+        <div style={inView ? { animation: 'bounce-in 0.7s cubic-bezier(0.34,1.56,0.64,1) both', animationDelay: '560ms' } : { opacity: 0 }}>
+          <button
+            onClick={() => {
+              const btn = document.querySelector<HTMLButtonElement>('button[aria-label="Chat layanan Nikon"]');
+              btn?.click();
+            }}
+            className="n-shimmer-btn n-glow inline-flex items-center gap-3 font-bold px-10 py-5 text-lg transition-all hover:bg-yellow-400 text-black bg-[#ffe000]">
+            Mulai Chat di Website
+          </button>
+        </div>
         <p className="text-zinc-600 text-xs mt-4">CS tersedia Senin–Jumat 10.00–16.00 · Sabtu 10.00–12.00 WIB</p>
       </div>
     </section>
