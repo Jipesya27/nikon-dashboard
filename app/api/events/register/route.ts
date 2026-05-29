@@ -178,6 +178,7 @@ export async function POST(req: Request) {
     }
 
     // Ambil detail event
+    const supabase = getSupabase();
     const { data: event } = await supabase
       .from('events')
       .select('id, event_title, event_status, event_partisipant_stock, event_payment_tipe, event_date')
