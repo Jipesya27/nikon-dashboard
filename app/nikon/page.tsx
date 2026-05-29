@@ -586,68 +586,75 @@ function Navbar() {
 
 // ── Hero ─────────────────────────────────────────────────────────────────────
 function HeroSection() {
-  const { cfg } = useSite();
+  const { cfg, WA_CLAIM } = useSite();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 80); return () => clearTimeout(t); }, []);
+
+  const title1 = cfg.hero_title_1 || 'Unstoppable';
+  const title2 = cfg.hero_title_2 || 'Performance.';
+
   return (
     <section className="relative pt-20 pb-32 flex items-center min-h-[95vh] overflow-hidden">
       {/* Background image */}
       <div className="absolute inset-0 z-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero-nikon.jpg" alt="Hero Background"
-          className="w-full h-full object-cover opacity-50 grayscale mix-blend-luminosity" />
+        <img src="/hero-nikon.jpg" alt="" className="w-full h-full object-cover opacity-40 grayscale mix-blend-luminosity" />
         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/90 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
       </div>
+
       {/* Animated dot grid overlay */}
       <div className="absolute inset-0 z-[1] n-dot-bg opacity-60 pointer-events-none" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-12 md:mt-0">
         <div className="max-w-2xl">
+
           {/* Badge with ping */}
-          <div className="inline-flex items-center gap-2 mb-6"
-            style={{ animation: 'bounce-in 0.7s cubic-bezier(0.34,1.56,0.64,1) both', animationDelay: '0ms' }}>
-            <span className="relative flex items-center justify-center w-2.5 h-2.5">
-              <span className="absolute inline-flex w-full h-full rounded-full bg-[#ffe000] opacity-75" style={{ animation: 'badge-ping 1.8s ease-out infinite' }} />
-              <span className="relative w-2 h-2 rounded-full bg-[#ffe000]" />
-            </span>
-            <span className="py-1 px-3 border border-[#ffe000] text-[#ffe000] text-xs font-bold uppercase tracking-widest bg-zinc-950/50 backdrop-blur-sm">
+          <div className="relative inline-flex items-center mb-6"
+               style={{ animation: mounted ? 'sticker-pop 0.6s cubic-bezier(0.34,1.56,0.64,1) both' : 'none', animationDelay: '50ms' }}>
+            <span className="absolute inset-0 rounded-sm bg-[#ffe000]/20" style={{ animation: 'badge-ping 2.4s ease-out 1.2s infinite' }} />
+            <span className="relative py-1 px-3 border border-[#ffe000] text-[#ffe000] text-xs font-bold uppercase tracking-widest bg-zinc-950/60 backdrop-blur-sm">
               Sistem CRM Pintar Terbaru
             </span>
           </div>
 
-          {/* Title with WordReveal */}
-          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[1.1] mb-6">
-            <WordReveal text={cfg.hero_title_1 || 'Unstoppable'} className="text-white block" baseDelay={100} />
-            <span className="block mt-1 n-text-gradient" style={{ fontSize: 'inherit', fontWeight: 'inherit', lineHeight: 'inherit' }}>
-              <WordReveal text={cfg.hero_title_2 || 'Performance.'} baseDelay={340} />
+          {/* Title word-by-word */}
+          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[1.1] mb-6 text-white">
+            {mounted && <WordReveal text={title1} baseDelay={200} />}
+            <br />
+            <span className="n-text-gradient">
+              {mounted && <WordReveal text={title2} baseDelay={350} />}
             </span>
           </h1>
 
+          {/* Subtitle */}
           <p className="text-lg md:text-xl text-zinc-400 mb-10 max-w-lg leading-relaxed"
-            style={{ animation: 'bounce-in 0.7s cubic-bezier(0.34,1.56,0.64,1) both', animationDelay: '520ms' }}>
+             style={{ animation: mounted ? 'bounce-in 0.6s cubic-bezier(0.34,1.56,0.64,1) both' : 'none', animationDelay: '520ms' }}>
             {cfg.hero_subtitle || 'Jelajahi batas baru fotografi dan videografi. Daftarkan garansi produk Anda lebih mudah dengan teknologi pemindai AI dari Nikon Indonesia.'}
           </p>
 
+          {/* CTA buttons */}
           <div className="flex flex-col sm:flex-row gap-4"
-            style={{ animation: 'bounce-in 0.7s cubic-bezier(0.34,1.56,0.64,1) both', animationDelay: '650ms' }}>
+               style={{ animation: mounted ? 'bounce-in 0.55s cubic-bezier(0.34,1.56,0.64,1) both' : 'none', animationDelay: '660ms' }}>
             <a href="/claim"
-              className="n-shimmer-btn n-glow bg-[#ffe000] text-black px-8 py-4 font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 group">
-              Claim Promo <span className="group-hover:translate-x-1 transition-transform"><IconChevronRight /></span>
+               className="n-shimmer-btn n-glow bg-[#ffe000] text-black px-8 py-4 font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 group hover:scale-105 active:scale-95">
+              Claim Promo <span className="group-hover:translate-x-1.5 transition-transform"><IconChevronRight /></span>
             </a>
             <a href="#services"
-              className="bg-transparent border border-zinc-600 text-white px-8 py-4 font-bold uppercase tracking-wider hover:bg-zinc-800 transition-all text-center">
+               className="bg-transparent border border-zinc-600 text-white px-8 py-4 font-bold uppercase tracking-wider hover:bg-zinc-800 hover:border-zinc-400 hover:scale-105 active:scale-95 transition-all text-center">
               Layanan Purnajual
             </a>
           </div>
-
-          {/* Bouncing scroll arrow */}
-          <div className="mt-16 flex justify-start">
-            <a href="#services" className="n-bounce-arrow text-zinc-500 hover:text-[#ffe000] transition-colors">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m6 9 6 6 6-6"/>
-              </svg>
-            </a>
-          </div>
         </div>
+      </div>
+
+      {/* Bouncing scroll indicator */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 n-bounce-arrow"
+           style={{ opacity: mounted ? 1 : 0, transition: 'opacity 0.5s ease 1.2s' }}>
+        <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Scroll</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffe000" strokeWidth="2.5">
+          <path d="m6 9 6 6 6-6"/>
+        </svg>
       </div>
     </section>
   );
