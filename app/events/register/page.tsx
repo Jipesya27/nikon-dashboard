@@ -11,7 +11,7 @@ type EventItem = {
   event_description?: string;
   event_speaker?: string;
   event_speaker_genre?: string;
-  event_payment_tipe: 'regular' | 'deposit';
+  event_payment_tipe: 'regular' | 'deposit' | 'gratis';
   deposit_amount?: string;
   bank_info?: string;
   event_partisipant_stock: number;
@@ -76,7 +76,7 @@ export default function EventRegisterPage() {
 
   // Marketplace filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterPayment, setFilterPayment] = useState<'all' | 'regular' | 'deposit'>('all');
+  const [filterPayment, setFilterPayment] = useState<'all' | 'regular' | 'deposit' | 'gratis'>('all');
   const [filterGenre, setFilterGenre] = useState<string>('Semua');
   const [sortBy, setSortBy] = useState<'newest' | 'soonest' | 'price_asc' | 'price_desc'>('soonest');
   const [descEvent, setDescEvent] = useState<EventItem | null>(null);
@@ -153,7 +153,8 @@ export default function EventRegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedEvent) return;
-    if (!fileBukti) {
+    const isGratis = selectedEvent.event_payment_tipe === 'gratis';
+    if (!isGratis && !fileBukti) {
       setErrorMsg('Harap unggah bukti transfer pembayaran.');
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
       return;
@@ -165,7 +166,7 @@ export default function EventRegisterPage() {
       const fd = new FormData();
       fd.append('event_id', selectedEvent.id);
       Object.entries(formData).forEach(([k, v]) => fd.append(k, v));
-      fd.append('bukti_transfer', fileBukti);
+      if (fileBukti) fd.append('bukti_transfer', fileBukti);
 
       const res = await fetch('/api/events/register', { method: 'POST', body: fd });
       const result = await res.json();
@@ -198,10 +199,13 @@ export default function EventRegisterPage() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Pendaftaran Diterima!</h2>
           <p className="text-gray-800 mb-3 font-medium">
-            Pendaftaran Anda untuk <span className="font-bold">{selectedEvent.event_title}</span> sedang diverifikasi.
+            Pendaftaran Anda untuk <span className="font-bold">{selectedEvent.event_title}</span>{' '}
+            {selectedEvent.event_payment_tipe === 'gratis' ? 'telah dikonfirmasi!' : 'sedang diverifikasi.'}
           </p>
           <p className="text-sm text-gray-700 mb-4 font-medium">
-            Konfirmasi akan dikirim ke WhatsApp Anda dalam 1-2 hari kerja.
+            {selectedEvent.event_payment_tipe === 'gratis'
+              ? 'Konfirmasi pendaftaran telah dikirim ke WhatsApp Anda.'
+              : 'Konfirmasi akan dikirim ke WhatsApp Anda dalam 1-2 hari kerja.'}
           </p>
           <button
             onClick={() => { setStep('list'); setSelectedEvent(null); setFormData(EMPTY_FORM); setFileBukti(null); setPreviewBukti(null); }}
@@ -285,6 +289,7 @@ export default function EventRegisterPage() {
                 { v: 'all',     l: 'Semua Tipe', i: '🎟️' },
                 { v: 'regular', l: 'Regular',    i: '🎫' },
                 { v: 'deposit', l: 'Deposit',    i: '💎' },
+                { v: 'gratis',  l: 'Gratis',     i: '🎁' },
               ] as const).map(opt => {
                 const active = filterPayment === opt.v;
                 return (
@@ -373,6 +378,11 @@ export default function EventRegisterPage() {
                       {evt.event_payment_tipe === 'deposit' && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FFE500] text-black text-[10px] font-bold uppercase shadow-md">
                           💎 Refundable
+                        </span>
+                      )}
+                      {evt.event_payment_tipe === 'gratis' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-500 text-white text-[10px] font-bold uppercase shadow-md">
+                          🎁 Gratis
                         </span>
                       )}
                     </div>
@@ -546,10 +556,13 @@ export default function EventRegisterPage() {
                   {selectedEvent.event_payment_tipe === 'deposit' && (
                     <p className="text-xs text-amber-700 mt-1 font-medium">⚠️ Event ini berbayar deposit (bisa di-refund setelah hadir)</p>
                   )}
+                  {selectedEvent.event_payment_tipe === 'gratis' && (
+                    <p className="text-xs text-green-700 mt-1 font-medium">🎁 Event ini gratis — tidak perlu pembayaran</p>
+                  )}
                 </div>
                 <button type="button" onClick={() => { setStep('list'); setSelectedEvent(null); }} className="text-xs font-semibold text-gray-600 hover:text-gray-900 underline shrink-0">Ganti</button>
               </div>
-              {selectedEvent.bank_info && (
+              {selectedEvent.bank_info && selectedEvent.event_payment_tipe !== 'gratis' && (
                 <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-xs font-bold text-gray-800 mb-1">💳 Info Pembayaran:</p>
                   <p className="text-sm text-gray-900 font-mono">{selectedEvent.bank_info}</p>
@@ -638,43 +651,51 @@ export default function EventRegisterPage() {
             )}
 
             {/* UPLOAD */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">{selectedEvent.event_payment_tipe === 'deposit' ? 3 : 2}</div>
-                <h2 className="text-base font-semibold text-gray-800">Bukti Transfer Pembayaran</h2>
-              </div>
+            {selectedEvent.event_payment_tipe !== 'gratis' ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                  <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">{selectedEvent.event_payment_tipe === 'deposit' ? 3 : 2}</div>
+                  <h2 className="text-base font-semibold text-gray-800">Bukti Transfer Pembayaran</h2>
+                </div>
 
-              <div>
-                <label className={labelCls}>Foto Bukti Transfer {req}</label>
-                <input ref={refBukti} type="file" accept="image/*,application/pdf" onChange={handleFile} className="hidden" />
-                <button
-                  type="button"
-                  onClick={() => refBukti.current?.click()}
-                  className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${fileBukti ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'}`}
-                >
-                  {previewBukti && fileBukti?.type.startsWith('image/') ? (
-                    <div className="flex flex-col items-center gap-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={previewBukti} alt="preview" className="h-32 object-contain rounded" />
-                      <span className="text-xs text-green-600 font-medium">{fileBukti.name}</span>
-                      <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
-                    </div>
-                  ) : fileBukti ? (
-                    <div className="flex flex-col items-center gap-1">
-                      <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      <span className="text-xs text-green-600 font-medium">{fileBukti.name}</span>
-                      <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1">
-                      <svg className="w-8 h-8 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                      <span className="text-sm text-gray-800 font-medium">Ketuk untuk upload foto/PDF</span>
-                      <span className="text-xs text-gray-700">Screenshot atau foto bukti transfer</span>
-                    </div>
-                  )}
-                </button>
+                <div>
+                  <label className={labelCls}>Foto Bukti Transfer {req}</label>
+                  <input ref={refBukti} type="file" accept="image/*,application/pdf" onChange={handleFile} className="hidden" />
+                  <button
+                    type="button"
+                    onClick={() => refBukti.current?.click()}
+                    className={`w-full border-2 border-dashed rounded-lg p-4 text-center transition-colors ${fileBukti ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400 bg-gray-50'}`}
+                  >
+                    {previewBukti && fileBukti?.type.startsWith('image/') ? (
+                      <div className="flex flex-col items-center gap-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={previewBukti} alt="preview" className="h-32 object-contain rounded" />
+                        <span className="text-xs text-green-600 font-medium">{fileBukti.name}</span>
+                        <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
+                      </div>
+                    ) : fileBukti ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span className="text-xs text-green-600 font-medium">{fileBukti.name}</span>
+                        <span className="text-xs text-gray-700">Ketuk untuk ganti</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <svg className="w-8 h-8 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <span className="text-sm text-gray-800 font-medium">Ketuk untuk upload foto/PDF</span>
+                        <span className="text-xs text-gray-700">Screenshot atau foto bukti transfer</span>
+                      </div>
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-green-50 rounded-2xl border-2 border-green-200 p-5 text-center">
+                <div className="text-3xl mb-2">🎁</div>
+                <p className="font-bold text-green-800">Event Gratis — Tidak perlu pembayaran!</p>
+                <p className="text-sm text-green-700 mt-1">Pendaftaran Anda akan langsung dikonfirmasi setelah submit.</p>
+              </div>
+            )}
 
             <button
               type="submit"
