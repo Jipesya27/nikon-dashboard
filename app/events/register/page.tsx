@@ -398,12 +398,12 @@ export default function EventRegisterPage() {
                           <span className="ml-1 text-[10px] text-red-600 font-bold">· {sisaHari === 0 ? 'Hari ini' : `${sisaHari}h lagi`}</span>
                         )}
                       </p>
-                      {evt.event_speaker && (
-                        <p className="text-sm font-bold text-gray-900 flex items-center gap-1 truncate">
+                      {evt.event_speaker && evt.event_speaker.split(/,|\n/).map(s => s.trim()).filter(Boolean).map((s, i) => (
+                        <p key={i} className="text-sm font-bold text-gray-900 flex items-center gap-1 truncate">
                           <svg className="w-3.5 h-3.5 shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                          <span className="truncate">{evt.event_speaker}</span>
+                          <span className="truncate">{s}</span>
                         </p>
-                      )}
+                      ))}
                     </div>
 
                     {/* Progress bar sisa slot — tampil jika kuota >= 70% terisi */}
