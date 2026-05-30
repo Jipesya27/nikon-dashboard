@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendNotif } from '@/app/lib/notify';
+import { generateTicket } from '@/app/lib/generate-ticket';
 
 export const dynamic = 'force-dynamic';
 
@@ -259,30 +260,58 @@ export async function POST(req: Request) {
       buktiUrl = await uploadToDrive(fileBukti, fileName, accessToken);
     }
 
-    // Insert registrasi
-    const { error: insertError } = await supabase.from('event_registrations').insert({
-      event_id,
-      event_name: event.event_title,
-      nama_lengkap,
-      nomor_wa,
-      email,
-      tipe_kamera,
-      kabupaten_kotamadya,
-      payment_type: event.event_payment_tipe || 'regular',
-      bukti_transfer_url: buktiUrl,
-      status_pendaftaran: isGratis ? 'terdaftar' : 'menunggu_validasi',
-      nama_bank,
-      no_rekening,
-      nama_pemilik_rekening,
-    });
+    // Insert registrasi — select id untuk generate tiket gratis
+    const { data: inserted, error: insertError } = await supabase
+      .from('event_registrations')
+      .insert({
+        event_id,
+        event_name: event.event_title,
+        nama_lengkap,
+        nomor_wa,
+        email,
+        tipe_kamera,
+        kabupaten_kotamadya,
+        payment_type: event.event_payment_tipe || 'regular',
+        bukti_transfer_url: buktiUrl,
+        status_pendaftaran: isGratis ? 'terdaftar' : 'menunggu_validasi',
+        nama_bank,
+        no_rekening,
+        nama_pemilik_rekening,
+      })
+      .select('id')
+      .single();
 
     if (insertError) {
       return NextResponse.json({ error: 'Gagal menyimpan pendaftaran: ' + insertError.message }, { status: 500 });
     }
 
+    // Event gratis: generate tiket + QR otomatis (tidak ada step validate-payment)
+    let ticketUrl: string | null = null;
+    if (isGratis && inserted?.id) {
+      try {
+        const result = await generateTicket({
+          registrationId: inserted.id,
+          fullName: nama_lengkap,
+          nomorWa: nomor_wa,
+          eventTitle: event.event_title,
+          eventDate: event.event_date,
+          cameraModel: tipe_kamera,
+          paymentType: 'gratis',
+        });
+        ticketUrl = result.ticketUrl;
+        await supabase
+          .from('event_registrations')
+          .update({ ticket_url: ticketUrl })
+          .eq('id', inserted.id);
+      } catch (e) {
+        console.error('generateTicket gratis gagal:', e);
+        // non-fatal — registrasi tetap berhasil
+      }
+    }
+
     // Notif ke peserta & admin (channel: WA / Email / keduanya)
     const pesanWA = isGratis
-      ? `Halo ${nama_lengkap}, pendaftaran Anda untuk event ${event.event_title} telah berhasil! Status: *Terdaftar*. Event ini gratis — selamat datang! Terima kasih.`
+      ? `Halo ${nama_lengkap}, pendaftaran Anda untuk event ${event.event_title} telah berhasil! Status: *Terdaftar*. Event ini gratis — selamat datang!${ticketUrl ? `\n\nSilakan download tiket Anda di:\n${ticketUrl}\n\nTunjukkan tiket ini saat registrasi di lokasi acara.` : ''} Terima kasih.`
       : `Halo ${nama_lengkap}, pendaftaran Anda untuk event ${event.event_title} telah kami terima. Status: Menunggu Validasi. Kami akan memverifikasi bukti pembayaran Anda. Notifikasi konfirmasi akan dikirim dalam 1-2 hari kerja. Terima kasih.`;
     const pesanAdmin =
       `🔔 *Pendaftar Event Baru!*\n\n` +
