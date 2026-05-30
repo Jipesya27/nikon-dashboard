@@ -271,7 +271,7 @@ export async function POST(req: Request) {
         email,
         tipe_kamera,
         kabupaten_kotamadya,
-        payment_type: event.event_payment_tipe || 'regular',
+        payment_type: isGratis ? 'regular' : (event.event_payment_tipe || 'regular'),
         bukti_transfer_url: buktiUrl,
         status_pendaftaran: isGratis ? 'terdaftar' : 'menunggu_validasi',
         nama_bank,
