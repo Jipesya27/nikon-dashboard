@@ -294,7 +294,8 @@ export async function POST(req: Request) {
       {
         phone: waTarget, email, message: pesanWA,
         subject: `Pendaftaran Event ${event.event_title} Diterima`,
-        waTemplate: { name: 'notif_daftar_event', params: [nama_lengkap, event.event_title] },
+        // Event gratis: kirim teks langsung karena template Fonnte hardcode "Menunggu Validasi"
+        ...(isGratis ? {} : { waTemplate: { name: 'notif_daftar_event', params: [nama_lengkap, event.event_title] } }),
       },
       { message: pesanAdmin, subject: `🔔 Pendaftar Event Baru — ${event.event_title}` },
     );
