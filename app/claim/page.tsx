@@ -69,8 +69,8 @@ function ClaimForm() {
   useEffect(() => {
     fetch('/api/autocomplete')
       .then(r => r.json())
-      .then((data: { items?: { field_key: string; value: string; hidden?: boolean }[] }) => {
-        const items = data.items || [];
+      .then((data: { field_key: string; value: string; hidden?: boolean }[]) => {
+        const items = Array.isArray(data) ? data : [];
         setOptTipeBarang(items.filter(i => i.field_key === 'tipe_barang' && !i.hidden).map(i => i.value));
         setOptJenisPromosi(items.filter(i => i.field_key === 'jenis_promosi' && !i.hidden).map(i => i.value));
       })
