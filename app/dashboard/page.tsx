@@ -207,6 +207,8 @@ export default function NikonDashboard() {
    // sentStatusClaimIds hanya sebagai fallback sementara sebelum DB di-refresh
    // Status permanen diambil dari claim_promo.resi_sent_at (DB)
    const [sentStatusClaimIds, setSentStatusClaimIds] = useState<Set<string>>(new Set());
+   const [qrShortcut, setQrShortcut] = useState('');
+   const [qrText, setQrText] = useState('');
 
    const [selectedClaimIds, setSelectedClaimIds] = useState<Set<string>>(new Set());
    const [resiUploadPreview, setResiUploadPreview] = useState<Array<{ id_claim: string; no_seri: string; nama: string; expedisi: string; nomor_resi: string }> | null>(null);
@@ -5340,8 +5342,6 @@ export default function NikonDashboard() {
                      {/* ── SEKSI QUICK REPLY ── */}
                      {(() => {
                         const qrItems = botSettings.filter(b => b.nama_pengaturan?.startsWith('quick_reply:'));
-                        const [qrShortcut, setQrShortcut] = React.useState('');
-                        const [qrText, setQrText] = React.useState('');
                         const handleAddQr = async () => {
                            if (!qrShortcut.trim() || !qrText.trim()) return;
                            const key = `quick_reply:${qrShortcut.trim().toLowerCase().replace(/\s+/g, '_')}`;
