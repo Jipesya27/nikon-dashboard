@@ -776,6 +776,8 @@ function EventsSection() {
             {events.slice(0, 4).map((ev, idx) => {
               const slots = ev.event_partisipant_stock - (ev.registered_count || 0);
               const isFull = slots <= 0;
+              const persen = ev.event_partisipant_stock > 0 ? (ev.registered_count || 0) / ev.event_partisipant_stock : 0;
+              const tampilSisa = ev.event_partisipant_stock > 0 && slots > 0 && persen >= 0.7;
               return (
                 <a key={ev.id} href="/events/register"
                   className="group cursor-pointer bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 hover:border-zinc-600 transition-colors flex flex-col md:flex-row"
@@ -808,7 +810,7 @@ function EventsSection() {
                       <span className="text-[#ffe000] font-bold text-sm uppercase tracking-wider flex items-center gap-1">
                         {isFull ? 'Kuota Penuh' : 'Daftar Sekarang'} <IconChevronRight />
                       </span>
-                      {!isFull && (
+                      {!isFull && tampilSisa && (
                         <span className="text-xs text-zinc-500">{slots} tempat tersisa</span>
                       )}
                     </div>
