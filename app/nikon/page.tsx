@@ -412,7 +412,7 @@ function ConsumerAccessSection() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Section header */}
-          <div className="mb-10">
+          <div className="mb-10 sr">
             <div className="flex items-center gap-3 mb-3">
               <div className="h-px flex-1 bg-zinc-800" />
               <span className="text-[#ffe000] text-xs font-bold uppercase tracking-widest px-3 py-1 border border-[#ffe000]/30 bg-[#ffe000]/5">
@@ -451,7 +451,7 @@ function ConsumerAccessSection() {
                 </>
               );
 
-              const cardClass = 'group flex flex-col bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:-translate-y-1 transition-all duration-200 p-6 min-h-[200px] cursor-pointer text-left w-full';
+              const cardClass = 'sr-scale group flex flex-col bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:-translate-y-1 transition-all duration-200 p-6 min-h-[200px] cursor-pointer text-left w-full';
 
               if (action.modal) {
                 return (
@@ -604,7 +604,7 @@ function ServicesSection() {
   return (
     <section id="services" className="py-24 bg-zinc-900 border-y border-zinc-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
+        <div className="text-center mb-16 sr">
           <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4 text-white">
             Layanan Cerdas Nikon
           </h2>
@@ -654,7 +654,7 @@ function EventsSection() {
   return (
     <section id="events" className="py-24 bg-zinc-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-zinc-800 pb-6">
+        <div className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-zinc-800 pb-6 sr">
           <div>
             <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-3 text-white">
               Nikon School & Event
@@ -705,7 +705,7 @@ function EventsSection() {
               },
             ].map(ev => (
               <div key={ev.title}
-                className="group cursor-pointer bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 hover:border-zinc-600 transition-colors flex flex-col md:flex-row">
+                className="sr group cursor-pointer bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 hover:border-zinc-600 transition-colors flex flex-col md:flex-row">
                 <div className="relative md:w-2/5 h-64 md:h-auto overflow-hidden">
                   <span className={`absolute top-4 left-4 ${ev.badgeBg} text-[10px] font-bold px-3 py-1 z-10 uppercase tracking-widest`}>
                     {ev.badge}
@@ -792,7 +792,7 @@ function WACTASection() {
   const { WA_LINK } = useSite();
   return (
     <section className="py-20 px-6 bg-zinc-900 border-t border-zinc-800">
-      <div className="max-w-4xl mx-auto text-center">
+      <div className="max-w-4xl mx-auto text-center sr">
         <h2 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-4 uppercase tracking-tighter">
           Semua Layanan Tersedia<br />
           <span className="text-[#ffe000]">via WhatsApp</span>
@@ -1081,9 +1081,63 @@ function WebChatWidget() {
   );
 }
 
+// ── Scroll Reveal (berulang setiap scroll) ────────────────────────────────────
+const SR_STYLE = `
+  .sr {
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .sr.in { opacity: 1; transform: translateY(0); }
+
+  .sr-left {
+    opacity: 0;
+    transform: translateX(-40px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .sr-left.in { opacity: 1; transform: translateX(0); }
+
+  .sr-right {
+    opacity: 0;
+    transform: translateX(40px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .sr-right.in { opacity: 1; transform: translateX(0); }
+
+  .sr-scale {
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.55s ease, transform 0.55s ease;
+  }
+  .sr-scale.in { opacity: 1; transform: scale(1); }
+`;
+
+function useScrollReveal() {
+  useEffect(() => {
+    const els = document.querySelectorAll('.sr, .sr-left, .sr-right, .sr-scale');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(e => {
+          // tambah 'in' saat masuk viewport, hapus saat keluar → animasi berulang
+          if (e.isIntersecting) {
+            e.target.classList.add('in');
+          } else {
+            e.target.classList.remove('in');
+          }
+        });
+      },
+      { threshold: 0.12 }
+    );
+    els.forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function NikonPage() {
   const [cfg, setCfg] = useState<NikonPageConfig>(DEFAULT_NIKON_CONFIG);
+
+  useScrollReveal();
 
   useEffect(() => {
     fetch('/api/nikon-config')
@@ -1097,6 +1151,7 @@ export default function NikonPage() {
 
   return (
     <SiteContext.Provider value={ctxValue}>
+      <style>{SR_STYLE}</style>
       <div className="min-h-screen bg-zinc-950 text-white font-sans antialiased" style={{ scrollbarColor: '#3f3f46 #09090b' }}>
         <Navbar />
         <main>
