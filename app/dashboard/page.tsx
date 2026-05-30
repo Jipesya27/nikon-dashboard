@@ -3585,24 +3585,22 @@ export default function NikonDashboard() {
                   return (
                   <div className="animate-fade-in text-gray-900 h-full bg-white border-y border-gray-200 overflow-hidden flex">
                      {/* SIDEBAR: DAFTAR CHAT */}
-                     <div className={`w-full md:w-96 lg:w-105 border-r border-gray-200 flex flex-col bg-white shrink-0 ${selectedWa ? 'hidden md:flex' : 'flex'}`}>
+                     <div className={`w-full md:w-80 border-r border-gray-200 flex flex-col bg-white shrink-0 ${selectedWa ? 'hidden md:flex' : 'flex'}`}>
                         {/* Header */}
-                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center shrink-0">
+                        <div className="px-4 py-3 bg-white border-b border-gray-200 flex justify-between items-center shrink-0">
                            <div>
-                              <h3 className="font-bold text-base text-gray-900">💬 Pesan</h3>
-                              <p className="text-[10px] text-gray-600 font-medium">{uniqueContacts.length} chat • {totalUnread} belum dibaca</p>
+                              <h3 className="font-bold text-base text-gray-900">All chats</h3>
+                              <p className="text-[10px] text-gray-500">{uniqueContacts.length} percakapan • {totalUnread > 0 && <span className="text-blue-600 font-bold">{totalUnread} belum dibaca</span>}</p>
                            </div>
                            <div className="flex items-center gap-1">
-                              <button onClick={() => { fetchMessages(); fetchConsumers(); }} disabled={isRefreshing} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Refresh pesan" aria-label="Refresh pesan">
-                                 <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                 </svg>
+                              <button onClick={() => { fetchMessages(); fetchConsumers(); }} disabled={isRefreshing} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Refresh" aria-label="Refresh">
+                                 <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                               </button>
-                              <button onClick={handleRunCleanup} disabled={isSubmitting} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Bersihkan Sesi Inaktif" aria-label="Bersihkan Sesi Inaktif">
+                              <button onClick={handleRunCleanup} disabled={isSubmitting} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Bersihkan Sesi" aria-label="Bersihkan Sesi">
                                  {isSubmitting ? '⏳' : '🧹'}
                               </button>
-                              <button onClick={() => setIsNewChatModalOpen(true)} aria-label="Pesan Baru" title="Pesan Baru" className="w-9 h-9 flex items-center justify-center bg-[#FFE500] text-black rounded-lg shadow-sm hover:bg-[#E5CE00] transition">
-                                 <span className="text-lg font-bold">+</span>
+                              <button onClick={() => setIsNewChatModalOpen(true)} aria-label="Pesan Baru" title="Pesan Baru" className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition">
+                                 <span className="text-sm font-bold">+</span>
                               </button>
                            </div>
                         </div>
@@ -3653,84 +3651,58 @@ export default function NikonDashboard() {
                               const isNew = unread > 0;
                               const profileName = getRealProfileName(c.nomor_wa);
                               const tag = getEffectiveTag(c.nomor_wa, !!c.bicara_dengan_cs);
-                              const tagInfo = tag ? findTag(tag) : null;
                               const isPinned = pinnedChats.includes(c.nomor_wa);
                               const isSelected = selectedWa === c.nomor_wa;
+                              const isResolved = tag === 'resolved';
+                              const isAssigned = c.bicara_dengan_cs;
+                              const msgTime = new Date(c.waktu_pesan || c.created_at || 0);
+                              const isToday = msgTime.toDateString() === new Date().toDateString();
+                              const timeStr = isToday
+                                 ? msgTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                                 : msgTime.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
                               return (
                                  <div
                                     key={c.nomor_wa}
                                     onClick={() => setSelectedWa(c.nomor_wa)}
-                                    className={`group flex items-start gap-3 px-3 py-2.5 cursor-pointer transition-all border-b border-gray-50 hover:bg-gray-50 ${isSelected ? 'bg-[#fff7d6]' : ''}`}
+                                    className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-all border-b border-gray-100 hover:bg-gray-50 ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}`}
                                  >
+                                    {/* Avatar */}
                                     <div className="relative shrink-0">
-                                       <div className="w-12 h-12 rounded-full bg-linear-to-br from-[#FFE500] to-yellow-400 flex items-center justify-center font-bold text-black text-lg uppercase shadow-sm">
-                                          {profileName.substring(0, 1)}
+                                       <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm uppercase shadow-sm ${isAssigned ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                          {profileName.substring(0, 2)}
                                        </div>
-                                       {isPinned && (
-                                          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-700 text-white text-[10px] flex items-center justify-center shadow-sm">📌</div>
-                                       )}
+                                       {isPinned && <div className="absolute -top-1 -right-1 text-[10px]">📌</div>}
                                     </div>
+
                                     <div className="flex-1 min-w-0">
-                                       <div className="flex justify-between items-baseline">
-                                          <h4 className={`text-sm truncate ${isNew ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>{profileName}</h4>
-                                          <span className={`text-[10px] font-medium shrink-0 ml-2 ${isNew ? 'text-green-600 font-bold' : 'text-gray-500'}`}>
-                                             {new Date(c.waktu_pesan || c.created_at || 0).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                                          </span>
+                                       {/* Row 1: name + time */}
+                                       <div className="flex justify-between items-baseline gap-1">
+                                          <h4 className={`text-sm truncate ${isNew ? 'font-bold text-gray-900' : 'font-medium text-gray-800'}`}>{profileName}</h4>
+                                          <span className="text-[10px] text-gray-400 shrink-0">{timeStr}</span>
                                        </div>
-                                       <div className="flex justify-between items-center gap-2 mt-0.5">
-                                          <p className={`text-xs truncate flex-1 ${isNew ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
-                                             {c.arah_pesan === 'OUT' && <span className="text-gray-500 mr-1">↗</span>}
-                                             {c.isi_pesan}
-                                          </p>
-                                          <div className="flex items-center gap-1.5 shrink-0">
-                                             {c.bicara_dengan_cs && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title="CS Aktif"></span>}
-                                             {isNew && (
-                                                <span className="bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-4.5 text-center">{unread}</span>
-                                             )}
-                                          </div>
-                                       </div>
-                                       <div className="flex items-center gap-1 mt-1">
-                                          {tagInfo && tagInfo.key && (
-                                             <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${tagInfo.bg} ${tagInfo.text}`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${tagInfo.dot}`}></span>
-                                                {tagInfo.label}
-                                             </span>
+                                       {/* Row 2: WA number */}
+                                       <p className="text-[10px] text-gray-400 truncate">{c.nomor_wa}</p>
+                                       {/* Row 3: last message */}
+                                       <p className={`text-xs truncate mt-0.5 ${isNew ? 'font-semibold text-gray-800' : 'text-gray-500'}`}>
+                                          {c.arah_pesan === 'OUT' && <span className="text-gray-400 mr-1">↗</span>}
+                                          {c.isi_pesan}
+                                       </p>
+                                       {/* Row 4: platform + status + unread */}
+                                       <div className="flex items-center gap-1.5 mt-1.5">
+                                          <span className="text-[9px] text-gray-400 font-medium">Nikon Indonesia</span>
+                                          {isAssigned && !isResolved && (
+                                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Assigned</span>
                                           )}
-                                          <div className="ml-auto opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5">
-                                             <button
-                                                onClick={(e) => { e.stopPropagation(); togglePin(c.nomor_wa); }}
-                                                className="p-1 rounded hover:bg-gray-200"
-                                                title={isPinned ? 'Unpin' : 'Pin chat'}
-                                                aria-label="Pin"
-                                             >
-                                                <svg className={`w-3 h-3 ${isPinned ? 'text-amber-600' : 'text-gray-500'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.828.722a.5.5 0 01.354.146l4.95 4.95a.5.5 0 010 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 01.16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 01-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 010-.707c.688-.687 1.673-.766 2.375-.72a5.922 5.922 0 011.013.16l3.134-3.133a2.772 2.772 0 01-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 01.353-.146z"/></svg>
-                                             </button>
-                                             <button
-                                                onClick={(e) => { e.stopPropagation(); setTagMenuFor(tagMenuFor === c.nomor_wa ? null : c.nomor_wa); }}
-                                                className="p-1 rounded hover:bg-gray-200"
-                                                title="Beri tag"
-                                                aria-label="Beri tag"
-                                             >
-                                                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-                                             </button>
-                                          </div>
+                                          {isResolved && (
+                                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">Resolved</span>
+                                          )}
+                                          {!isAssigned && !isResolved && tag && (
+                                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${findTag(tag)?.bg} ${findTag(tag)?.text}`}>{findTag(tag)?.label}</span>
+                                          )}
+                                          {isNew && (
+                                             <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">{unread}</span>
+                                          )}
                                        </div>
-                                       {/* Tag menu inline */}
-                                       {tagMenuFor === c.nomor_wa && (
-                                          <div className="mt-2 bg-white border border-gray-300 rounded-lg shadow-lg p-1.5 space-y-0.5" onClick={e => e.stopPropagation()}>
-                                             {TAG_PRESETS.map(t => (
-                                                <button
-                                                   key={t.key}
-                                                   onClick={() => setTag(c.nomor_wa, t.key)}
-                                                   className={`w-full flex items-center gap-2 px-2 py-1 rounded text-xs hover:bg-gray-100 transition ${tag === t.key ? 'bg-gray-100 font-bold' : ''}`}
-                                                >
-                                                   <span className={`w-2 h-2 rounded-full ${t.dot}`}></span>
-                                                   <span className={t.text}>{t.label}</span>
-                                                   {tag === t.key && <span className="ml-auto text-gray-700">✓</span>}
-                                                </button>
-                                             ))}
-                                          </div>
-                                       )}
                                     </div>
                                  </div>
                               );
@@ -3747,70 +3719,50 @@ export default function NikonDashboard() {
                            const isPinned = pinnedChats.includes(selectedWa);
                            return (
                            <>
-                              <div className="px-4 py-2.5 bg-[#f0f2f5] border-b border-gray-300 flex justify-between items-center shrink-0 shadow-sm z-10">
+                              <div className="px-4 py-2.5 bg-white border-b border-gray-200 flex justify-between items-center shrink-0 z-10">
                                  <div className="flex items-center gap-3 min-w-0 flex-1">
                                     <button aria-label="Kembali" onClick={() => setSelectedWa(null)} className="md:hidden p-1 -ml-2 text-gray-700 hover:bg-gray-200 rounded-full transition shrink-0">
                                        <span className="text-xl">←</span>
                                     </button>
-                                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-[#FFE500] to-yellow-400 flex items-center justify-center font-bold text-black uppercase shadow-sm shrink-0">
-                                       {getRealProfileName(selectedWa).substring(0, 1)}
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm uppercase shrink-0 ${isCsActive ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                       {getRealProfileName(selectedWa).substring(0, 2)}
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                       <div className="flex items-center gap-2">
-                                          <h3 className="font-bold text-gray-900 leading-tight truncate">{getRealProfileName(selectedWa)}</h3>
-                                          {tagInfo && tagInfo.key && (
-                                             <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${tagInfo.bg} ${tagInfo.text} shrink-0`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${tagInfo.dot}`}></span>
-                                                {tagInfo.label}
-                                             </span>
-                                          )}
-                                       </div>
-                                       <p className="text-[11px] font-medium text-gray-600">{selectedWa}</p>
+                                    <div className="min-w-0">
+                                       <h3 className="font-bold text-gray-900 text-sm leading-tight truncate">{getRealProfileName(selectedWa)}</h3>
+                                       <p className="text-[10px] text-gray-400">{selectedWa}</p>
                                     </div>
                                  </div>
-                                 <div className="flex items-center gap-1 shrink-0">
+                                 <div className="flex items-center gap-2 shrink-0">
                                     <button
                                        onClick={() => togglePin(selectedWa)}
-                                       title={isPinned ? 'Unpin chat' : 'Pin chat'}
+                                       title={isPinned ? 'Unpin' : 'Pin'}
                                        aria-label="Pin"
-                                       className={`p-2 rounded-lg transition ${isPinned ? 'text-amber-600 bg-amber-100' : 'text-gray-600 hover:bg-gray-200'}`}
-                                    >
-                                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.828.722a.5.5 0 01.354.146l4.95 4.95a.5.5 0 010 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 01.16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 01-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 010-.707c.688-.687 1.673-.766 2.375-.72a5.922 5.922 0 011.013.16l3.134-3.133a2.772 2.772 0 01-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 01.353-.146z"/></svg>
-                                    </button>
+                                       className={`p-1.5 rounded transition text-sm ${isPinned ? 'text-amber-600 bg-amber-50' : 'text-gray-400 hover:bg-gray-100'}`}
+                                    >📌</button>
                                     <div className="relative">
-                                       <button
-                                          onClick={() => setTagMenuFor(tagMenuFor === selectedWa ? null : selectedWa)}
-                                          title="Atur tag"
-                                          aria-label="Atur tag"
-                                          className="p-2 rounded-lg text-gray-600 hover:bg-gray-200 transition"
-                                       >
+                                       <button onClick={() => setTagMenuFor(tagMenuFor === selectedWa ? null : selectedWa)} title="Tag" aria-label="Tag" className="p-1.5 rounded text-gray-400 hover:bg-gray-100 transition">
                                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
                                        </button>
                                        {tagMenuFor === selectedWa && (
-                                          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl p-1.5 space-y-0.5 z-20 min-w-45">
+                                          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl p-1.5 space-y-0.5 z-20 min-w-40">
                                              {TAG_PRESETS.map(t => (
-                                                <button
-                                                   key={t.key}
-                                                   onClick={() => setTag(selectedWa, t.key)}
-                                                   className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-gray-100 transition ${selectedTag === t.key ? 'bg-gray-100 font-bold' : ''}`}
-                                                >
+                                                <button key={t.key} onClick={() => setTag(selectedWa, t.key)} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-gray-100 transition ${selectedTag === t.key ? 'bg-gray-100 font-bold' : ''}`}>
                                                    <span className={`w-2 h-2 rounded-full ${t.dot}`}></span>
                                                    <span className={t.text}>{t.label}</span>
-                                                   {selectedTag === t.key && <span className="ml-auto text-gray-700">✓</span>}
+                                                   {selectedTag === t.key && <span className="ml-auto">✓</span>}
                                                 </button>
                                              ))}
                                           </div>
                                        )}
                                     </div>
-                                    {uniqueContacts.find(c => c.nomor_wa === selectedWa)?.bicara_dengan_cs && (
-                                       <button onClick={() => handleSelesaiCS(selectedWa)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm whitespace-nowrap">Tandai Selesai</button>
+                                    <button onClick={() => setShowSystemMessages(v => !v)} title="Toggle sistem" aria-label="Toggle sistem" className={`p-1.5 rounded transition text-xs ${showSystemMessages ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:bg-gray-100'}`}>🤖</button>
+                                    {isCsActive && (
+                                       <button onClick={() => handleSelesaiCS(selectedWa)} className="border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-50 transition">Assign</button>
                                     )}
                                     <button
-                                       onClick={() => setShowSystemMessages(v => !v)}
-                                       title={showSystemMessages ? 'Sembunyikan pesan sistem' : 'Tampilkan pesan sistem'}
-                                       aria-label="Toggle pesan sistem"
-                                       className={`p-2 rounded-lg transition text-xs ${showSystemMessages ? 'text-blue-600 bg-blue-100' : 'text-gray-400 hover:bg-gray-200'}`}
-                                    >🤖</button>
+                                       onClick={() => { setTag(selectedWa, selectedTag === 'resolved' ? '' : 'resolved'); if (isCsActive) handleSelesaiCS(selectedWa); }}
+                                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${selectedTag === 'resolved' ? 'bg-gray-200 text-gray-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                                    >{selectedTag === 'resolved' ? 'Reopen' : 'Resolve'}</button>
                                  </div>
                               </div>
                               <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto space-y-3 relative scroll-smooth bg-[url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')] bg-size-[400px] bg-repeat">
@@ -3932,6 +3884,116 @@ export default function NikonDashboard() {
                            </div>
                         )}
                      </div>
+
+                     {/* RIGHT INFO PANEL */}
+                     {selectedWa && (() => {
+                        const selConsumer = consumersList.find(k => k.nomor_wa === (selectedWa?.startsWith('62') ? '0' + selectedWa.slice(2) : selectedWa)) || consumersList.find(k => k.nomor_wa === selectedWa);
+                        const selContact = uniqueContacts.find(c => c.nomor_wa === selectedWa);
+                        const isCsPanel = !!selContact?.bicara_dengan_cs;
+                        const tagPanel = getEffectiveTag(selectedWa, isCsPanel);
+                        const tagInfoPanel = tagPanel ? findTag(tagPanel) : null;
+                        const firstMsg = messages.filter(m => m.nomor_wa === selectedWa).sort((a, b) => new Date(a.waktu_pesan || a.created_at || 0).getTime() - new Date(b.waktu_pesan || b.created_at || 0).getTime())[0];
+                        const lastMsg = selContact;
+                        return (
+                        <div className="hidden xl:flex w-72 border-l border-gray-200 flex-col bg-white shrink-0 overflow-y-auto">
+                           {/* Contact header */}
+                           <div className="p-4 border-b border-gray-100">
+                              <div className="flex items-center gap-3 mb-3">
+                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm uppercase ${isCsPanel ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                    {getRealProfileName(selectedWa).substring(0, 2)}
+                                 </div>
+                                 <div>
+                                    <p className="font-bold text-sm text-gray-900">{getRealProfileName(selectedWa)}</p>
+                                    <p className="text-[10px] text-gray-400">{selectedWa}</p>
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Conversation details */}
+                           <div className="p-4 border-b border-gray-100">
+                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3">Conversation details</p>
+                              <div className="space-y-2">
+                                 <div>
+                                    <p className="text-[10px] text-gray-400">Platform</p>
+                                    <p className="text-xs font-semibold text-gray-700">WhatsApp Business</p>
+                                    <p className="text-[10px] text-gray-500">Nikon Indonesia</p>
+                                 </div>
+                                 {firstMsg && (
+                                    <div>
+                                       <p className="text-[10px] text-gray-400">Created at</p>
+                                       <p className="text-xs text-gray-700">{new Date(firstMsg.waktu_pesan || firstMsg.created_at || 0).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                    </div>
+                                 )}
+                                 {lastMsg && (
+                                    <div>
+                                       <p className="text-[10px] text-gray-400">Last seen</p>
+                                       <p className="text-xs text-gray-700">{new Date(lastMsg.waktu_pesan || lastMsg.created_at || 0).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                    </div>
+                                 )}
+                                 <div>
+                                    <p className="text-[10px] text-gray-400">Session</p>
+                                    <p className={`text-xs font-semibold ${isCsPanel ? 'text-orange-500' : 'text-green-600'}`}>{isCsPanel ? '⚡ CS Active' : '● Open'}</p>
+                                 </div>
+                              </div>
+                           </div>
+
+                           {/* Tags */}
+                           <div className="p-4 border-b border-gray-100">
+                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Tags</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                 {tagInfoPanel && tagInfoPanel.key ? (
+                                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold ${tagInfoPanel.bg} ${tagInfoPanel.text}`}>
+                                       <span className={`w-1.5 h-1.5 rounded-full ${tagInfoPanel.dot}`}></span>
+                                       {tagInfoPanel.label}
+                                    </span>
+                                 ) : (
+                                    <p className="text-[10px] text-gray-400 italic">Belum ada tag</p>
+                                 )}
+                              </div>
+                              <div className="mt-2 relative">
+                                 <button onClick={() => setTagMenuFor(tagMenuFor === `right_${selectedWa}` ? null : `right_${selectedWa}`)} className="text-[10px] text-blue-600 hover:underline">+ Tambah tag</button>
+                                 {tagMenuFor === `right_${selectedWa}` && (
+                                    <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl p-1.5 space-y-0.5 z-20 w-40">
+                                       {TAG_PRESETS.map(t => (
+                                          <button key={t.key} onClick={() => { setTag(selectedWa, t.key); setTagMenuFor(null); }} className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-gray-100 transition ${tagPanel === t.key ? 'font-bold' : ''}`}>
+                                             <span className={`w-2 h-2 rounded-full ${t.dot}`}></span>
+                                             <span className={t.text}>{t.label}</span>
+                                          </button>
+                                       ))}
+                                    </div>
+                                 )}
+                              </div>
+                           </div>
+
+                           {/* Assignees */}
+                           <div className="p-4 border-b border-gray-100">
+                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Assignees</p>
+                              {isCsPanel ? (
+                                 <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center uppercase">
+                                       {(currentUser?.nama_karyawan || 'CS').substring(0, 2)}
+                                    </div>
+                                    <p className="text-xs text-gray-700 font-medium">{currentUser?.nama_karyawan || 'CS'}</p>
+                                 </div>
+                              ) : (
+                                 <p className="text-[10px] text-gray-400 italic">Belum di-assign</p>
+                              )}
+                           </div>
+
+                           {/* Customer profile */}
+                           {selConsumer && (
+                              <div className="p-4">
+                                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Customer profile</p>
+                                 <div className="space-y-1.5">
+                                    {selConsumer.nama_lengkap && <div><p className="text-[10px] text-gray-400">Nama</p><p className="text-xs text-gray-700">{selConsumer.nama_lengkap}</p></div>}
+                                    {selConsumer.nik && selConsumer.nik !== 'BELUM_DIISI' && <div><p className="text-[10px] text-gray-400">NIK</p><p className="text-xs text-gray-700">{selConsumer.nik}</p></div>}
+                                    {selConsumer.alamat_rumah && selConsumer.alamat_rumah !== 'BELUM_DIISI' && <div><p className="text-[10px] text-gray-400">Alamat</p><p className="text-xs text-gray-700 line-clamp-2">{selConsumer.alamat_rumah}</p></div>}
+                                 </div>
+                              </div>
+                           )}
+                        </div>
+                        );
+                     })()}
                   </div>
                   );
                })()}
