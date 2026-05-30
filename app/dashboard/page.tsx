@@ -5346,11 +5346,13 @@ export default function NikonDashboard() {
                            if (!qrShortcut.trim() || !qrText.trim()) return;
                            const key = `quick_reply:${qrShortcut.trim().toLowerCase().replace(/\s+/g, '_')}`;
                            const existing = botSettings.find(b => b.nama_pengaturan === key);
-                           if (existing) {
-                              await sbWrite({ action: 'update', table: 'pengaturan_bot', match: { id: existing.id }, data: { description: qrText.trim() } });
+                           let err;
+                           if (existing?.id) {
+                              ({ error: err } = await sbWrite({ action: 'update', table: 'pengaturan_bot', match: { id: existing.id }, data: { description: qrText.trim(), url_file: '' } }));
                            } else {
-                              await sbWrite({ action: 'insert', table: 'pengaturan_bot', data: { nama_pengaturan: key, description: qrText.trim(), url_file: null } });
+                              ({ error: err } = await sbWrite({ action: 'insert', table: 'pengaturan_bot', data: { nama_pengaturan: key, description: qrText.trim(), url_file: '' } }));
                            }
+                           if (err) { alert('Gagal simpan: ' + err.message); return; }
                            setQrShortcut(''); setQrText('');
                            fetchBotSettings();
                         };
