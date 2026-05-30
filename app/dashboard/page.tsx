@@ -204,18 +204,9 @@ export default function NikonDashboard() {
    // tanggal_cetak kini disimpan permanen di kolom claim_promo.tanggal_cetak (Supabase)
    // — tidak lagi pakai localStorage
 
-   const [sentStatusClaimIds, setSentStatusClaimIds] = useState<Set<string>>(() => {
-      if (typeof window !== 'undefined') {
-         try {
-            const saved = localStorage.getItem('sentStatusClaimIds');
-            if (saved) return new Set<string>(JSON.parse(saved));
-         } catch {}
-      }
-      return new Set<string>();
-   });
-   useEffect(() => {
-      localStorage.setItem('sentStatusClaimIds', JSON.stringify([...sentStatusClaimIds]));
-   }, [sentStatusClaimIds]);
+   // sentStatusClaimIds hanya sebagai fallback sementara sebelum DB di-refresh
+   // Status permanen diambil dari claim_promo.resi_sent_at (DB)
+   const [sentStatusClaimIds, setSentStatusClaimIds] = useState<Set<string>>(new Set());
 
    const [selectedClaimIds, setSelectedClaimIds] = useState<Set<string>>(new Set());
    const [resiUploadPreview, setResiUploadPreview] = useState<Array<{ id_claim: string; no_seri: string; nama: string; expedisi: string; nomor_resi: string }> | null>(null);
@@ -2531,13 +2522,17 @@ export default function NikonDashboard() {
       const sentAt = new Date().toISOString();
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
       await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: sentAt, bicara_dengan_cs: false, created_at: sentAt } });
-      // Simpan timestamp ke DB dan state
+      // Simpan timestamp ke DB — status Teal (Resi Terkirim) diambil dari DB, bukan localStorage
       if (c.id_claim) {
-         await sbWrite({ action: 'update', table: 'claim_promo', match: { id_claim: c.id_claim }, data: { resi_sent_at: sentAt } });
-         setSentStatusClaimIds(prev => new Set([...prev, c.id_claim!]));
+         const { error: updErr } = await sbWrite({ action: 'update', table: 'claim_promo', match: { id_claim: c.id_claim }, data: { resi_sent_at: sentAt } });
+         if (updErr) {
+            console.error('[kirimStatus] gagal update resi_sent_at:', updErr);
+         }
+         setSentStatusClaimIds(prev => new Set([...prev, c.id_claim!])); // fallback sementara
       }
       alert('Pesan status berhasil dikirim!');
       fetchMessages();
+      fetchClaims(); // refresh agar resi_sent_at dari DB langsung terbaca
    };
 
    const handleKirimStatusGaransi = async (w: Garansi) => {
