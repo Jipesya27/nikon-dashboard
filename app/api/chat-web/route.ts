@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
               balasanBot = getMsg(
                 responses,
                 'CLAIM_WEB_FORM_REDIRECT',
-                'Baik, silakan lanjutkan pengisian data *Claim Promo* melalui tautan berikut:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/claim\n\nSetelah selesai, Anda akan menerima konfirmasi. Ketik *MENU* untuk kembali.'
+                'Baik, silakan lanjutkan pengisian data *Claim Promo* melalui tautan berikut:\n\n👉 https://nikon-dashboard.vercel.app/nikon/form-claim\n\nSetelah selesai, Anda akan menerima konfirmasi. Ketik *MENU* untuk kembali.'
               );
               await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_UPLOAD_WEB' }).eq('nomor_wa', nomor);
               break;
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
               balasanBot = getMsg(
                 responses,
                 'GARANSI_WEB_FORM_REDIRECT',
-                'Baik, silakan daftarkan *Garansi Nikon* melalui tautan berikut:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/garansi\n\nPengisian data Garansi mempermudah Anda saat service di Nikon Pusat Service. Ketik *MENU* untuk kembali.'
+                'Baik, silakan daftarkan *Garansi Nikon* melalui tautan berikut:\n\n👉 https://nikon-dashboard.vercel.app/nikon/form-garansi\n\nPengisian data Garansi mempermudah Anda saat service di Nikon Pusat Service. Ketik *MENU* untuk kembali.'
               );
               await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_UPLOAD_GARANSI_WEB' }).eq('nomor_wa', nomor);
               break;
@@ -266,9 +266,9 @@ export async function POST(req: NextRequest) {
 
         default:
           if (statusSaatIni === 'MENUNGGU_UPLOAD_WEB') {
-            balasanBot = `Silakan selesaikan pengisian form Claim Promo di:\n👉 https://nikonindonesia-altanikindo.vercel.app/claim\n\nKetik *MENU* untuk kembali ke menu utama.`;
+            balasanBot = `Silakan selesaikan pengisian form Claim Promo di:\n👉 https://nikon-dashboard.vercel.app/nikon/form-claim\n\nKetik *MENU* untuk kembali ke menu utama.`;
           } else if (statusSaatIni === 'MENUNGGU_UPLOAD_GARANSI_WEB') {
-            balasanBot = `Silakan selesaikan pendaftaran Garansi di:\n👉 https://nikonindonesia-altanikindo.vercel.app/garansi\n\nKetik *MENU* untuk kembali ke menu utama.`;
+            balasanBot = `Silakan selesaikan pendaftaran Garansi di:\n👉 https://nikon-dashboard.vercel.app/nikon/form-garansi\n\nKetik *MENU* untuk kembali ke menu utama.`;
           } else {
             balasanBot = getMsg(
               responses,
