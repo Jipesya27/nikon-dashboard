@@ -59,8 +59,23 @@ function ClaimForm() {
   const [ocrLoading, setOcrLoading]     = useState(false);
   const [ocrMsg, setOcrMsg]             = useState('');
 
+  const [optTipeBarang, setOptTipeBarang]     = useState<string[]>([]);
+  const [optJenisPromosi, setOptJenisPromosi] = useState<string[]>([]);
+
   const refGaransi = useRef<HTMLInputElement>(null);
   const refNota    = useRef<HTMLInputElement>(null);
+
+  // Fetch dropdown options dari autocomplete_items
+  useEffect(() => {
+    fetch('/api/autocomplete')
+      .then(r => r.json())
+      .then((data: { items?: { field_key: string; value: string; hidden?: boolean }[] }) => {
+        const items = data.items || [];
+        setOptTipeBarang(items.filter(i => i.field_key === 'tipe_barang' && !i.hidden).map(i => i.value));
+        setOptJenisPromosi(items.filter(i => i.field_key === 'jenis_promosi' && !i.hidden).map(i => i.value));
+      })
+      .catch(() => {});
+  }, []);
 
   // Pre-fill data konsumen dari nomor WA
   const prefillFromPhone = useCallback(async (p: string) => {
@@ -501,7 +516,10 @@ function ClaimForm() {
 
             <div>
               <label className={labelCls}>Tipe Barang {req}</label>
-              <input type="text" name="tipe_barang" value={formData.tipe_barang} onChange={handleChange} required placeholder="Contoh: Nikon Z50 Kit 16-50mm" className={inputCls} />
+              <select name="tipe_barang" value={formData.tipe_barang} onChange={handleChange} required className={inputCls}>
+                <option value="">-- Pilih Tipe Barang --</option>
+                {optTipeBarang.map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
             </div>
             <div>
               <label className={labelCls}>Nomor Seri Produk {req}</label>
@@ -509,7 +527,10 @@ function ClaimForm() {
             </div>
             <div>
               <label className={labelCls}>Jenis Promosi {req}</label>
-              <input type="text" name="jenis_promosi" value={formData.jenis_promosi} onChange={handleChange} required placeholder="Contoh: Cashback, Free Aksesori" className={inputCls} />
+              <select name="jenis_promosi" value={formData.jenis_promosi} onChange={handleChange} required className={inputCls}>
+                <option value="">-- Pilih Jenis Promosi --</option>
+                {optJenisPromosi.map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
             </div>
             <div>
               <label className={labelCls}>Tanggal Pembelian {req}</label>
