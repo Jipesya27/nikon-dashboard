@@ -258,7 +258,7 @@ serve(async (req)=>{
           switch(isiPesanWA){
             case "1":
               // Langsung kirim link form web (penerima ditentukan di dalam form)
-              balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data Claim Promo dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/claim?phone={{phone}}\n\nDi dalam form Anda dapat memilih apakah claim untuk *diri sendiri* atau *orang lain*. Setelah selesai, Anda akan menerima konfirmasi melalui WhatsApp.', {
+              balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data Claim Promo dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://altanikindo.com/nikon/form-claim?phone={{phone}}\n\nDi dalam form Anda dapat memilih apakah claim untuk *diri sendiri* atau *orang lain*. Setelah selesai, Anda akan menerima konfirmasi melalui WhatsApp.', {
                 phone: nomorPengirim
               });
               await supabase.from('konsumen').update({
@@ -272,7 +272,7 @@ serve(async (req)=>{
               }).eq('nomor_wa', nomorPengirim);
               break;
             case "3":
-              balasanBot = getMsg('GARANSI_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pendaftaran *Garansi Nikon* dan unggah dokumen Anda melalui tautan aman berikut:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/garansi?phone={{phone}}\n\nPengisian data Garansi akan mempermudah Anda saat melakukan service di Nikon Pusat Service dan mendapatkan benefit service.', {
+              balasanBot = getMsg('GARANSI_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pendaftaran *Garansi Nikon* dan unggah dokumen Anda melalui tautan aman berikut:\n\n👉 https://altanikindo.com/nikon/form-garansi?phone={{phone}}\n\nPengisian data Garansi akan mempermudah Anda saat melakukan service di Nikon Pusat Service dan mendapatkan benefit service.', {
                 phone: nomorPengirim
               });
               await supabase.from('konsumen').update({
@@ -322,7 +322,7 @@ serve(async (req)=>{
           break;
         // Legacy state: redirect ke web form (sudah tidak ditanyakan via chat)
         case 'CLAIM_CHOOSE_RECIPIENT':
-          balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data Claim Promo dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/claim?phone={{phone}}\n\nDi dalam form Anda dapat memilih apakah claim untuk *diri sendiri* atau *orang lain*.', {
+          balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Baik, silakan lanjutkan pengisian data Claim Promo dan unggah dokumen Anda melalui tautan aman berikut ini:\n\n👉 https://altanikindo.com/nikon/form-claim?phone={{phone}}\n\nDi dalam form Anda dapat memilih apakah claim untuk *diri sendiri* atau *orang lain*.', {
             phone: nomorPengirim
           });
           await supabase.from('konsumen').update({
@@ -373,7 +373,7 @@ serve(async (req)=>{
         // Setelah submit claim, tawarkan ke konsumen untuk sekalian isi form garansi
         case 'OFFER_GARANSI_AFTER_CLAIM':
           if (isiPesanWA.toUpperCase() === "YA") {
-            balasanBot = `Bagus! Silakan lanjutkan pendaftaran Garansi Nikon melalui tautan berikut. Data produk Anda sudah otomatis terisi dari Claim — Anda tinggal melengkapi NIK dan upload ulang dokumen:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/garansi?phone=${nomorPengirim}&from_claim=1\n\nKetik *MENU* kapan saja untuk kembali ke menu utama.`;
+            balasanBot = `Bagus! Silakan lanjutkan pendaftaran Garansi Nikon melalui tautan berikut. Data produk Anda sudah otomatis terisi dari Claim — Anda tinggal melengkapi NIK dan upload ulang dokumen:\n\n👉 https://altanikindo.com/nikon/form-garansi?phone=${nomorPengirim}&from_claim=1\n\nKetik *MENU* kapan saja untuk kembali ke menu utama.`;
             await supabase.from('konsumen').update({
               status_langkah: 'MENUNGGU_UPLOAD_GARANSI_WEB'
             }).eq('nomor_wa', nomorPengirim);
@@ -529,11 +529,11 @@ serve(async (req)=>{
         // ... [SISA LOGIKA NORMAL] ...
         default:
           if (statusSaatIni === 'MENUNGGU_UPLOAD_WEB') {
-            balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Silakan klik tautan yang telah diberikan untuk melanjutkan pengisian data claim Anda:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/claim?phone={{phone}}', {
+            balasanBot = getMsg('CLAIM_WEB_FORM_REDIRECT', 'Silakan klik tautan yang telah diberikan untuk melanjutkan pengisian data claim Anda:\n\n👉 https://altanikindo.com/nikon/form-claim?phone={{phone}}', {
               phone: nomorPengirim
             });
           } else if (statusSaatIni === 'MENUNGGU_UPLOAD_GARANSI_WEB') {
-            balasanBot = `Silakan klik tautan yang telah diberikan untuk melanjutkan pendaftaran Garansi Anda:\n\n👉 https://nikonindonesia-altanikindo.vercel.app/garansi?phone=${nomorPengirim}\n\nKetik *MENU* kapan saja untuk kembali ke menu utama.`;
+            balasanBot = `Silakan klik tautan yang telah diberikan untuk melanjutkan pendaftaran Garansi Anda:\n\n👉 https://altanikindo.com/nikon/form-garansi?phone=${nomorPengirim}\n\nKetik *MENU* kapan saja untuk kembali ke menu utama.`;
           }
           break;
       }
