@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
       balasanBot = getMsg(
         responses,
         'MAIN_MENU',
-        `Hi *${user?.nama_lengkap || namaProfil}* ${sapaanID},\nSelamat datang di layanan *Nikon Indonesia*.\n\nSilakan ketik *Nomor Menu* berikut:\n\n*1.* Claim Promo\n*2.* Cek Status Claim\n*3.* Daftar Garansi Nikon\n*4.* Cek Status Garansi\n*5.* Cek Status Service\n*6.* Promo Nikon Terkini\n*7.* Alamat Service Center\n*8.* Daftar Dealer Resmi\n*9.* Hubungi CS\n\n_Balas dengan angka 1-9_\nKetik *MENU* kapan saja untuk kembali ke menu utama.`,
+        `Hi *${user?.nama_lengkap || namaProfil}* ${sapaanID},\nSelamat datang di layanan *Nikon Indonesia*.\n\nSilakan ketik *Nomor Menu* berikut:\n\n*1.* Claim Promo\n*2.* Cek Status Claim\n*3.* Daftar Garansi Nikon\n*4.* Cek Status Garansi\n*5.* Cek Status Service\n*6.* Promo Nikon Terkini\n*7.* Alamat Service Center\n*8.* Daftar Dealer Resmi\n*9.* Hubungi CS\n*10.* Cek Jadwal Event\n\n_Balas dengan angka 1-10_\nKetik *MENU* kapan saja untuk kembali ke menu utama.`,
         { nama_user: user?.nama_lengkap || namaProfil, sapaan_id: sapaanID }
       );
     } else if (statusSaatIni === 'TALKING_TO_CS') {
@@ -184,6 +184,9 @@ export async function POST(req: NextRequest) {
                   'Untuk berbicara langsung dengan CS, silakan gunakan WhatsApp kami — CS sedang online dan siap melayani Anda sekarang. 🟢\n\nKetik *MENU* untuk kembali ke menu utama.';
               }
               break;
+            case '10':
+              balasanBot = getMsg(responses, 'EVENT_JADWAL', 'Cek Jadwal Event Nikon terbaru di sini:\n\n👉 https://www.altanikindo.com/events/register\n\nKetik *MENU* untuk kembali ke menu utama.');
+              break;
             default:
               balasanBot = getMsg(
                 responses,
@@ -209,8 +212,7 @@ export async function POST(req: NextRequest) {
             let msg = `Status Claim Promo:\n\n`;
             msg += `*No Seri:* ${s.nomor_seri || seriInput}\n`;
             msg += `*Barang:* ${s.tipe_barang || '-'}\n`;
-            if (['HOLD', 'Valid'].includes(s.validasi_by_mkt)) msg += `*Status MKT:* ${s.validasi_by_mkt}\n`;
-            if (s.validasi_by_fa === 'Valid') msg += `*Status FA:* ${s.validasi_by_fa}\n`;
+            if (['HOLD', 'Valid'].includes(s.validasi_by_mkt)) msg += `*Status:* ${s.validasi_by_mkt}\n`;
             if (!isEmptyVal(s.nama_jasa_pengiriman)) msg += `*Jasa Kirim:* ${s.nama_jasa_pengiriman}\n`;
             if (!isEmptyVal(s.nomor_resi)) msg += `*No Resi:* ${s.nomor_resi}\n`;
             if (!isEmptyVal(s.catatan_mkt)) msg += `*Catatan:* ${s.catatan_mkt}\n`;

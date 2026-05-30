@@ -238,7 +238,7 @@ serve(async (req)=>{
       await supabase.from('riwayat_pesan').update({
         bicara_dengan_cs: false
       }).eq('nomor_wa', nomorPengirim);
-      balasanBot = getMsg('MAIN_MENU', `Hi *{{nama_user}}* {{sapaan_id}},\nSelamat datang di layanan *Nikon Indonesia*.\n\nSilakan ketik *Nomor Menu* berikut sesuai kebutuhan Anda:\n\n*1.* Claim Promo\n*2.* Cek Status Claim\n*3.* Daftar Garansi Nikon\n*4.* Cek Status Garansi\n*5.* Cek Status Service\n*6.* Promo Nikon Terkini\n*7.* Alamat Service Center\n*8.* Daftar Dealer Resmi\n*9.* Hubungi CS\n\n_Balas dengan angka 1-9_\nKetik *MENU* kapan saja untuk kembali ke menu utama.`, {
+      balasanBot = getMsg('MAIN_MENU', `Hi *{{nama_user}}* {{sapaan_id}},\nSelamat datang di layanan *Nikon Indonesia*.\n\nSilakan ketik *Nomor Menu* berikut sesuai kebutuhan Anda:\n\n*1.* Claim Promo\n*2.* Cek Status Claim\n*3.* Daftar Garansi Nikon\n*4.* Cek Status Garansi\n*5.* Cek Status Service\n*6.* Promo Nikon Terkini\n*7.* Alamat Service Center\n*8.* Daftar Dealer Resmi\n*9.* Hubungi CS\n*10.* Cek Jadwal Event\n\n_Balas dengan angka 1-10_\nKetik *MENU* kapan saja untuk kembali ke menu utama.`, {
         nama_user: user.nama_lengkap || namaProfil,
         sapaan_id: sapaanID
       });
@@ -314,6 +314,9 @@ serve(async (req)=>{
                   bicara_dengan_cs: true
                 }).eq('nomor_wa', nomorPengirim);
               }
+              break;
+            case "10":
+              balasanBot = getMsg('EVENT_JADWAL', `Cek Jadwal Event Nikon terbaru di sini:\n\n👉 https://www.altanikindo.com/events/register\n\nKetik *MENU* untuk kembali ke menu utama.`);
               break;
             default:
               balasanBot = getMsg('WELCOME_NO_MENU', "Selamat datang di Nikon Indonesia, ketik MENU untuk memulai chat");
@@ -432,8 +435,7 @@ serve(async (req)=>{
             let msg = `Status Claim Promo Anda:\n\n`;
             msg += `*No Seri:* ${s.nomor_seri || nomorSeriInput}\n`;
             msg += `*Barang:* ${s.tipe_barang || '-'}\n`;
-            msg += `*Status MKT:* ${s.validasi_by_mkt || 'Menunggu Verifikasi'}\n`;
-            msg += `*Status FA:* ${s.validasi_by_fa || 'Menunggu Verifikasi'}\n`;
+            msg += `*Status:* ${s.validasi_by_mkt || 'Menunggu Verifikasi'}\n`;
             const isEmptyVal = (v: string | null | undefined) => !v || v === '-' || v === 'BELUM_DIISI';
             if (!isEmptyVal(s.nama_jasa_pengiriman)) msg += `*Jasa Kirim:* ${s.nama_jasa_pengiriman}\n`;
             if (!isEmptyVal(s.nomor_resi)) msg += `*No Resi:* ${s.nomor_resi}\n`;
