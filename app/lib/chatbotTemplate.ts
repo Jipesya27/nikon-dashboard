@@ -76,7 +76,7 @@ export const DEFAULT_TEMPLATES: Record<string, TemplateInfo> = {
       label: 'Update Status Claim Promo',
       category: 'Claim',
       vars: ['nomor_seri', 'tipe_barang', 'status_mkt', 'status_fa', 'jasa_kirim', 'nomor_resi', 'catatan_mkt'],
-      template: 'Status Claim Promo Anda:\n\n{?nomor_seri}No Seri: {nomor_seri}\n{/?nomor_seri}{?tipe_barang}Barang: {tipe_barang}\n{/?tipe_barang}{?status_mkt}Status MKT: {status_mkt}\n{/?status_mkt}{?status_fa}Status FA: {status_fa}\n{/?status_fa}{?jasa_kirim}Jasa Kirim: {jasa_kirim}\n{/?jasa_kirim}{?nomor_resi}No Resi: {nomor_resi}\n{/?nomor_resi}{?catatan_mkt}Catatan MKT: {catatan_mkt}\n{/?catatan_mkt}\nTerima kasih.',
+      template: 'Status Claim Promo Anda:\n\n{?nomor_seri}No Seri: {nomor_seri}\n{/?nomor_seri}{?tipe_barang}Barang: {tipe_barang}\n{/?tipe_barang}{?status_mkt}Status MKT: {status_mkt}\n{/?status_mkt}{?status_fa}Status FA: {status_fa}\n{/?status_fa}{?jasa_kirim}Jasa Kirim: {jasa_kirim}\n{/?jasa_kirim}{?nomor_resi}No Resi: {nomor_resi}\n{/?nomor_resi}{?catatan_mkt}Catatan: {catatan_mkt}\n{/?catatan_mkt}\nTerima kasih.',
    },
    statusGaransi: {
       label: 'Update Status Garansi',
