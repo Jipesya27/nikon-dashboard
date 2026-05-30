@@ -414,7 +414,7 @@ export default function EventRegisterPage() {
                             {sisa! <= 3 ? '🔴 Hampir penuh!' : '🟠 Segera habis'}
                           </span>
                           <span className="text-[10px] font-bold text-gray-700">
-                            Sisa <span className={sisa! <= 3 ? 'text-red-600' : 'text-orange-600'}>{sisa}</span> / {totalStock} kursi
+                            Sisa <span className={sisa! <= 3 ? 'text-red-600' : 'text-orange-600'}>{sisa}</span> kursi
                           </span>
                         </div>
                         <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
