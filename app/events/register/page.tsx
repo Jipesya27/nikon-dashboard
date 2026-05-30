@@ -406,6 +406,26 @@ export default function EventRegisterPage() {
                       )}
                     </div>
 
+                    {/* Progress bar sisa slot — tampil jika kuota >= 70% terisi */}
+                    {tampilSisa && totalStock > 0 && (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-bold text-orange-600 uppercase tracking-wide">
+                            {sisa! <= 3 ? '🔴 Hampir penuh!' : '🟠 Segera habis'}
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-700">
+                            Sisa <span className={sisa! <= 3 ? 'text-red-600' : 'text-orange-600'}>{sisa}</span> / {totalStock} kursi
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${sisa! <= 3 ? 'bg-red-500' : 'bg-orange-400'}`}
+                            style={{ width: `${Math.min(persenTerisi * 100, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="mt-3 pt-3 border-t border-gray-100 flex items-end justify-between gap-2">
                       <div>
                         <p className="text-[10px] text-gray-500 font-semibold uppercase">Harga</p>
