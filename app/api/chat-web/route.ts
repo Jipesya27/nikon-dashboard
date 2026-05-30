@@ -209,11 +209,11 @@ export async function POST(req: NextRequest) {
             let msg = `Status Claim Promo:\n\n`;
             msg += `*No Seri:* ${s.nomor_seri || seriInput}\n`;
             msg += `*Barang:* ${s.tipe_barang || '-'}\n`;
-            msg += `*Status MKT:* ${s.validasi_by_mkt || 'Menunggu Verifikasi'}\n`;
-            msg += `*Status FA:* ${s.validasi_by_fa || 'Menunggu Verifikasi'}\n`;
+            if (['HOLD', 'Valid'].includes(s.validasi_by_mkt)) msg += `*Status MKT:* ${s.validasi_by_mkt}\n`;
+            if (s.validasi_by_fa === 'Valid') msg += `*Status FA:* ${s.validasi_by_fa}\n`;
             if (!isEmptyVal(s.nama_jasa_pengiriman)) msg += `*Jasa Kirim:* ${s.nama_jasa_pengiriman}\n`;
             if (!isEmptyVal(s.nomor_resi)) msg += `*No Resi:* ${s.nomor_resi}\n`;
-            if (!isEmptyVal(s.catatan_mkt)) msg += `*Catatan MKT:* ${s.catatan_mkt}\n`;
+            if (!isEmptyVal(s.catatan_mkt)) msg += `*Catatan:* ${s.catatan_mkt}\n`;
             msg += `\nKetik *MENU* untuk kembali ke menu utama.`;
             balasanBot = msg;
           } else {
