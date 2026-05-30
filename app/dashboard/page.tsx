@@ -228,7 +228,10 @@ export default function NikonDashboard() {
       if (mkt === 'tidak valid') return 'Merah';
       if (isPending(mkt)) return 'Putih';
       const hasResi = !!(c.nomor_resi && c.nomor_resi.trim() !== '' && c.nomor_resi.trim().toUpperCase() !== 'BELUM_DIISI');
-      if (hasResi) return 'Teal';
+      if (hasResi) {
+         const sudahKirim = !!(c.resi_sent_at) || (c.id_claim ? sentStatusClaimIds.has(c.id_claim) : false);
+         return sudahKirim ? 'Teal' : 'Hijau';
+      }
       if (mkt === 'valid' && fa === 'valid') return 'Pink';
       if (mkt === 'valid' && isPending(fa)) return 'Biru';
       if (mkt === 'hold' && fa !== 'valid') return 'Orange';
@@ -238,7 +241,7 @@ export default function NikonDashboard() {
    const getBadgeStyle = (color: string) => {
       switch(color) {
          case 'Teal': return 'bg-teal-100 text-teal-800 border border-teal-300';
-         case 'Hijau': return 'bg-green-100 text-green-800 border border-green-200';
+         case 'Hijau': return 'bg-green-100 text-green-800 border border-green-300';
          case 'Pink': return 'bg-pink-100 text-pink-800 border border-pink-200';
          case 'Biru': return 'bg-blue-100 text-blue-800 border border-blue-200';
          case 'Orange': return 'bg-orange-100 text-orange-800 border border-orange-200';
@@ -250,7 +253,7 @@ export default function NikonDashboard() {
    const getBadgeLabel = (color: string) => {
       switch(color) {
          case 'Teal': return '✅ Resi Terkirim';
-         case 'Hijau': return 'Selesai';
+         case 'Hijau': return '📦 Selesai';
          case 'Pink': return 'Tunggu Resi';
          case 'Biru': return 'Tunggu FA Cek';
          case 'Orange': return 'Hold';
@@ -1364,7 +1367,7 @@ export default function NikonDashboard() {
       // Hanya keluarkan data yang statusnya belum selesai (bukan Hijau) dan bukan Tidak Valid (Merah)
       const unfinishedClaims = claims.filter(c => {
          const color = getClaimStatusColor(c);
-         return color !== 'Teal' && color !== 'Merah';
+         return color !== 'Teal' && color !== 'Hijau' && color !== 'Merah';
       });
 
       const headers = ['id_claim', 'nomor_wa', 'nomor_seri', 'tipe_barang', 'tanggal_pembelian', 'link_nota_pembelian', 'link_kartu_garansi', 'validasi_by_mkt', 'validasi_by_fa', 'catatan_by_mkt', 'catatan_by_fa', 'nama_toko', 'nama_jasa_pengiriman', 'nomor_resi'];
@@ -2522,10 +2525,12 @@ export default function NikonDashboard() {
          nomor_resi: c.nomor_resi || '',
          catatan_mkt: c.catatan_mkt || '',
       });
+      const sentAt = new Date().toISOString();
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
-      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false, created_at: new Date().toISOString() } });
-      // Tandai "Resi Terkirim" HANYA jika status sekarang adalah Selesai (Teal)
-      if (c.id_claim && getClaimStatusColor(c) === 'Teal') {
+      await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: sentAt, bicara_dengan_cs: false, created_at: sentAt } });
+      // Simpan timestamp ke DB dan state
+      if (c.id_claim) {
+         await sbWrite({ action: 'update', table: 'claim_promo', match: { id_claim: c.id_claim }, data: { resi_sent_at: sentAt } });
          setSentStatusClaimIds(prev => new Set([...prev, c.id_claim!]));
       }
       alert('Pesan status berhasil dikirim!');
@@ -4258,6 +4263,7 @@ export default function NikonDashboard() {
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">Nota / Garansi</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">MKT / FA</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">Catatan MKT</th>
+                                    <th className="px-3 py-3 text-left font-bold text-gray-700">Kirim Status</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600 w-28">Cetak Label</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">Aksi</th>
                                  </tr>
@@ -4325,6 +4331,15 @@ export default function NikonDashboard() {
                                           <div className="text-gray-700 font-medium">FA: {c.validasi_by_fa}</div>
                                        </td>
                                        <td className="px-3 py-2.5 text-[11px] text-gray-600">{c.catatan_mkt || '-'}</td>
+                                       <td className="px-3 py-2.5 text-[11px] text-gray-600 whitespace-nowrap">
+                                          {c.resi_sent_at ? (
+                                             <span className="inline-flex flex-col gap-0.5">
+                                                <span className="text-teal-700 font-bold">✅ Terkirim</span>
+                                                <span className="text-gray-500">{new Date(c.resi_sent_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' })}</span>
+                                                <span className="text-gray-500">{new Date(c.resi_sent_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                                             </span>
+                                          ) : '-'}
+                                       </td>
                                        <td className="px-3 py-2.5">
                                           {(c.tanggal_cetak?.length ?? 0) > 0 ? (
                                              <div className="flex flex-col gap-0.5">
