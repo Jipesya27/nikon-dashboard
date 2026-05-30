@@ -331,6 +331,9 @@ export default function NikonDashboard() {
    const [editingId, setEditingId] = useState<string | null>(null);
    const [selectedWa, setSelectedWa] = useState<string | null>(null);
    const [replyText, setReplyText] = useState('');
+   const [quickReplyOpen, setQuickReplyOpen] = useState(false);
+   const [quickReplyFilter, setQuickReplyFilter] = useState('');
+   const replyInputRef = useRef<HTMLInputElement>(null);
    const [replyToMessage, setReplyToMessage] = useState<RiwayatPesan | null>(null);
    // Pagination riwayat chat per-kontak
    const [chatHasMore, setChatHasMore] = useState<Record<string, boolean>>({});
@@ -3868,9 +3871,67 @@ export default function NikonDashboard() {
                                        </button>
                                     </div>
                                  )}
-                                 <form onSubmit={handleSendReply} className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3 items-center">
+                                 {/* Quick Reply Dropdown */}
+                                 {quickReplyOpen && (() => {
+                                    const qrs = botSettings
+                                       .filter(b => b.nama_pengaturan?.startsWith('quick_reply:') && b.description)
+                                       .map(b => ({ shortcut: b.nama_pengaturan!.replace('quick_reply:', ''), text: b.description! }));
+                                    const defaultQr = [
+                                       { shortcut: 'halo', text: 'Halo! Terima kasih telah menghubungi Nikon Indonesia. Ada yang bisa saya bantu?' },
+                                       { shortcut: 'tunggu', text: 'Mohon tunggu sebentar, saya akan segera membantu Anda.' },
+                                       { shortcut: 'terima', text: 'Terima kasih sudah menghubungi kami. Semoga masalah Anda sudah teratasi. Sampai jumpa! 😊' },
+                                       { shortcut: 'jam', text: 'Jam operasional CS kami:\nSenin–Jumat: 10.00–16.00 WIB\nSabtu: 10.00–12.00 WIB' },
+                                    ];
+                                    const allQr = [...defaultQr, ...qrs];
+                                    const filtered = allQr.filter(q =>
+                                       !quickReplyFilter || q.shortcut.toLowerCase().includes(quickReplyFilter.toLowerCase()) || q.text.toLowerCase().includes(quickReplyFilter.toLowerCase())
+                                    );
+                                    if (!filtered.length) return null;
+                                    return (
+                                       <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-30 max-h-64 overflow-y-auto">
+                                          <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+                                             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">⚡ Quick Reply</span>
+                                             <span className="text-[10px] text-gray-400">— ketik untuk filter</span>
+                                          </div>
+                                          {filtered.map((q, i) => (
+                                             <button
+                                                key={i}
+                                                type="button"
+                                                onClick={() => { setReplyText(q.text); setQuickReplyOpen(false); setQuickReplyFilter(''); setTimeout(() => replyInputRef.current?.focus(), 50); }}
+                                                className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition border-b border-gray-50 last:border-0"
+                                             >
+                                                <div className="flex items-center gap-2">
+                                                   <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-mono">/{q.shortcut}</span>
+                                                   <span className="text-xs text-gray-700 truncate">{q.text}</span>
+                                                </div>
+                                             </button>
+                                          ))}
+                                       </div>
+                                    );
+                                 })()}
+                                 <form onSubmit={handleSendReply} className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3 items-center relative">
                                     <div className="flex-1 relative">
-                                       <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Ketik pesan..." className="w-full border-none bg-white text-gray-900 rounded-full px-5 py-2.5 text-sm outline-none shadow-inner focus:ring-2 focus:ring-[#FFE500]" />
+                                       <input
+                                          ref={replyInputRef}
+                                          type="text"
+                                          value={replyText}
+                                          onChange={e => {
+                                             const val = e.target.value;
+                                             setReplyText(val);
+                                             if (val.startsWith('/')) {
+                                                setQuickReplyFilter(val.slice(1));
+                                                setQuickReplyOpen(true);
+                                             } else {
+                                                setQuickReplyOpen(false);
+                                                setQuickReplyFilter('');
+                                             }
+                                          }}
+                                          onKeyDown={e => {
+                                             if (e.key === 'Escape') { setQuickReplyOpen(false); setQuickReplyFilter(''); }
+                                          }}
+                                          placeholder="Ketik pesan... (/ untuk quick reply)"
+                                          className="w-full border-none bg-white text-gray-900 rounded-full px-5 py-2.5 text-sm outline-none shadow-inner focus:ring-2 focus:ring-[#FFE500]"
+                                       />
                                     </div>
                                     <button type="submit" disabled={!replyText.trim()} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 transition shadow-md" aria-label="Kirim">
                                        <span className="text-xl">▶️</span>
@@ -5280,6 +5341,62 @@ export default function NikonDashboard() {
                {/* ======================= BOT SETTINGS ======================= */}
                {activeTab === 'botsettings' && (
                   <div className="space-y-6 animate-fade-in text-gray-900">
+
+                     {/* ── SEKSI QUICK REPLY ── */}
+                     {(() => {
+                        const qrItems = botSettings.filter(b => b.nama_pengaturan?.startsWith('quick_reply:'));
+                        const [qrShortcut, setQrShortcut] = React.useState('');
+                        const [qrText, setQrText] = React.useState('');
+                        const handleAddQr = async () => {
+                           if (!qrShortcut.trim() || !qrText.trim()) return;
+                           const key = `quick_reply:${qrShortcut.trim().toLowerCase().replace(/\s+/g, '_')}`;
+                           const existing = botSettings.find(b => b.nama_pengaturan === key);
+                           if (existing) {
+                              await sbWrite({ action: 'update', table: 'pengaturan_bot', match: { id: existing.id }, data: { description: qrText.trim() } });
+                           } else {
+                              await sbWrite({ action: 'insert', table: 'pengaturan_bot', data: { nama_pengaturan: key, description: qrText.trim(), url_file: null } });
+                           }
+                           setQrShortcut(''); setQrText('');
+                           fetchBotSettings();
+                        };
+                        return (
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+                           <div className="flex items-center gap-3">
+                              <span className="text-xl">⚡</span>
+                              <div>
+                                 <h2 className="text-base font-bold text-gray-900">Quick Reply CS</h2>
+                                 <p className="text-xs text-gray-500 mt-0.5">Pesan siap pakai — ketik <code className="bg-gray-100 px-1 rounded">/shortcut</code> di chat untuk menggunakannya.</p>
+                              </div>
+                           </div>
+                           {/* Tambah baru */}
+                           <div className="flex gap-2 items-start">
+                              <div className="w-32 shrink-0">
+                                 <label className="text-[10px] font-bold text-gray-500 uppercase">Shortcut</label>
+                                 <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden mt-1">
+                                    <span className="px-2 text-gray-400 font-mono text-sm">/</span>
+                                    <input type="text" value={qrShortcut} onChange={e => setQrShortcut(e.target.value)} placeholder="halo" className="flex-1 py-1.5 pr-2 text-sm outline-none min-w-0" />
+                                 </div>
+                              </div>
+                              <div className="flex-1">
+                                 <label className="text-[10px] font-bold text-gray-500 uppercase">Teks Balasan</label>
+                                 <textarea value={qrText} onChange={e => setQrText(e.target.value)} rows={2} placeholder="Halo! Ada yang bisa kami bantu?" className="w-full mt-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[#FFE500] resize-none" />
+                              </div>
+                              <button onClick={handleAddQr} disabled={!qrShortcut.trim() || !qrText.trim()} className="mt-5 bg-[#FFE500] text-black px-3 py-2 rounded-lg text-sm font-bold hover:bg-[#E5CE00] disabled:opacity-40 transition shrink-0">+ Tambah</button>
+                           </div>
+                           {/* Daftar */}
+                           <div className="space-y-2">
+                              {qrItems.length === 0 && <p className="text-xs text-gray-400 italic">Belum ada quick reply kustom. Default quick reply tetap tersedia.</p>}
+                              {qrItems.map(b => (
+                                 <div key={b.id} className="flex items-start gap-3 bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded font-mono shrink-0">/{b.nama_pengaturan!.replace('quick_reply:', '')}</span>
+                                    <p className="text-xs text-gray-700 flex-1 whitespace-pre-line">{b.description}</p>
+                                    <button onClick={async () => { await sbWrite({ action: 'delete', table: 'pengaturan_bot', match: { id: b.id } }); fetchBotSettings(); }} className="text-red-400 hover:text-red-600 text-xs shrink-0">Hapus</button>
+                                 </div>
+                              ))}
+                           </div>
+                        </div>
+                        );
+                     })()}
 
                      {/* ── SEKSI 0: Saluran Notifikasi ── */}
                      <div className="bg-white rounded-xl border-2 border-yellow-300 shadow-sm p-5 space-y-4">
