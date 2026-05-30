@@ -1364,7 +1364,7 @@ export default function NikonDashboard() {
       // Hanya keluarkan data yang statusnya belum selesai (bukan Hijau) dan bukan Tidak Valid (Merah)
       const unfinishedClaims = claims.filter(c => {
          const color = getClaimStatusColor(c);
-         return color !== 'Hijau' && color !== 'Merah';
+         return color !== 'Teal' && color !== 'Merah';
       });
 
       const headers = ['id_claim', 'nomor_wa', 'nomor_seri', 'tipe_barang', 'tanggal_pembelian', 'link_nota_pembelian', 'link_kartu_garansi', 'validasi_by_mkt', 'validasi_by_fa', 'catatan_by_mkt', 'catatan_by_fa', 'nama_toko', 'nama_jasa_pengiriman', 'nomor_resi'];
@@ -2524,8 +2524,8 @@ export default function NikonDashboard() {
       });
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
       await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false, created_at: new Date().toISOString() } });
-      // Tandai "Resi Terkirim" HANYA jika status sekarang adalah Selesai (Hijau)
-      if (c.id_claim && getClaimStatusColor(c) === 'Hijau') {
+      // Tandai "Resi Terkirim" HANYA jika status sekarang adalah Selesai (Teal)
+      if (c.id_claim && getClaimStatusColor(c) === 'Teal') {
          setSentStatusClaimIds(prev => new Set([...prev, c.id_claim!]));
       }
       alert('Pesan status berhasil dikirim!');
