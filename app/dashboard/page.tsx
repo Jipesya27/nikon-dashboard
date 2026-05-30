@@ -5499,6 +5499,7 @@ ADMIN_EMAIL=email_admin@gmail.com`}</pre>
                {activeTab === 'autocomplete' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (() => {
                   const AC_FIELDS = [
                      { key: 'tipe_barang', label: 'Tipe Barang', hint: 'Model kamera, lensa, aksesori' },
+                     { key: 'jenis_promosi', label: 'Jenis Promosi', hint: 'Opsi promosi di form claim (dropdown)' },
                      { key: 'nama_toko', label: 'Nama Toko / Dealer', hint: 'Nama toko resmi & tidak resmi' },
                      { key: 'nama_promo', label: 'Nama Promo', hint: 'Nama program promo aktif' },
                      { key: 'speaker', label: 'Speaker Event', hint: 'Nama pembicara event' },
@@ -5510,6 +5511,7 @@ ADMIN_EMAIL=email_admin@gmail.com`}</pre>
 
                   const rawDBMap: Record<string, (string | null | undefined)[]> = {
                      tipe_barang: [...claims.map(c => c.tipe_barang), ...warranties.map(w => w.tipe_barang)],
+                     jenis_promosi: claims.map(c => c.jenis_promosi),
                      nama_toko: claims.map(c => c.nama_toko),
                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                      nama_promo: promos.map((p: any) => p.nama_promo),
