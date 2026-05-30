@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendNotif } from '@/app/lib/notify';
+import { generateTicket } from '@/app/lib/generate-ticket';
 
 export const dynamic = 'force-dynamic';
 
@@ -163,6 +164,31 @@ export async function POST(req: Request) {
       if (!v) return NextResponse.json({ error: `Field '${k}' wajib diisi.` }, { status: 400 });
     }
 
+    // Ambil detail event lebih awal agar bisa cek payment_tipe sebelum validasi bukti
+    const supabase = getSupabase();
+    const { data: eventEarly } = await supabase
+      .from('events')
+      .select('event_payment_tipe')
+      .eq('id', event_id)
+      .maybeSingle();
+    const isGratis = eventEarly?.event_payment_tipe === 'gratis';
+
+    if (!isGratis && !fileBukti) {
+      return NextResponse.json({ error: 'Bukti transfer wajib diunggah.' }, { status: 400 });
+    }
+
+    // Validasi tipe dan ukuran file bukti transfer
+    const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+    if (!isGratis && fileBukti) {
+      if (!ALLOWED_MIME_TYPES.includes(fileBukti.type)) {
+        return NextResponse.json({ error: 'File bukti transfer: tipe tidak diizinkan. Gunakan JPG, PNG, WEBP, GIF, atau PDF.' }, { status: 400 });
+      }
+      if (fileBukti.size > MAX_FILE_SIZE) {
+        return NextResponse.json({ error: 'File bukti transfer: ukuran maksimal 10 MB.' }, { status: 400 });
+      }
+    }
+
     // Validasi panjang input
     if (nama_lengkap && nama_lengkap.length > 150) return NextResponse.json({ error: 'Nama terlalu panjang.' }, { status: 400 });
     if (email && email.length > 200) return NextResponse.json({ error: 'Email terlalu panjang.' }, { status: 400 });
@@ -178,7 +204,6 @@ export async function POST(req: Request) {
     }
 
     // Ambil detail event
-    const supabase = getSupabase();
     const { data: event } = await supabase
       .from('events')
       .select('id, event_title, event_status, event_partisipant_stock, event_payment_tipe, event_date')
@@ -218,32 +243,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nomor WhatsApp ini sudah terdaftar di event ini.' }, { status: 400 });
     }
 
-    const isGratis = event.event_payment_tipe === 'gratis';
-    const isDeposit = event.event_payment_tipe === 'deposit';
-
-    // Validasi bukti transfer (hanya untuk event berbayar)
-    if (!isGratis) {
-      if (!fileBukti) {
-        return NextResponse.json({ error: 'Bukti transfer wajib diunggah.' }, { status: 400 });
-      }
-      const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
-      const MAX_FILE_SIZE = 10 * 1024 * 1024;
-      if (!ALLOWED_MIME_TYPES.includes(fileBukti.type)) {
-        return NextResponse.json({ error: 'File bukti transfer: tipe tidak diizinkan. Gunakan JPG, PNG, WEBP, GIF, atau PDF.' }, { status: 400 });
-      }
-      if (fileBukti.size > MAX_FILE_SIZE) {
-        return NextResponse.json({ error: 'File bukti transfer: ukuran maksimal 10 MB.' }, { status: 400 });
-      }
-    }
-
     // Validasi deposit field
+    const isDeposit = event.event_payment_tipe === 'deposit';
     if (isDeposit && (!nama_bank || !no_rekening || !nama_pemilik_rekening)) {
       return NextResponse.json({
         error: 'Data rekening bank wajib diisi untuk event tipe deposit (untuk refund nanti).',
       }, { status: 400 });
     }
 
-    // Upload bukti transfer ke Drive (hanya untuk event berbayar)
+    // Upload bukti transfer ke Drive (skip untuk event gratis)
     let buktiUrl: string | null = null;
     if (!isGratis && fileBukti) {
       const accessToken = await getAccessToken();
@@ -252,30 +260,58 @@ export async function POST(req: Request) {
       buktiUrl = await uploadToDrive(fileBukti, fileName, accessToken);
     }
 
-    // Insert registrasi — event gratis langsung terdaftar, tipe bayar dipetakan ke 'regular'
-    const { error: insertError } = await supabase.from('event_registrations').insert({
-      event_id,
-      event_name: event.event_title,
-      nama_lengkap,
-      nomor_wa,
-      email,
-      tipe_kamera,
-      kabupaten_kotamadya,
-      payment_type: isGratis ? 'regular' : (event.event_payment_tipe || 'regular'),
-      bukti_transfer_url: buktiUrl,
-      status_pendaftaran: isGratis ? 'terdaftar' : 'menunggu_validasi',
-      nama_bank,
-      no_rekening,
-      nama_pemilik_rekening,
-    });
+    // Insert registrasi — select id untuk generate tiket gratis
+    const { data: inserted, error: insertError } = await supabase
+      .from('event_registrations')
+      .insert({
+        event_id,
+        event_name: event.event_title,
+        nama_lengkap,
+        nomor_wa,
+        email,
+        tipe_kamera,
+        kabupaten_kotamadya,
+        payment_type: event.event_payment_tipe || 'regular',
+        bukti_transfer_url: buktiUrl,
+        status_pendaftaran: isGratis ? 'terdaftar' : 'menunggu_validasi',
+        nama_bank,
+        no_rekening,
+        nama_pemilik_rekening,
+      })
+      .select('id')
+      .single();
 
     if (insertError) {
       return NextResponse.json({ error: 'Gagal menyimpan pendaftaran: ' + insertError.message }, { status: 500 });
     }
 
+    // Event gratis: generate tiket + QR otomatis (tidak ada step validate-payment)
+    let ticketUrl: string | null = null;
+    if (isGratis && inserted?.id) {
+      try {
+        const result = await generateTicket({
+          registrationId: inserted.id,
+          fullName: nama_lengkap,
+          nomorWa: nomor_wa,
+          eventTitle: event.event_title,
+          eventDate: event.event_date,
+          cameraModel: tipe_kamera,
+          paymentType: 'gratis',
+        });
+        ticketUrl = result.ticketUrl;
+        await supabase
+          .from('event_registrations')
+          .update({ ticket_url: ticketUrl })
+          .eq('id', inserted.id);
+      } catch (e) {
+        console.error('generateTicket gratis gagal:', e);
+        // non-fatal — registrasi tetap berhasil
+      }
+    }
+
     // Notif ke peserta & admin (channel: WA / Email / keduanya)
     const pesanWA = isGratis
-      ? `Halo ${nama_lengkap}, pendaftaran Anda untuk event ${event.event_title} telah dikonfirmasi! Sampai jumpa di acara. Terima kasih.`
+      ? `Halo ${nama_lengkap}, pendaftaran Anda untuk event ${event.event_title} telah berhasil! Status: *Terdaftar*. Event ini gratis — selamat datang!${ticketUrl ? `\n\nSilakan download tiket Anda di:\n${ticketUrl}\n\nTunjukkan tiket ini saat registrasi di lokasi acara.` : ''} Terima kasih.`
       : `Halo ${nama_lengkap}, pendaftaran Anda untuk event ${event.event_title} telah kami terima. Status: Menunggu Validasi. Kami akan memverifikasi bukti pembayaran Anda. Notifikasi konfirmasi akan dikirim dalam 1-2 hari kerja. Terima kasih.`;
     const pesanAdmin =
       `🔔 *Pendaftar Event Baru!*\n\n` +
@@ -286,7 +322,7 @@ export async function POST(req: Request) {
       `📷 *Kamera:* ${tipe_kamera}\n` +
       `📍 *Kota:* ${kabupaten_kotamadya}\n` +
       `⏰ *Waktu Daftar:* ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n\n` +
-      (isGratis ? `Status: *Terdaftar (Gratis — langsung diapprove)*` : `Status: *Menunggu Validasi* — silakan cek tab Event di dashboard.`);
+      `Status: *Menunggu Validasi* — silakan cek tab Event di dashboard.`;
 
     // konversi 08... ke 62... untuk WA
     const waTarget = nomor_wa.startsWith('0') ? '62' + nomor_wa.slice(1) : nomor_wa;
