@@ -1189,7 +1189,7 @@ export default function NikonDashboard() {
             if (tab === 'eventregistrations') tasks.push(fetchEventRegistrations());
             if (tab === 'konsumen')         tasks.push(fetchConsumers());
             if (tab === 'userrole')         tasks.push(fetchKaryawans());
-            if (tab === 'botsettings')      tasks.push(fetchBotSettings());
+            if (tab === 'botsettings' || tab === 'messages') tasks.push(fetchBotSettings());
             if (tab === 'autocomplete')     tasks.push(fetchAutocomplete());
             if (tab === 'affiliate')        tasks.push(fetchAffiliates());
             if (tasks.length > 0) await Promise.all(tasks);
@@ -3868,6 +3868,8 @@ export default function NikonDashboard() {
                                        </button>
                                     </div>
                                  )}
+                              </div>
+                              <div className="shrink-0 relative">
                                  {/* Quick Reply Dropdown */}
                                  {quickReplyOpen && (() => {
                                     const qrs = botSettings
