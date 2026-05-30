@@ -335,6 +335,7 @@ export default function NikonDashboard() {
    const [chatLoadingMore, setChatLoadingMore] = useState(false);
    // Toggle tampilkan pesan sistem (WA template, notifikasi otomatis)
    const [showSystemMessages, setShowSystemMessages] = useState(true);
+   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
    const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
    const [isScannerOpen, setIsScannerOpen] = useState(false);
    const [newChatWa, setNewChatWa] = useState('');
@@ -628,6 +629,17 @@ export default function NikonDashboard() {
       };
       el.addEventListener('wheel', handleWheel, { passive: false });
       return () => el.removeEventListener('wheel', handleWheel);
+   }, [selectedWa]);
+
+   useEffect(() => {
+      const el = chatContainerRef.current;
+      if (!el) return;
+      const handleScroll = () => {
+         const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+         setShowScrollToBottom(distFromBottom > 120);
+      };
+      el.addEventListener('scroll', handleScroll);
+      return () => el.removeEventListener('scroll', handleScroll);
    }, [selectedWa]);
 
    useEffect(() => {
@@ -2499,7 +2511,17 @@ export default function NikonDashboard() {
    const handleKirimStatusClaim = async (c: ClaimPromo) => {
 
       if (!window.confirm('Kirim status claim ke WA konsumen?')) return;
-      const msg = getText('statusClaim', { nomor_seri: c.nomor_seri, tipe_barang: c.tipe_barang, status_mkt: c.validasi_by_mkt, status_fa: c.validasi_by_fa, jasa_kirim: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '', catatan_mkt: c.catatan_mkt || '' });
+      const showMkt = ['HOLD', 'Valid'].includes(c.validasi_by_mkt || '');
+      const showFa  = c.validasi_by_fa === 'Valid';
+      const msg = getText('statusClaim', {
+         nomor_seri: c.nomor_seri,
+         tipe_barang: c.tipe_barang,
+         status_mkt: showMkt ? (c.validasi_by_mkt || '') : '',
+         status_fa:  showFa  ? (c.validasi_by_fa  || '') : '',
+         jasa_kirim: c.nama_jasa_pengiriman || '',
+         nomor_resi: c.nomor_resi || '',
+         catatan_mkt: c.catatan_mkt || '',
+      });
       await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
       await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false, created_at: new Date().toISOString() } });
       // Tandai "Resi Terkirim" HANYA jika status sekarang adalah Selesai (Hijau)
@@ -3853,6 +3875,16 @@ export default function NikonDashboard() {
                                     ) /* tutup branch ternary else */
                                  ))}
                                  <div ref={messagesEndRef} />
+                                 {showScrollToBottom && (
+                                    <button
+                                       onClick={scrollToBottom}
+                                       className="sticky bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 shadow-md text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-white transition z-10"
+                                       aria-label="Scroll ke bawah"
+                                    >
+                                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                                       Pesan terbaru
+                                    </button>
+                                 )}
                               </div>
                               <div className="shrink-0">
                                  {replyToMessage && (
