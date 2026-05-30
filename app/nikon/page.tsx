@@ -493,9 +493,8 @@ function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/nikon" className="flex-shrink-0 flex items-center cursor-pointer">
-            <span className="text-3xl font-black tracking-tighter text-white">
-              Nikon<span className="text-[#ffe000]">.</span>
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/nikon-yellow-logo.png" alt="Nikon" className="h-10 w-auto object-contain" />
           </Link>
 
           <div className="hidden md:flex items-center space-x-8">
@@ -712,7 +711,7 @@ function EventsSection() {
                   </span>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={ev.img} alt={ev.title}
-                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 grayscale hover:grayscale-0" />
+                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
                 </div>
                 <div className="p-6 md:w-3/5 flex flex-col justify-center">
                   <div className="flex items-center text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3 gap-2">
@@ -748,7 +747,7 @@ function EventsSection() {
                     {ev.event_image ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={ev.event_image} alt={ev.event_title}
-                        className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 grayscale hover:grayscale-0" />
+                        className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-zinc-800">
                         <span className="text-5xl">📸</span>
@@ -1112,6 +1111,9 @@ const SR_STYLE = `
     transition: opacity 0.55s ease, transform 0.55s ease;
   }
   .sr-scale.in { opacity: 1; transform: scale(1); }
+
+  /* Reset instan tanpa transition (hindari reverse animation saat scroll naik) */
+  .sr-instant { transition: none !important; }
 `;
 
 function useScrollReveal() {
@@ -1120,10 +1122,12 @@ function useScrollReveal() {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach(e => {
-          // tambah 'in' saat masuk viewport, hapus saat keluar → animasi berulang
           if (e.isIntersecting) {
+            e.target.classList.remove('sr-instant');
             e.target.classList.add('in');
           } else {
+            // Reset tanpa transition agar re-animasi saat masuk kembali
+            e.target.classList.add('sr-instant');
             e.target.classList.remove('in');
           }
         });
