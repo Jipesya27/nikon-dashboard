@@ -126,11 +126,24 @@ export default function AdminEventsPage() {
   };
 
   const counts = {
-    all: registrations.length,
-    menunggu_validasi: registrations.filter(r => r.status_pendaftaran === 'menunggu_validasi').length,
-    terdaftar: registrations.filter(r => r.status_pendaftaran === 'terdaftar').length,
-    ditolak: registrations.filter(r => r.status_pendaftaran === 'ditolak').length,
+    all: filtered.length,
+    menunggu_validasi: filtered.filter(r => r.status_pendaftaran === 'menunggu_validasi').length,
+    terdaftar: filtered.filter(r => r.status_pendaftaran === 'terdaftar').length,
+    ditolak: filtered.filter(r => r.status_pendaftaran === 'ditolak').length,
   };
+
+  const eventStats = uniqueEvents
+    .map(ev => {
+      const evRegs = registrations.filter(r => r.event_name === ev);
+      return {
+        name: ev,
+        total: evRegs.length,
+        terdaftar: evRegs.filter(r => r.status_pendaftaran === 'terdaftar').length,
+        menunggu: evRegs.filter(r => r.status_pendaftaran === 'menunggu_validasi').length,
+        ditolak: evRegs.filter(r => r.status_pendaftaran === 'ditolak').length,
+      };
+    })
+    .sort((a, b) => b.total - a.total);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
@@ -167,7 +180,7 @@ export default function AdminEventsPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Total Pendaftar', value: counts.all, color: 'text-gray-900', border: 'border-l-gray-400', bg: 'bg-white' },
+            { label: filterEvent !== 'all' ? 'Peserta Event Ini' : 'Total Pendaftar', value: counts.all, color: 'text-gray-900', border: 'border-l-gray-400', bg: 'bg-white' },
             { label: 'Menunggu Validasi', value: counts.menunggu_validasi, color: 'text-yellow-600', border: 'border-l-yellow-400', bg: 'bg-white' },
             { label: 'Terdaftar', value: counts.terdaftar, color: 'text-green-600', border: 'border-l-green-400', bg: 'bg-white' },
             { label: 'Ditolak', value: counts.ditolak, color: 'text-red-600', border: 'border-l-red-400', bg: 'bg-white' },
@@ -177,6 +190,55 @@ export default function AdminEventsPage() {
               <p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.value}</p>
             </div>
           ))}
+        </div>
+
+        {/* Jumlah Peserta per Event */}
+        <div className="mb-6">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Jumlah Peserta per Event</h2>
+          <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm bg-white">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50 text-left">
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Event</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-green-600 uppercase tracking-wider text-right">Terdaftar</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-yellow-600 uppercase tracking-wider text-right">Menunggu</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-red-500 uppercase tracking-wider text-right">Ditolak</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {eventStats.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-gray-400">Belum ada data event.</td>
+                  </tr>
+                ) : eventStats.map(ev => (
+                  <tr
+                    key={ev.name}
+                    className={`transition-colors ${filterEvent === ev.name ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}
+                  >
+                    <td className="px-4 py-3 font-medium text-gray-900 max-w-xs truncate">{ev.name}</td>
+                    <td className="px-4 py-3 text-right font-bold text-gray-900">{ev.total}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-green-700">{ev.terdaftar}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-yellow-700">{ev.menunggu}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-red-600">{ev.ditolak}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => setFilterEvent(filterEvent === ev.name ? 'all' : ev.name)}
+                        className={`text-xs px-3 py-1 rounded-lg border font-medium transition-all ${
+                          filterEvent === ev.name
+                            ? 'bg-[#FFE800] border-yellow-400 text-gray-900'
+                            : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
+                        }`}
+                      >
+                        {filterEvent === ev.name ? 'Reset' : 'Filter'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Filters */}
