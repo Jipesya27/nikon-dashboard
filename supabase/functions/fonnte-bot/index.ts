@@ -306,7 +306,7 @@ serve(async (req)=>{
               if (!isOperatingHours()) {
                 balasanBot = getMsg('CS_OFFLINE', "Mohon maaf waktu operasional CS adalah :\nSenin-Jumat : 10.00-16.00 WIB\nSabtu : 10.00-12.00 WIB\n\nPesan Anda akan kami balas pada hari dan jam operasional.");
               } else {
-                balasanBot = getMsg('CS_WAITING', "Mohon tunggu, kami sedang menugaskan CS untuk melayani Anda.");
+                balasanBot = getMsg('CS_WAITING', "Mohon tunggu, kami sedang menugaskan CS untuk melayani Anda.\n\nJam operasional CS:\nSenin-Jumat : 10.00-16.00 WIB\nSabtu : 10.00-12.00 WIB\n\nHari libur nasional dan tanggal merah LIBUR");
                 await supabase.from('konsumen').update({
                   status_langkah: 'TALKING_TO_CS'
                 }).eq('nomor_wa', nomorPengirim);
