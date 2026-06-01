@@ -909,6 +909,20 @@ function WebChatWidget() {
 
   return (
     <>
+      {/* Floating back button — always visible on mobile when chat is open */}
+      {open && (
+        <button
+          onClick={() => setOpen(false)}
+          className="fixed top-3 left-3 z-[70] md:hidden flex items-center gap-1.5 bg-zinc-900/95 border border-zinc-700 text-white text-sm px-3 py-2 shadow-lg backdrop-blur-sm active:scale-95 transition-transform"
+          aria-label="Tutup chat"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+          Kembali
+        </button>
+      )}
+
       {open && (
         <div
           className="fixed bottom-24 right-4 sm:right-6 z-[60] w-[calc(100vw-2rem)] max-w-[22rem] bg-zinc-950 border border-zinc-800 shadow-2xl flex flex-col overflow-hidden"
