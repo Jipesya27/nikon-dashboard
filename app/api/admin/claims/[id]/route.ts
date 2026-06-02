@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 import { sendNotif } from '@/app/lib/notify';
+import { getAuditUser, writeAuditLog } from '@/app/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +16,8 @@ function getSupabase() {
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = getSupabase();
+    const cookieStore = await cookies();
+    const auditUser = getAuditUser(cookieStore);
     const { id } = await params;
     const body = await req.json() as Record<string, string>;
 
@@ -31,6 +35,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .single();
 
     if (error) throw error;
+
+    void writeAuditLog({ user_name: auditUser, action: 'update', table_name: 'claim_promo', record_id: id, new_values: update });
 
     // Kirim notif ke konsumen jika status final
     const status = body.validasi_by_mkt || body.validasi_by_fa;

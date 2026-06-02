@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 import { generateTicket } from '@/app/lib/generate-ticket';
 import { sendWATemplate, sendNotif } from '@/app/lib/notify';
+import { getAuditUser, writeAuditLog } from '@/app/lib/audit';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -97,6 +99,8 @@ function buildRejectionEmailHtml(opts: { nama: string; eventTitle: string; reaso
 
 export async function POST(req: NextRequest) {
   try {
+    const cookieStore = await cookies();
+    const auditUser = getAuditUser(cookieStore);
     const { registrationId, action, rejectionReason } = await req.json();
 
     if (!registrationId || !action) {
@@ -127,6 +131,8 @@ export async function POST(req: NextRequest) {
         .from('event_registrations')
         .update({ status_pendaftaran: 'ditolak', rejection_reason: rejectionReason || null })
         .eq('id', registrationId);
+
+      void writeAuditLog({ user_name: auditUser, action: 'reject_payment', table_name: 'event_registrations', record_id: registrationId, new_values: { status_pendaftaran: 'ditolak', rejection_reason: rejectionReason || null } });
 
       // WA (Meta template) + Email (via channel settings)
       await Promise.allSettled([
@@ -171,6 +177,8 @@ export async function POST(req: NextRequest) {
       .from('event_registrations')
       .update({ status_pendaftaran: 'terdaftar', ticket_url: ticketUrl })
       .eq('id', registrationId);
+
+    void writeAuditLog({ user_name: auditUser, action: 'approve_payment', table_name: 'event_registrations', record_id: registrationId, new_values: { status_pendaftaran: 'terdaftar', ticket_url: ticketUrl } });
 
     // WA (Meta template) + Email (via channel settings)
     await Promise.allSettled([
