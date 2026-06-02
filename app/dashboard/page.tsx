@@ -354,6 +354,7 @@ export default function NikonDashboard() {
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
    const [eventForm, setEventForm] = useState<Partial<EventData>>({});
    const [eventImageFile, setEventImageFile] = useState<File | null>(null);
+   const [budgetEventImageFile, setBudgetEventImageFile] = useState<File | null>(null);
    const [registrationForm, setRegistrationForm] = useState<Partial<EventRegistration>>({});
 
    // AFFILIATE
@@ -1818,6 +1819,7 @@ export default function NikonDashboard() {
       setEventForm({ status: 'aktif', stock: 0 });
       setRegistrationForm({ status: 'Pending Payment' });
       setEventImageFile(null);
+      setBudgetEventImageFile(null);
       setEditingId(null);
       setLendingFotoPenerimaanFiles([]);
       setLendingFotoPengembalianFiles([]);
@@ -2070,7 +2072,6 @@ export default function NikonDashboard() {
    const handleSaveBudget = async (e: React.FormEvent) => {
       e.preventDefault(); setIsSubmitting(true);
       try {
-         // Refresh proposal_no kalau create & belum di-set ATAU minta regenerate timestamp baru saat save
          if (modalAction === 'create' && !budgetForm.proposal_no) {
             budgetForm.proposal_no = generateProposalNo();
          }
@@ -2081,7 +2082,6 @@ export default function NikonDashboard() {
             const item = finalUrls[i];
             if (item instanceof File) {
                const uploadedUrl = await uploadFileToStorage(item, 'BudgetApproval', budgetForm.proposal_no || 'UNKN');
-               // Hapus yang lama jika ada
                if (original?.attachment_urls?.[i]) await deleteFileFromStorage(original.attachment_urls[i] as string);
                finalUrls[i] = uploadedUrl;
             } else if (item === null && original?.attachment_urls?.[i]) {
@@ -2089,13 +2089,77 @@ export default function NikonDashboard() {
             }
          }
 
-         const dataToSave = { ...budgetForm, attachment_urls: finalUrls };
+         // Upload poster event jika ada file baru
+         let finalEventImage = budgetForm.event_image || '';
+         if (budgetEventImageFile) {
+            finalEventImage = await uploadFileToStorage(budgetEventImageFile, 'EventPoster', String(budgetForm.title || 'poster').replace(/\s+/g, '_'));
+         }
+
+         const dataToSave = { ...budgetForm, attachment_urls: finalUrls, event_image: finalEventImage };
+
          if (modalAction === 'create') {
-            const { error } = await sbWrite({ action: 'insert', table: 'budget_approval', data: dataToSave });
+            // 1. Simpan proposal
+            const { data: newBudgets, error } = await sbWrite<{ id_budget: string }>({
+               action: 'insert', table: 'budget_approval', data: dataToSave, select: 'id_budget'
+            });
             if (error) throw new Error(error.message);
+            const newBudgetId = newBudgets?.[0]?.id_budget;
+
+            // 2. Auto-buat Daftar Event
+            const eventPayload = {
+               event_title: budgetForm.title,
+               event_date: budgetForm.event_date || '',
+               event_image: finalEventImage,
+               event_price: '0',
+               event_partisipant_stock: 0,
+               event_status: 'draft',
+               event_description: budgetForm.objectives || '',
+               event_payment_tipe: 'regular',
+            };
+            const { data: newEvents, error: evErr } = await sbWrite<{ id: string }>({
+               action: 'insert', table: 'events', data: eventPayload, select: 'id'
+            });
+            if (evErr) throw new Error(evErr.message);
+            const newEventId = newEvents?.[0]?.id;
+
+            // 3. Auto-buat Report Event
+            if (newEventId) {
+               await fetch('/api/event-reports', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                     eventId: newEventId,
+                     report: { title: budgetForm.title, event_date: budgetForm.event_date, event_image: finalEventImage }
+                  })
+               });
+               // 4. Simpan linked_event_id di proposal
+               if (newBudgetId) {
+                  await sbWrite({ action: 'update', table: 'budget_approval', data: { linked_event_id: newEventId }, match: { id_budget: newBudgetId } });
+               }
+            }
+            fetchEvents();
          } else {
             const { error } = await sbWrite({ action: 'update', table: 'budget_approval', data: dataToSave, match: { id_budget: editingId } });
             if (error) throw new Error(error.message);
+
+            // Sync field sinkronisasi ke Daftar Event & Report Event yang terhubung
+            const linkedId = budgetForm.linked_event_id;
+            if (linkedId) {
+               await sbWrite({
+                  action: 'update', table: 'events',
+                  data: { event_title: budgetForm.title, event_date: budgetForm.event_date || '', event_image: finalEventImage },
+                  match: { id: linkedId }
+               });
+               await fetch('/api/event-reports', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                     eventId: linkedId,
+                     report: { title: budgetForm.title, event_date: budgetForm.event_date, event_image: finalEventImage }
+                  })
+               });
+               fetchEvents();
+            }
          }
 
          fetchBudgets(); closeModal();
@@ -7124,8 +7188,23 @@ ${pages.join('')}
                                              />
                                           </div>
                                           <div className="md:col-span-2">
-                                             <label className="label-form">Judul Proposal *</label>
-                                             <input type="text" required value={budgetForm.title || ''} onChange={e => setBudgetForm({ ...budgetForm, title: e.target.value })} className="input-form" placeholder="Contoh: Anggaran Event Photo Walk Q3 2026" />
+                                             <label className="label-form">Nama Event *</label>
+                                             <input type="text" required value={budgetForm.title || ''} onChange={e => setBudgetForm({ ...budgetForm, title: e.target.value })} className="input-form" placeholder="Contoh: Photo Walk Q3 2026" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Tanggal Event</label>
+                                             <input type="date" value={budgetForm.event_date || ''} onChange={e => setBudgetForm({ ...budgetForm, event_date: e.target.value })} className="input-form" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Poster / Gambar Event</label>
+                                             {budgetForm.event_image && !budgetEventImageFile && (
+                                                <div className="mb-2 flex items-center gap-2">
+                                                   {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                   <img src={budgetForm.event_image} alt="Poster" className="h-14 w-auto rounded border object-contain" />
+                                                   <button type="button" onClick={() => setBudgetForm({ ...budgetForm, event_image: '' })} className="text-xs text-red-500 hover:underline">Hapus</button>
+                                                </div>
+                                             )}
+                                             <input type="file" accept="image/*" onChange={e => setBudgetEventImageFile(e.target.files?.[0] || null)} className="input-form text-sm" />
                                           </div>
                                           <div>
                                              <label className="label-form">Periode</label>
