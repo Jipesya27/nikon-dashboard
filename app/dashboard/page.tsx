@@ -690,25 +690,13 @@ export default function NikonDashboard() {
          .catch((e: Error) => setDealerError(e.message))
          .finally(() => setDealerLoading(false));
    }, [activeTab, dealerSheet, dealerLoading]);
+   // Tandai terbaca saat kontak dibuka — gunakan waktu sekarang agar semua pesan
+   // yang sudah terlihat dianggap terbaca (menghindari inkonsistensi waktu_pesan vs created_at)
    useEffect(() => {
-      if (selectedWa && messages.length > 0) {
-         const contactMessages = messages.filter(m => m.nomor_wa === selectedWa);
-         if (contactMessages.length > 0) {
-            const latestTime = contactMessages[0].waktu_pesan || contactMessages[0].created_at;
-            if (latestTime) {
-               // eslint-disable-next-line react-hooks/set-state-in-effect
-               setReadStatus(prev => {
-                  const currentSaved = prev[selectedWa];
-                  // Update only if we have a newer message
-                  if (!currentSaved || new Date(latestTime) > new Date(currentSaved)) {
-                     return { ...prev, [selectedWa]: latestTime as string };
-                  }
-                  return prev;
-               });
-            }
-         }
-      }
-   }, [selectedWa, messages]);
+      if (!selectedWa) return;
+      const now = new Date().toISOString();
+      setReadStatus(prev => ({ ...prev, [selectedWa]: now }));
+   }, [selectedWa]);
 
    // --- FETCH DATA ---
    const fetchConsumers = async () => {
