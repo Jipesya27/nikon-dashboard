@@ -3071,10 +3071,10 @@ export default function NikonDashboard() {
       {
          category: 'Event',
          tabs: [
-            { id: 'events', label: '📅 Master Event', count: events.length },
-            { id: 'eventregistrations', label: '👥 Data Peserta', count: eventRegistrations.length },
-            { id: 'budgets', label: '💳 Proposal Event', count: budgets.length },
-            { id: 'eventreport', label: '📊 Report Event', count: undefined },
+            { id: 'budgets', label: '💳 1. Proposal Event', count: budgets.length },
+            { id: 'events', label: '📅 2. Daftar Event', count: events.length },
+            { id: 'eventregistrations', label: '👥 3. Data Peserta', count: eventRegistrations.length },
+            { id: 'eventreport', label: '📊 4. Report Event (SG)', count: undefined },
          ]
       },
       {
