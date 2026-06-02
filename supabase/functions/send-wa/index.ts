@@ -20,7 +20,7 @@ serve(async (req) => {
   }
 
   try {
-    const { target, message, templateName, params } = await req.json();
+    const { target, message, templateName, params, mediaUrl, mediaType } = await req.json();
 
     if (!target) {
       return new Response(
@@ -48,11 +48,23 @@ serve(async (req) => {
             : [],
         },
       };
+    } else if (mediaUrl) {
+      // Media message (image / document / video)
+      const type: string = mediaType || 'image';
+      const mediaBody: Record<string, string> = { link: mediaUrl };
+      if (message) mediaBody.caption = message;
+      if (type === 'document') mediaBody.filename = mediaBody.filename || 'file';
+      body = {
+        messaging_product: 'whatsapp',
+        to,
+        type,
+        [type]: mediaBody,
+      };
     } else {
       // Free-form message — hanya dalam 24-jam customer service window
       if (!message) {
         return new Response(
-          JSON.stringify({ error: "message atau templateName wajib diisi" }),
+          JSON.stringify({ error: "message, mediaUrl, atau templateName wajib diisi" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }

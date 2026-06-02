@@ -327,7 +327,11 @@ export default function NikonDashboard() {
    const [quickReplyOpen, setQuickReplyOpen] = useState(false);
    const [quickReplyFilter, setQuickReplyFilter] = useState('');
    const replyInputRef = useRef<HTMLInputElement>(null);
+   const chatFileInputRef = useRef<HTMLInputElement>(null);
    const [replyToMessage, setReplyToMessage] = useState<RiwayatPesan | null>(null);
+   const [mediaFile, setMediaFile] = useState<File | null>(null);
+   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
    // Pagination riwayat chat per-kontak
    const [chatHasMore, setChatHasMore] = useState<Record<string, boolean>>({});
    const [chatLoadedCount, setChatLoadedCount] = useState<Record<string, number>>({});
@@ -2445,9 +2449,55 @@ export default function NikonDashboard() {
       else { await sbWrite({ action: 'delete', table: 'budget_approval', match: { id_budget: id } }); fetchBudgets(); }
    };
 
+   const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setMediaFile(file);
+      if (file.type.startsWith('image/')) {
+         const reader = new FileReader();
+         reader.onload = ev => setMediaPreview(ev.target?.result as string);
+         reader.readAsDataURL(file);
+      } else {
+         setMediaPreview(null);
+      }
+      e.target.value = '';
+   };
+
    const handleSendReply = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!selectedWa || !replyText.trim()) return;
+      if (!selectedWa) return;
+
+      // --- Kirim media jika ada file dipilih ---
+      if (mediaFile) {
+         setIsUploadingMedia(true);
+         try {
+            const url = await uploadFileToStorage(mediaFile, 'ChatMedia', selectedWa);
+            const isImage = mediaFile.type.startsWith('image/');
+            const isVideo = mediaFile.type.startsWith('video/');
+            const mediaType = isImage ? 'image' : isVideo ? 'video' : 'document';
+            const isiPesan = replyText.trim() || (isImage ? '[image]' : isVideo ? '[video]' : '[document]');
+            const now = new Date().toISOString();
+            const tempId = `__opt_${now}`;
+            const optimisticMsg: RiwayatPesan = {
+               id_pesan: tempId, nomor_wa: selectedWa,
+               nama_profil_wa: getRealProfileName(selectedWa),
+               arah_pesan: 'OUT', isi_pesan: isiPesan,
+               url_media: url, waktu_pesan: now, bicara_dengan_cs: false, created_at: now,
+            };
+            setMessages(prev => [optimisticMsg, ...prev]);
+            setMediaFile(null); setMediaPreview(null); setReplyText('');
+            setTimeout(scrollToBottom, 50);
+            await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: isiPesan, url_media: url, waktu_pesan: now, bicara_dengan_cs: false, created_at: now } });
+            supabase.functions.invoke('send-wa', { body: { target: selectedWa, mediaUrl: url, mediaType, message: replyText.trim() || undefined } }).catch(console.error);
+         } catch (err) {
+            alert('Gagal mengirim file: ' + (err as Error).message);
+         } finally {
+            setIsUploadingMedia(false);
+         }
+         return;
+      }
+
+      if (!replyText.trim()) return;
       let fullMessage = replyText.trim();
       if (replyToMessage) {
          const quotedText = replyToMessage.isi_pesan.length > 80 ? replyToMessage.isi_pesan.substring(0, 80) + '...' : replyToMessage.isi_pesan;
@@ -3719,6 +3769,18 @@ export default function NikonDashboard() {
                            const isPinned = pinnedChats.includes(selectedWa);
                            return (
                            <>
+                              {/* Floating back button — fixed ke viewport, selalu terlihat di mobile */}
+                              <button
+                                 onClick={() => setSelectedWa(null)}
+                                 className="md:hidden fixed top-20 left-3 z-[200] flex items-center gap-1.5 bg-white/95 border border-gray-300 text-gray-800 text-sm font-semibold px-3 py-2 rounded-full shadow-lg backdrop-blur-sm active:scale-95 transition-transform"
+                                 aria-label="Kembali ke daftar chat"
+                              >
+                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M19 12H5M12 5l-7 7 7 7"/>
+                                 </svg>
+                                 Kembali
+                              </button>
+
                               <div className="px-4 py-2.5 bg-white border-b border-gray-200 flex justify-between items-center shrink-0 z-10">
                                  <div className="flex items-center gap-3 min-w-0 flex-1">
                                     <button aria-label="Kembali" onClick={() => setSelectedWa(null)} className="md:hidden p-1 -ml-2 text-gray-700 hover:bg-gray-200 rounded-full transition shrink-0">
@@ -3765,7 +3827,7 @@ export default function NikonDashboard() {
                                     >{selectedTag === 'resolved' ? 'Reopen' : 'Resolve'}</button>
                                  </div>
                               </div>
-                              <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto space-y-3 relative scroll-smooth bg-[url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')] bg-size-[400px] bg-repeat">
+                              <div ref={chatContainerRef} className="flex-1 px-4 py-5 overflow-y-auto space-y-1.5 relative scroll-smooth bg-white">
                                  {/* Tombol muat pesan lebih lama */}
                                  {selectedWa && chatHasMore[selectedWa] && (
                                     <div className="flex justify-center mb-1">
@@ -3776,7 +3838,7 @@ export default function NikonDashboard() {
                                              setChatLoadingMore(false);
                                           }}
                                           disabled={chatLoadingMore}
-                                          className="bg-white/80 backdrop-blur-sm text-gray-600 text-xs px-4 py-1.5 rounded-full shadow-sm hover:bg-white border border-gray-200 disabled:opacity-50 transition"
+                                          className="bg-[#e9edef] text-gray-600 text-xs px-4 py-1.5 rounded-full shadow-sm hover:bg-gray-200 border border-gray-200 disabled:opacity-50 transition"
                                        >
                                           {chatLoadingMore ? '⏳ Memuat...' : '↑ Muat pesan lebih lama'}
                                        </button>
@@ -3786,7 +3848,7 @@ export default function NikonDashboard() {
                                     msg.jenis_pesan === 'system' ? (
                                        /* Pesan sistem: pill abu-abu di tengah, tidak bisa dibalas */
                                        <div key={msg.id_pesan || index} className="flex justify-center">
-                                          <div className="bg-black/10 backdrop-blur-sm text-gray-700 text-[11px] px-3 py-1 rounded-full shadow-sm max-w-[85%] text-center leading-relaxed">
+                                          <div className="bg-[#e9edef] text-gray-600 text-[11px] px-3 py-1 rounded-full shadow-sm max-w-[85%] text-center leading-relaxed">
                                              <span className="mr-1 opacity-70">🤖</span>
                                              <span>{msg.isi_pesan}</span>
                                              <span className="ml-2 text-gray-500 text-[9px]">
@@ -3795,8 +3857,8 @@ export default function NikonDashboard() {
                                           </div>
                                        </div>
                                     ) : (
-                                    <div key={msg.id_pesan || index} className={`group flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
-                                       <div className={`max-w-[85%] md:max-w-[70%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'}`}>
+                                    <div key={msg.id_pesan || index} className={`group flex items-end gap-1 ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
+                                       <div className={`max-w-[85%] md:max-w-[72%] px-3 py-2 text-sm relative shadow-[0_1px_2px_rgba(0,0,0,0.13)] ${msg.arah_pesan === 'OUT' ? 'bg-[#dcf8c6] text-gray-900 rounded-t-2xl rounded-bl-2xl rounded-br-sm' : 'bg-white text-gray-900 rounded-t-2xl rounded-br-2xl rounded-bl-sm border border-gray-100'}`}>
                                           <button
                                              onClick={() => setReplyToMessage(msg)}
                                              className={`absolute top-1 ${msg.arah_pesan === 'OUT' ? '-left-8' : '-right-8'} opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-gray-200`}
@@ -3832,7 +3894,7 @@ export default function NikonDashboard() {
                                           ) : (
                                              <p className="whitespace-pre-wrap leading-relaxed font-medium">{msg.isi_pesan}</p>
                                           )}
-                                          <div className="text-[9px] mt-1 text-right text-gray-500 font-bold">
+                                          <div className="text-[10px] mt-1.5 text-right text-gray-400 select-none">
                                              {(() => {
                                                 const d = new Date(msg.waktu_pesan || msg.created_at || 0);
                                                 return isNaN(d.getTime()) ? '-' : `${d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
@@ -3908,34 +3970,66 @@ export default function NikonDashboard() {
                                        </div>
                                     );
                                  })()}
-                                 <form onSubmit={handleSendReply} className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3 items-center relative">
-                                    <div className="flex-1 relative">
-                                       <input
-                                          ref={replyInputRef}
-                                          type="text"
-                                          value={replyText}
-                                          onChange={e => {
-                                             const val = e.target.value;
-                                             setReplyText(val);
-                                             if (val.startsWith('/')) {
-                                                setQuickReplyFilter(val.slice(1));
-                                                setQuickReplyOpen(true);
-                                             } else {
-                                                setQuickReplyOpen(false);
-                                                setQuickReplyFilter('');
-                                             }
-                                          }}
-                                          onKeyDown={e => {
-                                             if (e.key === 'Escape') { setQuickReplyOpen(false); setQuickReplyFilter(''); }
-                                          }}
-                                          placeholder="Ketik pesan... (/ untuk quick reply)"
-                                          className="w-full border-none bg-white text-gray-900 rounded-full px-5 py-2.5 text-sm outline-none shadow-inner focus:ring-2 focus:ring-[#FFE500]"
-                                       />
-                                    </div>
-                                    <button type="submit" disabled={!replyText.trim()} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 transition shadow-md" aria-label="Kirim">
-                                       <span className="text-xl">▶️</span>
-                                    </button>
-                                 </form>
+                                 <div className="shrink-0 bg-gray-50 border-t border-gray-100">
+                                    {/* Preview file sebelum dikirim */}
+                                    {mediaFile && (
+                                       <div className="px-4 pt-3 pb-1 flex items-start gap-3">
+                                          <div className="flex-1 bg-white rounded-xl border border-gray-200 p-2.5 flex items-center gap-3 shadow-sm">
+                                             {mediaPreview ? (
+                                                <img src={mediaPreview} alt="preview" className="w-14 h-14 object-cover rounded-lg shrink-0" />
+                                             ) : (
+                                                <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
+                                                   <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                </div>
+                                             )}
+                                             <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-semibold text-gray-800 truncate">{mediaFile.name}</p>
+                                                <p className="text-[10px] text-gray-400 mt-0.5">{(mediaFile.size / 1024).toFixed(0)} KB</p>
+                                             </div>
+                                             <button onClick={() => { setMediaFile(null); setMediaPreview(null); }} className="p-1 text-gray-400 hover:text-red-500 transition shrink-0" aria-label="Hapus file">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                             </button>
+                                          </div>
+                                       </div>
+                                    )}
+                                    <form onSubmit={handleSendReply} className="p-4 flex gap-2 items-center relative">
+                                       {/* Tombol attach file */}
+                                       <input ref={chatFileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" className="hidden" onChange={handleMediaSelect} />
+                                       <button type="button" onClick={() => chatFileInputRef.current?.click()} className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition shrink-0" aria-label="Kirim file">
+                                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                       </button>
+                                       <div className="flex-1 relative">
+                                          <input
+                                             ref={replyInputRef}
+                                             type="text"
+                                             value={replyText}
+                                             onChange={e => {
+                                                const val = e.target.value;
+                                                setReplyText(val);
+                                                if (val.startsWith('/')) {
+                                                   setQuickReplyFilter(val.slice(1));
+                                                   setQuickReplyOpen(true);
+                                                } else {
+                                                   setQuickReplyOpen(false);
+                                                   setQuickReplyFilter('');
+                                                }
+                                             }}
+                                             onKeyDown={e => {
+                                                if (e.key === 'Escape') { setQuickReplyOpen(false); setQuickReplyFilter(''); }
+                                             }}
+                                             placeholder={mediaFile ? "Tambah keterangan (opsional)..." : "Ketik pesan... (/ untuk quick reply)"}
+                                             className="w-full border-none bg-white text-gray-900 rounded-full px-5 py-2.5 text-sm outline-none shadow-inner focus:ring-2 focus:ring-[#FFE500]"
+                                          />
+                                       </div>
+                                       <button type="submit" disabled={(!replyText.trim() && !mediaFile) || isUploadingMedia} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 transition shadow-md shrink-0" aria-label="Kirim">
+                                          {isUploadingMedia ? (
+                                             <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                                          ) : (
+                                             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                                          )}
+                                       </button>
+                                    </form>
+                                 </div>
                               </div>
                            </>
                            );

@@ -302,11 +302,14 @@ serve(async (req)=>{
               const { data: pengaturan } = await supabase.from('pengaturan_bot').select('url_file').eq('nama_pengaturan', 'dealer_resmi').single();
               balasanBot = pengaturan?.url_file ? `Daftar Dealer Resmi Nikon:\n👉 ${pengaturan.url_file}` : getMsg('DEALER_BELUM_ADA', "Daftar Dealer sedang pembaruan.");
               break;
-            case "9":
+            case "9": {
+              const LIBUR_NOTE = "\n\nHari libur nasional dan tanggal merah LIBUR";
               if (!isOperatingHours()) {
-                balasanBot = getMsg('CS_OFFLINE', "Mohon maaf waktu operasional CS adalah :\nSenin-Jumat : 10.00-16.00 WIB\nSabtu : 10.00-12.00 WIB\n\nPesan Anda akan kami balas pada hari dan jam operasional.");
+                const offlineBase = getMsg('CS_OFFLINE', "Mohon maaf waktu operasional CS adalah :\nSenin-Jumat : 10.00-16.00 WIB\nSabtu : 10.00-12.00 WIB\n\nPesan Anda akan kami balas pada hari dan jam operasional.");
+                balasanBot = offlineBase.includes('LIBUR') ? offlineBase : offlineBase + LIBUR_NOTE;
               } else {
-                balasanBot = getMsg('CS_WAITING', "Mohon tunggu, kami sedang menugaskan CS untuk melayani Anda.");
+                const waitingBase = getMsg('CS_WAITING', "Mohon tunggu, kami sedang menugaskan CS untuk melayani Anda.\n\nJam operasional CS:\nSenin-Jumat : 10.00-16.00 WIB\nSabtu : 10.00-12.00 WIB");
+                balasanBot = waitingBase.includes('LIBUR') ? waitingBase : waitingBase + LIBUR_NOTE;
                 await supabase.from('konsumen').update({
                   status_langkah: 'TALKING_TO_CS'
                 }).eq('nomor_wa', nomorPengirim);
@@ -315,6 +318,7 @@ serve(async (req)=>{
                 }).eq('nomor_wa', nomorPengirim);
               }
               break;
+            }
             case "10":
               balasanBot = getMsg('EVENT_JADWAL', `Cek Jadwal Event Nikon terbaru di sini:\n\n👉 https://www.altanikindo.com/events/register\n\nKetik *MENU* untuk kembali ke menu utama.`);
               break;
