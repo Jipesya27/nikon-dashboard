@@ -344,9 +344,9 @@ export default function HomePage() {
           <FadeIn delay={100}>
             <div className="flex flex-col sm:flex-row items-stretch justify-center gap-4">
               {/* Nikon — besar, 2 baris tinggi */}
-              <div className="flex items-center justify-center p-8 rounded-2xl border-2 border-[#FFE500] hover:shadow-lg transition-all hover:scale-[1.02] bg-white" style={{ minHeight: 240, minWidth: 220 }}>
+              <Link href="/nikon" className="flex items-center justify-center p-8 rounded-2xl border-2 border-[#FFE500] hover:shadow-lg transition-all hover:scale-[1.02] bg-white cursor-pointer" style={{ minHeight: 240, minWidth: 220 }}>
                 <Image src="/brand-nikon.png" alt="Nikon" width={200} height={120} className="w-44 h-auto object-contain" />
-              </div>
+              </Link>
               {/* 4 brand lain — grid 2x2 */}
               <div className="grid grid-cols-2 gap-4 flex-1">
                 {[
@@ -373,6 +373,7 @@ export default function HomePage() {
             <p className="text-black/60 text-lg mb-8">Daftarkan garansi, klaim promo, atau hubungi tim kami untuk konsultasi</p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link href="/garansi" className="bg-black text-white font-black px-8 py-3.5 rounded-xl text-sm hover:bg-zinc-800 transition-colors">Daftar Garansi</Link>
+              <Link href="/nikon" className="bg-black text-white font-black px-8 py-3.5 rounded-xl text-sm hover:bg-zinc-800 transition-colors">Kunjungi Nikon</Link>
               <Link href="/claim" className="bg-white text-black font-black px-8 py-3.5 rounded-xl text-sm hover:bg-gray-100 transition-colors">Klaim Promo</Link>
               <Link href="/nikon" className="border-2 border-black text-black font-black px-8 py-3.5 rounded-xl text-sm hover:bg-black/8 transition-colors">Produk Nikon</Link>
             </div>
