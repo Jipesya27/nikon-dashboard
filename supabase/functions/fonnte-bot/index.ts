@@ -391,42 +391,15 @@ serve(async (req)=>{
           break;
         case 'MENUNGGU_SERI_CLAIM': {
           const nomorSeriInput = isiPesanWA.trim();
-          console.log(`[CLAIM_STATUS] Cari nomor seri: "${nomorSeriInput}", WA: ${nomorPengirim}`);
+          console.log(`[CLAIM_STATUS] Cari nomor seri: "${nomorSeriInput}"`);
 
-          // Cari berdasarkan nomor_seri + nomor_wa pengirim
-          let { data: claimFound } = await supabase
+          const { data: claimFound } = await supabase
             .from('claim_promo')
             .select('nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, nama_jasa_pengiriman, nomor_resi, catatan_mkt')
             .ilike('nomor_seri', nomorSeriInput)
-            .eq('nomor_wa', nomorPengirim)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
-
-          // Fallback: cari berdasarkan nomor_wa_update = pengirim
-          if (!claimFound) {
-            const { data: c2 } = await supabase
-              .from('claim_promo')
-              .select('nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, nama_jasa_pengiriman, nomor_resi, catatan_mkt')
-              .ilike('nomor_seri', nomorSeriInput)
-              .eq('nomor_wa_update', nomorPengirim)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            claimFound = c2;
-          }
-
-          // Fallback terakhir: nomor seri saja tanpa filter WA
-          if (!claimFound) {
-            const { data: c3 } = await supabase
-              .from('claim_promo')
-              .select('nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, nama_jasa_pengiriman, nomor_resi, catatan_mkt')
-              .ilike('nomor_seri', nomorSeriInput)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            claimFound = c3;
-          }
 
           console.log(`[CLAIM_STATUS] Hasil:`, JSON.stringify(claimFound));
 
@@ -451,42 +424,15 @@ serve(async (req)=>{
 
         case 'MENUNGGU_SERI_GARANSI': {
           const nomorSeriInput = isiPesanWA.trim();
-          console.log(`[GARANSI_STATUS] Cari nomor seri: "${nomorSeriInput}", WA: ${nomorPengirim}`);
+          console.log(`[GARANSI_STATUS] Cari nomor seri: "${nomorSeriInput}"`);
 
-          // Cari garansi by seri + nomor_wa
-          let { data: garansiFound } = await supabase
+          const { data: garansiFound } = await supabase
             .from('garansi')
             .select('id_claim, nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, status_validasi, jenis_garansi, lama_garansi, catatan_mkt')
             .ilike('nomor_seri', nomorSeriInput)
-            .eq('nomor_wa', nomorPengirim)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
-
-          // Fallback by nomor_wa_update
-          if (!garansiFound) {
-            const { data: g2 } = await supabase
-              .from('garansi')
-              .select('id_claim, nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, status_validasi, jenis_garansi, lama_garansi, catatan_mkt')
-              .ilike('nomor_seri', nomorSeriInput)
-              .eq('nomor_wa_update', nomorPengirim)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            garansiFound = g2;
-          }
-
-          // Fallback nomor seri saja
-          if (!garansiFound) {
-            const { data: g3 } = await supabase
-              .from('garansi')
-              .select('id_claim, nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, status_validasi, jenis_garansi, lama_garansi, catatan_mkt')
-              .ilike('nomor_seri', nomorSeriInput)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            garansiFound = g3;
-          }
 
           console.log(`[GARANSI_STATUS] Hasil:`, JSON.stringify(garansiFound));
 
