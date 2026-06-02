@@ -16,8 +16,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { verifyAdminSession } from '@/app/lib/session';
+import { getAuditUser, writeAuditLog } from '@/app/lib/audit';
 
 export const dynamic = 'force-dynamic';
+
+const AUDIT_TABLES = new Set([
+  'promosi', 'claim_promo', 'garansi', 'status_service',
+  'peminjaman_barang', 'barang_aset',
+  'affiliates', 'affiliate_skema', 'affiliate_penjualan',
+  'budget_approval', 'events', 'event_registrations',
+]);
 
 const sbAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,6 +48,8 @@ export async function POST(req: NextRequest) {
   if (!(await verifyAdminSession(cookieStore))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const auditUser = getAuditUser(cookieStore);
 
   let payload: WritePayload;
   try {
@@ -89,6 +99,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
     }
 
+    const recordId = match ? JSON.stringify(match) : action === 'insert' ? '(new)' : '(unknown)';
+    const newValues = data ? (Array.isArray(data) ? data[0] : data) : {};
+
     // Jika diminta return data
     if (select) {
       const { data: returnedData, error } = await baseQ.select(select);
@@ -98,6 +111,11 @@ export async function POST(req: NextRequest) {
           { error: error.message || error.details || error.hint || JSON.stringify(error) },
           { status: 400 }
         );
+      }
+      if (AUDIT_TABLES.has(table)) {
+        const firstRow = Array.isArray(returnedData) ? returnedData?.[0] : returnedData;
+        const auditId = (firstRow as Record<string, unknown> | null)?.[Object.keys(firstRow ?? {})[0]] as string | undefined;
+        void writeAuditLog({ user_name: auditUser, action, table_name: table, record_id: auditId ? String(auditId) : recordId, new_values: newValues as Record<string, unknown> });
       }
       return NextResponse.json({ success: true, data: returnedData });
     }
@@ -109,6 +127,10 @@ export async function POST(req: NextRequest) {
         { error: error.message || error.details || error.hint || JSON.stringify(error) },
         { status: 400 }
       );
+    }
+
+    if (AUDIT_TABLES.has(table)) {
+      void writeAuditLog({ user_name: auditUser, action, table_name: table, record_id: recordId, new_values: newValues as Record<string, unknown> });
     }
 
     return NextResponse.json({ success: true });
