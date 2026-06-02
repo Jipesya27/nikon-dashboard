@@ -13,14 +13,6 @@ function getSupabase() {
   );
 }
 
-function normalizePhone(phone: string): string[] {
-  const p = phone.replace(/[^0-9]/g, '');
-  const variants = [p];
-  if (p.startsWith('62'))       variants.push('0' + p.slice(2), '+' + p);
-  else if (p.startsWith('0'))   variants.push('62' + p.slice(1), '+62' + p.slice(1));
-  else if (p.startsWith('+62')) variants.push(p.slice(1), '0' + p.slice(3));
-  return [...new Set(variants)];
-}
 
 function claimStatus(mkt: string | null, fa: string | null): { label: string; color: string } {
   if (!mkt && !fa)                                       return { label: 'Menunggu Review',     color: 'yellow'  };
@@ -30,35 +22,28 @@ function claimStatus(mkt: string | null, fa: string | null): { label: string; co
   return { label: 'Sedang Diproses', color: 'yellow' };
 }
 
-// GET /api/cek-status?phone=628xxx&type=claim|garansi
+// GET /api/cek-status?serial=xxx&type=claim|garansi
 export async function GET(req: Request) {
   try {
     const supabase = getSupabase();
     const { searchParams } = new URL(req.url);
-    const rawPhone = searchParams.get('phone')?.trim() || '';
-    const type     = searchParams.get('type') === 'garansi' ? 'garansi' : 'claim';
+    const serial = searchParams.get('serial')?.trim() || '';
+    const type   = searchParams.get('type') === 'garansi' ? 'garansi' : 'claim';
 
-    if (!rawPhone || rawPhone.replace(/[^0-9]/g, '').length < 8) {
-      return NextResponse.json({ error: 'Nomor WA tidak valid (minimal 8 digit).' }, { status: 400 });
+    if (!serial || serial.length < 3) {
+      return NextResponse.json({ error: 'Nomor seri tidak valid (minimal 3 karakter).' }, { status: 400 });
     }
 
-    const variants = normalizePhone(rawPhone);
-
     if (type === 'claim') {
-      // Cari di semua varian nomor
-      let rows: Record<string, unknown>[] = [];
-      for (const v of variants) {
-        const { data } = await supabase
-          .from('claim_promo')
-          .select('id_claim, tipe_barang, nomor_seri, jenis_promosi, tanggal_pembelian, created_at, validasi_by_mkt, validasi_by_fa, nama_penerima_claim')
-          .eq('nomor_wa', v)
-          .order('created_at', { ascending: false })
-          .limit(10);
-        if (data && data.length > 0) { rows = data; break; }
-      }
+      const { data: rows } = await supabase
+        .from('claim_promo')
+        .select('id_claim, tipe_barang, nomor_seri, jenis_promosi, tanggal_pembelian, created_at, validasi_by_mkt, validasi_by_fa, nama_penerima_claim')
+        .ilike('nomor_seri', serial)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-      if (rows.length === 0) {
-        return NextResponse.json({ found: false, message: 'Tidak ada data claim untuk nomor ini.' });
+      if (!rows || rows.length === 0) {
+        return NextResponse.json({ found: false, message: 'Tidak ada data claim untuk nomor seri ini.' });
       }
 
       const result = rows.map(r => ({
@@ -76,19 +61,15 @@ export async function GET(req: Request) {
     }
 
     // garansi
-    let rows: Record<string, unknown>[] = [];
-    for (const v of variants) {
-      const { data } = await supabase
-        .from('garansi')
-        .select('id, tipe_barang, nomor_seri, tanggal_pembelian, created_at, status_validasi, validasi_by_mkt, validasi_by_fa')
-        .eq('nomor_wa', v)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      if (data && data.length > 0) { rows = data; break; }
-    }
+    const { data: rows } = await supabase
+      .from('garansi')
+      .select('id, tipe_barang, nomor_seri, tanggal_pembelian, created_at, status_validasi, validasi_by_mkt, validasi_by_fa')
+      .ilike('nomor_seri', serial)
+      .order('created_at', { ascending: false })
+      .limit(10);
 
-    if (rows.length === 0) {
-      return NextResponse.json({ found: false, message: 'Tidak ada data garansi untuk nomor ini.' });
+    if (!rows || rows.length === 0) {
+      return NextResponse.json({ found: false, message: 'Tidak ada data garansi untuk nomor seri ini.' });
     }
 
     const result = rows.map(r => {

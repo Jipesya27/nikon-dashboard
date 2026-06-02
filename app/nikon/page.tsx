@@ -163,7 +163,7 @@ const COLOR_MAP: Record<string, string> = {
 };
 
 function CekStatusModal({ type, onClose }: { type: ModalType; onClose: () => void }) {
-  const [phone, setPhone]       = useState('');
+  const [serial, setSerial]     = useState('');
   const [loading, setLoading]   = useState(false);
   const [results, setResults]   = useState<CekResult[] | null>(null);
   const [errMsg, setErrMsg]     = useState('');
@@ -172,7 +172,6 @@ function CekStatusModal({ type, onClose }: { type: ModalType; onClose: () => voi
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 80);
-    // Close on Escape
     const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', fn);
     return () => window.removeEventListener('keydown', fn);
@@ -180,11 +179,11 @@ function CekStatusModal({ type, onClose }: { type: ModalType; onClose: () => voi
 
   async function handleCek(e: React.FormEvent) {
     e.preventDefault();
-    const p = phone.replace(/[^0-9]/g, '');
-    if (p.length < 8) { setErrMsg('Nomor WA minimal 8 digit.'); return; }
+    const s = serial.trim();
+    if (s.length < 3) { setErrMsg('Nomor seri minimal 3 karakter.'); return; }
     setLoading(true); setErrMsg(''); setResults(null); setNotFound(false);
     try {
-      const res  = await fetch(`/api/cek-status?phone=${encodeURIComponent(p)}&type=${type}`);
+      const res  = await fetch(`/api/cek-status?serial=${encodeURIComponent(s)}&type=${type}`);
       const data = await res.json();
       if (!res.ok || data.error) { setErrMsg(data.error || 'Gagal mengambil data.'); return; }
       if (!data.found) { setNotFound(true); return; }
@@ -235,20 +234,18 @@ function CekStatusModal({ type, onClose }: { type: ModalType; onClose: () => voi
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 min-h-0">
           <p className="text-zinc-400 text-sm mb-5">
-            Masukkan nomor WhatsApp yang digunakan saat mendaftar.
+            Masukkan nomor seri produk Nikon Anda untuk mengecek status.
           </p>
 
           {/* Input form */}
           <form onSubmit={handleCek} className="flex gap-2 mb-5">
             <div className="flex-1 flex items-center bg-zinc-950 border border-zinc-700 focus-within:border-[#ffe000] transition-colors">
-              <span className="px-3 text-zinc-500 text-sm font-mono shrink-0">+62</span>
-              <div className="w-px h-6 bg-zinc-700 shrink-0" />
               <input
                 ref={inputRef}
-                type="tel"
-                value={phone}
-                onChange={e => { setPhone(e.target.value); setErrMsg(''); }}
-                placeholder="81234567890"
+                type="text"
+                value={serial}
+                onChange={e => { setSerial(e.target.value); setErrMsg(''); }}
+                placeholder="Contoh: 6123456"
                 className="flex-1 bg-transparent text-white text-sm px-3 py-3 outline-none placeholder-zinc-600"
               />
             </div>
@@ -276,7 +273,7 @@ function CekStatusModal({ type, onClose }: { type: ModalType; onClose: () => voi
             <div className="text-center py-8 text-zinc-500">
               <div className="text-4xl mb-3">🔍</div>
               <p className="font-semibold text-white mb-1">Data tidak ditemukan</p>
-              <p className="text-sm">Nomor ini belum memiliki data {type === 'claim' ? 'claim' : 'garansi'} terdaftar.</p>
+              <p className="text-sm">Nomor seri ini belum memiliki data {type === 'claim' ? 'claim' : 'garansi'} terdaftar.</p>
             </div>
           )}
 
