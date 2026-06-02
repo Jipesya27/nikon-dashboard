@@ -3777,7 +3777,7 @@ export default function NikonDashboard() {
                                     >{selectedTag === 'resolved' ? 'Reopen' : 'Resolve'}</button>
                                  </div>
                               </div>
-                              <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto space-y-3 relative scroll-smooth bg-[url('https://i.pinimg.com/originals/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg')] bg-size-[400px] bg-repeat">
+                              <div ref={chatContainerRef} className="flex-1 px-4 py-5 overflow-y-auto space-y-1.5 relative scroll-smooth bg-white">
                                  {/* Tombol muat pesan lebih lama */}
                                  {selectedWa && chatHasMore[selectedWa] && (
                                     <div className="flex justify-center mb-1">
@@ -3788,7 +3788,7 @@ export default function NikonDashboard() {
                                              setChatLoadingMore(false);
                                           }}
                                           disabled={chatLoadingMore}
-                                          className="bg-white/80 backdrop-blur-sm text-gray-600 text-xs px-4 py-1.5 rounded-full shadow-sm hover:bg-white border border-gray-200 disabled:opacity-50 transition"
+                                          className="bg-[#e9edef] text-gray-600 text-xs px-4 py-1.5 rounded-full shadow-sm hover:bg-gray-200 border border-gray-200 disabled:opacity-50 transition"
                                        >
                                           {chatLoadingMore ? '⏳ Memuat...' : '↑ Muat pesan lebih lama'}
                                        </button>
@@ -3798,7 +3798,7 @@ export default function NikonDashboard() {
                                     msg.jenis_pesan === 'system' ? (
                                        /* Pesan sistem: pill abu-abu di tengah, tidak bisa dibalas */
                                        <div key={msg.id_pesan || index} className="flex justify-center">
-                                          <div className="bg-black/10 backdrop-blur-sm text-gray-700 text-[11px] px-3 py-1 rounded-full shadow-sm max-w-[85%] text-center leading-relaxed">
+                                          <div className="bg-[#e9edef] text-gray-600 text-[11px] px-3 py-1 rounded-full shadow-sm max-w-[85%] text-center leading-relaxed">
                                              <span className="mr-1 opacity-70">🤖</span>
                                              <span>{msg.isi_pesan}</span>
                                              <span className="ml-2 text-gray-500 text-[9px]">
@@ -3807,8 +3807,8 @@ export default function NikonDashboard() {
                                           </div>
                                        </div>
                                     ) : (
-                                    <div key={msg.id_pesan || index} className={`group flex ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
-                                       <div className={`max-w-[85%] md:max-w-[70%] p-2.5 text-sm rounded-lg shadow-sm relative ${msg.arah_pesan === 'OUT' ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'}`}>
+                                    <div key={msg.id_pesan || index} className={`group flex items-end gap-1 ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
+                                       <div className={`max-w-[85%] md:max-w-[72%] px-3 py-2 text-sm relative shadow-[0_1px_2px_rgba(0,0,0,0.13)] ${msg.arah_pesan === 'OUT' ? 'bg-[#dcf8c6] text-gray-900 rounded-t-2xl rounded-bl-2xl rounded-br-sm' : 'bg-white text-gray-900 rounded-t-2xl rounded-br-2xl rounded-bl-sm border border-gray-100'}`}>
                                           <button
                                              onClick={() => setReplyToMessage(msg)}
                                              className={`absolute top-1 ${msg.arah_pesan === 'OUT' ? '-left-8' : '-right-8'} opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-gray-200`}
@@ -3844,7 +3844,7 @@ export default function NikonDashboard() {
                                           ) : (
                                              <p className="whitespace-pre-wrap leading-relaxed font-medium">{msg.isi_pesan}</p>
                                           )}
-                                          <div className="text-[9px] mt-1 text-right text-gray-500 font-bold">
+                                          <div className="text-[10px] mt-1.5 text-right text-gray-400 select-none">
                                              {(() => {
                                                 const d = new Date(msg.waktu_pesan || msg.created_at || 0);
                                                 return isNaN(d.getTime()) ? '-' : `${d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
