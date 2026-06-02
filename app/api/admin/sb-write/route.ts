@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
         );
       }
       if (AUDIT_TABLES.has(table)) {
-        const firstRow = (Array.isArray(returnedData) ? returnedData?.[0] : returnedData) as Record<string, unknown> | null | undefined;
+        const firstRow = (Array.isArray(returnedData) ? returnedData?.[0] : returnedData) as unknown as Record<string, unknown> | null | undefined;
         const firstKey = firstRow ? Object.keys(firstRow)[0] : undefined;
         const auditId = firstKey ? String(firstRow![firstKey]) : recordId;
         void writeAuditLog({ user_name: auditUser, action, table_name: table, record_id: auditId, new_values: newValues as Record<string, unknown> });
