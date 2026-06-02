@@ -2113,7 +2113,7 @@ export default function NikonDashboard() {
                event_image: finalEventImage,
                event_price: '0',
                event_partisipant_stock: 0,
-               event_status: 'draft',
+               event_status: 'close',
                event_description: budgetForm.objectives || '',
                event_payment_tipe: 'regular',
             };
