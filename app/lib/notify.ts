@@ -2,8 +2,9 @@
  * notify.ts — Shared notification dispatcher (server-only).
  * Reads `notif_channel` from pengaturan_bot and dispatches to
  * WhatsApp (Meta Cloud API) and/or email (SMTP via nodemailer).
+ * Admin notifications are sent via Telegram Bot API when configured.
  *
- * Channel values: 'wa_only' | 'email_only' | 'wa_and_email'
+ * Channel values (consumer): 'wa_only' | 'email_only' | 'wa_and_email'
  * Default: 'wa_only'
  *
  * Required env vars for WA:
@@ -13,6 +14,8 @@
  *   SMTP_FROM (optional, defaults to SMTP_USER)
  *   SMTP_FROM_NAME (optional, e.g. "Nikon Service Center")
  *   ADMIN_EMAIL (optional — admin email for admin notifications)
+ * Required env vars for Telegram admin notifications:
+ *   TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID
  */
 
 import nodemailer from 'nodemailer';
@@ -21,12 +24,12 @@ import { createClient } from '@supabase/supabase-js';
 export type NotifChannel = 'wa_only' | 'email_only' | 'wa_and_email';
 
 // Module-level cache (valid 90s — short enough to pick up changes quickly)
-let _cache: { channel: NotifChannel; adminEmail: string; ts: number } | null = null;
+let _cache: { channel: NotifChannel; adminEmail: string; telegramChatId: string; ts: number } | null = null;
 const CACHE_TTL = 90_000;
 
-async function getSettings(): Promise<{ channel: NotifChannel; adminEmail: string }> {
+async function getSettings(): Promise<{ channel: NotifChannel; adminEmail: string; telegramChatId: string }> {
   if (_cache && Date.now() - _cache.ts < CACHE_TTL) {
-    return { channel: _cache.channel, adminEmail: _cache.adminEmail };
+    return { channel: _cache.channel, adminEmail: _cache.adminEmail, telegramChatId: _cache.telegramChatId };
   }
   try {
     const supabase = createClient(
@@ -36,7 +39,7 @@ async function getSettings(): Promise<{ channel: NotifChannel; adminEmail: strin
     const { data: rows } = await supabase
       .from('pengaturan_bot')
       .select('nama_pengaturan, description')
-      .in('nama_pengaturan', ['notif_channel', 'admin_email']);
+      .in('nama_pengaturan', ['notif_channel', 'admin_email', 'telegram_admin_chat_id']);
 
     const map: Record<string, string> = {};
     (rows || []).forEach((r: { nama_pengaturan: string; description: string }) => {
@@ -47,11 +50,16 @@ async function getSettings(): Promise<{ channel: NotifChannel; adminEmail: strin
       ? map.notif_channel
       : 'wa_only') as NotifChannel;
     const adminEmail = map.admin_email || process.env.ADMIN_EMAIL || '';
+    const telegramChatId = map.telegram_admin_chat_id || process.env.TELEGRAM_ADMIN_CHAT_ID || '';
 
-    _cache = { channel, adminEmail, ts: Date.now() };
-    return { channel, adminEmail };
+    _cache = { channel, adminEmail, telegramChatId, ts: Date.now() };
+    return { channel, adminEmail, telegramChatId };
   } catch {
-    return { channel: 'wa_only', adminEmail: process.env.ADMIN_EMAIL || '' };
+    return {
+      channel: 'wa_only',
+      adminEmail: process.env.ADMIN_EMAIL || '',
+      telegramChatId: process.env.TELEGRAM_ADMIN_CHAT_ID || '',
+    };
   }
 }
 
@@ -209,6 +217,59 @@ export async function sendWAOtpTemplate(
   }
 }
 
+// ─── Telegram Bot API ────────────────────────────────────────────────────────
+
+/** Convert WA markdown (*bold*, \n) to Telegram MarkdownV2 escaping. */
+function waToTelegramMd(text: string): string {
+  // Escape MarkdownV2 special chars except * used for bold
+  const escaped = text.replace(/([_[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+  // Convert *bold* → *bold* (already valid in MarkdownV2)
+  return escaped;
+}
+
+async function sendTelegram(chatId: string, message: string): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN || '';
+  if (!token || !chatId) return;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: waToTelegramMd(message),
+        parse_mode: 'MarkdownV2',
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      // Retry once with plain text if MarkdownV2 parsing fails
+      if (res.status === 400 && errText.includes('parse')) {
+        const retry = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: message }),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!retry.ok) console.error('[notify] Telegram retry error:', retry.status, await retry.text());
+      } else {
+        console.error('[notify] Telegram error:', res.status, errText);
+      }
+    }
+  } catch (e) {
+    console.error('[notify] Gagal kirim Telegram (non-kritis):', e);
+  }
+}
+
+/**
+ * Kirim pesan Telegram langsung ke chat ID tertentu (tanpa channel settings).
+ * Gunakan untuk notifikasi admin satu arah.
+ */
+export async function sendTelegramMessage(chatId: string, message: string): Promise<void> {
+  await sendTelegram(chatId, message);
+}
+
 // ─── Email via SMTP ─────────────────────────────────────────────────────────
 
 function waMarkdownToHtml(text: string): string {
@@ -287,7 +348,7 @@ export interface NotifTarget {
  *                   if omitted no admin notification is sent
  */
 export async function sendNotif(consumer: NotifTarget, admin?: NotifTarget): Promise<void> {
-  const { channel, adminEmail } = await getSettings();
+  const { channel, adminEmail, telegramChatId } = await getSettings();
 
   const doWA    = channel === 'wa_only'    || channel === 'wa_and_email';
   const doEmail = channel === 'email_only' || channel === 'wa_and_email';
@@ -307,13 +368,13 @@ export async function sendNotif(consumer: NotifTarget, admin?: NotifTarget): Pro
     ));
   }
 
-  // ── Admin ─────────────────────────────────────
+  // ── Admin via Telegram ────────────────────────
   if (admin) {
-    const adminWA    = process.env.ADMIN_WA_NUMBER || '';
-    const adminMail  = adminEmail;
+    const tgChatId = telegramChatId;
+    const adminMail = adminEmail;
 
-    if (adminWA && doWA) {
-      tasks.push(sendWA(adminWA, admin.message));
+    if (tgChatId) {
+      tasks.push(sendTelegram(tgChatId, admin.message));
     }
     if (adminMail && doEmail) {
       tasks.push(sendEmail(

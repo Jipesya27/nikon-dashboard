@@ -397,6 +397,12 @@ export default function NikonDashboard() {
    const [notifChannelSaving, setNotifChannelSaving] = useState(false);
    const [notifChannelMsg, setNotifChannelMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+   // TELEGRAM ADMIN NOTIFICATION
+   const [telegramChatId, setTelegramChatId] = useState('');
+   const [telegramChatIdInput, setTelegramChatIdInput] = useState('');
+   const [telegramSaving, setTelegramSaving] = useState(false);
+   const [telegramMsg, setTelegramMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
    // TRANSAKSI DEALER
    const [dealerSheet, setDealerSheet] = useState<{ headers: string[]; rows: string[][]; sheetName: string } | null>(null);
    const [dealerLoading, setDealerLoading] = useState(false);
@@ -897,6 +903,12 @@ export default function NikonDashboard() {
      const row = (data || []).find((r: { nama_pengaturan: string }) => r.nama_pengaturan === 'notif_channel');
      if (row?.description && ['wa_only', 'email_only', 'wa_and_email'].includes(row.description)) {
        setNotifChannel(row.description as 'wa_only' | 'email_only' | 'wa_and_email');
+     }
+     // Sync telegram_admin_chat_id
+     const tgRow = (data || []).find((r: { nama_pengaturan: string }) => r.nama_pengaturan === 'telegram_admin_chat_id');
+     if (tgRow?.description) {
+       setTelegramChatId(tgRow.description);
+       setTelegramChatIdInput(tgRow.description);
      }
    };
 
@@ -2420,6 +2432,28 @@ export default function NikonDashboard() {
          alert('Gagal menyimpan pengaturan bot: ' + message);
       } finally {
          setIsSubmitting(false); }
+   };
+
+   const saveTelegramChatId = async () => {
+      const value = telegramChatIdInput.trim();
+      setTelegramSaving(true);
+      setTelegramMsg(null);
+      try {
+         const { data: existing } = await supabase.from('pengaturan_bot').select('id').eq('nama_pengaturan', 'telegram_admin_chat_id').maybeSingle();
+         if (existing?.id) {
+            const { error } = await sbWrite({ action: 'update', table: 'pengaturan_bot', data: { description: value }, match: { id: existing.id } });
+            if (error) throw new Error(error.message);
+         } else {
+            const { error } = await sbWrite({ action: 'insert', table: 'pengaturan_bot', data: { nama_pengaturan: 'telegram_admin_chat_id', description: value, url_file: null } });
+            if (error) throw new Error(error.message);
+         }
+         setTelegramChatId(value);
+         setTelegramMsg({ ok: true, text: '✅ Chat ID tersimpan.' });
+      } catch (e) {
+         setTelegramMsg({ ok: false, text: `❌ Gagal: ${e instanceof Error ? e.message : String(e)}` });
+      } finally {
+         setTelegramSaving(false);
+      }
    };
 
    const saveNotifChannel = async (value: 'wa_only' | 'email_only' | 'wa_and_email') => {
@@ -5550,7 +5584,7 @@ export default function NikonDashboard() {
                            <span className="text-xl">📣</span>
                            <div>
                               <h2 className="text-base font-bold text-gray-900">Saluran Notifikasi Konsumen</h2>
-                              <p className="text-xs text-gray-500 mt-0.5">Pilih lewat mana sistem mengirim notifikasi ke konsumen &amp; admin (claim, garansi, event).</p>
+                              <p className="text-xs text-gray-500 mt-0.5">Pilih lewat mana sistem mengirim notifikasi ke konsumen (claim, garansi, event). Notifikasi admin dikirim via Telegram — lihat seksi di bawah.</p>
                            </div>
                         </div>
 
@@ -5639,6 +5673,77 @@ ADMIN_EMAIL=email_admin@gmail.com`}</pre>
                               <p className="text-gray-500">Untuk Gmail: aktifkan 2FA lalu buat <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-blue-600 underline">App Password</a>. Untuk provider lain, sesuaikan SMTP_HOST &amp; SMTP_PORT.</p>
                            </div>
                         )}
+                     </div>
+
+                     {/* ── SEKSI 0b: Notifikasi Admin via Telegram ── */}
+                     <div className="bg-white rounded-xl border-2 border-blue-300 shadow-sm p-5 space-y-4">
+                        <div className="flex items-center gap-3">
+                           <span className="text-xl">✈️</span>
+                           <div>
+                              <h2 className="text-base font-bold text-gray-900">Notifikasi Admin via Telegram</h2>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                 Setiap ada claim, garansi, atau pendaftaran event baru, sistem akan mengirim notifikasi ke Telegram admin.
+                              </p>
+                           </div>
+                        </div>
+
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-gray-700 space-y-1">
+                           <p className="font-bold text-blue-800">⚙️ Cara Setup:</p>
+                           <ol className="list-decimal list-inside space-y-1 text-gray-600">
+                              <li>Buat bot di Telegram via <span className="font-mono">@BotFather</span> → dapatkan <span className="font-mono">BOT_TOKEN</span></li>
+                              <li>Chat bot Anda, lalu buka <span className="font-mono">https://api.telegram.org/bot&#123;TOKEN&#125;/getUpdates</span> untuk dapatkan <span className="font-mono">chat_id</span></li>
+                              <li>Atau, tambahkan bot ke grup dan gunakan <span className="font-mono">chat_id</span> grup (biasanya negatif, contoh: <span className="font-mono">-1001234567890</span>)</li>
+                              <li>Isi <span className="font-mono">TELEGRAM_BOT_TOKEN</span> di <span className="font-mono">.env.local</span>, lalu simpan Chat ID di bawah</li>
+                           </ol>
+                           <pre className="bg-white rounded p-2 text-[11px] overflow-x-auto border border-blue-100 text-gray-800 mt-2">{`TELEGRAM_BOT_TOKEN=123456789:ABCdefGhIJKlmnoPQRstuVWXyz`}</pre>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                           <div className="flex-1">
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">Telegram Admin Chat ID</label>
+                              <input
+                                 type="text"
+                                 value={telegramChatIdInput}
+                                 onChange={e => setTelegramChatIdInput(e.target.value)}
+                                 placeholder="Contoh: 123456789 atau -1001234567890"
+                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                              />
+                              <p className="text-[11px] text-gray-400 mt-1">
+                                 ID chat pribadi (angka positif) atau grup (angka negatif).
+                              </p>
+                           </div>
+                           <button
+                              type="button"
+                              onClick={saveTelegramChatId}
+                              disabled={telegramSaving || telegramChatIdInput.trim() === telegramChatId}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-semibold rounded-lg transition-colors"
+                           >
+                              {telegramSaving ? 'Menyimpan...' : 'Simpan'}
+                           </button>
+                        </div>
+
+                        <div className="flex items-center gap-3 flex-wrap">
+                           {telegramMsg && (
+                              <span className={`text-xs font-semibold ${telegramMsg.ok ? 'text-green-600' : 'text-red-600'}`}>
+                                 {telegramMsg.text}
+                              </span>
+                           )}
+                           {telegramChatId && (
+                              <div className="ml-auto flex items-center gap-2">
+                                 <span className="text-xs text-gray-400">
+                                    Chat ID aktif: <span className="font-bold text-gray-700 font-mono">{telegramChatId}</span>
+                                 </span>
+                                 <a
+                                    href="/api/test-notif?telegram=1"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-xs text-blue-600 underline hover:text-blue-800"
+                                 >
+                                    Test kirim
+                                 </a>
+                              </div>
+                           )}
+                        </div>
                      </div>
 
                      {/* ── SEKSI 1: Bot Settings (URL/value) ── */}
