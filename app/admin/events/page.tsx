@@ -24,6 +24,7 @@ type Registration = {
   status_pengembalian_deposit: string | null;
   bukti_pengembalian_deposit: string | null;
   rejection_reason: string | null;
+  catatan_validasi: string | null;
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -47,6 +48,8 @@ export default function AdminEventsPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectModal, setRejectModal] = useState<{ id: string; name: string } | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [approveModal, setApproveModal] = useState<{ id: string; name: string } | null>(null);
+  const [catatanValidasi, setCatatanValidasi] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
@@ -82,17 +85,19 @@ export default function AdminEventsPage() {
     return true;
   });
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = async (id: string, catatan?: string) => {
     setProcessingId(id);
     try {
       const res = await fetch('/api/events/validate-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ registrationId: id, action: 'approve' }),
+        body: JSON.stringify({ registrationId: id, action: 'approve', catatanValidasi: catatan || null }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       showToast('Pembayaran disetujui. Tiket dikirim via WhatsApp!');
+      setApproveModal(null);
+      setCatatanValidasi('');
       fetchRegistrations();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Gagal menyetujui';
@@ -109,13 +114,14 @@ export default function AdminEventsPage() {
       const res = await fetch('/api/events/validate-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ registrationId: rejectModal.id, action: 'reject', rejectionReason }),
+        body: JSON.stringify({ registrationId: rejectModal.id, action: 'reject', rejectionReason, catatanValidasi: catatanValidasi || null }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       showToast('Pendaftaran ditolak. Notifikasi dikirim via WhatsApp.');
       setRejectModal(null);
       setRejectionReason('');
+      setCatatanValidasi('');
       fetchRegistrations();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Gagal menolak';
@@ -275,6 +281,9 @@ export default function AdminEventsPage() {
                     {reg.rejection_reason && (
                       <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg">Alasan: {reg.rejection_reason}</p>
                     )}
+                    {reg.catatan_validasi && (
+                      <p className="text-xs text-blue-700 mt-1.5 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg">📝 Catatan: {reg.catatan_validasi}</p>
+                    )}
                   </div>
 
                   {/* Actions */}
@@ -299,14 +308,14 @@ export default function AdminEventsPage() {
                     {reg.status_pendaftaran === 'menunggu_validasi' && (
                       <div className="flex gap-2 mt-1">
                         <button
-                          onClick={() => handleApprove(reg.id)}
+                          onClick={() => setApproveModal({ id: reg.id, name: reg.nama_lengkap })}
                           disabled={processingId === reg.id}
                           className="text-xs bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold px-4 py-1.5 rounded-lg transition-all shadow-sm"
                         >
                           {processingId === reg.id ? '...' : '✓ Setujui'}
                         </button>
                         <button
-                          onClick={() => setRejectModal({ id: reg.id, name: reg.nama_lengkap })}
+                          onClick={() => { setRejectModal({ id: reg.id, name: reg.nama_lengkap }); setCatatanValidasi(''); }}
                           disabled={processingId === reg.id}
                           className="text-xs bg-white hover:bg-red-50 disabled:opacity-50 text-red-600 font-bold px-4 py-1.5 rounded-lg border border-red-300 transition-all"
                         >
@@ -359,6 +368,39 @@ export default function AdminEventsPage() {
         </div>
       )}
 
+      {/* Approve Modal */}
+      {approveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Setujui Pembayaran</h3>
+            <p className="text-gray-500 text-sm mb-4">Setujui pendaftaran <strong className="text-gray-900">{approveModal.name}</strong>? Tiket akan digenerate dan dikirim via WhatsApp.</p>
+            <textarea
+              value={catatanValidasi}
+              onChange={e => setCatatanValidasi(e.target.value)}
+              placeholder="Catatan internal (opsional, tidak dikirim ke peserta)"
+              rows={3}
+              className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 resize-none"
+            />
+            <p className="text-xs text-gray-400 mt-1.5 mb-4">💡 Catatan hanya terlihat oleh admin, tidak dikirim ke peserta.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setApproveModal(null); setCatatanValidasi(''); }}
+                className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-semibold py-2.5 rounded-lg border border-gray-300 transition-all"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => handleApprove(approveModal.id, catatanValidasi)}
+                disabled={!!processingId}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-lg transition-all shadow-sm"
+              >
+                {processingId ? '...' : '✓ Setujui & Kirim Tiket'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Reject Modal */}
       {rejectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -368,13 +410,21 @@ export default function AdminEventsPage() {
             <textarea
               value={rejectionReason}
               onChange={e => setRejectionReason(e.target.value)}
-              placeholder="Alasan penolakan (opsional)"
-              rows={3}
+              placeholder="Alasan penolakan (dikirim ke peserta via WA)"
+              rows={2}
               className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400 resize-none"
             />
+            <textarea
+              value={catatanValidasi}
+              onChange={e => setCatatanValidasi(e.target.value)}
+              placeholder="Catatan internal admin (opsional, tidak dikirim ke peserta)"
+              rows={2}
+              className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none mt-2"
+            />
+            <p className="text-xs text-gray-400 mt-1.5">💡 Catatan internal hanya terlihat oleh admin.</p>
             <div className="flex gap-3 mt-4">
               <button
-                onClick={() => { setRejectModal(null); setRejectionReason(''); }}
+                onClick={() => { setRejectModal(null); setRejectionReason(''); setCatatanValidasi(''); }}
                 className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-semibold py-2.5 rounded-lg border border-gray-300 transition-all"
               >
                 Batal
@@ -418,6 +468,7 @@ export default function AdminEventsPage() {
         ALTER TABLE event_registrations RENAME COLUMN deposit_refund_url TO bukti_pengembalian_deposit;
         -- Add new columns to event_registrations
         ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS kabupaten_kotamadya TEXT;
+        ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS catatan_validasi TEXT;
         -- Update status_pendaftaran values
         UPDATE event_registrations SET status_pendaftaran = 'menunggu_validasi' WHERE status_pendaftaran = 'Pending';
         UPDATE event_registrations SET status_pendaftaran = 'terdaftar' WHERE status_pendaftaran = 'Approved';

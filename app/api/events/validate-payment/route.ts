@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
   try {
     const cookieStore = await cookies();
     const auditUser = getAuditUser(cookieStore);
-    const { registrationId, action, rejectionReason } = await req.json();
+    const { registrationId, action, rejectionReason, catatanValidasi } = await req.json();
 
     if (!registrationId || !action) {
       return NextResponse.json({ error: 'Missing registrationId or action' }, { status: 400 });
@@ -129,10 +129,14 @@ export async function POST(req: NextRequest) {
     if (action === 'reject') {
       await supabase
         .from('event_registrations')
-        .update({ status_pendaftaran: 'ditolak', rejection_reason: rejectionReason || null })
+        .update({
+          status_pendaftaran: 'ditolak',
+          rejection_reason: rejectionReason || null,
+          catatan_validasi: catatanValidasi || null,
+        })
         .eq('id', registrationId);
 
-      void writeAuditLog({ user_name: auditUser, action: 'reject_payment', table_name: 'event_registrations', record_id: registrationId, new_values: { status_pendaftaran: 'ditolak', rejection_reason: rejectionReason || null } });
+      void writeAuditLog({ user_name: auditUser, action: 'reject_payment', table_name: 'event_registrations', record_id: registrationId, new_values: { status_pendaftaran: 'ditolak', rejection_reason: rejectionReason || null, catatan_validasi: catatanValidasi || null } });
 
       // WA (Meta template) + Email (via channel settings)
       await Promise.allSettled([
@@ -175,10 +179,14 @@ export async function POST(req: NextRequest) {
 
     await supabase
       .from('event_registrations')
-      .update({ status_pendaftaran: 'terdaftar', ticket_url: ticketUrl })
+      .update({
+        status_pendaftaran: 'terdaftar',
+        ticket_url: ticketUrl,
+        catatan_validasi: catatanValidasi || null,
+      })
       .eq('id', registrationId);
 
-    void writeAuditLog({ user_name: auditUser, action: 'approve_payment', table_name: 'event_registrations', record_id: registrationId, new_values: { status_pendaftaran: 'terdaftar', ticket_url: ticketUrl } });
+    void writeAuditLog({ user_name: auditUser, action: 'approve_payment', table_name: 'event_registrations', record_id: registrationId, new_values: { status_pendaftaran: 'terdaftar', ticket_url: ticketUrl, catatan_validasi: catatanValidasi || null } });
 
     // WA (Meta template) + Email (via channel settings)
     await Promise.allSettled([
