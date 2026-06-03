@@ -132,6 +132,13 @@ export default function AdminEventsPage() {
     ditolak: registrations.filter(r => r.status_pendaftaran === 'ditolak').length,
   };
 
+  const countPerEvent = uniqueEvents.map(ev => ({
+    name: ev,
+    total: registrations.filter(r => r.event_name === ev).length,
+    terdaftar: registrations.filter(r => r.event_name === ev && r.status_pendaftaran === 'terdaftar').length,
+    menunggu: registrations.filter(r => r.event_name === ev && r.status_pendaftaran === 'menunggu_validasi').length,
+  }));
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
       {/* Toast */}
@@ -178,6 +185,27 @@ export default function AdminEventsPage() {
             </div>
           ))}
         </div>
+
+        {/* Per-Event Count */}
+        {countPerEvent.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Jumlah Peserta per Event</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {countPerEvent.map(ev => (
+                <div key={ev.name} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                  <p className="font-semibold text-gray-900 text-sm truncate" title={ev.name}>{ev.name}</p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="text-2xl font-bold text-gray-900">{ev.total}</span>
+                    <div className="text-xs text-gray-400 leading-relaxed">
+                      <div><span className="text-green-600 font-semibold">{ev.terdaftar}</span> terdaftar</div>
+                      <div><span className="text-yellow-600 font-semibold">{ev.menunggu}</span> menunggu</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-6">
@@ -234,7 +262,7 @@ export default function AdminEventsPage() {
                       {reg.payment_type === 'deposit' && (
                         <span className="text-xs px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-300 font-semibold">DEPOSIT</span>
                       )}
-                      <span className="text-xs text-gray-400">{new Date(reg.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}</span>
+                      <span className="text-xs text-gray-400">{new Date(reg.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB</span>
                     </div>
 
                     <h3 className="font-bold text-gray-900 text-lg">{reg.nama_lengkap}</h3>
