@@ -342,6 +342,10 @@ export default function NikonDashboard() {
    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
    const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
    const [isScannerOpen, setIsScannerOpen] = useState(false);
+   const [scannerCameras, setScannerCameras] = useState<{ id: string; label: string }[]>([]);
+   const [scannerStatus, setScannerStatus] = useState<'detecting' | 'ready' | 'scanning' | 'error'>('detecting');
+   const [scannerError, setScannerError] = useState('');
+   const scannerRef = useRef<InstanceType<typeof Html5Qrcode> | null>(null);
    const [newChatWa, setNewChatWa] = useState('');
    const [newChatMsg, setNewChatMsg] = useState('');
 
@@ -945,44 +949,55 @@ export default function NikonDashboard() {
       }
    }, [fetchEventRegistrations]);
 
+   // Detect kamera saat scanner dibuka
    useEffect(() => {
-      if (!isScannerOpen) return;
-      let qr: Html5Qrcode | null = null;
-      let stopped = false;
-
-      (async () => {
-         try {
-            qr = new Html5Qrcode('reader');
-            const cameras = await Html5Qrcode.getCameras();
-            if (!cameras.length) throw new Error('Tidak ada kamera tersedia di perangkat ini.');
-            // Utamakan kamera belakang di HP
-            const cam = cameras.find(c => /back|rear|environment/i.test(c.label)) ?? cameras[cameras.length - 1];
-            await qr.start(
-               cam.id,
-               { fps: 10, qrbox: { width: 250, height: 250 } },
-               async (decodedText) => {
-                  if (stopped) return;
-                  stopped = true;
-                  await qr!.stop();
-                  qr = null;
-                  setIsScannerOpen(false);
-                  await handleMarkAttendance(decodedText);
-               },
-               () => {}
-            );
-         } catch (err) {
-            if (!stopped) {
-               setIsScannerOpen(false);
-               alert('Gagal membuka kamera: ' + (err instanceof Error ? err.message : String(err)) + '\n\nPastikan izin kamera sudah diberikan dan halaman diakses via HTTPS.');
-            }
-         }
-      })();
-
+      if (!isScannerOpen) {
+         scannerRef.current?.stop().catch(() => {});
+         scannerRef.current = null;
+         setScannerCameras([]);
+         setScannerStatus('detecting');
+         setScannerError('');
+         return;
+      }
+      setScannerStatus('detecting');
+      Html5Qrcode.getCameras()
+         .then(cams => {
+            if (!cams.length) { setScannerStatus('error'); setScannerError('Tidak ada kamera tersedia di perangkat ini.'); return; }
+            setScannerCameras(cams);
+            setScannerStatus('ready');
+         })
+         .catch(err => {
+            setScannerStatus('error');
+            setScannerError('Izin kamera ditolak atau tidak tersedia: ' + (err?.message || String(err)));
+         });
       return () => {
-         stopped = true;
-         qr?.stop().catch(() => {});
+         scannerRef.current?.stop().catch(() => {});
+         scannerRef.current = null;
       };
-   }, [isScannerOpen, handleMarkAttendance]);
+   }, [isScannerOpen]);
+
+   const startScanCamera = useCallback(async (camId: string) => {
+      setScannerStatus('scanning');
+      try {
+         if (scannerRef.current) { await scannerRef.current.stop().catch(() => {}); }
+         const qr = new Html5Qrcode('reader');
+         scannerRef.current = qr;
+         await qr.start(
+            camId,
+            { fps: 10, qrbox: { width: 240, height: 240 } },
+            async (decodedText) => {
+               await qr.stop().catch(() => {});
+               scannerRef.current = null;
+               setIsScannerOpen(false);
+               await handleMarkAttendance(decodedText);
+            },
+            () => {}
+         );
+      } catch (err) {
+         setScannerStatus('error');
+         setScannerError('Gagal membuka kamera: ' + (err instanceof Error ? err.message : String(err)));
+      }
+   }, [handleMarkAttendance]);
 
    const fetchBotSettings = async () => {
      const { data } = await supabase.from('pengaturan_bot').select('*');
@@ -9165,15 +9180,67 @@ ${pages.join('')}
 
          {/* SCANNER MODAL */}
          {isScannerOpen && (
-            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
-               <div className="bg-white rounded-xl shadow-2xl w-full max-w-md relative">
-                  <button onClick={() => setIsScannerOpen(false)} aria-label="Tutup Scanner" className="absolute -top-3 -right-3 bg-white rounded-full p-1 shadow-lg z-10">
-                     <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                  <div className="p-5 border-b border-gray-200">
-                     <h2 className="text-lg font-bold text-gray-900">Scan QR Code Kehadiran</h2>
+            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in">
+               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                  {/* Header */}
+                  <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100">
+                     <div>
+                        <h2 className="text-base font-bold text-gray-900">📷 Scanner QR Code</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">Buka kamera HP/laptop untuk scan QR pada tiket peserta.</p>
+                     </div>
+                     <button onClick={() => setIsScannerOpen(false)} aria-label="Tutup" className="p-1.5 rounded-full hover:bg-gray-100 transition">
+                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                     </button>
                   </div>
-                  <div id="reader" className="w-full overflow-hidden rounded-b-xl"></div>
+
+                  {/* Viewport kamera */}
+                  <div id="reader" className="w-full bg-black" style={{ minHeight: 300 }}></div>
+
+                  {/* Status & tombol kamera */}
+                  <div className="p-4 space-y-3">
+                     {scannerStatus === 'detecting' && (
+                        <div className="flex items-center justify-center gap-2 py-2 text-sm text-gray-500">
+                           <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                           Mendeteksi kamera...
+                        </div>
+                     )}
+                     {scannerStatus === 'error' && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600 text-center">
+                           <p className="font-semibold mb-1">⚠️ Kamera tidak dapat dibuka</p>
+                           <p className="text-xs">{scannerError}</p>
+                           <p className="text-xs mt-1 text-gray-500">Pastikan izin kamera sudah diberikan dan akses via HTTPS.</p>
+                        </div>
+                     )}
+                     {scannerStatus === 'ready' && (
+                        <div className="space-y-2">
+                           <p className="text-xs font-semibold text-gray-600 text-center">Pilih kamera:</p>
+                           <div className="flex flex-col gap-2">
+                              {scannerCameras.map(cam => {
+                                 const isBack = /back|rear|environment/i.test(cam.label);
+                                 const isFront = /front|user|face/i.test(cam.label);
+                                 const label = isBack ? '📷 Kamera Belakang' : isFront ? '🤳 Kamera Depan' : `📷 ${cam.label || 'Kamera ' + (scannerCameras.indexOf(cam) + 1)}`;
+                                 return (
+                                    <button key={cam.id} onClick={() => startScanCamera(cam.id)}
+                                       className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-xl text-sm transition">
+                                       {label} — Mulai Scan
+                                    </button>
+                                 );
+                              })}
+                           </div>
+                        </div>
+                     )}
+                     {scannerStatus === 'scanning' && (
+                        <div className="text-center text-sm text-gray-600 py-1">
+                           <p className="font-semibold text-green-700">✓ Kamera aktif — arahkan ke QR Code</p>
+                           <button onClick={() => { scannerRef.current?.stop().catch(() => {}); scannerRef.current = null; setScannerStatus('ready'); }}
+                              className="mt-2 text-xs text-gray-400 underline">Ganti kamera</button>
+                        </div>
+                     )}
+                     <button onClick={() => setIsScannerOpen(false)}
+                        className="w-full border border-gray-200 text-gray-600 font-semibold py-2 rounded-xl text-sm hover:bg-gray-50 transition">
+                        ✕ Tutup Scanner
+                     </button>
+                  </div>
                </div>
             </div>
          )}
