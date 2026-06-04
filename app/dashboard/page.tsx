@@ -2625,10 +2625,10 @@ export default function NikonDashboard() {
          return;
       }
 
-      // --- Fonnte + update flag CS — fire-and-forget, tidak memblokir UI ---
+      // --- Fonnte — fire-and-forget, tidak memblokir UI ---
+      // bicara_dengan_cs TIDAK di-clear di sini; hanya tombol "Selesai CS" yang boleh clear
       sendWhatsAppMessageViaFonnte(selectedWa, fullMessage)
-         .then(() => sbWrite({ action: 'update', table: 'riwayat_pesan', data: { bicara_dengan_cs: false }, match: { nomor_wa: selectedWa } }))
-         .catch(err => console.error('[handleSendReply] fonnte/update error:', err));
+         .catch(err => console.error('[handleSendReply] fonnte error:', err));
       // Polling 5 detik akan replace optimistic dengan data real dari DB secara otomatis
    };
 
@@ -3828,7 +3828,7 @@ export default function NikonDashboard() {
                                        <div className="flex items-center gap-1.5 mt-1.5">
                                           <span className="text-[9px] text-gray-400 font-medium">Nikon Indonesia</span>
                                           {isAssigned && !isResolved && (
-                                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Assigned</span>
+                                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">CS Aktif</span>
                                           )}
                                           {isResolved && (
                                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">Resolved</span>
@@ -3906,7 +3906,9 @@ export default function NikonDashboard() {
                                     </div>
                                     <button onClick={() => setShowSystemMessages(v => !v)} title="Toggle sistem" aria-label="Toggle sistem" className={`p-1.5 rounded transition text-xs ${showSystemMessages ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:bg-gray-100'}`}>🤖</button>
                                     {isCsActive && (
-                                       <button onClick={() => handleSelesaiCS(selectedWa)} className="border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-50 transition">Assign</button>
+                                       <button onClick={() => handleSelesaiCS(selectedWa)} className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-600 transition flex items-center gap-1">
+                                          <span>✓</span> Selesai CS
+                                       </button>
                                     )}
                                     <button
                                        onClick={() => { setTag(selectedWa, selectedTag === 'resolved' ? '' : 'resolved'); if (isCsActive) handleSelesaiCS(selectedWa); }}
