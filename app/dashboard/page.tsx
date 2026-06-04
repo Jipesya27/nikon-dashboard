@@ -2444,7 +2444,7 @@ export default function NikonDashboard() {
             const { error } = await sbWrite({ action: 'update', table: 'pengaturan_bot', data: { description: value }, match: { id: existing.id } });
             if (error) throw new Error(error.message);
          } else {
-            const { error } = await sbWrite({ action: 'insert', table: 'pengaturan_bot', data: { nama_pengaturan: 'telegram_admin_chat_id', description: value, url_file: null } });
+            const { error } = await sbWrite({ action: 'insert', table: 'pengaturan_bot', data: { nama_pengaturan: 'telegram_admin_chat_id', description: value, url_file: '' } });
             if (error) throw new Error(error.message);
          }
          setTelegramChatId(value);
