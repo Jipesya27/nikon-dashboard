@@ -4,7 +4,30 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://hfqnlttxxrqarmpvtn
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") ?? "";
 const WHATSAPP_ACCESS_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN") ?? "";
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
+const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+async function sendTelegramAdminNotif(nama: string, nomor: string): Promise<void> {
+  if (!TELEGRAM_BOT_TOKEN) return;
+  try {
+    const { data: tgRow } = await supabase
+      .from('pengaturan_bot')
+      .select('description')
+      .eq('nama_pengaturan', 'telegram_admin_chat_id')
+      .maybeSingle();
+    const chatId = tgRow?.description || Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") || "";
+    if (!chatId) return;
+
+    const text = `🔔 *Permintaan CS Baru\\!*\n\n👤 *Nama:* ${nama.replace(/[_*[\]()~\`>#+\-=|{}.!\\]/g, '\\$&')}\n📱 *WhatsApp:* ${nomor}\n\nKonsumen meminta berbicara dengan CS\\. Silakan balas via dashboard\\.`;
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "MarkdownV2" }),
+    });
+  } catch (e) {
+    console.error("[TELEGRAM] Gagal kirim notif CS:", e);
+  }
+}
 // Fungsi Generate ID (AN + 6 Digit Random)
 function generateKonsumenID() {
   const randomDigits = Math.floor(100000 + Math.random() * 900000);
@@ -316,6 +339,7 @@ serve(async (req)=>{
                 await supabase.from('riwayat_pesan').update({
                   bicara_dengan_cs: true
                 }).eq('nomor_wa', nomorPengirim);
+                await sendTelegramAdminNotif(user.nama_lengkap || namaProfil, nomorPengirim);
               }
               break;
             }
