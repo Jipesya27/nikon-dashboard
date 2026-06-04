@@ -3561,47 +3561,47 @@ export default function NikonDashboard() {
                      </div>
 
                      {/* STATISTICS CARDS */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
+                           <div className="flex items-center justify-between mb-1">
                               <div>
                                  <p className="stat-label">Total Messages</p>
                                  <p className="stat-value">{messagesCount}</p>
                               </div>
-                              <div className="text-4xl">💬</div>
+                              <div className="text-2xl">💬</div>
                            </div>
                            <div className="text-xs text-gray-500">Chat history</div>
                         </div>
 
                         <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
+                           <div className="flex items-center justify-between mb-1">
                               <div>
                                  <p className="stat-label">Claims Promo</p>
                                  <p className="stat-value">{claims.length}</p>
                               </div>
-                              <div className="text-4xl">🎁</div>
+                              <div className="text-2xl">🎁</div>
                            </div>
                            <div className="text-xs text-gray-500">Active claims</div>
                         </div>
 
                         <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
+                           <div className="flex items-center justify-between mb-1">
                               <div>
                                  <p className="stat-label">Warranties</p>
                                  <p className="stat-value">{warranties.length}</p>
                               </div>
-                              <div className="text-4xl">🛡️</div>
+                              <div className="text-2xl">🛡️</div>
                            </div>
                            <div className="text-xs text-gray-500">Product warranties</div>
                         </div>
 
                         <div className="stat-card hover:shadow-lg transition-all">
-                           <div className="flex items-center justify-between mb-3">
+                           <div className="flex items-center justify-between mb-1">
                               <div>
                                  <p className="stat-label">Employees</p>
                                  <p className="stat-value">{karyawans.length}</p>
                               </div>
-                              <div className="text-4xl">👥</div>
+                              <div className="text-2xl">👥</div>
                            </div>
                            <div className="text-xs text-gray-500">Team members</div>
                         </div>

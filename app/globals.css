@@ -189,15 +189,15 @@ input[type="file"].input-form {
 
 /* Stat Card */
 .stat-card {
-  @apply bg-white rounded-xl border border-gray-100 p-6 shadow-sm;
+  @apply bg-white rounded-xl border border-gray-100 p-3 shadow-sm;
 }
 
 .stat-value {
-  @apply text-3xl font-bold text-gray-900;
+  @apply text-2xl font-bold text-gray-900;
 }
 
 .stat-label {
-  @apply text-sm text-gray-600 font-medium;
+  @apply text-xs text-gray-600 font-medium;
 }
 
 /* Badge Styles */
