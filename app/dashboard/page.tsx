@@ -3743,6 +3743,9 @@ export default function NikonDashboard() {
                   ];
                   const findTag = (key: string) => TAG_PRESETS.find(t => t.key === key);
                   const countUnread = (wa: string) => {
+                     // Badge unread hanya untuk chat CS aktif
+                     const isCs = !!uniqueContacts.find(c => c.nomor_wa === wa)?.bicara_dengan_cs;
+                     if (!isCs) return 0;
                      const msgs = messages.filter(m => m.nomor_wa === wa && m.arah_pesan === 'IN');
                      const lastRead = readStatus[wa] ? new Date(readStatus[wa]) : null;
                      return msgs.filter(m => !lastRead || new Date(m.waktu_pesan || m.created_at!) > lastRead).length;
