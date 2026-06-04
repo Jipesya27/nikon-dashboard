@@ -276,6 +276,7 @@ export default function NikonDashboard() {
    // UI STATES
    const [sidebarOpen, setSidebarOpen] = useState(false);
    const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
+   const getReadStatusKey = (userId?: string) => userId ? `nikon_chat_read_status_${userId}` : 'nikon_chat_read_status';
    const [readStatus, setReadStatus] = useState<Record<string, string>>(() => {
       if (typeof window !== 'undefined') {
          try {
@@ -653,8 +654,9 @@ export default function NikonDashboard() {
    }, [selectedWa]);
 
    useEffect(() => {
-      localStorage.setItem('nikon_chat_read_status', JSON.stringify(readStatus));
-   }, [readStatus]);
+      const key = getReadStatusKey(currentUser?.id_karyawan);
+      localStorage.setItem(key, JSON.stringify(readStatus));
+   }, [readStatus, currentUser?.id_karyawan]);
    // ESC key untuk tutup modal cepat
    useEffect(() => {
       const onKeyDown = (e: KeyboardEvent) => {
@@ -696,13 +698,50 @@ export default function NikonDashboard() {
          .catch((e: Error) => setDealerError(e.message))
          .finally(() => setDealerLoading(false));
    }, [activeTab, dealerSheet, dealerLoading]);
-   // Tandai terbaca saat kontak dibuka — gunakan waktu sekarang agar semua pesan
-   // yang sudah terlihat dianggap terbaca (menghindari inkonsistensi waktu_pesan vs created_at)
+   // Migrasi key lama ke key per-user saat currentUser pertama kali diketahui
+   useEffect(() => {
+      if (!currentUser?.id_karyawan) return;
+      const oldKey = 'nikon_chat_read_status';
+      const newKey = getReadStatusKey(currentUser.id_karyawan);
+      if (newKey === oldKey) return;
+      try {
+         const existing = localStorage.getItem(newKey);
+         if (!existing) {
+            const old = localStorage.getItem(oldKey);
+            if (old) {
+               localStorage.setItem(newKey, old);
+               setReadStatus(JSON.parse(old));
+            }
+         } else {
+            setReadStatus(JSON.parse(existing));
+         }
+      } catch {}
+   }, [currentUser?.id_karyawan]);
+
+   // Tandai terbaca saat kontak dibuka
    useEffect(() => {
       if (!selectedWa) return;
       const now = new Date().toISOString();
       setReadStatus(prev => ({ ...prev, [selectedWa]: now }));
    }, [selectedWa]);
+
+   // Auto-update readStatus saat pesan baru tiba & chat masih terbuka
+   // Pesan yang sudah terlihat langsung dianggap terbaca (tidak perlu klik ulang)
+   useEffect(() => {
+      if (!selectedWa) return;
+      const inMsgs = messages.filter(m => m.nomor_wa === selectedWa && m.arah_pesan === 'IN');
+      if (inMsgs.length === 0) return;
+      const latestTs = inMsgs.reduce((max, m) => {
+         const t = new Date(m.waktu_pesan || m.created_at || 0).getTime();
+         return t > max ? t : max;
+      }, 0);
+      if (!latestTs) return;
+      setReadStatus(prev => {
+         const current = prev[selectedWa] ? new Date(prev[selectedWa]).getTime() : 0;
+         if (latestTs > current) return { ...prev, [selectedWa]: new Date(latestTs).toISOString() };
+         return prev;
+      });
+   }, [selectedWa, messages]);
 
    // --- FETCH DATA ---
    const fetchConsumers = async () => {
