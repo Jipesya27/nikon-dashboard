@@ -3794,6 +3794,28 @@ export default function NikonDashboard() {
                               <p className="text-[10px] text-gray-500">{uniqueContacts.length} percakapan • {totalUnread > 0 && <span className="text-blue-600 font-bold">{totalUnread} belum dibaca</span>}</p>
                            </div>
                            <div className="flex items-center gap-1">
+                              {totalUnread > 0 && (
+                                 <button
+                                    onClick={async () => {
+                                       const now = new Date().toISOString();
+                                       const allWa = uniqueContacts.map(c => c.nomor_wa);
+                                       const next: Record<string, string> = {};
+                                       allWa.forEach(wa => { next[wa] = now; });
+                                       setReadStatus(prev => ({ ...prev, ...next }));
+                                       if (currentUser?.id_karyawan) {
+                                          await sbWrite({
+                                             action: 'upsert',
+                                             table: 'chat_read_status',
+                                             data: allWa.map(wa => ({ id_karyawan: currentUser!.id_karyawan, nomor_wa: wa, last_read_at: now })),
+                                             onConflict: 'id_karyawan,nomor_wa',
+                                          }).catch(() => {});
+                                       }
+                                    }}
+                                    className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
+                                    title="Tandai Semua Terbaca"
+                                    aria-label="Tandai Semua Terbaca"
+                                 >✓✓</button>
+                              )}
                               <button onClick={() => { fetchMessages(); fetchConsumers(); }} disabled={isRefreshing} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Refresh" aria-label="Refresh">
                                  <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                               </button>
