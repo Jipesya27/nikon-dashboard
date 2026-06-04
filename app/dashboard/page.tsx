@@ -4518,7 +4518,7 @@ export default function NikonDashboard() {
                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-black ${filterDuplikat ? 'bg-white text-red-500' : 'bg-red-100 text-red-600'}`}>{duplicateClaimIds.size}</span>
                         </button>
                      </div>
-                     <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
+                     <div className="flex gap-2 overflow-x-auto pb-1">
                         {([
                            { key: 'Semua', label: 'Semua', count: claims.length, color: 'text-gray-900', bar: 'bg-gray-400', ring: 'ring-gray-400' },
                            { key: 'Putih', label: 'Belum Dicek', count: claimStatusCounts.Putih, color: 'text-gray-700', bar: 'bg-gray-300', ring: 'ring-gray-300' },
@@ -4532,7 +4532,7 @@ export default function NikonDashboard() {
                            <button
                               key={s.key}
                               onClick={() => setFilterStatusWarna(s.key)}
-                              className={`bg-white rounded-xl p-3 border-2 shadow-sm text-left transition hover:shadow-md ${filterStatusWarna === s.key ? `border-current ring-2 ${s.ring} ${s.color}` : 'border-gray-200 hover:border-gray-300'}`}
+                              className={`flex-shrink-0 bg-white rounded-xl p-3 border-2 shadow-sm text-left transition hover:shadow-md ${filterStatusWarna === s.key ? `border-current ring-2 ${s.ring} ${s.color}` : 'border-gray-200 hover:border-gray-300'}`}
                            >
                               <div className={`w-full h-1 rounded-full mb-2 ${s.bar}`}></div>
                               <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
