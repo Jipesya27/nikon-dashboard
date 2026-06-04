@@ -2432,6 +2432,24 @@ export default function NikonDashboard() {
          message += getText('lendingInitFooter', {});
          await sendWhatsAppMessageViaFonnte(lendingForm.nomor_wa_peminjam!, message);
 
+         // Telegram notif admin — fire-and-forget
+         fetch('/api/admin/notify-lending', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               type: 'pinjam',
+               nama_peminjam: lendingForm.nama_peminjam,
+               nomor_wa: lendingForm.nomor_wa_peminjam,
+               items: lendingForm.items_dipinjam?.map(item => ({
+                  nama_barang: item.nama_barang,
+                  nomor_seri: item.nomor_seri,
+                  accs: [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean),
+               })),
+               tanggal_peminjaman: dataToSave.tanggal_peminjaman ?? new Date().toISOString(),
+               tanggal_estimasi: lendingForm.tanggal_estimasi_pengembalian,
+            }),
+         }).catch(() => {/* non-kritis */});
+
          fetchLendingRecords();
          closeModal();
       } catch (err: unknown) {
@@ -2871,6 +2889,24 @@ export default function NikonDashboard() {
             });
             message += getText('lendingReturnFooter', {});
             await sendWhatsAppMessageViaFonnte(lending.nomor_wa_peminjam, message);
+
+            // Telegram notif admin — fire-and-forget
+            fetch('/api/admin/notify-lending', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({
+                  type: 'kembali',
+                  nama_peminjam: lending.nama_peminjam,
+                  nomor_wa: lending.nomor_wa_peminjam,
+                  items: returnedItems.map(item => ({
+                     nama_barang: item.nama_barang,
+                     nomor_seri: item.nomor_seri,
+                     catatan_pengembalian: item.catatan_pengembalian,
+                  })),
+                  tanggal_pengembalian: allItemsReturned ? new Date().toISOString() : undefined,
+                  status_akhir: newStatusPeminjaman,
+               }),
+            }).catch(() => {/* non-kritis */});
          }
 
          fetchLendingRecords();

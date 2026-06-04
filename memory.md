@@ -118,7 +118,49 @@ CREATE POLICY "service_role_full_access" ON chat_read_status
 
 ---
 
-## 6. Infrastruktur & Konvensi
+## 6. Peminjaman — Notifikasi Telegram Admin
+
+Saat barang **dipinjam** atau **dikembalikan**, dikirim notif Telegram ke admin melalui:
+- **Endpoint:** `POST /api/admin/notify-lending`
+- **Auth:** `verifyAdminSession` (cookie session wajib)
+- **Telegram chat ID:** diambil dari `pengaturan_bot.telegram_admin_chat_id`, fallback ke env `TELEGRAM_ADMIN_CHAT_ID`
+
+### Format pesan
+
+**Pinjam:**
+```
+📦 Peminjaman Baru!
+
+👤 Nama: {nama_peminjam}
+📱 WhatsApp: {nomor_wa}
+📅 Tgl Pinjam: {tanggal}
+📅 Est. Kembali: {tanggal_estimasi}
+
+Barang Dipinjam:
+1. {nama_barang} — SN: {nomor_seri}
+   Aksesori: ...
+```
+
+**Kembali:**
+```
+✅ Pengembalian Barang!
+
+👤 Nama: {nama_peminjam}
+📱 WhatsApp: {nomor_wa}
+📅 Tgl Kembali: {tanggal}
+📊 Status: Semua barang telah dikembalikan / Pengembalian sebagian
+
+Barang Dikembalikan:
+1. {nama_barang} — SN: {nomor_seri}
+   Catatan: ...
+```
+
+- Dipanggil dari `handleSaveLending` (mode `create`) dan `handleReturnItems` di `dashboard/page.tsx`
+- **Fire-and-forget** — gagal tidak memblokir alur utama
+
+---
+
+## 7. Infrastruktur & Konvensi
 
 - **DB access**: gunakan proxy `/api/admin/sb-read` (GET) dan `/api/admin/sb-write` (POST) via helper `sbRead` / `sbWrite`. Jangan akses Supabase langsung dari client.
 - **Branch utama**: `main`. Semua perubahan di-push ke `main`.
