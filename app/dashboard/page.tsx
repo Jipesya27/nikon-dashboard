@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { DEFAULT_TEMPLATES, applyTemplate, loadChatbotTemplates, DB_KEY_PREFIX, TEMPLATE_CATEGORIES } from '@/app/lib/chatbotTemplate';
 import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang, BarangAset, Affiliate, AffiliateSkema, AffiliatePenjualan } from '@/app/index';
 import {
@@ -946,18 +946,42 @@ export default function NikonDashboard() {
    }, [fetchEventRegistrations]);
 
    useEffect(() => {
-      if (isScannerOpen) {
-         const scanner = new Html5QrcodeScanner('reader', { qrbox: { width: 250, height: 250 }, fps: 5 }, false);
-         scanner.render(
-            async (decodedText) => {
-               scanner.clear();
+      if (!isScannerOpen) return;
+      let qr: Html5Qrcode | null = null;
+      let stopped = false;
+
+      (async () => {
+         try {
+            qr = new Html5Qrcode('reader');
+            const cameras = await Html5Qrcode.getCameras();
+            if (!cameras.length) throw new Error('Tidak ada kamera tersedia di perangkat ini.');
+            // Utamakan kamera belakang di HP
+            const cam = cameras.find(c => /back|rear|environment/i.test(c.label)) ?? cameras[cameras.length - 1];
+            await qr.start(
+               cam.id,
+               { fps: 10, qrbox: { width: 250, height: 250 } },
+               async (decodedText) => {
+                  if (stopped) return;
+                  stopped = true;
+                  await qr!.stop();
+                  qr = null;
+                  setIsScannerOpen(false);
+                  await handleMarkAttendance(decodedText);
+               },
+               () => {}
+            );
+         } catch (err) {
+            if (!stopped) {
                setIsScannerOpen(false);
-               await handleMarkAttendance(decodedText);
-            },
-            () => { /* ignore */ }
-         );
-         return () => { scanner.clear(); };
-      }
+               alert('Gagal membuka kamera: ' + (err instanceof Error ? err.message : String(err)) + '\n\nPastikan izin kamera sudah diberikan dan halaman diakses via HTTPS.');
+            }
+         }
+      })();
+
+      return () => {
+         stopped = true;
+         qr?.stop().catch(() => {});
+      };
    }, [isScannerOpen, handleMarkAttendance]);
 
    const fetchBotSettings = async () => {
@@ -9149,7 +9173,7 @@ ${pages.join('')}
                   <div className="p-5 border-b border-gray-200">
                      <h2 className="text-lg font-bold text-gray-900">Scan QR Code Kehadiran</h2>
                   </div>
-                  <div id="reader" className="p-4"></div>
+                  <div id="reader" className="w-full overflow-hidden rounded-b-xl"></div>
                </div>
             </div>
          )}
