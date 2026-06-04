@@ -7,7 +7,7 @@ const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-async function sendTelegramAdminNotif(nama: string, nomor: string): Promise<void> {
+async function sendTelegramAdminNotif(nama: string, nomor: string, isOffHours = false): Promise<void> {
   if (!TELEGRAM_BOT_TOKEN) return;
   try {
     const { data: tgRow } = await supabase
@@ -18,7 +18,10 @@ async function sendTelegramAdminNotif(nama: string, nomor: string): Promise<void
     const chatId = tgRow?.description || Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") || "";
     if (!chatId) return;
 
-    const text = `🔔 *Permintaan CS Baru\\!*\n\n👤 *Nama:* ${nama.replace(/[_*[\]()~\`>#+\-=|{}.!\\]/g, '\\$&')}\n📱 *WhatsApp:* ${nomor}\n\nKonsumen meminta berbicara dengan CS\\. Silakan balas via dashboard\\.`;
+    const namaEsc = nama.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
+    const text = isOffHours
+      ? `⏰ *Permintaan CS \\(Di Luar Jam Operasional\\)*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomor}\n\nKonsumen menghubungi di luar jam kerja\\. Follow up jika urgent\\.`
+      : `🔔 *Permintaan CS Baru\\!*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomor}\n\nKonsumen meminta berbicara dengan CS\\. Silakan balas via dashboard\\.`;
     await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -330,6 +333,7 @@ serve(async (req)=>{
               if (!isOperatingHours()) {
                 const offlineBase = getMsg('CS_OFFLINE', "Mohon maaf waktu operasional CS adalah :\nSenin-Jumat : 10.00-16.00 WIB\nSabtu : 10.00-12.00 WIB\n\nPesan Anda akan kami balas pada hari dan jam operasional.");
                 balasanBot = offlineBase.includes('LIBUR') ? offlineBase : offlineBase + LIBUR_NOTE;
+                await sendTelegramAdminNotif(user.nama_lengkap || namaProfil, nomorPengirim, true);
               } else {
                 const waitingBase = getMsg('CS_WAITING', "Mohon tunggu, kami sedang menugaskan CS untuk melayani Anda.\n\nJam operasional CS:\nSenin-Jumat : 10.00-16.00 WIB\nSabtu : 10.00-12.00 WIB");
                 balasanBot = waitingBase.includes('LIBUR') ? waitingBase : waitingBase + LIBUR_NOTE;
