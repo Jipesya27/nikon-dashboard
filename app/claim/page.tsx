@@ -4,8 +4,6 @@ import { useState, useRef, Suspense, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AddressFields from '@/app/components/AddressFields';
 
-type Recipient = 'sendiri' | 'orang_lain';
-
 type FormState = {
   email: string;
   nama_lengkap: string;
@@ -16,8 +14,6 @@ type FormState = {
   kabupaten_kotamadya: string;
   provinsi: string;
   kodepos: string;
-  nama_penerima_claim: string;
-  nomor_wa_update: string;
   alamat_pengiriman: string;
   tipe_barang: string;
   nomor_seri: string;
@@ -29,7 +25,7 @@ type FormState = {
 const EMPTY_FORM: FormState = {
   email: '', nama_lengkap: '', nik: '', alamat_rumah: '', kelurahan: '', kecamatan: '',
   kabupaten_kotamadya: '', provinsi: '', kodepos: '',
-  nama_penerima_claim: '', nomor_wa_update: '', alamat_pengiriman: '',
+  alamat_pengiriman: '',
   tipe_barang: '', nomor_seri: '', jenis_promosi: '',
   tanggal_pembelian: '', nama_toko: '',
 };
@@ -38,18 +34,15 @@ function ClaimForm() {
   const searchParams = useSearchParams();
   const phoneFromUrl = searchParams.get('phone') || '';
 
-  // Nomor WA bisa dari URL param (bot) atau diketik manual
   const [phone, setPhone]           = useState(phoneFromUrl);
   const [phoneInput, setPhoneInput] = useState(phoneFromUrl);
   const [phoneConfirmed, setPhoneConfirmed] = useState(!!phoneFromUrl);
 
   const [step, setStep]         = useState<'form' | 'success'>('form');
   const [loading, setLoading]   = useState(false);
-  const [initLoading, setInitLoading] = useState(!!phoneFromUrl);
   const [errorMsg, setErrorMsg] = useState('');
   const [formData, setFormData] = useState<FormState>(EMPTY_FORM);
 
-  const [recipient, setRecipient]                   = useState<Recipient>('sendiri');
   const [alamatKirimSamaRumah, setAlamatKirimSamaRumah] = useState(true);
 
   const [fileGaransi, setFileGaransi]   = useState<File | null>(null);
@@ -65,7 +58,6 @@ function ClaimForm() {
   const refGaransi = useRef<HTMLInputElement>(null);
   const refNota    = useRef<HTMLInputElement>(null);
 
-  // Fetch dropdown options dari autocomplete_items
   useEffect(() => {
     fetch('/api/autocomplete')
       .then(r => r.json())
@@ -77,44 +69,14 @@ function ClaimForm() {
       .catch(() => {});
   }, []);
 
-  // Pre-fill data konsumen dari nomor WA
-  const prefillFromPhone = useCallback(async (p: string) => {
-    if (!p) return;
-    setInitLoading(true);
-    try {
-      const res    = await fetch(`/api/claim?phone=${encodeURIComponent(p)}`);
-      const result = await res.json();
-      if (res.ok && result.konsumen) {
-        setFormData(prev => ({ ...prev, ...result.konsumen }));
-      }
-      // Jika 404 (konsumen belum ada) → lanjutkan dengan form kosong
-    } catch { /* abaikan */ }
-    finally { setInitLoading(false); }
-  }, []);
-
-  useEffect(() => {
-    if (phoneFromUrl) prefillFromPhone(phoneFromUrl);
-  }, [phoneFromUrl, prefillFromPhone]);
-
   // Konfirmasi nomor WA manual
-  async function handleConfirmPhone() {
+  function handleConfirmPhone() {
     const clean = phoneInput.replace(/[^0-9]/g, '');
     if (clean.length < 9) { setErrorMsg('Nomor WA minimal 9 digit.'); return; }
     setPhone(clean);
     setPhoneConfirmed(true);
     setErrorMsg('');
-    await prefillFromPhone(clean);
   }
-
-  // Auto-reset field penerima saat pilih SENDIRI
-  useEffect(() => {
-    if (recipient === 'sendiri') {
-      setFormData(prev => ({ ...prev, nama_penerima_claim: '', nomor_wa_update: '' }));
-      setAlamatKirimSamaRumah(true);
-    } else {
-      setAlamatKirimSamaRumah(false);
-    }
-  }, [recipient]);
 
   // Auto-sync alamat pengiriman = alamat rumah
   useEffect(() => {
@@ -211,7 +173,6 @@ function ClaimForm() {
       ]);
       const fd = new FormData();
       fd.append('phone', phone);
-      fd.append('recipient_type', recipient);
       Object.entries(formData).forEach(([k, v]) => fd.append(k, v));
       fd.append('foto_kartu_garansi', compGaransi);
       fd.append('foto_nota_pembelian', compNota);
@@ -229,15 +190,6 @@ function ClaimForm() {
     } finally {
       setLoading(false);
     }
-  }
-
-  // ── Loading state ──────────────────────────────────────────────────
-  if (initLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-2 border-black border-t-transparent rounded-full" />
-      </div>
-    );
   }
 
   // ── Success state ──────────────────────────────────────────────────
@@ -260,7 +212,7 @@ function ClaimForm() {
     );
   }
 
-  // ── Tampilkan input nomor WA jika belum confirmed ──────────────────
+  // ── Input nomor WA jika belum confirmed ──────────────────
   if (!phoneConfirmed) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4" style={{ colorScheme: 'light' }}>
@@ -270,7 +222,7 @@ function ClaimForm() {
               <span className="text-white font-bold text-xl">N</span>
             </div>
             <h1 className="text-2xl font-bold text-gray-900">Form Claim Promo</h1>
-            <p className="text-gray-600 text-sm mt-1">Masukkan nomor WhatsApp Anda untuk melanjutkan</p>
+            <p className="text-gray-600 text-sm mt-1">Masukkan nomor WhatsApp untuk menerima notifikasi status klaim</p>
           </div>
           {errorMsg && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
@@ -279,7 +231,7 @@ function ClaimForm() {
           )}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Nomor WhatsApp Aktif</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Nomor WhatsApp untuk Notifikasi</label>
               <input
                 type="tel"
                 value={phoneInput}
@@ -297,7 +249,7 @@ function ClaimForm() {
               Lanjutkan →
             </button>
             <p className="text-xs text-gray-500 text-center">
-              Nomor WA digunakan untuk notifikasi status klaim Anda.
+              Notifikasi status klaim akan dikirim ke nomor WhatsApp ini.
             </p>
           </div>
         </div>
@@ -328,33 +280,16 @@ function ClaimForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* ── SECTION 0: PILIH PENERIMA ── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-3">
-            <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
-              <h2 className="text-base font-semibold text-gray-800">Untuk siapa claim ini?</h2>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {(['sendiri', 'orang_lain'] as const).map(v => (
-                <label key={v} className={`cursor-pointer rounded-xl border-2 p-4 text-center transition-all ${recipient === v ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                  <input type="radio" name="recipient" value={v} checked={recipient === v} onChange={() => setRecipient(v)} className="hidden" />
-                  <div className="text-2xl mb-1">{v === 'sendiri' ? '🙋' : '🎁'}</div>
-                  <div className="font-semibold text-sm text-gray-900">{v === 'sendiri' ? 'Diri Sendiri' : 'Orang Lain'}</div>
-                  <div className="text-xs text-gray-700 mt-0.5 font-medium">{v === 'sendiri' ? 'Saya yang menerima hadiah' : 'Hadiah untuk orang lain'}</div>
-                </label>
-              ))}
-            </div>
-          </div>
-
           {/* ── SECTION 1: DATA DIRI ── */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">2</div>
+              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">1</div>
               <h2 className="text-base font-semibold text-gray-800">Data Diri Pendaftar</h2>
             </div>
 
+            {/* Notifikasi WA */}
             <div>
-              <label className={labelCls}>Nomor WhatsApp Pendaftar</label>
+              <label className={labelCls}>Nomor WhatsApp Penerima Notifikasi</label>
               <div className="flex gap-2">
                 <input type="text" value={phone} readOnly className="flex-1 px-3 py-2.5 border border-gray-400 rounded-lg bg-gray-100 text-gray-800 font-medium text-sm" />
                 <button type="button" onClick={() => { setPhoneConfirmed(false); setPhoneInput(phone); }}
@@ -362,6 +297,7 @@ function ClaimForm() {
                   Ganti
                 </button>
               </div>
+              <p className="text-xs text-gray-500 mt-1">Notifikasi status klaim akan dikirim ke nomor ini.</p>
             </div>
 
             <div>
@@ -409,28 +345,10 @@ function ClaimForm() {
             />
           </div>
 
-          {/* ── SECTION 2: DATA PENERIMA (opsional) ── */}
-          {recipient === 'orang_lain' && (
-            <div className="bg-white rounded-2xl shadow-sm border-2 border-amber-200 p-6 space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                <div className="w-7 h-7 bg-amber-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
-                <h2 className="text-base font-semibold text-gray-800">Data Penerima Hadiah</h2>
-              </div>
-              <div>
-                <label className={labelCls}>Nama Penerima Hadiah {req}</label>
-                <input type="text" name="nama_penerima_claim" value={formData.nama_penerima_claim} onChange={handleChange} required={recipient === 'orang_lain'} placeholder="Nama lengkap penerima" className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Nomor WA Penerima <span className="text-gray-700 text-xs font-normal">(opsional)</span></label>
-                <input type="text" name="nomor_wa_update" value={formData.nomor_wa_update} onChange={handleChange} placeholder="6281234567890" pattern="[0-9]{10,15}" className={inputCls} />
-              </div>
-            </div>
-          )}
-
-          {/* ── SECTION 3: UPLOAD DOKUMEN ── */}
+          {/* ── SECTION 2: UPLOAD DOKUMEN ── */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">{recipient === 'orang_lain' ? 4 : 3}</div>
+              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">2</div>
               <h2 className="text-base font-semibold text-gray-800">Upload Dokumen</h2>
             </div>
 
@@ -507,10 +425,10 @@ function ClaimForm() {
             </div>
           </div>
 
-          {/* ── SECTION 4: DATA PRODUK ── */}
+          {/* ── SECTION 3: DATA PRODUK ── */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">{recipient === 'orang_lain' ? 5 : 4}</div>
+              <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">3</div>
               <h2 className="text-base font-semibold text-gray-800">Data Produk & Pembelian</h2>
             </div>
 
@@ -544,9 +462,7 @@ function ClaimForm() {
               <label className={labelCls}>Alamat Pengiriman Hadiah {req}</label>
               <label className="flex items-center gap-2 mb-2 cursor-pointer">
                 <input type="checkbox" checked={alamatKirimSamaRumah} onChange={e => setAlamatKirimSamaRumah(e.target.checked)} className="w-4 h-4 accent-black" />
-                <span className="text-xs text-gray-800 font-medium">
-                  {recipient === 'sendiri' ? 'Sama dengan alamat rumah saya' : 'Kirim ke alamat rumah pendaftar'}
-                </span>
+                <span className="text-xs text-gray-800 font-medium">Sama dengan alamat rumah saya</span>
               </label>
               <textarea name="alamat_pengiriman" value={formData.alamat_pengiriman} onChange={handleChange} required rows={3}
                 disabled={alamatKirimSamaRumah} placeholder="Alamat lengkap tujuan pengiriman"

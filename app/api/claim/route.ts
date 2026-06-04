@@ -135,9 +135,6 @@ export async function POST(req: Request) {
     const supabase = getSupabase();
     const formData = await req.formData();
 
-    // Penerima
-    const recipient_type      = ((formData.get('recipient_type') as string) || 'sendiri').toLowerCase();
-
     // Data Diri Pendaftar (→ tabel konsumen)
     const phone               = (formData.get('phone') as string)?.trim();
     const email               = (formData.get('email') as string)?.trim().toLowerCase() || null;
@@ -150,10 +147,6 @@ export async function POST(req: Request) {
     const provinsi            = (formData.get('provinsi') as string)?.trim();
     const kodepos             = (formData.get('kodepos') as string)?.trim();
 
-    // Data Penerima (→ claim_promo, hanya kalau ORANG LAIN)
-    const nama_penerima_input = (formData.get('nama_penerima_claim') as string)?.trim();
-    const nomor_wa_update_input = ((formData.get('nomor_wa_update') as string) || '').replace(/[^0-9]/g, '');
-
     // Data Produk (→ tabel claim_promo)
     const nomor_seri          = (formData.get('nomor_seri') as string)?.trim();
     const tipe_barang         = (formData.get('tipe_barang') as string)?.trim();
@@ -162,16 +155,8 @@ export async function POST(req: Request) {
     const nama_toko           = (formData.get('nama_toko') as string)?.trim();
     const alamat_pengiriman   = (formData.get('alamat_pengiriman') as string)?.trim();
 
-    // Tentukan penerima & nomor update final
-    const isOrangLain = recipient_type === 'orang_lain';
-    const nama_penerima_claim = isOrangLain ? nama_penerima_input : nama_lengkap;
-    if (isOrangLain && !nama_penerima_input) {
-      return NextResponse.json({ error: 'Nama Penerima wajib diisi untuk claim atas nama orang lain.' }, { status: 400 });
-    }
-    // Validasi nomor WA penerima jika orang lain
-    if (isOrangLain && nomor_wa_update_input && nomor_wa_update_input.length < 9) {
-      return NextResponse.json({ error: 'Nomor WA penerima tidak valid (minimal 9 digit).' }, { status: 400 });
-    }
+    // Penerima = pendaftar itu sendiri
+    const nama_penerima_claim = nama_lengkap;
 
     // File
     const fileGaransi = formData.get('foto_kartu_garansi') as File | null;
@@ -270,9 +255,8 @@ export async function POST(req: Request) {
     // Tentukan nomor_wa_update final:
     // - ORANG LAIN + ada input → pakai nomor penerima
     // - SENDIRI / tidak diisi → default = nomor pendaftar (akan dikonfirmasi via bot)
-    const nomor_wa_update = (isOrangLain && nomor_wa_update_input.length >= 10)
-      ? nomor_wa_update_input
-      : matchedPhone;
+    // nomor_wa_update = nomor WA pendaftar (notifikasi selalu ke nomor yang diinput)
+    const nomor_wa_update = matchedPhone;
 
     // 3. INSERT ke tabel claim_promo (relasi via nomor_wa)
     const { error: insertClaimError } = await supabase.from('claim_promo').insert({
@@ -295,13 +279,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Gagal menyimpan data claim: ' + insertClaimError.message }, { status: 500 });
     }
 
-    // 4. Update status_langkah konsumen
-    //    - Kalau ORANG LAIN dan sudah isi nomor update → langsung selesai (status START)
-    //    - Kalau SENDIRI / tidak isi nomor update → konfirmasi via bot (TANYA_UPDATE_WA)
-    const nextStatus = (isOrangLain && nomor_wa_update_input.length >= 10) ? 'START' : 'TANYA_UPDATE_WA';
+    // 4. Reset status_langkah konsumen ke START
     await supabase
       .from('konsumen')
-      .update({ status_langkah: nextStatus })
+      .update({ status_langkah: 'START' })
       .eq('nomor_wa', matchedPhone);
 
     // 5+6. Notif ke konsumen & admin (channel: WA / Email / keduanya)
