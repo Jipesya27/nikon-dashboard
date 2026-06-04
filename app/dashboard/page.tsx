@@ -698,24 +698,41 @@ export default function NikonDashboard() {
          .catch((e: Error) => setDealerError(e.message))
          .finally(() => setDealerLoading(false));
    }, [activeTab, dealerSheet, dealerLoading]);
-   // Migrasi key lama ke key per-user saat currentUser pertama kali diketahui
+   // Migrasi key lama ke key per-user, lalu load dari Supabase (sync lintas perangkat)
    useEffect(() => {
       if (!currentUser?.id_karyawan) return;
+      const userId = currentUser.id_karyawan;
       const oldKey = 'nikon_chat_read_status';
-      const newKey = getReadStatusKey(currentUser.id_karyawan);
-      if (newKey === oldKey) return;
+      const newKey = getReadStatusKey(userId);
+
+      // Migrasi localStorage: generic → per-user
       try {
          const existing = localStorage.getItem(newKey);
          if (!existing) {
             const old = localStorage.getItem(oldKey);
-            if (old) {
-               localStorage.setItem(newKey, old);
-               setReadStatus(JSON.parse(old));
-            }
+            if (old) { localStorage.setItem(newKey, old); setReadStatus(JSON.parse(old)); }
          } else {
             setReadStatus(JSON.parse(existing));
          }
       } catch {}
+
+      // Load dari Supabase dan merge (data DB menang jika lebih baru)
+      sbRead<{ nomor_wa: string; last_read_at: string }>({
+         table: 'chat_read_status',
+         filters: [{ col: 'id_karyawan', op: 'eq', val: userId }],
+      }).then(({ data }) => {
+         if (!data?.length) return;
+         setReadStatus(prev => {
+            const merged = { ...prev };
+            data.forEach(row => {
+               const existing = merged[row.nomor_wa];
+               if (!existing || new Date(row.last_read_at) > new Date(existing)) {
+                  merged[row.nomor_wa] = row.last_read_at;
+               }
+            });
+            return merged;
+         });
+      }).catch(() => {});
    }, [currentUser?.id_karyawan]);
 
    // Tandai terbaca saat kontak dibuka
@@ -726,9 +743,9 @@ export default function NikonDashboard() {
    }, [selectedWa]);
 
    // Auto-update readStatus saat pesan baru tiba & chat masih terbuka
-   // Pesan yang sudah terlihat langsung dianggap terbaca (tidak perlu klik ulang)
+   // Pesan yang sudah terlihat langsung dianggap terbaca, lalu sync ke DB
    useEffect(() => {
-      if (!selectedWa) return;
+      if (!selectedWa || !currentUser?.id_karyawan) return;
       const inMsgs = messages.filter(m => m.nomor_wa === selectedWa && m.arah_pesan === 'IN');
       if (inMsgs.length === 0) return;
       const latestTs = inMsgs.reduce((max, m) => {
@@ -738,10 +755,18 @@ export default function NikonDashboard() {
       if (!latestTs) return;
       setReadStatus(prev => {
          const current = prev[selectedWa] ? new Date(prev[selectedWa]).getTime() : 0;
-         if (latestTs > current) return { ...prev, [selectedWa]: new Date(latestTs).toISOString() };
-         return prev;
+         if (latestTs <= current) return prev;
+         const newTs = new Date(latestTs).toISOString();
+         // Sync ke Supabase agar perangkat lain ikut update
+         sbWrite({
+            action: 'upsert',
+            table: 'chat_read_status',
+            data: { id_karyawan: currentUser!.id_karyawan, nomor_wa: selectedWa, last_read_at: newTs },
+            onConflict: 'id_karyawan,nomor_wa',
+         }).catch(() => {});
+         return { ...prev, [selectedWa]: newTs };
       });
-   }, [selectedWa, messages]);
+   }, [selectedWa, messages, currentUser?.id_karyawan]);
 
    // --- FETCH DATA ---
    const fetchConsumers = async () => {
