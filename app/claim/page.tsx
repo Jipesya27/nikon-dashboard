@@ -37,6 +37,7 @@ function ClaimForm() {
   const [phone, setPhone]           = useState(phoneFromUrl);
   const [phoneInput, setPhoneInput] = useState(phoneFromUrl);
   const [phoneConfirmed, setPhoneConfirmed] = useState(!!phoneFromUrl);
+  const [initLoading, setInitLoading] = useState(!!phoneFromUrl);
 
   const [step, setStep]         = useState<'form' | 'success'>('form');
   const [loading, setLoading]   = useState(false);
@@ -69,13 +70,35 @@ function ClaimForm() {
       .catch(() => {});
   }, []);
 
+  // Prefill kodepos + wilayah dari DB (bukan alamat_rumah — diisi manual)
+  // Harus selesai SEBELUM AddressFields mount agar cascade init berjalan benar
+  const prefillKodeposFromPhone = useCallback(async (p: string) => {
+    if (!p) return;
+    setInitLoading(true);
+    try {
+      const res    = await fetch(`/api/claim?phone=${encodeURIComponent(p)}`);
+      const result = await res.json();
+      if (res.ok && result.konsumen) {
+        const { kelurahan, kecamatan, kabupaten_kotamadya, provinsi, kodepos } = result.konsumen;
+        setFormData(prev => ({ ...prev, kelurahan, kecamatan, kabupaten_kotamadya, provinsi, kodepos }));
+      }
+      // 404 = konsumen belum ada → lanjut form kosong
+    } catch { /* abaikan */ }
+    finally { setInitLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (phoneFromUrl) prefillKodeposFromPhone(phoneFromUrl);
+  }, [phoneFromUrl, prefillKodeposFromPhone]);
+
   // Konfirmasi nomor WA manual
-  function handleConfirmPhone() {
+  async function handleConfirmPhone() {
     const clean = phoneInput.replace(/[^0-9]/g, '');
     if (clean.length < 9) { setErrorMsg('Nomor WA minimal 9 digit.'); return; }
     setPhone(clean);
     setPhoneConfirmed(true);
     setErrorMsg('');
+    await prefillKodeposFromPhone(clean);
   }
 
   // Auto-sync alamat pengiriman = alamat rumah
@@ -190,6 +213,15 @@ function ClaimForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // ── Loading state (prefill kodepos dari DB) ────────────────────────
+  if (initLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-2 border-black border-t-transparent rounded-full" />
+      </div>
+    );
   }
 
   // ── Success state ──────────────────────────────────────────────────
