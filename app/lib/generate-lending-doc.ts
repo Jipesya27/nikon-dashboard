@@ -199,9 +199,15 @@ export async function generateLendingDoc(input: GenerateLendingDocInput): Promis
     { mimeType: 'application/pdf', folderName: 'Dokumen Peminjaman' },
   );
 
+  // Gunakan proxy internal agar Meta (terutama iOS WhatsApp) mendapat URL
+  // yang langsung mengembalikan byte PDF tanpa redirect.
+  // Google Drive uc?export=download melakukan redirect 302 yang tidak selalu
+  // diikuti oleh iOS WhatsApp saat mendownload document header template.
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://altanikindo.com';
+
   return {
     viewUrl:     `https://drive.google.com/file/d/${fileId}/view`,
-    downloadUrl: `https://drive.google.com/uc?export=download&id=${fileId}`,
+    downloadUrl: `${baseUrl}/api/public/lending-doc?id=${fileId}`,
     fileName,
     fileId,
   };
