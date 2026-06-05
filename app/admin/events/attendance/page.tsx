@@ -164,6 +164,30 @@ export default function AdminAttendancePage() {
 
   const recentAttendees = registrations.filter(r => r.is_attended).slice(0, 8);
 
+  const exportCSV = () => {
+    const headers = ['Status', 'Nama', 'Event', 'No WA', 'Kota', 'Tipe Kamera', 'Waktu Hadir', 'Admin Scan', 'Tgl Daftar'];
+    const rows = filtered.map(r => [
+      r.is_attended ? 'Hadir' : 'Belum Hadir',
+      r.nama_lengkap,
+      r.event_name,
+      r.nomor_wa,
+      r.kabupaten_kotamadya || '',
+      r.tipe_kamera || '',
+      r.attended_at ? new Date(r.attended_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : '',
+      r.attended_by || '',
+      new Date(r.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+    ]);
+    const csv = [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const eventLabel = selectedEventId === 'all' ? 'semua-event' : (events.find(e => e.id === selectedEventId)?.event_title.replace(/\s+/g, '-').toLowerCase() || selectedEventId);
+    a.href = url;
+    a.download = `absensi-${eventLabel}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
       {/* Header */}
@@ -339,7 +363,16 @@ export default function AdminAttendancePage() {
 
         {/* Full list */}
         <div>
-          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Daftar Peserta Terdaftar ({filtered.length})</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Daftar Peserta Terdaftar ({filtered.length})</h3>
+            <button
+              onClick={exportCSV}
+              disabled={filtered.length === 0}
+              className="flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 text-gray-700 text-xs font-semibold px-3 py-2 rounded-lg shadow-sm transition-all"
+            >
+              ⬇️ Export CSV
+            </button>
+          </div>
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#FFE800]" />
