@@ -2515,7 +2515,7 @@ ${kode ? `
                   : '-';
                const itemList = formatLendingItemsForWA(lendingForm.items_dipinjam ?? [], 'pinjam');
                await sendWhatsAppMessage(waNumber, '', {
-                  templateName: 'notif_lending_init',
+                  templateName: 'notif_lending_init_v2',
                   bodyParams: [lendingForm.nama_peminjam!, estLabel, itemList, viewUrl],
                });
             }
@@ -2990,7 +2990,7 @@ ${kode ? `
                   const tglLabel = new Date(tglKembali).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
                   const itemList = formatLendingItemsForWA(itemsWithAccsNotes, 'kembali');
                   await sendWhatsAppMessage(lending.nomor_wa_peminjam, '', {
-                     templateName: 'notif_lending_return',
+                     templateName: 'notif_lending_return_v2',
                      bodyParams: [lending.nama_peminjam, tglLabel, itemList, viewUrl],
                   });
                }
