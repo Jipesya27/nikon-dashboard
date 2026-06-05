@@ -67,7 +67,7 @@ export interface PeminjamanBarang {
    tanggal_pengembalian?: string | null;
    tanggal_estimasi_pengembalian?: string | null;
    reminder_sent_at?: string | null;
-   status_peminjaman: 'aktif' | 'selesai';
+   status_peminjaman: 'aktif' | 'partial' | 'selesai';
    status_pengiriman?: 'menunggu' | 'dikirim' | 'terkirim';
    id_kurir?: string | null; // UUID
    tanggal_dikirim?: string | null;

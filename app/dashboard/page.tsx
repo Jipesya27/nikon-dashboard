@@ -2939,8 +2939,9 @@ ${kode ? `
       if (!window.confirm('Yakin mengembalikan barang yang dipilih?')) return;
       setIsSubmitting(true);
       try {
-         const allItemsReturned = lending.items_dipinjam.every(item => item.status_pengembalian === 'dikembalikan');
-         const newStatusPeminjaman = allItemsReturned ? 'selesai' : 'aktif';
+         const allItemsReturned  = lending.items_dipinjam.every(item => item.status_pengembalian === 'dikembalikan');
+         const someItemsReturned = lending.items_dipinjam.some(item => item.status_pengembalian === 'dikembalikan');
+         const newStatusPeminjaman = allItemsReturned ? 'selesai' : someItemsReturned ? 'partial' : 'aktif';
 
          // Append unchecked accessories to catatan_pengembalian
          const itemsWithAccsNotes = lending.items_dipinjam.map((item, idx) => {
@@ -5491,13 +5492,15 @@ ${kode ? `
                      {/* Stat cards */}
                      {(() => {
                         const aktif = lendingRecords.filter(l => l.status_peminjaman === 'aktif').length;
+                        const partial = lendingRecords.filter(l => l.status_peminjaman === 'partial').length;
                         const selesai = lendingRecords.filter(l => l.status_peminjaman === 'selesai').length;
                         const totalBarang = lendingRecords.reduce((s, l) => s + l.items_dipinjam.length, 0);
                         return (
-                           <div className="grid grid-cols-4 gap-2">
+                           <div className="grid grid-cols-5 gap-2">
                               {([
                                  { label: 'Total Peminjaman', count: lendingRecords.length, color: 'text-gray-900', bar: 'bg-gray-400' },
                                  { label: 'Aktif', count: aktif, color: 'text-orange-700', bar: 'bg-orange-400' },
+                                 { label: 'Partial', count: partial, color: 'text-yellow-700', bar: 'bg-yellow-400' },
                                  { label: 'Selesai', count: selesai, color: 'text-green-700', bar: 'bg-green-500' },
                                  { label: 'Total Barang', count: totalBarang, color: 'text-blue-700', bar: 'bg-blue-500' },
                               ] as { label: string; count: number; color: string; bar: string }[]).map(s => (
@@ -5538,7 +5541,7 @@ ${kode ? `
                               </thead>
                               <tbody className="divide-y divide-gray-100">
                                  {sortedLendingRecords.map((l: PeminjamanBarang) => (
-                                    <tr key={l.id_peminjaman} className={`border-l-4 ${l.status_peminjaman === 'aktif' ? 'border-l-orange-400' : 'border-l-green-500'} hover:bg-gray-50 transition-colors`}>
+                                    <tr key={l.id_peminjaman} className={`border-l-4 ${l.status_peminjaman === 'aktif' ? 'border-l-orange-400' : l.status_peminjaman === 'partial' ? 'border-l-yellow-400' : 'border-l-green-500'} hover:bg-gray-50 transition-colors`}>
                                        <td className="px-3 py-2.5">
                                           <p className="font-bold text-slate-800">{l.nama_peminjam}</p>
                                           <p className="text-[11px] text-gray-500 font-mono">{l.nomor_wa_peminjam}</p>
@@ -5617,7 +5620,7 @@ ${kode ? `
                                        </td>
                                        <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</td>
                                        <td className="px-3 py-2.5 text-center">
-                                          <span className={`px-2 py-1 rounded text-[10px] font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
+                                          <span className={`px-2 py-1 rounded text-[10px] font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : l.status_peminjaman === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
                                        </td>
                                        <td className="px-3 py-2.5 text-center">
                                           {(() => {
@@ -5633,7 +5636,7 @@ ${kode ? `
                                        </td>
                                        <td className="px-3 py-2.5">
                                           <div className="flex flex-col gap-1 min-w-[80px]">
-                                             {l.status_peminjaman === 'aktif' && <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-[11px] font-bold hover:underline text-left">↩ Pengembalian</button>}
+                                             {(l.status_peminjaman === 'aktif' || l.status_peminjaman === 'partial') && <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-[11px] font-bold hover:underline text-left">↩ Pengembalian</button>}
                                              <button onClick={() => handlePrintPeminjamanPDF(l)} className="text-purple-600 text-[11px] font-bold hover:underline text-left">🖨️ PDF</button>
                                              <div className="flex gap-2 pt-0.5 border-t border-gray-100">
                                                 <button onClick={() => openModal('edit', 'lending', l)} className="text-gray-700 text-[11px] font-bold hover:underline">Edit</button>
@@ -5653,7 +5656,7 @@ ${kode ? `
                                  <div className="border-b border-gray-100 pb-3 mb-3">
                                     <h3 className="font-bold text-base text-slate-800">{l.nama_peminjam}</h3>
                                     <p className="text-xs text-gray-500">{l.nomor_wa_peminjam}</p>
-                                    <span className={`mt-2 inline-block px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
+                                    <span className={`mt-2 inline-block px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : l.status_peminjaman === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
                                  </div>
                                  <div className="space-y-2 text-xs flex-1">
                                     <p><span className="font-bold w-24 inline-block">Tgl Pinjam:</span> {l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</p>
@@ -5676,7 +5679,7 @@ ${kode ? `
                                     </ul>
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end flex-wrap">
-                                    {l.status_peminjaman === 'aktif' && <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-xs font-bold hover:underline">Pengembalian</button>}
+                                    {(l.status_peminjaman === 'aktif' || l.status_peminjaman === 'partial') && <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-xs font-bold hover:underline">Pengembalian</button>}
                                     <button onClick={() => handlePrintPeminjamanPDF(l)} className="text-purple-600 text-xs font-bold hover:underline">🖨️ PDF</button>
                                     <button onClick={() => openModal('edit', 'lending', l)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => handleDelete('lending', l.id_peminjaman!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
