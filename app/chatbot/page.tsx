@@ -12,13 +12,13 @@ import {
 
 // ── Bot Health Panel ──────────────────────────────────────────────
 interface HealthData {
-  overall: { edge_ok: boolean; fonnte_ok: boolean; has_recent_activity: boolean; has_error: boolean };
+  overall: { edge_ok: boolean; meta_ok: boolean; has_recent_activity: boolean; has_error: boolean };
   last_error: { context: string; message: string; detail: unknown; ts: string } | null;
   last_success: string | null;
   last_bot_reply: { waktu_pesan: string; isi_pesan: string } | null;
   last_incoming: { waktu_pesan: string; nama_profil_wa: string } | null;
   edge_function: { ok: boolean; status?: number; error?: string };
-  fonnte_api: { ok: boolean; status?: number; error?: string };
+  meta_api: { ok: boolean; status?: number; error?: string };
 }
 
 function timeAgo(iso: string | null): string {
@@ -60,7 +60,7 @@ function BotHealthPanel() {
   }, [fetchHealth]);
 
   const o = health?.overall;
-  const allOk = o && o.edge_ok && o.fonnte_ok && !o.has_error;
+  const allOk = o && o.edge_ok && o.meta_ok && !o.has_error;
   const panelColor = !health || loading
     ? 'border-gray-300 bg-gray-50'
     : allOk
@@ -86,7 +86,7 @@ function BotHealthPanel() {
           {health && (
             <div className="flex items-center gap-3 text-xs text-gray-600">
               <span><Dot ok={!!o?.edge_ok} />Edge Function</span>
-              <span><Dot ok={!!o?.fonnte_ok} />Fonnte API</span>
+              <span><Dot ok={!!o?.meta_ok} />Meta API</span>
               <span><Dot ok={!!o?.has_recent_activity} />Aktivitas Bot</span>
               {o?.has_error && <span className="text-red-600 font-bold">⚠ Ada Error Tercatat</span>}
             </div>
@@ -117,12 +117,12 @@ function BotHealthPanel() {
               {health.last_success && <div className="text-xs text-gray-400 mt-1">Sukses terakhir: {timeAgo(health.last_success)}</div>}
             </div>
             <div className="rounded-lg border p-3 bg-gray-50">
-              <div className="text-xs text-gray-500 mb-1">Fonnte API</div>
-              <div className={`font-bold text-sm ${health.fonnte_api.ok ? 'text-green-700' : 'text-red-600'}`}>
-                {health.fonnte_api.ok ? 'Terhubung' : 'Gagal'}
+              <div className="text-xs text-gray-500 mb-1">Meta API</div>
+              <div className={`font-bold text-sm ${health.meta_api.ok ? 'text-green-700' : 'text-red-600'}`}>
+                {health.meta_api.ok ? 'Terhubung' : 'Gagal'}
               </div>
-              {health.fonnte_api.error && <div className="text-xs text-red-500 mt-1 break-all">{health.fonnte_api.error}</div>}
-              {health.fonnte_api.status && <div className="text-xs text-gray-400 mt-1">HTTP {health.fonnte_api.status}</div>}
+              {health.meta_api.error && <div className="text-xs text-red-500 mt-1 break-all">{health.meta_api.error}</div>}
+              {health.meta_api.status && <div className="text-xs text-gray-400 mt-1">HTTP {health.meta_api.status}</div>}
             </div>
             <div className="rounded-lg border p-3 bg-gray-50">
               <div className="text-xs text-gray-500 mb-1">Balasan Bot Terakhir</div>

@@ -161,11 +161,18 @@ function normalizeWaNumber(nomor: string): string {
 }
 
 // --- API PENGIRIMAN AMAN VIA SUPABASE EDGE FUNCTION ---
-const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) => {
+const sendWhatsAppMessage = async (
+   targetWa: string,
+   message: string,
+   templateOpts?: { templateName: string; bodyParams: string[]; documentUrl: string; documentFilename: string },
+) => {
+   const payload = templateOpts
+      ? { target: targetWa, ...templateOpts }
+      : { target: targetWa, message };
    const res = await fetch('/api/admin/send-wa', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target: targetWa, message }),
+      body: JSON.stringify(payload),
    });
    if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -2332,7 +2339,7 @@ ${kode ? `
                body: JSON.stringify({ id_karyawan: newKaryawan.id_karyawan, password: passwordToUse }),
             });
             const msg = getText('newKaryawan', { nama: karyawanForm.nama_karyawan!, user: karyawanForm.username!, pass: passwordToUse });
-            await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
+            await sendWhatsAppMessage(karyawanForm.nomor_wa, msg);
          } else {
             const updateData = { ...karyawanForm };
             const plainPw = updateData.password;
@@ -2347,7 +2354,7 @@ ${kode ? `
                   body: JSON.stringify({ id_karyawan: editingId, password: plainPw }),
                });
                const msg = getText('updatePasswordAdmin', { nama: karyawanForm.nama_karyawan!, pass: plainPw });
-               await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
+               await sendWhatsAppMessage(karyawanForm.nomor_wa, msg);
             }
          }
          fetchKaryawans(); closeModal();
@@ -2371,7 +2378,7 @@ ${kode ? `
 
          if (karyawanForm.nomor_wa) {
             const msg = getText('resetPasswordAdmin', { nama: karyawanForm.nama_karyawan!, pass: karyawanForm.password! });
-            await sendWhatsAppMessageViaFonnte(karyawanForm.nomor_wa, msg);
+            await sendWhatsAppMessage(karyawanForm.nomor_wa, msg);
          }
 
          alert(`Password untuk ${karyawanForm.username} berhasil di-reset dan dikirim via WA!`);
@@ -2469,15 +2476,36 @@ ${kode ? `
             if (error) throw new Error(error.message);
          }
 
-         // 3. Send WhatsApp message
-         let message = getText('lendingInitHeader', { nama: lendingForm.nama_peminjam! });
-         lendingForm.items_dipinjam?.forEach((item, idx) => {
-            message += getText('lendingInitItem', { idx: idx + 1, barang: item.nama_barang, sn: item.nomor_seri, catatan: item.catatan || '' });
-            const accs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean);
-            if (accs.length > 0) message += `\n   _Aksesori: ${accs.join(', ')}_`;
-         });
-         message += getText('lendingInitFooter', {});
-         await sendWhatsAppMessageViaFonnte(waNumber, message);
+         // 3. Generate PDF rincian + kirim Meta template dengan document header
+         try {
+            const docRes = await fetch('/api/admin/generate-lending-doc', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({
+                  type: 'pinjam',
+                  kodePeminjaman: dataToSave.kode_peminjaman,
+                  namaPeminjam: lendingForm.nama_peminjam,
+                  nomorWa: waNumber,
+                  items: lendingForm.items_dipinjam,
+                  tanggalPeminjaman: dataToSave.tanggal_peminjaman,
+                  tanggalEstimasi: lendingForm.tanggal_estimasi_pengembalian,
+               }),
+            });
+            if (docRes.ok) {
+               const { downloadUrl, fileName } = await docRes.json();
+               const estLabel = lendingForm.tanggal_estimasi_pengembalian
+                  ? new Date(lendingForm.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
+                  : '-';
+               await sendWhatsAppMessage(waNumber, '', {
+                  templateName: 'notif_lending_init',
+                  bodyParams: [lendingForm.nama_peminjam!, estLabel],
+                  documentUrl: downloadUrl,
+                  documentFilename: fileName,
+               });
+            }
+         } catch (waErr) {
+            console.error('[lending] Gagal kirim WA:', waErr);
+         }
 
          // Telegram notif admin — fire-and-forget
          fetch('/api/admin/notify-lending', {
@@ -2778,8 +2806,7 @@ ${kode ? `
       setReplyToMessage(null);
       setTimeout(scrollToBottom, 50);
 
-      // --- Simpan ke DB dulu, TERLEPAS dari hasil Fonnte ---
-      // Urutan: insert DB → tampil di UI via polling, Fonnte = fire-and-forget
+      // --- Simpan ke DB dulu — insert DB → tampil di UI via polling, WA = fire-and-forget ---
       const { error: insertErr } = await sbWrite({
          action: 'insert',
          table: 'riwayat_pesan',
@@ -2793,17 +2820,17 @@ ${kode ? `
          return;
       }
 
-      // --- Fonnte — fire-and-forget, tidak memblokir UI ---
+      // --- Kirim WA — fire-and-forget, tidak memblokir UI ---
       // bicara_dengan_cs TIDAK di-clear di sini; hanya tombol "Selesai CS" yang boleh clear
-      sendWhatsAppMessageViaFonnte(selectedWa, fullMessage)
-         .catch(err => console.error('[handleSendReply] fonnte error:', err));
+      sendWhatsAppMessage(selectedWa, fullMessage)
+         .catch(err => console.error('[handleSendReply] wa error:', err));
       // Polling 5 detik akan replace optimistic dengan data real dari DB secara otomatis
    };
 
    const handleSendNewChat = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newChatWa || !newChatMsg.trim()) return;
-      await sendWhatsAppMessageViaFonnte(newChatWa, newChatMsg.trim());
+      await sendWhatsAppMessage(newChatWa, newChatMsg.trim());
       await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: newChatWa, nama_profil_wa: getRealProfileName(newChatWa), arah_pesan: 'OUT', isi_pesan: newChatMsg.trim(), waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false, created_at: new Date().toISOString() } });
       setIsNewChatModalOpen(false);
       setNewChatWa('');
@@ -2827,7 +2854,7 @@ ${kode ? `
          catatan_mkt: c.catatan_mkt || '',
       });
       const sentAt = new Date().toISOString();
-      await sendWhatsAppMessageViaFonnte(c.nomor_wa, msg);
+      await sendWhatsAppMessage(c.nomor_wa, msg);
       await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: c.nomor_wa, nama_profil_wa: getRealProfileName(c.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: sentAt, bicara_dengan_cs: false, created_at: sentAt } });
       // Simpan timestamp ke DB — status Teal (Resi Terkirim) diambil dari DB, bukan localStorage
       if (c.id_claim) {
@@ -2847,7 +2874,7 @@ ${kode ? `
       if (!linked || !linked.nomor_wa) return alert('Gagal: Tidak dapat menemukan Nomor WA (Barang ini tidak ada di tabel Claim Promo).');
       if (!window.confirm('Kirim status garansi ke WA konsumen?')) return;
       const msg = getText('statusGaransi', { seri: w.nomor_seri, barang: w.tipe_barang, jenis: w.jenis_garansi, lama: w.lama_garansi, sisa: calculateSisaGaransi(linked.tanggal_pembelian, w.lama_garansi) });
-      await sendWhatsAppMessageViaFonnte(linked.nomor_wa, msg);
+      await sendWhatsAppMessage(linked.nomor_wa, msg);
       await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: linked.nomor_wa, nama_profil_wa: getRealProfileName(linked.nomor_wa), arah_pesan: 'OUT', isi_pesan: msg, waktu_pesan: new Date().toISOString(), bicara_dengan_cs: false, created_at: new Date().toISOString() } });
       alert('Pesan status berhasil dikirim!');
       fetchMessages();
@@ -2861,7 +2888,7 @@ ${kode ? `
       const message = `Halo *${namaReg}*,\n\nPembayaran Anda untuk event *${reg.event_name}* telah kami validasi. ✅\n\nSilakan simpan pesan ini sebagai bukti pendaftaran resmi. Sampai jumpa di lokasi acara!\n\nSalam,\nNikon Indonesia`;
 
       try {
-         await sendWhatsAppMessageViaFonnte(waReg, message);
+         await sendWhatsAppMessage(waReg, message);
          await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: {
             nomor_wa: waReg,
             nama_profil_wa: namaReg,
@@ -2928,14 +2955,33 @@ ${kode ? `
          // Send WhatsApp message for returned items
          const returnedItems = itemsWithAccsNotes.filter(item => item.status_pengembalian === 'dikembalikan');
          if (returnedItems.length > 0) {
-            let message = getText('lendingReturnHeader', { nama: lending.nama_peminjam });
-            returnedItems.forEach((item, idx) => {
-               message += getText('lendingReturnItem', { idx: idx + 1, barang: item.nama_barang, sn: item.nomor_seri, catatan: item.catatan_pengembalian || '' });
-               const accs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean);
-               if (accs.length > 0) message += `\n   _Aksesori: ${accs.join(', ')}_`;
-            });
-            message += getText('lendingReturnFooter', {});
-            await sendWhatsAppMessageViaFonnte(lending.nomor_wa_peminjam, message);
+            try {
+               const tglKembali = new Date().toISOString();
+               const docRes = await fetch('/api/admin/generate-lending-doc', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                     type: 'kembali',
+                     kodePeminjaman: lending.kode_peminjaman,
+                     namaPeminjam: lending.nama_peminjam,
+                     nomorWa: lending.nomor_wa_peminjam,
+                     items: itemsWithAccsNotes,
+                     tanggalPengembalian: tglKembali,
+                  }),
+               });
+               if (docRes.ok) {
+                  const { downloadUrl, fileName } = await docRes.json();
+                  const tglLabel = new Date(tglKembali).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
+                  await sendWhatsAppMessage(lending.nomor_wa_peminjam, '', {
+                     templateName: 'notif_lending_return',
+                     bodyParams: [lending.nama_peminjam, tglLabel],
+                     documentUrl: downloadUrl,
+                     documentFilename: fileName,
+                  });
+               }
+            } catch (waErr) {
+               console.error('[lending-return] Gagal kirim WA:', waErr);
+            }
 
             // Telegram notif admin — fire-and-forget
             fetch('/api/admin/notify-lending', {
@@ -6003,7 +6049,7 @@ ${kode ? `
                                  value: 'wa_only' as const,
                                  icon: '💬',
                                  label: 'WhatsApp Saja',
-                                 desc: 'Kirim via Fonnte. Butuh WA aktif & token Fonnte.',
+                                 desc: 'Kirim via WhatsApp (Meta Cloud API).',
                                  color: 'green',
                               },
                               {

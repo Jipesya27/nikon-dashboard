@@ -170,7 +170,7 @@ export async function POST(req: Request) {
           }
 
           // STEP 3: Forward ke Edge Function untuk proses bot logic & kirim balasan
-          const edgeFnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/fonnte-bot`;
+          const edgeFnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/meta-bot`;
           fetch(edgeFnUrl, {
             method: 'POST',
             headers: {

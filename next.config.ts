@@ -17,7 +17,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://drive.google.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
       // wss:// diperlukan untuk Supabase Realtime (WebSocket)
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.fonnte.com https://oauth2.googleapis.com https://www.googleapis.com https://docs.google.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://oauth2.googleapis.com https://www.googleapis.com https://docs.google.com",
       "font-src 'self'",
       "frame-src 'none'",
       "object-src 'none'",

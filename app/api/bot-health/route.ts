@@ -5,7 +5,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const EDGE_FUNCTION_URL = `${supabaseUrl}/functions/v1/fonnte-bot`;
+const EDGE_FUNCTION_URL = `${supabaseUrl}/functions/v1/meta-bot`;
 
 export async function GET() {
   const results: Record<string, unknown> = {};
@@ -66,19 +66,21 @@ export async function GET() {
     .maybeSingle();
   results.last_incoming = lastIn ?? null;
 
-  // 5. Cek koneksi Fonnte (cukup HEAD ke API tanpa kirim pesan)
+  // 5. Cek koneksi Meta Cloud API
   try {
     const ctrl2 = new AbortController();
     const t2 = setTimeout(() => ctrl2.abort(), 5000);
-    const fonnte = await fetch('https://api.fonnte.com/validate', {
-      method: 'POST',
-      headers: { Authorization: process.env.FONNTE_TOKEN || '' },
-      signal: ctrl2.signal,
-    });
+    const metaRes = await fetch(
+      `https://graph.facebook.com/v25.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}`,
+      {
+        headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN || ''}` },
+        signal: ctrl2.signal,
+      },
+    );
     clearTimeout(t2);
-    results.fonnte_api = { ok: fonnte.status < 500, status: fonnte.status };
+    results.meta_api = { ok: metaRes.ok, status: metaRes.status };
   } catch (err: unknown) {
-    results.fonnte_api = { ok: false, error: (err as Error).message };
+    results.meta_api = { ok: false, error: (err as Error).message };
   }
 
   // Tentukan overall status
@@ -88,7 +90,7 @@ export async function GET() {
 
   results.overall = {
     edge_ok: (results.edge_function as { ok: boolean }).ok,
-    fonnte_ok: (results.fonnte_api as { ok: boolean }).ok,
+    meta_ok: (results.meta_api as { ok: boolean }).ok,
     has_recent_activity: hasRecentActivity,
     has_error: lastError !== null,
   };

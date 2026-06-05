@@ -168,6 +168,78 @@ export async function sendWATemplate(
 }
 
 /**
+ * Kirim WA template dengan header DOCUMENT (PDF/file).
+ * Bekerja di luar 24-jam window. Template harus dibuat di Meta dengan header type DOCUMENT.
+ */
+export async function sendWATemplateWithDoc(
+  nomor: string,
+  templateName: string,
+  bodyParams: string[],
+  documentUrl: string,
+  documentFilename: string,
+): Promise<void> {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN || '';
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+  if (!token || !phoneNumberId || !nomor) return;
+  const target = toWaE164(nomor);
+
+  const body = {
+    messaging_product: 'whatsapp',
+    to: target,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: 'id' },
+      components: [
+        {
+          type: 'header',
+          parameters: [{ type: 'document', document: { link: documentUrl, filename: documentFilename } }],
+        },
+        ...(bodyParams.length > 0
+          ? [{ type: 'body', parameters: bodyParams.map(p => ({ type: 'text', text: p })) }]
+          : []),
+      ],
+    },
+  };
+
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(8000),
+      },
+    );
+    const resText = await res.text();
+    console.log('[notify] Meta WA template+doc response:', res.status, resText);
+    if (!res.ok) throw new Error(`Meta WA ${res.status}: ${resText}`);
+
+    const now = new Date().toISOString();
+    void (async () => {
+      try {
+        await createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        ).from('riwayat_pesan').insert({
+          nomor_wa: target,
+          nama_profil_wa: 'Sistem',
+          arah_pesan: 'OUT',
+          isi_pesan: `Notifikasi terkirim: ${templateName}`,
+          waktu_pesan: now,
+          created_at: now,
+          bicara_dengan_cs: false,
+          jenis_pesan: 'system',
+        });
+      } catch { /* non-kritis */ }
+    })();
+  } catch (e) {
+    console.error('[notify] Gagal kirim WA template+doc:', e);
+  }
+}
+
+/**
  * Kirim WA AUTHENTICATION template (OTP / kode akses sementara).
  * Format berbeda dari UTILITY template — kode dikirim ke parameter tombol,
  * bukan ke body. Template harus punya OTP button dengan otp_type="COPY_CODE".

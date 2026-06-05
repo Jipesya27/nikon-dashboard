@@ -85,6 +85,7 @@ interface FormState {
   body: string;
   examples: string[];
   isAuth: boolean;
+  hasDocHeader: boolean;
   buttons: ButtonItem[];
 }
 
@@ -94,6 +95,7 @@ const INIT_FORM: FormState = {
   body: '',
   examples: [],
   isAuth: false,
+  hasDocHeader: false,
   buttons: [],
 };
 
@@ -211,15 +213,17 @@ export default function WaTemplatesTab() {
         if (!btn.text.trim()) { setFormError(`Teks tombol ${bi + 1} wajib diisi.`); return; }
         if (btn.type === 'URL' && !btn.url.trim()) { setFormError(`URL untuk tombol ${bi + 1} wajib diisi.`); return; }
       }
-      const components: TemplateComponent[] = [
-        {
-          type: 'BODY',
-          text: form.body.trim(),
-          ...(paramCount > 0 && {
-            example: { body_text: [form.examples.slice(0, paramCount).map(e => e.trim())] },
-          } as unknown as TemplateComponent),
-        },
-      ];
+      const components: TemplateComponent[] = [];
+      if (form.hasDocHeader) {
+        components.push({ type: 'HEADER', format: 'DOCUMENT' } as unknown as TemplateComponent);
+      }
+      components.push({
+        type: 'BODY',
+        text: form.body.trim(),
+        ...(paramCount > 0 && {
+          example: { body_text: [form.examples.slice(0, paramCount).map(e => e.trim())] },
+        } as unknown as TemplateComponent),
+      });
       if (form.buttons.length > 0) {
         components.push({
           type: 'BUTTONS',
@@ -587,6 +591,24 @@ export default function WaTemplatesTab() {
                     : '📢 MARKETING: Promosi/penawaran. Review lebih ketat oleh Meta.'}
                 </p>
               </div>
+
+              {/* Header Document toggle */}
+              {!form.isAuth && (
+                <div>
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <div
+                      onClick={() => setForm(f => ({ ...f, hasDocHeader: !f.hasDocHeader }))}
+                      className={`relative w-10 h-5 rounded-full transition-colors ${form.hasDocHeader ? 'bg-blue-500' : 'bg-gray-300'}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.hasDocHeader ? 'translate-x-5' : ''}`} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-gray-700">Header Dokumen (PDF)</span>
+                      <p className="text-[11px] text-gray-400">Aktifkan untuk mengirim file PDF sebagai lampiran di WhatsApp.</p>
+                    </div>
+                  </label>
+                </div>
+              )}
 
               {/* Body text (not for AUTHENTICATION) */}
               {!form.isAuth && (

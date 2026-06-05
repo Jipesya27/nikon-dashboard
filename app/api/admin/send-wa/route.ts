@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifyAdminSession } from '@/app/lib/session';
-import { sendWA } from '@/app/lib/notify';
+import { sendWA, sendWATemplateWithDoc } from '@/app/lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,13 +11,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { target, message } = await req.json();
-  if (!target || !message) {
-    return NextResponse.json({ error: 'target dan message wajib diisi' }, { status: 400 });
+  const body = await req.json();
+  const { target, message, templateName, bodyParams, documentUrl, documentFilename } = body;
+
+  if (!target) {
+    return NextResponse.json({ error: 'target wajib diisi' }, { status: 400 });
   }
 
   try {
-    await sendWA(target, message);
+    if (templateName && documentUrl) {
+      await sendWATemplateWithDoc(target, templateName, bodyParams ?? [], documentUrl, documentFilename ?? 'dokumen.pdf');
+    } else {
+      if (!message) return NextResponse.json({ error: 'message wajib diisi' }, { status: 400 });
+      await sendWA(target, message);
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

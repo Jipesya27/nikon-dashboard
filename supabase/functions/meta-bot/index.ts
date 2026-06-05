@@ -144,7 +144,7 @@ serve(async (req)=>{
     if (contentType.includes("application/json")) {
       body = await req.json();
     } else {
-      // Fonnte terkadang mengirim dalam format form-data/url-encoded
+      // Fallback: format form-data/url-encoded
       const formData = await req.formData();
       body = Object.fromEntries(formData.entries());
     }

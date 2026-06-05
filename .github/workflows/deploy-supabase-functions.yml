@@ -18,7 +18,7 @@ jobs:
         with:
           version: latest
 
-      - name: Deploy fonnte-bot
-        run: supabase functions deploy fonnte-bot --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+      - name: Deploy meta-bot
+        run: supabase functions deploy meta-bot --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
