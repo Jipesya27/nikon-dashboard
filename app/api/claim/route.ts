@@ -252,10 +252,6 @@ export async function POST(req: Request) {
       uploadToDrive(fileNota, namaNota, accessToken),
     ]);
 
-    // Tentukan nomor_wa_update final:
-    // - ORANG LAIN + ada input → pakai nomor penerima
-    // - SENDIRI / tidak diisi → default = nomor pendaftar (akan dikonfirmasi via bot)
-    // nomor_wa_update = nomor WA pendaftar (notifikasi selalu ke nomor yang diinput)
     const nomor_wa_update = matchedPhone;
 
     // 3. INSERT ke tabel claim_promo (relasi via nomor_wa)

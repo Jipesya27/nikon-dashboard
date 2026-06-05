@@ -2047,6 +2047,9 @@ export default function NikonDashboard() {
             catatan_fa: claimForm.catatan_fa || '',
             link_kartu_garansi: garansiUrl ?? '',
             link_nota_pembelian: notaUrl ?? '',
+            // Default: penerima = pendaftar, notifikasi = nomor pendaftar (konsisten dgn form publik)
+            nama_penerima_claim: claimForm.nama_penerima_claim || claimForm.nama_pendaftar || '',
+            nomor_wa_update: claimForm.nomor_wa_update || claimForm.nomor_wa || '',
          };
 
          if (modalAction === 'create') {
