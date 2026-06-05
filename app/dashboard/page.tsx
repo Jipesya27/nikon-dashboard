@@ -164,7 +164,7 @@ function normalizeWaNumber(nomor: string): string {
 const sendWhatsAppMessage = async (
    targetWa: string,
    message: string,
-   templateOpts?: { templateName: string; bodyParams: string[]; documentUrl: string; documentFilename: string },
+   templateOpts?: { templateName: string; bodyParams: string[]; documentUrl?: string; documentFilename?: string },
 ) => {
    const payload = templateOpts
       ? { target: targetWa, ...templateOpts }
@@ -2476,7 +2476,7 @@ ${kode ? `
             if (error) throw new Error(error.message);
          }
 
-         // 3. Generate PDF rincian + kirim Meta template dengan document header
+         // 3. Generate PDF rincian + kirim Meta template dengan link Drive
          try {
             const docRes = await fetch('/api/admin/generate-lending-doc', {
                method: 'POST',
@@ -2492,15 +2492,13 @@ ${kode ? `
                }),
             });
             if (docRes.ok) {
-               const { downloadUrl, fileName } = await docRes.json();
+               const { viewUrl } = await docRes.json();
                const estLabel = lendingForm.tanggal_estimasi_pengembalian
                   ? new Date(lendingForm.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
                   : '-';
                await sendWhatsAppMessage(waNumber, '', {
                   templateName: 'notif_lending_init',
-                  bodyParams: [lendingForm.nama_peminjam!, estLabel],
-                  documentUrl: downloadUrl,
-                  documentFilename: fileName,
+                  bodyParams: [lendingForm.nama_peminjam!, estLabel, viewUrl],
                });
             }
          } catch (waErr) {
@@ -2970,13 +2968,11 @@ ${kode ? `
                   }),
                });
                if (docRes.ok) {
-                  const { downloadUrl, fileName } = await docRes.json();
+                  const { viewUrl } = await docRes.json();
                   const tglLabel = new Date(tglKembali).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
                   await sendWhatsAppMessage(lending.nomor_wa_peminjam, '', {
                      templateName: 'notif_lending_return',
-                     bodyParams: [lending.nama_peminjam, tglLabel],
-                     documentUrl: downloadUrl,
-                     documentFilename: fileName,
+                     bodyParams: [lending.nama_peminjam, tglLabel, viewUrl],
                   });
                }
             } catch (waErr) {
