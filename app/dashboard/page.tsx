@@ -1824,32 +1824,13 @@ export default function NikonDashboard() {
       if (type === 'claim') {
          setClaimForm((item as ClaimPromo) || { validasi_by_mkt: 'Dalam Proses Verifikasi', validasi_by_fa: 'Dalam Proses Verifikasi' });
          setEditingId((item as ClaimPromo)?.id_claim || null);
-         // Reset konsumen extra fields - akan auto-fill saat WA onBlur
          setKonsumenForm({});
-         // Kalau edit, auto-fetch konsumen utk prefill konsumen section
+         // Kalau edit dan nama_pendaftar kosong, prefill dari konsumen
          const itemAsClaim = item as ClaimPromo | undefined;
-         if (itemAsClaim?.nomor_wa) {
-            supabase.from('konsumen').select('*').eq('nomor_wa', itemAsClaim.nomor_wa).maybeSingle().then(({ data: kon }) => {
-               if (kon) {
-                  const clean = (v: string | null) => (!v || v === 'BELUM_DIISI') ? '' : v;
-                  setKonsumenForm({
-                     nomor_wa: kon.nomor_wa,
-                     nama_lengkap: kon.nama_lengkap || '',
-                     nik: clean(kon.nik),
-                     alamat_rumah: clean(kon.alamat_rumah),
-                     kelurahan: clean(kon.kelurahan),
-                     kecamatan: clean(kon.kecamatan),
-                     kabupaten_kotamadya: clean(kon.kabupaten_kotamadya),
-                     provinsi: clean(kon.provinsi),
-                     kodepos: clean(kon.kodepos),
-                     status_langkah: kon.status_langkah,
-                     id_konsumen: kon.id_konsumen,
-                     created_at: kon.created_at,
-                  });
-                  // Prefill nama_pendaftar dari konsumen jika kosong di data claim
-                  if (!itemAsClaim.nama_pendaftar && kon.nama_lengkap) {
-                     setClaimForm(prev => ({ ...prev, nama_pendaftar: kon.nama_lengkap }));
-                  }
+         if (itemAsClaim?.nomor_wa && !itemAsClaim.nama_pendaftar) {
+            supabase.from('konsumen').select('nama_lengkap').eq('nomor_wa', itemAsClaim.nomor_wa).maybeSingle().then(({ data: kon }) => {
+               if (kon?.nama_lengkap) {
+                  setClaimForm(prev => ({ ...prev, nama_pendaftar: kon.nama_lengkap }));
                }
             });
          }
@@ -1975,10 +1956,6 @@ export default function NikonDashboard() {
                status_langkah: konsumenForm.status_langkah || 'START',
             };
             // Field opsional dari konsumenForm
-            const optFields = ['nik', 'alamat_rumah', 'kelurahan', 'kecamatan', 'kabupaten_kotamadya', 'provinsi', 'kodepos'] as const;
-            optFields.forEach(f => {
-               if (konsumenForm[f]) konsumenPayload[f] = konsumenForm[f];
-            });
             // Cek apakah konsumen sudah ada
             const { data: existKon } = await supabase.from('konsumen').select('nomor_wa, id_konsumen').eq('nomor_wa', claimForm.nomor_wa).maybeSingle();
             if (existKon) {
@@ -8469,28 +8446,9 @@ ${pages.join('')}
                                        onBlur={async e => {
                                           const wa = e.target.value.trim();
                                           if (!wa) return;
-                                          // Auto-fetch konsumen by WA + prefill
-                                          const { data: kon } = await supabase.from('konsumen').select('*').eq('nomor_wa', wa).maybeSingle();
-                                          if (kon) {
-                                             const clean = (v: string | null) => (!v || v === 'BELUM_DIISI') ? '' : v;
-                                             setKonsumenForm({
-                                                nomor_wa: kon.nomor_wa,
-                                                nama_lengkap: kon.nama_lengkap || '',
-                                                nik: clean(kon.nik),
-                                                alamat_rumah: clean(kon.alamat_rumah),
-                                                kelurahan: clean(kon.kelurahan),
-                                                kecamatan: clean(kon.kecamatan),
-                                                kabupaten_kotamadya: clean(kon.kabupaten_kotamadya),
-                                                provinsi: clean(kon.provinsi),
-                                                kodepos: clean(kon.kodepos),
-                                                status_langkah: kon.status_langkah,
-                                                id_konsumen: kon.id_konsumen,
-                                                created_at: kon.created_at,
-                                             });
-                                             // Prefill nama_pendaftar kalau kosong
-                                             if (!claimForm.nama_pendaftar) {
-                                                setClaimForm(prev => ({ ...prev, nama_pendaftar: kon.nama_lengkap || '' }));
-                                             }
+                                          const { data: kon } = await supabase.from('konsumen').select('nama_lengkap').eq('nomor_wa', wa).maybeSingle();
+                                          if (kon && !claimForm.nama_pendaftar) {
+                                             setClaimForm(prev => ({ ...prev, nama_pendaftar: kon.nama_lengkap || '' }));
                                           }
                                        }}
                                        className="input-form"
@@ -8505,44 +8463,10 @@ ${pages.join('')}
                                     <label className="label-form">Nama Pendaftar *</label>
                                     <input type="text" required value={claimForm.nama_pendaftar || ''} onChange={e => setClaimForm({ ...claimForm, nama_pendaftar: e.target.value })} className="input-form" list="dl-nama-lengkap" placeholder="Auto-isi dari data konsumen" />
                                  </div>
-                                 <div>
-                                    <label className="label-form">Nama Penerima Hadiah</label>
-                                    <input type="text" value={claimForm.nama_penerima_claim || ''} onChange={e => setClaimForm({ ...claimForm, nama_penerima_claim: e.target.value })} className="input-form" list="dl-nama-lengkap" placeholder="Kosongkan jika sama dgn pendaftar" />
-                                 </div>
                               </div>
                               <div className="mt-3">
                                  <label className="label-form">Alamat Pengiriman Hadiah</label>
                                  <textarea rows={2} aria-label="Alamat Pengiriman Hadiah" value={claimForm.alamat_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, alamat_pengiriman: e.target.value })} className="input-form resize-none" />
-                              </div>
-                           </div>
-
-                           {/* Section: Data Konsumen (auto-sync ke tabel konsumen) */}
-                           <div className="bg-purple-50 rounded-lg p-3 border-2 border-purple-200">
-                              <div className="flex items-center justify-between mb-3">
-                                 <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Data Konsumen (auto-sync)</h3>
-                                 {konsumenForm.id_konsumen && (
-                                    <span className="text-[10px] font-bold text-purple-800 bg-white px-2 py-0.5 rounded-md border border-purple-300">📌 {konsumenForm.id_konsumen}</span>
-                                 )}
-                              </div>
-                              <div className="space-y-3">
-                                 <div>
-                                    <label className="label-form">NIK (Nomor KTP)</label>
-                                    <input type="text" aria-label="NIK (Nomor KTP)" value={konsumenForm.nik || ''} onChange={e => setKonsumenForm({ ...konsumenForm, nik: e.target.value })} className="input-form" placeholder="16 digit" pattern="[0-9]{16}" />
-                                 </div>
-                                 <div>
-                                    <label className="label-form">Alamat Rumah</label>
-                                    <textarea rows={2} aria-label="Alamat Rumah" value={konsumenForm.alamat_rumah || ''} onChange={e => setKonsumenForm({ ...konsumenForm, alamat_rumah: e.target.value })} className="input-form resize-none" placeholder="Jalan, nomor, RT/RW" />
-                                 </div>
-                                 <AddressFields
-                                    values={{
-                                       kelurahan: konsumenForm.kelurahan || '',
-                                       kecamatan: konsumenForm.kecamatan || '',
-                                       kabupaten_kotamadya: konsumenForm.kabupaten_kotamadya || '',
-                                       provinsi: konsumenForm.provinsi || '',
-                                       kodepos: konsumenForm.kodepos || '',
-                                    }}
-                                    onChange={partial => setKonsumenForm(prev => ({ ...prev, ...partial }))}
-                                 />
                               </div>
                            </div>
 

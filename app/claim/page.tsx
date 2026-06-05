@@ -2,18 +2,11 @@
 
 import { useState, useRef, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import AddressFields from '@/app/components/AddressFields';
 
 type FormState = {
   email: string;
   nama_lengkap: string;
   nik: string;
-  alamat_rumah: string;
-  kelurahan: string;
-  kecamatan: string;
-  kabupaten_kotamadya: string;
-  provinsi: string;
-  kodepos: string;
   alamat_pengiriman: string;
   tipe_barang: string;
   nomor_seri: string;
@@ -23,8 +16,7 @@ type FormState = {
 };
 
 const EMPTY_FORM: FormState = {
-  email: '', nama_lengkap: '', nik: '', alamat_rumah: '', kelurahan: '', kecamatan: '',
-  kabupaten_kotamadya: '', provinsi: '', kodepos: '',
+  email: '', nama_lengkap: '', nik: '',
   alamat_pengiriman: '',
   tipe_barang: '', nomor_seri: '', jenis_promosi: '',
   tanggal_pembelian: '', nama_toko: '',
@@ -42,8 +34,6 @@ function ClaimForm() {
   const [loading, setLoading]   = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [formData, setFormData] = useState<FormState>(EMPTY_FORM);
-
-  const [alamatKirimSamaRumah, setAlamatKirimSamaRumah] = useState(true);
 
   const [fileGaransi, setFileGaransi]   = useState<File | null>(null);
   const [fileNota, setFileNota]         = useState<File | null>(null);
@@ -78,20 +68,6 @@ function ClaimForm() {
     setErrorMsg('');
   }
 
-  // Auto-sync alamat pengiriman = alamat rumah
-  useEffect(() => {
-    if (alamatKirimSamaRumah) {
-      const gabungan = [
-        formData.alamat_rumah,
-        formData.kelurahan && `Kel. ${formData.kelurahan}`,
-        formData.kecamatan && `Kec. ${formData.kecamatan}`,
-        formData.kabupaten_kotamadya,
-        formData.provinsi,
-        formData.kodepos,
-      ].filter(Boolean).join(', ');
-      setFormData(prev => ({ ...prev, alamat_pengiriman: gabungan }));
-    }
-  }, [alamatKirimSamaRumah, formData.alamat_rumah, formData.kelurahan, formData.kecamatan, formData.kabupaten_kotamadya, formData.provinsi, formData.kodepos]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -333,16 +309,6 @@ function ClaimForm() {
               <input type="text" name="nik" value={formData.nik} onChange={handleChange} pattern="[0-9]{16}" placeholder="16 digit angka" className={inputCls} />
             </div>
 
-            <div>
-              <label className={labelCls}>Alamat Rumah {req}</label>
-              <textarea name="alamat_rumah" value={formData.alamat_rumah} onChange={handleChange} required rows={2} placeholder="Jalan, nomor rumah, RT/RW" className={inputCls + " resize-none"} />
-            </div>
-
-            <AddressFields
-              values={{ kelurahan: formData.kelurahan, kecamatan: formData.kecamatan, kabupaten_kotamadya: formData.kabupaten_kotamadya, provinsi: formData.provinsi, kodepos: formData.kodepos }}
-              onChange={partial => setFormData(prev => ({ ...prev, ...partial }))}
-              required inputClassName={inputCls} labelClassName={labelCls}
-            />
           </div>
 
           {/* ── SECTION 2: UPLOAD DOKUMEN ── */}
@@ -460,13 +426,9 @@ function ClaimForm() {
             </div>
             <div>
               <label className={labelCls}>Alamat Pengiriman Hadiah {req}</label>
-              <label className="flex items-center gap-2 mb-2 cursor-pointer">
-                <input type="checkbox" checked={alamatKirimSamaRumah} onChange={e => setAlamatKirimSamaRumah(e.target.checked)} className="w-4 h-4 accent-black" />
-                <span className="text-xs text-gray-800 font-medium">Sama dengan alamat rumah saya</span>
-              </label>
               <textarea name="alamat_pengiriman" value={formData.alamat_pengiriman} onChange={handleChange} required rows={3}
-                disabled={alamatKirimSamaRumah} placeholder="Alamat lengkap tujuan pengiriman"
-                className={inputCls + " resize-none disabled:bg-gray-200 disabled:text-gray-700"} />
+                placeholder="Alamat lengkap tujuan pengiriman hadiah"
+                className={inputCls + " resize-none"} />
             </div>
           </div>
 

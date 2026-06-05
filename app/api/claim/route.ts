@@ -140,12 +140,6 @@ export async function POST(req: Request) {
     const email               = (formData.get('email') as string)?.trim().toLowerCase() || null;
     const nama_lengkap        = (formData.get('nama_lengkap') as string)?.trim();
     const nik                 = (formData.get('nik') as string)?.trim();
-    const alamat_rumah        = (formData.get('alamat_rumah') as string)?.trim();
-    const kelurahan           = (formData.get('kelurahan') as string)?.trim();
-    const kecamatan           = (formData.get('kecamatan') as string)?.trim();
-    const kabupaten_kotamadya = (formData.get('kabupaten_kotamadya') as string)?.trim();
-    const provinsi            = (formData.get('provinsi') as string)?.trim();
-    const kodepos             = (formData.get('kodepos') as string)?.trim();
 
     // Data Produk (→ tabel claim_promo)
     const nomor_seri          = (formData.get('nomor_seri') as string)?.trim();
@@ -163,7 +157,7 @@ export async function POST(req: Request) {
     const fileNota    = formData.get('foto_nota_pembelian') as File | null;
 
     // Validasi field wajib (NIK opsional)
-    const required = { phone, nama_lengkap, alamat_rumah, kelurahan, kecamatan, kabupaten_kotamadya, provinsi, kodepos, nomor_seri, tipe_barang, nama_toko, alamat_pengiriman };
+    const required = { phone, nama_lengkap, nomor_seri, tipe_barang, nama_toko, alamat_pengiriman };
     for (const [k, v] of Object.entries(required)) {
       if (!v) return NextResponse.json({ error: `Field '${k}' wajib diisi.` }, { status: 400 });
     }
@@ -198,12 +192,12 @@ export async function POST(req: Request) {
         nama_lengkap,
         email: email || null,
         nik: nik || null,
-        alamat_rumah,
-        kelurahan,
-        kecamatan,
-        kabupaten_kotamadya,
-        provinsi,
-        kodepos,
+        alamat_rumah: 'BELUM_DIISI',
+        kelurahan: 'BELUM_DIISI',
+        kecamatan: 'BELUM_DIISI',
+        kabupaten_kotamadya: 'BELUM_DIISI',
+        provinsi: 'BELUM_DIISI',
+        kodepos: 'BELUM_DIISI',
         status_langkah: 'START',
       });
       if (insertErr && insertErr.code !== '23505') {
@@ -214,16 +208,9 @@ export async function POST(req: Request) {
       konsumen = { nomor_wa: normalizedPhone };
     }
 
-    // 1. UPDATE tabel konsumen dengan data diri terbaru
-    //    NIK opsional: hanya update kalau diisi, supaya tidak menimpa NIK lama dengan kosong
+    // 1. UPDATE tabel konsumen — hanya data identitas, alamat tidak disimpan dari form claim
     const konsumenUpdate: Record<string, string | null> = {
       nama_lengkap,
-      alamat_rumah,
-      kelurahan,
-      kecamatan,
-      kabupaten_kotamadya,
-      provinsi,
-      kodepos,
       updated_at: new Date().toISOString(),
     };
     if (nik)    konsumenUpdate.nik   = nik;
