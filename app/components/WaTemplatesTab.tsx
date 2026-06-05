@@ -114,6 +114,9 @@ const REQUIRED_TEMPLATES = [
   { name: 'notif_event_attendance',  cat: 'UTILITY',        params: 2, desc: 'Kehadiran dikonfirmasi — nama, event',                                  urlInParam: false },
   { name: 'notif_deposit_refund',    cat: 'UTILITY',        params: 3, desc: 'Deposit dikembalikan — nama, event, URL bukti (⚠️ gunakan tombol URL)', urlInParam: true  },
   { name: 'notif_kode_akun',         cat: 'AUTHENTICATION', params: 0, desc: 'Kode akses / reset password karyawan (AUTHENTICATION, OTP button)',     urlInParam: false },
+  { name: 'notif_lending_init',      cat: 'UTILITY',        params: 2, desc: 'Peminjaman dibuat — nama, estimasi kembali (DOCUMENT header: rincian PDF)',  urlInParam: false },
+  { name: 'notif_lending_return',    cat: 'UTILITY',        params: 2, desc: 'Barang dikembalikan — nama, tanggal pengembalian (DOCUMENT header: rincian PDF)', urlInParam: false },
+  { name: 'notif_lending_reminder',  cat: 'UTILITY',        params: 3, desc: 'Pengingat harian — nama, estimasi kembali, daftar barang',                   urlInParam: false },
 ] as const;
 
 // ─── Main Component ───────────────────────────────────────────────────────────

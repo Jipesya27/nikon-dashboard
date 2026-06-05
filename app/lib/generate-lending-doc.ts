@@ -127,10 +127,10 @@ export async function generateLendingDoc(input: GenerateLendingDocInput): Promis
 
   for (let i = 0; i < relevantItems.length; i++) {
     const item = relevantItems[i];
-    const accs = [item.accs1, item.accs2, item.accs3, item.accs4, item.accs5, item.accs6, item.accs7].filter(Boolean);
-    const catatan = isPinjam ? item.catatan : item.catatan_pengembalian;
-    const hasExtra = accs.length > 0 || !!catatan;
-    const rH = hasExtra ? 40 : ROW_H;
+    const accs    = [item.accs1, item.accs2, item.accs3, item.accs4, item.accs5, item.accs6, item.accs7].filter(Boolean) as string[];
+    const catatan = wa(isPinjam ? (item.catatan ?? '') : (item.catatan_pengembalian ?? ''));
+    const extraLines = (accs.length > 0 ? 1 : 0) + (catatan ? 1 : 0);
+    const rH = ROW_H + extraLines * 13;
 
     page.drawRectangle({
       x: CX, y: cy - rH, width: CW, height: rH,
@@ -138,7 +138,7 @@ export async function generateLendingDoc(input: GenerateLendingDocInput): Promis
       borderColor: divider, borderWidth: 0.5,
     });
 
-    const itemY = hasExtra ? cy - 12 : cy - 17;
+    const itemY = extraLines > 0 ? cy - 12 : cy - 17;
     page.drawText(`${i + 1}`,                          { x: L + 4,   y: itemY, size: 8.5, font: fontBold, color: black });
     page.drawText(wa(item.nama_barang).slice(0, 28),   { x: L + 22,  y: itemY, size: 8.5, font: fontBold, color: black });
     page.drawText(wa(item.nomor_seri).slice(0, 24),    { x: L + 215, y: itemY, size: 8.5, font: fontReg,  color: textDark });
@@ -147,10 +147,19 @@ export async function generateLendingDoc(input: GenerateLendingDocInput): Promis
     const statusColor = isPinjam ? rgb(0.1, 0.4, 0.85) : rgb(0, 0.55, 0.27);
     page.drawText(statusTxt, { x: R - 55, y: itemY, size: 8, font: fontBold, color: statusColor });
 
+    let extraY = cy - 28;
     if (accs.length > 0) {
-      page.drawText(`Aksesori: ${accs.join(', ').slice(0, 55)}`, { x: L + 22, y: cy - 28, size: 7, font: fontReg, color: dim });
-    } else if (catatan) {
-      page.drawText(`Catatan: ${wa(catatan).slice(0, 60)}`, { x: L + 22, y: cy - 28, size: 7, font: fontReg, color: dim });
+      // Batasi total panjang teks agar tidak melewati kolom Status
+      const accsLine = accs.join(', ');
+      const maxAccsChars = 65;
+      const accsDisplay = accsLine.length > maxAccsChars ? accsLine.slice(0, maxAccsChars) + '…' : accsLine;
+      page.drawText(`Aksesori: ${accsDisplay}`, { x: L + 22, y: extraY, size: 7, font: fontReg, color: dim });
+      extraY -= 13;
+    }
+    if (catatan) {
+      const maxCatatanChars = 72;
+      const catatanDisplay = catatan.length > maxCatatanChars ? catatan.slice(0, maxCatatanChars) + '…' : catatan;
+      page.drawText(`Catatan: ${catatanDisplay}`, { x: L + 22, y: extraY, size: 7, font: fontReg, color: rgb(0.55, 0.35, 0) });
     }
 
     cy -= rH;
