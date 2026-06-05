@@ -2939,11 +2939,7 @@ ${kode ? `
       if (!window.confirm('Yakin mengembalikan barang yang dipilih?')) return;
       setIsSubmitting(true);
       try {
-         const allItemsReturned  = lending.items_dipinjam.every(item => item.status_pengembalian === 'dikembalikan');
-         const someItemsReturned = lending.items_dipinjam.some(item => item.status_pengembalian === 'dikembalikan');
-         const newStatusPeminjaman = allItemsReturned ? 'selesai' : someItemsReturned ? 'partial' : 'aktif';
-
-         // Append unchecked accessories to catatan_pengembalian
+         // Build items dulu agar bisa cek aksesori yang tidak dicentang
          const itemsWithAccsNotes = lending.items_dipinjam.map((item, idx) => {
             const allAccs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean) as string[];
             const unchecked = allAccs.filter(a => !(accsChecked[idx]?.[a]));
@@ -2953,6 +2949,18 @@ ${kode ? `
             }
             return item;
          });
+
+         // Status: selesai hanya jika SEMUA item dikembalikan DAN semua aksesori dicentang
+         const allItemsReturned  = itemsWithAccsNotes.every(item => item.status_pengembalian === 'dikembalikan');
+         const someItemsReturned = itemsWithAccsNotes.some(item => item.status_pengembalian === 'dikembalikan');
+         const hasUncheckedAccs  = itemsWithAccsNotes.some((item, idx) => {
+            if (item.status_pengembalian !== 'dikembalikan') return false;
+            const allAccs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean) as string[];
+            return allAccs.some(a => !(accsChecked[idx]?.[a]));
+         });
+         const newStatusPeminjaman = (allItemsReturned && !hasUncheckedAccs) ? 'selesai'
+            : (someItemsReturned || hasUncheckedAccs) ? 'partial'
+            : 'aktif';
 
          // Upload foto pengembalian (max 10)
          let fotoPengembalianUrls: string[] = Array.isArray(lending.foto_pengembalian) ? (lending.foto_pengembalian as string[]) : [];
