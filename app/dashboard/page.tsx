@@ -141,6 +141,17 @@ function getEventClosedStatus(evt: { status: string; stock: number; date: string
    return { closed: false, reason: 'Aktif' };
 }
 
+// --- NORMALISASI NOMOR WHATSAPP ---
+// 08xxx → 628xxx | 628xxx → 628xxx | +628xxx → 628xxx | +61xxx → 61xxx
+function normalizeWaNumber(nomor: string): string {
+   const hasPlus = nomor.trimStart().startsWith('+');
+   const digits = nomor.replace(/\D/g, '');
+   if (!digits) return '';
+   if (hasPlus) return digits;
+   if (digits.startsWith('0')) return '62' + digits.slice(1);
+   return digits;
+}
+
 // --- API PENGIRIMAN AMAN VIA SUPABASE EDGE FUNCTION ---
 const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) => {
    try {
@@ -2359,11 +2370,19 @@ export default function NikonDashboard() {
       e.preventDefault();
       setIsSubmitting(true);
       try {
+         // Normalisasi nomor WA sebelum semua operasi DB dan pengiriman
+         const waNumber = normalizeWaNumber(lendingForm.nomor_wa_peminjam || '');
+         if (!waNumber) {
+            alert('Nomor WhatsApp tidak valid.');
+            setIsSubmitting(false);
+            return;
+         }
+
          // 1. Pastikan konsumen ada atau buat baru
-         const { error: consumerError } = await supabase.from('konsumen').select('nomor_wa').eq('nomor_wa', lendingForm.nomor_wa_peminjam!).single();
+         const { error: consumerError } = await supabase.from('konsumen').select('nomor_wa').eq('nomor_wa', waNumber).single();
          if (consumerError && consumerError.code === 'PGRST116') { // Not found
             await sbWrite({ action: 'insert', table: 'konsumen', data: {
-               nomor_wa: lendingForm.nomor_wa_peminjam!,
+               nomor_wa: waNumber,
                nama_lengkap: lendingForm.nama_peminjam!,
                status_langkah: 'START',
                alamat_rumah: 'BELUM_DIISI', kelurahan: 'BELUM_DIISI', kecamatan: 'BELUM_DIISI',
@@ -2377,7 +2396,7 @@ export default function NikonDashboard() {
          let ktpUrl = lendingForm.link_ktp_peminjam;
          if (lendingForm.link_ktp_peminjam instanceof File) {
             // Upload file baru
-            ktpUrl = await uploadFileToStorage(lendingForm.link_ktp_peminjam, 'KTP_Peminjam', lendingForm.nomor_wa_peminjam!);
+            ktpUrl = await uploadFileToStorage(lendingForm.link_ktp_peminjam, 'KTP_Peminjam', waNumber);
             // Hapus file lama jika ada dan ini adalah mode edit
             if (modalAction === 'edit' && editingId) {
                const { data: originalLending } = await supabase.from('peminjaman_barang').select('link_ktp_peminjam').eq('id_peminjaman', editingId).single();
@@ -2393,13 +2412,14 @@ export default function NikonDashboard() {
          let fotoPenerimaanUrls: string[] = Array.isArray(lendingForm.foto_penerimaan) ? (lendingForm.foto_penerimaan as string[]) : [];
          for (const file of lendingFotoPenerimaanFiles) {
             try {
-               const url = await uploadFileToStorage(file, 'Lending_Penerimaan', lendingForm.nomor_wa_peminjam!);
+               const url = await uploadFileToStorage(file, 'Lending_Penerimaan', waNumber);
                fotoPenerimaanUrls = [...fotoPenerimaanUrls, url];
             } catch { /* skip failed upload */ }
          }
 
          const dataToSave: Partial<PeminjamanBarang> = {
             ...lendingForm,
+            nomor_wa_peminjam: waNumber,
             link_ktp_peminjam: ktpUrl,
             foto_penerimaan: fotoPenerimaanUrls.length > 0 ? fotoPenerimaanUrls : (lendingForm.foto_penerimaan ?? null),
          };
@@ -2430,7 +2450,7 @@ export default function NikonDashboard() {
             if (accs.length > 0) message += `\n   _Aksesori: ${accs.join(', ')}_`;
          });
          message += getText('lendingInitFooter', {});
-         await sendWhatsAppMessageViaFonnte(lendingForm.nomor_wa_peminjam!, message);
+         await sendWhatsAppMessageViaFonnte(waNumber, message);
 
          // Telegram notif admin — fire-and-forget
          fetch('/api/admin/notify-lending', {
@@ -2439,7 +2459,7 @@ export default function NikonDashboard() {
             body: JSON.stringify({
                type: 'pinjam',
                nama_peminjam: lendingForm.nama_peminjam,
-               nomor_wa: lendingForm.nomor_wa_peminjam,
+               nomor_wa: waNumber,
                items: lendingForm.items_dipinjam?.map(item => ({
                   nama_barang: item.nama_barang,
                   nomor_seri: item.nomor_seri,
@@ -8897,7 +8917,7 @@ ${pages.join('')}
                               </div>
                               <div>
                                  <label className="label-form">Nomor WhatsApp *</label>
-                                 <input type="text" required aria-label="Nomor WhatsApp Peminjam" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="input-form" placeholder="Contoh: 6281234567890" />
+                                 <input type="text" required aria-label="Nomor WhatsApp Peminjam" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="input-form" placeholder="08xxx / 628xxx / +628xxx / +61xxx" />
                               </div>
                            </div>
                            <div>
