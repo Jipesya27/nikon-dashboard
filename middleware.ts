@@ -29,6 +29,10 @@ export function middleware(request: NextRequest) {
   if (pathname.startsWith('/api/admin')) {
     if (!hasSession) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  // /api/kurir/* — return 401 JSON jika tidak ada cookie
+  else if (pathname.startsWith('/api/kurir')) {
+    if (!hasSession) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   // /admin/* dan /chatbot — redirect ke /dashboard jika tidak ada cookie
   else if (pathname.startsWith('/admin') || pathname.startsWith('/chatbot')) {
     if (!hasSession) return NextResponse.redirect(new URL('/dashboard', request.url));
@@ -38,5 +42,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*', '/chatbot', '/chatbot/:path*'],
+  matcher: ['/admin/:path*', '/api/admin/:path*', '/api/kurir/:path*', '/chatbot', '/chatbot/:path*'],
 };

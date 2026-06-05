@@ -56,6 +56,7 @@ export interface PeminjamanItem {
 }
 export interface PeminjamanBarang {
    id_peminjaman?: string;
+   kode_peminjaman?: string | null;
    nomor_wa_peminjam: string;
    nama_peminjam: string;
    link_ktp_peminjam?: string | File | null;
@@ -67,6 +68,14 @@ export interface PeminjamanBarang {
    tanggal_estimasi_pengembalian?: string | null;
    reminder_sent_at?: string | null;
    status_peminjaman: 'aktif' | 'selesai';
+   status_pengiriman?: 'menunggu' | 'dikirim' | 'terkirim';
+   id_kurir?: string | null;
+   tanggal_dikirim?: string | null;
+   tanggal_diterima?: string | null;
+   foto_kondisi_kurir?: string[] | null;
+   foto_bukti_pengiriman?: string[] | null;
+   foto_kondisi_penerima?: string[] | null;
+   catatan_penerima?: string | null;
    status_wa?: string;
    created_at?: string;
    updated_at?: string;

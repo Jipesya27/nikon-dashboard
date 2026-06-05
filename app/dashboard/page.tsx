@@ -141,6 +141,14 @@ function getEventClosedStatus(evt: { status: string; stock: number; date: string
    return { closed: false, reason: 'Aktif' };
 }
 
+// --- KODE PEMINJAMAN (5 karakter, tanpa O/I/0/1 untuk menghindari kebingungan) ---
+function generateKodePeminjaman(): string {
+   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+   let code = '';
+   for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+   return code;
+}
+
 // --- NORMALISASI NOMOR WHATSAPP ---
 // 08xxx → 628xxx | 628xxx → 628xxx | +628xxx → 628xxx | +61xxx → 61xxx
 function normalizeWaNumber(nomor: string): string {
@@ -1656,6 +1664,11 @@ export default function NikonDashboard() {
       const tglEstimasi = l.tanggal_estimasi_pengembalian
          ? new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
          : '-';
+      const kode = l.kode_peminjaman || '';
+      const perimbaURL = kode ? `${window.location.origin}/penerima?kode=${kode}` : '';
+      const qrSrc = kode
+         ? `https://chart.googleapis.com/chart?cht=qr&chs=160x160&chl=${encodeURIComponent(perimbaURL)}&choe=UTF-8`
+         : '';
       const itemsHtml = l.items_dipinjam.map((item, idx) => {
          const accs = [item.accs1, item.accs2, item.accs3, item.accs4, item.accs5, item.accs6, item.accs7]
             .filter(Boolean).join('<br>');
@@ -1690,6 +1703,9 @@ export default function NikonDashboard() {
   .sign-box { text-align: center; width: 200px; }
   .sign-box .label { font-size: 10pt; margin-bottom: 70px; }
   .sign-box .line { border-top: 1px solid #000; padding-top: 4px; font-size: 10pt; }
+  .qr-section { display:flex; align-items:center; gap:16px; border:1px solid #ddd; border-radius:6px; padding:10px 14px; margin-bottom:20px; background:#fafafa; }
+  .qr-section .kode-besar { font-family:monospace; font-size:28pt; font-weight:bold; letter-spacing:6px; color:#111; }
+  .qr-section .kode-label { font-size:8.5pt; color:#555; margin-top:3px; }
   @media print { body { padding: 12px; } button { display:none; } }
 </style>
 </head><body>
@@ -1711,6 +1727,15 @@ export default function NikonDashboard() {
   <tr><td>Tanggal Pinjam</td><td>: ${tglPinjam}</td></tr>
   <tr><td>Estimasi Kembali</td><td>: ${tglEstimasi}</td></tr>
 </table>
+${kode ? `
+<div class="qr-section">
+  <img src="${qrSrc}" alt="QR Kode Peminjaman" width="160" height="160" style="flex-shrink:0" />
+  <div>
+    <div class="kode-besar">${kode}</div>
+    <div class="kode-label">Kode Peminjaman — scan QR atau ketik kode ini di halaman penerima barang</div>
+  </div>
+</div>
+` : ''}
 <table class="items">
   <thead><tr>
     <th style="width:36px;text-align:center">No</th>
@@ -2426,6 +2451,15 @@ export default function NikonDashboard() {
          if (modalAction === 'create') {
             dataToSave.tanggal_peminjaman = new Date().toISOString();
             dataToSave.status_peminjaman = 'aktif';
+            dataToSave.status_pengiriman = 'menunggu';
+            // Generate kode_peminjaman unik (coba hingga tidak tabrakan)
+            let kode = generateKodePeminjaman();
+            for (let attempt = 0; attempt < 5; attempt++) {
+               const { data: existing } = await supabase.from('peminjaman_barang').select('id_peminjaman').eq('kode_peminjaman', kode).maybeSingle();
+               if (!existing) break;
+               kode = generateKodePeminjaman();
+            }
+            dataToSave.kode_peminjaman = kode;
          }
          // Saat edit, kalau tanggal estimasi diubah, reset reminder_sent_at agar reminder bisa dikirim ulang
          if (modalAction === 'edit' && editingId) {
@@ -3333,8 +3367,9 @@ export default function NikonDashboard() {
       const wa = (l.nomor_wa_peminjam || "").toLowerCase();
       const status = (l.status_peminjaman || "").toLowerCase();
       const items = l.items_dipinjam.map(item => `${item.nama_barang} ${item.nomor_seri}`).join(' ').toLowerCase();
+      const kode = (l.kode_peminjaman || "").toLowerCase();
       const search = searchLending.toLowerCase();
-      return name.includes(search) || wa.includes(search) || status.includes(search) || items.includes(search);
+      return name.includes(search) || wa.includes(search) || status.includes(search) || items.includes(search) || kode.includes(search);
    }), [lendingRecords, searchLending]);
 
    const sortedLendingRecords = useMemo(() => {
@@ -5260,6 +5295,7 @@ export default function NikonDashboard() {
                               <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                                  <tr>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && <span className="text-xs">{sortConfigLending.direction === 'asc' ? '↑' : '↓'}</span>}</th>
+                                    <th className="px-3 py-3 text-center font-bold text-gray-600">Kode</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">KTP</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">Foto</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">Barang Dipinjam</th>
@@ -5267,6 +5303,7 @@ export default function NikonDashboard() {
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">Est. Kembali</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_pengembalian')}>Tgl Kembali {sortConfigLending.column === 'tanggal_pengembalian' && <span className="text-xs">{sortConfigLending.direction === 'asc' ? '↑' : '↓'}</span>}</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'status_peminjaman')}>Status {sortConfigLending.column === 'status_peminjaman' && <span className="text-xs">{sortConfigLending.direction === 'asc' ? '↑' : '↓'}</span>}</th>
+                                    <th className="px-3 py-3 text-center font-bold text-gray-600">Pengiriman</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">Aksi</th>
                                  </tr>
                               </thead>
@@ -5276,6 +5313,12 @@ export default function NikonDashboard() {
                                        <td className="px-3 py-2.5">
                                           <p className="font-bold text-slate-800">{l.nama_peminjam}</p>
                                           <p className="text-[11px] text-gray-500 font-mono">{l.nomor_wa_peminjam}</p>
+                                       </td>
+                                       <td className="px-3 py-2.5 text-center">
+                                          {l.kode_peminjaman
+                                             ? <span className="font-mono font-black text-sm text-indigo-700 tracking-widest bg-indigo-50 px-2 py-1 rounded">{l.kode_peminjaman}</span>
+                                             : <span className="text-gray-300 text-[11px]">—</span>
+                                          }
                                        </td>
                                        <td className="px-3 py-2.5 text-center">
                                           {l.link_ktp_peminjam ? (
@@ -5346,6 +5389,18 @@ export default function NikonDashboard() {
                                        <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</td>
                                        <td className="px-3 py-2.5 text-center">
                                           <span className={`px-2 py-1 rounded text-[10px] font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
+                                       </td>
+                                       <td className="px-3 py-2.5 text-center">
+                                          {(() => {
+                                             const sp = l.status_pengiriman || 'menunggu';
+                                             const cfg: Record<string, { cls: string; label: string }> = {
+                                                menunggu: { cls: 'bg-gray-100 text-gray-600', label: 'Menunggu' },
+                                                dikirim:  { cls: 'bg-blue-100 text-blue-700', label: 'Dikirim' },
+                                                terkirim: { cls: 'bg-green-100 text-green-700', label: 'Terkirim' },
+                                             };
+                                             const c = cfg[sp] || cfg.menunggu;
+                                             return <span className={`px-2 py-1 rounded text-[10px] font-bold ${c.cls}`}>{c.label}</span>;
+                                          })()}
                                        </td>
                                        <td className="px-3 py-2.5">
                                           <div className="flex flex-col gap-1 min-w-[80px]">
