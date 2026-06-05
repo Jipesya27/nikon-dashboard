@@ -3025,8 +3025,11 @@ ${kode ? `
                   const { viewUrl } = await docRes.json();
                   const tglLabel = new Date(tglKembali).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
                   const itemList = formatLendingItemsForWA(itemsWithAccsNotes, 'kembali');
+                  const returnTemplateName = newStatusPeminjaman === 'partial'
+                     ? 'notif_lending_return_partial'
+                     : 'notif_lending_return_v2';
                   await sendWhatsAppMessage(lending.nomor_wa_peminjam, '', {
-                     templateName: 'notif_lending_return_v2',
+                     templateName: returnTemplateName,
                      bodyParams: [lending.nama_peminjam, tglLabel, itemList, viewUrl],
                   });
                }

@@ -115,8 +115,9 @@ const REQUIRED_TEMPLATES = [
   { name: 'notif_deposit_refund',    cat: 'UTILITY',        params: 3, desc: 'Deposit dikembalikan — nama, event, URL bukti (⚠️ gunakan tombol URL)', urlInParam: true  },
   { name: 'notif_kode_akun',         cat: 'AUTHENTICATION', params: 0, desc: 'Kode akses / reset password karyawan (AUTHENTICATION, OTP button)',     urlInParam: false },
   { name: 'notif_lending_init_v2',   cat: 'UTILITY',        params: 4, desc: 'Peminjaman dibuat — {{1}}nama, {{2}}estimasi kembali, {{3}}daftar barang, {{4}}link Drive', urlInParam: false },
-  { name: 'notif_lending_return_v2', cat: 'UTILITY',        params: 4, desc: 'Barang dikembalikan — {{1}}nama, {{2}}tgl kembali, {{3}}daftar barang, {{4}}link Drive',  urlInParam: false },
-  { name: 'notif_lending_reminder',  cat: 'UTILITY',        params: 3, desc: 'Pengingat harian — nama, estimasi kembali, daftar barang',                   urlInParam: false },
+  { name: 'notif_lending_return_v2',      cat: 'UTILITY', params: 4, desc: 'Semua barang dikembalikan — {{1}}nama, {{2}}tgl kembali, {{3}}daftar barang, {{4}}link Drive', urlInParam: false },
+  { name: 'notif_lending_return_partial', cat: 'UTILITY', params: 4, desc: 'Pengembalian sebagian — {{1}}nama, {{2}}tgl kembali, {{3}}daftar barang, {{4}}link Drive',         urlInParam: false },
+  { name: 'notif_lending_reminder',       cat: 'UTILITY', params: 3, desc: 'Pengingat harian — nama, estimasi kembali, daftar barang',                                         urlInParam: false },
 ] as const;
 
 // ─── Main Component ───────────────────────────────────────────────────────────
