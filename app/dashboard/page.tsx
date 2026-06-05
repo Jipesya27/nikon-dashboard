@@ -165,16 +165,17 @@ function formatLendingItemsForWA(
    items: { nama_barang: string; nomor_seri?: string; accs1?: string; accs2?: string; accs3?: string; accs4?: string; accs5?: string; accs6?: string; accs7?: string; catatan?: string; catatan_pengembalian?: string; status_pengembalian?: string }[],
    type: 'pinjam' | 'kembali',
 ): string {
+   // Meta TIDAK mengizinkan \n di dalam parameter template — gunakan separator " | "
    const relevant = type === 'pinjam' ? items : items.filter(i => i.status_pengembalian === 'dikembalikan');
    return relevant.map((item, idx) => {
       const accs = [item.accs1, item.accs2, item.accs3, item.accs4, item.accs5, item.accs6, item.accs7].filter(Boolean);
       const catatan = type === 'pinjam' ? item.catatan : item.catatan_pengembalian;
       let line = `${idx + 1}. ${item.nama_barang}`;
       if (item.nomor_seri) line += ` (SN: ${item.nomor_seri})`;
-      if (accs.length > 0) line += `\n   Aksesori: ${accs.join(', ')}`;
-      if (catatan) line += `\n   Catatan: ${catatan}`;
+      if (accs.length > 0) line += ` - Aksesori: ${accs.join(', ')}`;
+      if (catatan) line += ` - Catatan: ${catatan}`;
       return line;
-   }).join('\n');
+   }).join(' | ');
 }
 
 // --- API PENGIRIMAN AMAN VIA SUPABASE EDGE FUNCTION ---
