@@ -215,7 +215,11 @@ export default function WaTemplatesTab() {
       }
       const components: TemplateComponent[] = [];
       if (form.hasDocHeader) {
-        components.push({ type: 'HEADER', format: 'DOCUMENT' } as unknown as TemplateComponent);
+        components.push({
+          type: 'HEADER',
+          format: 'DOCUMENT',
+          example: { header_handle: ['https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF2.pdf'] },
+        } as unknown as TemplateComponent);
       }
       components.push({
         type: 'BODY',
