@@ -5,7 +5,7 @@
 ALTER TABLE public.peminjaman_barang
   ADD COLUMN IF NOT EXISTS kode_peminjaman    VARCHAR(5)   UNIQUE,
   ADD COLUMN IF NOT EXISTS status_pengiriman  TEXT         NOT NULL DEFAULT 'menunggu',
-  ADD COLUMN IF NOT EXISTS id_kurir           TEXT         REFERENCES public.karyawan(id_karyawan) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS id_kurir           UUID         REFERENCES public.karyawan(id_karyawan) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS tanggal_dikirim    TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS tanggal_diterima   TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS foto_kondisi_kurir     TEXT[]   DEFAULT '{}',
