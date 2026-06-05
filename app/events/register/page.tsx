@@ -27,15 +27,19 @@ function driveImgSrc(url?: string): string | undefined {
   return url; // fallback: pakai URL asli
 }
 
-const ID_MONTHS: Record<string, number> = {
+const MONTH_MAP: Record<string, number> = {
+  // Indonesia
   januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
   juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
+  // English abbreviated (format DB: "05 Jun 2026")
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
 };
 function parseIdDate(str: string): Date | null {
   if (!str) return null;
   const p = str.trim().toLowerCase().split(/\s+/);
   if (p.length < 3) return null;
-  const d = parseInt(p[0]), m = ID_MONTHS[p[1]], y = parseInt(p[2]);
+  const d = parseInt(p[0]), m = MONTH_MAP[p[1]], y = parseInt(p[2]);
   if (isNaN(d) || m === undefined || isNaN(y)) return null;
   return new Date(y, m, d);
 }
