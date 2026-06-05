@@ -380,6 +380,10 @@ export default function NikonDashboard() {
    const [lendingForm, setLendingForm] = useState<Partial<PeminjamanBarang>>({ items_dipinjam: [], status_peminjaman: 'aktif' });
    const [showContactPicker, setShowContactPicker] = useState(false);
    const [contactPickerSearch, setContactPickerSearch] = useState('');
+   const [showAddContactForm, setShowAddContactForm] = useState(false);
+   const [addContactForm, setAddContactForm] = useState({ nama: '', nomor_wa: '' });
+   const [addContactLoading, setAddContactLoading] = useState(false);
+   const [addContactError, setAddContactError] = useState('');
    const [accsReturnChecked, setAccsReturnChecked] = useState<Record<number, Record<string, boolean>>>({});
    const [assetForm, setAssetForm] = useState<Partial<BarangAset>>({});
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
@@ -1943,6 +1947,9 @@ ${kode ? `
       setKaryawanForm({});
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' });
       setShowContactPicker(false);
+      setShowAddContactForm(false);
+      setAddContactForm({ nama: '', nomor_wa: '' });
+      setAddContactError('');
       setContactPickerSearch('');
       setBotSettingsForm({});
       setAssetForm({});
@@ -5795,6 +5802,7 @@ ${kode ? `
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {sortedEvents.map((evt: EventData) => {
                               const detailPreview = evt.detail_acara ? (evt.detail_acara.length > 100 ? evt.detail_acara.substring(0, 100) + '...' : evt.detail_acara) : '-';
+                              const { closed: evtClosed, reason: evtReason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.title] || 0);
                               return (
                               <div key={evt.id} className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] hover:shadow-md transition overflow-hidden">
                                  {/* Full-width poster image */}
@@ -5802,7 +5810,7 @@ ${kode ? `
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={driveImgSrc(evt.image)} alt="poster" className="w-full h-full object-cover" />
                                     <span className="absolute top-2 left-2 font-bold text-sm text-gray-700 bg-white/90 rounded-full w-7 h-7 flex items-center justify-center shadow-sm">{eventNumberMap.get(evt.id!)}</span>
-                                    <span className={`absolute top-2 right-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded ${evt.status === 'close' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evt.status === 'close' ? 'Tutup' : 'Aktif'}</span>
+                                    <span className={`absolute top-2 right-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded ${evtClosed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evtClosed ? evtReason : 'Aktif'}</span>
                                  </div>
                                  <div className="p-4 flex flex-col flex-1">
                                     <div className="border-b border-gray-100 pb-2 mb-3">
@@ -9097,52 +9105,159 @@ ${pages.join('')}
 
                            {/* ── Contact Picker Modal ── */}
                            {showContactPicker && (
-                              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowContactPicker(false)}>
-                                 <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setShowContactPicker(false); setShowAddContactForm(false); setAddContactForm({ nama: '', nomor_wa: '' }); setAddContactError(''); }}>
+                                 <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                                     <div className="p-4 border-b border-gray-200">
-                                       <h3 className="font-bold text-gray-900 text-sm mb-2">Pilih Kontak</h3>
-                                       <input
-                                          type="text"
-                                          autoFocus
-                                          value={contactPickerSearch}
-                                          onChange={e => setContactPickerSearch(e.target.value)}
-                                          placeholder="🔍 Cari nama atau nomor WA..."
-                                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
-                                       />
-                                    </div>
-                                    <div className="overflow-y-auto flex-1">
-                                       {(() => {
-                                          const q = contactPickerSearch.toLowerCase();
-                                          const filtered = consumersList.filter(c =>
-                                             (c.nama_lengkap || '').toLowerCase().includes(q) ||
-                                             (c.nomor_wa || '').toLowerCase().includes(q)
-                                          ).slice(0, 50);
-                                          if (filtered.length === 0) return (
-                                             <p className="text-sm text-gray-400 text-center py-8">Kontak tidak ditemukan</p>
-                                          );
-                                          return filtered.map(c => (
+                                       <div className="flex items-center justify-between mb-2">
+                                          <h3 className="font-bold text-gray-900 text-sm">{showAddContactForm ? 'Tambah Kontak Baru' : 'Pilih Kontak'}</h3>
+                                          {!showAddContactForm && (
                                              <button
-                                                key={c.nomor_wa}
                                                 type="button"
-                                                className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition"
-                                                onClick={() => {
-                                                   setLendingForm(prev => ({
-                                                      ...prev,
-                                                      nama_peminjam: c.nama_lengkap,
-                                                      nomor_wa_peminjam: c.nomor_wa,
-                                                   }));
-                                                   setShowContactPicker(false);
-                                                }}
+                                                onClick={() => { setShowAddContactForm(true); setAddContactForm({ nama: contactPickerSearch, nomor_wa: '' }); setAddContactError(''); }}
+                                                className="flex items-center gap-1 text-xs font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1 rounded-lg transition"
                                              >
-                                                <p className="font-semibold text-gray-900 text-sm">{c.nama_lengkap}</p>
-                                                <p className="text-xs text-gray-500 font-mono mt-0.5">{c.nomor_wa}</p>
+                                                + Kontak Baru
                                              </button>
-                                          ));
-                                       })()}
+                                          )}
+                                       </div>
+                                       {!showAddContactForm && (
+                                          <input
+                                             type="text"
+                                             autoFocus
+                                             value={contactPickerSearch}
+                                             onChange={e => setContactPickerSearch(e.target.value)}
+                                             placeholder="🔍 Cari nama atau nomor WA..."
+                                             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                                          />
+                                       )}
                                     </div>
-                                    <div className="p-3 border-t border-gray-100">
-                                       <button type="button" onClick={() => setShowContactPicker(false)} className="w-full text-sm text-gray-500 font-bold py-2 rounded-lg hover:bg-gray-100 transition">Tutup</button>
-                                    </div>
+
+                                    {showAddContactForm ? (
+                                       <div className="p-4 space-y-3 flex-1">
+                                          {addContactError && (
+                                             <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{addContactError}</div>
+                                          )}
+                                          <div>
+                                             <label className="block text-xs font-bold text-gray-700 mb-1">Nama Lengkap *</label>
+                                             <input
+                                                type="text"
+                                                autoFocus
+                                                value={addContactForm.nama}
+                                                onChange={e => setAddContactForm(p => ({ ...p, nama: e.target.value }))}
+                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-green-500"
+                                                placeholder="Nama lengkap kontak"
+                                             />
+                                          </div>
+                                          <div>
+                                             <label className="block text-xs font-bold text-gray-700 mb-1">Nomor WhatsApp *</label>
+                                             <input
+                                                type="text"
+                                                value={addContactForm.nomor_wa}
+                                                onChange={e => setAddContactForm(p => ({ ...p, nomor_wa: e.target.value }))}
+                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-green-500"
+                                                placeholder="08xxx / 628xxx"
+                                             />
+                                          </div>
+                                          <div className="flex gap-2 pt-1">
+                                             <button
+                                                type="button"
+                                                onClick={() => { setShowAddContactForm(false); setAddContactError(''); }}
+                                                className="flex-1 py-2 text-sm text-gray-600 font-bold rounded-lg border border-gray-200 hover:bg-gray-50 transition"
+                                             >
+                                                Batal
+                                             </button>
+                                             <button
+                                                type="button"
+                                                disabled={addContactLoading || !addContactForm.nama.trim() || !addContactForm.nomor_wa.trim()}
+                                                onClick={async () => {
+                                                   setAddContactError('');
+                                                   setAddContactLoading(true);
+                                                   try {
+                                                      const wa = normalizeWaNumber(addContactForm.nomor_wa.trim());
+                                                      const existing = consumersList.find(c => c.nomor_wa === wa);
+                                                      if (!existing) {
+                                                         const { error } = await sbWrite({
+                                                            action: 'insert',
+                                                            table: 'konsumen',
+                                                            data: {
+                                                               nomor_wa: wa,
+                                                               nama_lengkap: addContactForm.nama.trim(),
+                                                               status_langkah: 'START',
+                                                               nik: 'BELUM_DIISI',
+                                                               alamat_rumah: 'BELUM_DIISI',
+                                                               kelurahan: 'BELUM_DIISI',
+                                                               kecamatan: 'BELUM_DIISI',
+                                                               kabupaten_kotamadya: 'BELUM_DIISI',
+                                                               provinsi: 'BELUM_DIISI',
+                                                               kodepos: 'BELUM_DIISI',
+                                                            },
+                                                         });
+                                                         if (error) { setAddContactError(error.message || 'Gagal menyimpan kontak'); return; }
+                                                         await fetchTable<KonsumenData>('konsumen', setConsumersList);
+                                                      }
+                                                      setLendingForm(prev => ({ ...prev, nama_peminjam: addContactForm.nama.trim(), nomor_wa_peminjam: wa }));
+                                                      setShowContactPicker(false);
+                                                      setShowAddContactForm(false);
+                                                      setAddContactForm({ nama: '', nomor_wa: '' });
+                                                   } catch (err) {
+                                                      setAddContactError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+                                                   } finally {
+                                                      setAddContactLoading(false);
+                                                   }
+                                                }}
+                                                className="flex-1 py-2 text-sm text-white font-bold rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-60 transition"
+                                             >
+                                                {addContactLoading ? 'Menyimpan...' : 'Simpan & Pilih'}
+                                             </button>
+                                          </div>
+                                       </div>
+                                    ) : (
+                                       <div className="overflow-y-auto flex-1">
+                                          {(() => {
+                                             const q = contactPickerSearch.toLowerCase();
+                                             const filtered = consumersList.filter(c =>
+                                                (c.nama_lengkap || '').toLowerCase().includes(q) ||
+                                                (c.nomor_wa || '').toLowerCase().includes(q)
+                                             ).slice(0, 50);
+                                             if (filtered.length === 0) return (
+                                                <div className="text-center py-8 space-y-3">
+                                                   <p className="text-sm text-gray-400">Kontak tidak ditemukan</p>
+                                                   <button
+                                                      type="button"
+                                                      onClick={() => { setShowAddContactForm(true); setAddContactForm({ nama: contactPickerSearch, nomor_wa: '' }); setAddContactError(''); }}
+                                                      className="text-sm font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-4 py-2 rounded-lg transition"
+                                                   >
+                                                      + Tambah Kontak Baru
+                                                   </button>
+                                                </div>
+                                             );
+                                             return filtered.map(c => (
+                                                <button
+                                                   key={c.nomor_wa}
+                                                   type="button"
+                                                   className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition"
+                                                   onClick={() => {
+                                                      setLendingForm(prev => ({
+                                                         ...prev,
+                                                         nama_peminjam: c.nama_lengkap,
+                                                         nomor_wa_peminjam: c.nomor_wa,
+                                                      }));
+                                                      setShowContactPicker(false);
+                                                   }}
+                                                >
+                                                   <p className="font-semibold text-gray-900 text-sm">{c.nama_lengkap}</p>
+                                                   <p className="text-xs text-gray-500 font-mono mt-0.5">{c.nomor_wa}</p>
+                                                </button>
+                                             ));
+                                          })()}
+                                       </div>
+                                    )}
+
+                                    {!showAddContactForm && (
+                                       <div className="p-3 border-t border-gray-100">
+                                          <button type="button" onClick={() => setShowContactPicker(false)} className="w-full text-sm text-gray-500 font-bold py-2 rounded-lg hover:bg-gray-100 transition">Tutup</button>
+                                       </div>
+                                    )}
                                  </div>
                               </div>
                            )}
