@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { sendNotif, sendTelegramMessage } from '@/app/lib/notify';
+import { sendNotif, sendTelegramMessage, sendWA } from '@/app/lib/notify';
+import { whatsappMessages } from '@/app/whatsappMessages';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,6 +8,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const to = searchParams.get('to') || process.env.ADMIN_EMAIL || '';
   const testTelegram = searchParams.get('telegram') === '1';
+  const testWa = searchParams.get('wa') === '1';
+  const waTarget = searchParams.get('wa_target') || '';
 
   const result: Record<string, unknown> = {
     smtp_host:              process.env.SMTP_HOST              || '❌ TIDAK ADA',
@@ -15,6 +18,8 @@ export async function GET(req: Request) {
     admin_email:            process.env.ADMIN_EMAIL            || '❌ TIDAK ADA',
     telegram_bot_token:     process.env.TELEGRAM_BOT_TOKEN     ? '✅ ada' : '❌ TIDAK ADA',
     telegram_admin_chat_id: process.env.TELEGRAM_ADMIN_CHAT_ID || '❌ TIDAK ADA',
+    wa_access_token:        process.env.WHATSAPP_ACCESS_TOKEN  ? `✅ ada (${process.env.WHATSAPP_ACCESS_TOKEN.length} karakter)` : '❌ TIDAK ADA',
+    wa_phone_number_id:     process.env.WHATSAPP_PHONE_NUMBER_ID || '❌ TIDAK ADA',
     target_email:           to,
   };
 
@@ -45,8 +50,59 @@ export async function GET(req: Request) {
     }
   }
 
+  // Test pengiriman notif WA peminjaman barang ke peminjam
+  if (testWa) {
+    if (!waTarget) {
+      return NextResponse.json({
+        error: 'Tambahkan ?wa=1&wa_target=628xxx untuk test WA peminjaman',
+        usage: '/api/test-notif?wa=1&wa_target=628123456789',
+        env: result,
+      });
+    }
+
+    const token = process.env.WHATSAPP_ACCESS_TOKEN || '';
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+    if (!token || !phoneNumberId) {
+      return NextResponse.json({
+        error: 'WHATSAPP_ACCESS_TOKEN atau WHATSAPP_PHONE_NUMBER_ID belum diset',
+        env: result,
+      });
+    }
+
+    const sampleItems = [
+      { nama_barang: 'Nikon Z6 III', nomor_seri: 'SN-TEST-001', catatan: '' },
+      { nama_barang: 'Nikkor Z 24-70mm f/2.8 S', nomor_seri: 'SN-TEST-002', catatan: 'Bawa case pelindung' },
+    ];
+
+    let message = whatsappMessages.lendingInitHeader('Peminjam Test');
+    sampleItems.forEach((item, idx) => {
+      message += whatsappMessages.lendingInitItem(idx, item.nama_barang, item.nomor_seri, item.catatan);
+    });
+    message += whatsappMessages.lendingInitFooter();
+
+    try {
+      await sendWA(waTarget, message);
+      return NextResponse.json({
+        success: true,
+        sent_to_wa: waTarget,
+        preview: message,
+        env: result,
+      });
+    } catch (e) {
+      return NextResponse.json({
+        success: false,
+        error: e instanceof Error ? e.message : String(e),
+        sent_to_wa: waTarget,
+        env: result,
+      }, { status: 500 });
+    }
+  }
+
   if (!to) {
-    return NextResponse.json({ error: 'Tambahkan ?to=email@kamu.com atau ?telegram=1', env: result });
+    return NextResponse.json({
+      error: 'Tambahkan ?to=email@kamu.com, ?telegram=1, atau ?wa=1&wa_target=628xxx',
+      env: result,
+    });
   }
 
   try {
