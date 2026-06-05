@@ -5706,8 +5706,14 @@ ${kode ? `
                                              <li key={idx} className={`${item.status_pengembalian === 'dikembalikan' ? 'text-green-600' : 'text-slate-800'}`}>
                                                 <span className={item.status_pengembalian === 'dikembalikan' ? 'line-through' : ''}>• {item.nama_barang} (SN: {item.nomor_seri})</span>
                                                 {accs.length > 0 && (
-                                                   <div className="pl-3 mt-0.5 text-[10px] text-gray-500 space-y-0.5">
-                                                      {accs.map((a, ai) => <div key={ai}>– {a}</div>)}
+                                                   <div className="pl-3 mt-0.5 text-[10px] space-y-0.5">
+                                                      {accs.map((a, ai) => {
+                                                         const accsReturned = item.accs_returned ?? [];
+                                                         const isAccReturned = item.status_pengembalian === 'dikembalikan' && (accsReturned.length === 0 || accsReturned.includes(a));
+                                                         return (
+                                                            <div key={ai} className={isAccReturned ? 'text-green-600 line-through' : 'text-gray-500'}>– {a}</div>
+                                                         );
+                                                      })}
                                                    </div>
                                                 )}
                                              </li>
