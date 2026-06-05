@@ -179,7 +179,6 @@ export async function POST(req: Request) {
     if (nama_lengkap && nama_lengkap.length > 150) return NextResponse.json({ error: 'Nama terlalu panjang.' }, { status: 400 });
     if (nomor_seri && nomor_seri.length > 60) return NextResponse.json({ error: 'Nomor seri terlalu panjang.' }, { status: 400 });
     if (tipe_barang && tipe_barang.length > 100) return NextResponse.json({ error: 'Tipe barang terlalu panjang.' }, { status: 400 });
-    if (alamat_rumah && alamat_rumah.length > 500) return NextResponse.json({ error: 'Alamat terlalu panjang.' }, { status: 400 });
     if (alamat_pengiriman && alamat_pengiriman.length > 500) return NextResponse.json({ error: 'Alamat pengiriman terlalu panjang.' }, { status: 400 });
 
     // Cari atau buat konsumen baru (upsert)
