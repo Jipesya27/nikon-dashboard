@@ -120,8 +120,9 @@ export async function sendWA(
       },
     );
     if (!res.ok) {
-      console.error('[notify] Meta WA error:', res.status, await res.text());
-      return;
+      const errText = await res.text();
+      console.error('[notify] Meta WA error:', res.status, errText);
+      throw new Error(`Meta WA ${res.status}: ${errText}`);
     }
     // Log pesan sistem ke riwayat_pesan agar tampil di tab chat dashboard.
     // Fire-and-forget — gagal log tidak memblokir alur utama.

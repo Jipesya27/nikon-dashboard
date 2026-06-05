@@ -162,18 +162,14 @@ function normalizeWaNumber(nomor: string): string {
 
 // --- API PENGIRIMAN AMAN VIA SUPABASE EDGE FUNCTION ---
 const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) => {
-   try {
-      const res = await fetch('/api/admin/send-wa', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ target: targetWa, message }),
-      });
-      if (!res.ok) {
-         const err = await res.json().catch(() => ({}));
-         throw new Error(err.error || `HTTP ${res.status}`);
-      }
-   } catch (error) {
-      console.error("Gagal mengirim WA:", error);
+   const res = await fetch('/api/admin/send-wa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: targetWa, message }),
+   });
+   if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`Gagal kirim WA: ${err.error || `HTTP ${res.status}`}`);
    }
 };
 

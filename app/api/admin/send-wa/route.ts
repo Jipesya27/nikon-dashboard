@@ -16,6 +16,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'target dan message wajib diisi' }, { status: 400 });
   }
 
-  await sendWA(target, message);
-  return NextResponse.json({ ok: true });
+  try {
+    await sendWA(target, message);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[send-wa] error:', msg);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
 }
