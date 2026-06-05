@@ -86,6 +86,7 @@ interface FormState {
   examples: string[];
   isAuth: boolean;
   hasDocHeader: boolean;
+  docHandle: string;
   buttons: ButtonItem[];
 }
 
@@ -96,6 +97,7 @@ const INIT_FORM: FormState = {
   examples: [],
   isAuth: false,
   hasDocHeader: false,
+  docHandle: '',
   buttons: [],
 };
 
@@ -124,6 +126,8 @@ export default function WaTemplatesTab() {
   const [form, setForm]             = useState<FormState>(INIT_FORM);
   const [formError, setFormError]   = useState('');
   const [saving, setSaving]         = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docUploadError, setDocUploadError] = useState('');
   const [saveOk, setSaveOk]         = useState('');
   const [deleting, setDeleting]     = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null); // template name to confirm
@@ -180,6 +184,29 @@ export default function WaTemplatesTab() {
     prevParamCount.current = 0;
   };
 
+  // ── Upload doc example ke Meta ────────────────────────────────────────────
+
+  const handleDocUpload = async (file: File) => {
+    setDocUploadError('');
+    setUploadingDoc(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/admin/meta-media-upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: fd,
+      });
+      const json = await res.json();
+      if (!res.ok) { setDocUploadError(json.error || 'Upload gagal'); return; }
+      setForm(f => ({ ...f, docHandle: json.handle }));
+    } catch {
+      setDocUploadError('Gagal terhubung ke server');
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
   // ── Create ─────────────────────────────────────────────────────────────────
 
   const handleCreate = async () => {
@@ -215,10 +242,11 @@ export default function WaTemplatesTab() {
       }
       const components: TemplateComponent[] = [];
       if (form.hasDocHeader) {
+        if (!form.docHandle) { setFormError('Upload contoh dokumen PDF terlebih dahulu.'); return; }
         components.push({
           type: 'HEADER',
           format: 'DOCUMENT',
-          example: { header_handle: ['https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF2.pdf'] },
+          example: { header_handle: [form.docHandle] },
         } as unknown as TemplateComponent);
       }
       components.push({
@@ -611,6 +639,41 @@ export default function WaTemplatesTab() {
                       <p className="text-[11px] text-gray-400">Aktifkan untuk mengirim file PDF sebagai lampiran di WhatsApp.</p>
                     </div>
                   </label>
+                </div>
+              )}
+
+              {/* Upload contoh PDF (hanya saat header dokumen aktif) */}
+              {!form.isAuth && form.hasDocHeader && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                  <p className="text-xs font-bold text-blue-800">📎 Upload Contoh Dokumen PDF</p>
+                  <p className="text-[11px] text-blue-700">Meta membutuhkan contoh file PDF untuk me-review template. File hanya dipakai sebagai contoh, bukan dikirim ke konsumen.</p>
+                  {form.docHandle ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono bg-white border border-green-300 text-green-700 px-2 py-1 rounded-lg flex-1 truncate">✅ Handle: {form.docHandle}</span>
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, docHandle: '' }))}
+                        className="text-xs text-red-500 hover:text-red-700 font-bold shrink-0"
+                      >Ganti</button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className={`flex items-center justify-center gap-2 w-full border-2 border-dashed rounded-lg px-4 py-3 cursor-pointer transition ${uploadingDoc ? 'border-gray-200 bg-gray-50 cursor-not-allowed' : 'border-blue-300 hover:border-blue-400 hover:bg-blue-50/50'}`}>
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          className="hidden"
+                          disabled={uploadingDoc}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) handleDocUpload(f); }}
+                        />
+                        {uploadingDoc
+                          ? <><span className="animate-spin text-sm">⏳</span><span className="text-xs text-gray-500">Mengupload ke Meta...</span></>
+                          : <><span className="text-sm">📄</span><span className="text-xs font-semibold text-blue-700">Pilih file PDF sebagai contoh</span></>
+                        }
+                      </label>
+                      {docUploadError && <p className="text-[11px] text-red-600 font-semibold">⚠️ {docUploadError}</p>}
+                    </div>
+                  )}
                 </div>
               )}
 
