@@ -5701,7 +5701,7 @@ ${kode ? `
                                     <div className="font-bold mt-2">Barang:</div>
                                     <ul className="pl-2 space-y-1.5">
                                        {l.items_dipinjam.map((item, idx) => {
-                                          const accs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean);
+                                          const accs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean) as string[];
                                           return (
                                              <li key={idx} className={`${item.status_pengembalian === 'dikembalikan' ? 'text-green-600' : 'text-slate-800'}`}>
                                                 <span className={item.status_pengembalian === 'dikembalikan' ? 'line-through' : ''}>• {item.nama_barang} (SN: {item.nomor_seri})</span>
