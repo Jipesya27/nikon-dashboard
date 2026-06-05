@@ -3190,9 +3190,28 @@ export default function NikonDashboard() {
       if (fc.validasi_by_mkt && fc.validasi_by_mkt !== '__all__' && mkt !== fc.validasi_by_mkt.toLowerCase()) return false;
       if (fc.validasi_by_fa && fc.validasi_by_fa !== '__all__' && fa !== fc.validasi_by_fa.toLowerCase()) return false;
       if (fc.tanggal_pembelian && !(c.tanggal_pembelian || '').includes(fc.tanggal_pembelian)) return false;
+      if (fc.status && fc.status !== '__all__') {
+         const color = getClaimStatusColor(c);
+         if (color !== fc.status) return false;
+      }
+      if (fc.created_at && !(c.created_at || '').includes(fc.created_at)) return false;
+      if (fc.nota_garansi && fc.nota_garansi !== '__all__') {
+         const hasNota = !!(c.link_nota_pembelian);
+         const hasGaransi = !!(c.link_kartu_garansi);
+         if (fc.nota_garansi === 'nota' && !hasNota) return false;
+         if (fc.nota_garansi === 'garansi' && !hasGaransi) return false;
+         if (fc.nota_garansi === 'keduanya' && !(hasNota && hasGaransi)) return false;
+         if (fc.nota_garansi === 'tidak_ada' && (hasNota || hasGaransi)) return false;
+      }
+      if (fc.catatan_mkt && !(c.catatan_mkt || '').toLowerCase().includes(fc.catatan_mkt.toLowerCase())) return false;
+      if (fc.kirim_status && fc.kirim_status !== '__all__') {
+         const sudahKirim = !!(c.resi_sent_at) || (c.id_claim ? sentStatusClaimIds.has(c.id_claim) : false);
+         if (fc.kirim_status === 'sudah' && !sudahKirim) return false;
+         if (fc.kirim_status === 'belum' && sudahKirim) return false;
+      }
 
       return true;
-   }), [claims, searchClaim, filterStatusWarna, filterDuplikat, filterColClaims, duplicateClaimIds, consumers, getNamaPromo, getClaimStatusColor]);
+   }), [claims, searchClaim, filterStatusWarna, filterDuplikat, filterColClaims, duplicateClaimIds, consumers, getNamaPromo, getClaimStatusColor, sentStatusClaimIds]);
 
    const sortedClaims = useMemo(() => {
       const sortableItems = [...filteredClaims];
@@ -4764,10 +4783,22 @@ export default function NikonDashboard() {
                                  </tr>
                                  {/* ── Filter row per kolom ── */}
                                  <tr className="bg-yellow-50 border-b border-yellow-200">
-                                    {/* checkbox, No, Status → kosong */}
+                                    {/* checkbox, No → kosong; Status → dropdown */}
                                     <th className="px-1 py-1.5" />
                                     <th className="px-1 py-1.5" />
-                                    <th className="px-1 py-1.5" />
+                                    <th className="px-2 py-1.5">
+                                       <select value={filterColClaims.status || '__all__'} onChange={e => setClaimColFilter('status', e.target.value)}
+                                          className="w-full text-xs px-1 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400">
+                                          <option value="__all__">Semua</option>
+                                          <option value="Putih">Belum Di Cek</option>
+                                          <option value="Merah">Tidak Valid</option>
+                                          <option value="Orange">Hold</option>
+                                          <option value="Biru">Tunggu FA</option>
+                                          <option value="Pink">Tunggu Resi</option>
+                                          <option value="Hijau">Selesai</option>
+                                          <option value="Teal">Resi Terkirim</option>
+                                       </select>
+                                    </th>
                                     {/* Nama */}
                                     <th className="px-2 py-1.5">
                                        <input
@@ -4808,8 +4839,15 @@ export default function NikonDashboard() {
                                           className="w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400"
                                        />
                                     </th>
-                                    {/* Tgl Submit, Durasi → kosong */}
-                                    <th className="px-1 py-1.5" />
+                                    {/* Tgl Submit */}
+                                    <th className="px-2 py-1.5">
+                                       <input
+                                          type="text" placeholder="cth: 2024-01" value={filterColClaims.created_at || ''}
+                                          onChange={e => setClaimColFilter('created_at', e.target.value)}
+                                          className="w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400"
+                                       />
+                                    </th>
+                                    {/* Durasi → kosong */}
                                     <th className="px-1 py-1.5" />
                                     {/* Toko */}
                                     <th className="px-2 py-1.5">
@@ -4819,8 +4857,17 @@ export default function NikonDashboard() {
                                           className="w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400"
                                        />
                                     </th>
-                                    {/* Nota/Garansi → kosong */}
-                                    <th className="px-1 py-1.5" />
+                                    {/* Nota/Garansi */}
+                                    <th className="px-2 py-1.5">
+                                       <select value={filterColClaims.nota_garansi || '__all__'} onChange={e => setClaimColFilter('nota_garansi', e.target.value)}
+                                          className="w-full text-xs px-1 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400">
+                                          <option value="__all__">Semua</option>
+                                          <option value="nota">Ada Nota</option>
+                                          <option value="garansi">Ada Garansi</option>
+                                          <option value="keduanya">Ada Keduanya</option>
+                                          <option value="tidak_ada">Tidak Ada</option>
+                                       </select>
+                                    </th>
                                     {/* MKT / FA (gabung di satu th) */}
                                     <th className="px-2 py-1.5">
                                        <select value={filterColClaims.validasi_by_mkt || '__all__'} onChange={e => setClaimColFilter('validasi_by_mkt', e.target.value)}
@@ -4834,9 +4881,24 @@ export default function NikonDashboard() {
                                           {claimColOptions.fa.map(v => <option key={v} value={v}>{v}</option>)}
                                        </select>
                                     </th>
-                                    {/* Catatan MKT, Kirim Status, Cetak Label, Aksi → kosong */}
-                                    <th className="px-1 py-1.5" />
-                                    <th className="px-1 py-1.5" />
+                                    {/* Catatan MKT */}
+                                    <th className="px-2 py-1.5">
+                                       <input
+                                          type="text" placeholder="Filter catatan…" value={filterColClaims.catatan_mkt || ''}
+                                          onChange={e => setClaimColFilter('catatan_mkt', e.target.value)}
+                                          className="w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400"
+                                       />
+                                    </th>
+                                    {/* Kirim Status */}
+                                    <th className="px-2 py-1.5">
+                                       <select value={filterColClaims.kirim_status || '__all__'} onChange={e => setClaimColFilter('kirim_status', e.target.value)}
+                                          className="w-full text-xs px-1 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400">
+                                          <option value="__all__">Semua</option>
+                                          <option value="sudah">Sudah Kirim</option>
+                                          <option value="belum">Belum Kirim</option>
+                                       </select>
+                                    </th>
+                                    {/* Cetak Label, Aksi → kosong */}
                                     <th className="px-1 py-1.5" />
                                     <th className="px-1 py-1.5" />
                                  </tr>
