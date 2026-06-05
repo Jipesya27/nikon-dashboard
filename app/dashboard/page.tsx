@@ -377,6 +377,8 @@ export default function NikonDashboard() {
    const [konsumenForm, setKonsumenForm] = useState<Partial<KonsumenData>>({});
    const [karyawanForm, setKaryawanForm] = useState<Partial<Karyawan>>({ role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
    const [lendingForm, setLendingForm] = useState<Partial<PeminjamanBarang>>({ items_dipinjam: [], status_peminjaman: 'aktif' });
+   const [showContactPicker, setShowContactPicker] = useState(false);
+   const [contactPickerSearch, setContactPickerSearch] = useState('');
    const [accsReturnChecked, setAccsReturnChecked] = useState<Record<number, Record<string, boolean>>>({});
    const [assetForm, setAssetForm] = useState<Partial<BarangAset>>({});
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
@@ -1958,6 +1960,8 @@ ${kode ? `
       setKonsumenForm({});
       setKaryawanForm({});
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' });
+      setShowContactPicker(false);
+      setContactPickerSearch('');
       setBotSettingsForm({});
       setAssetForm({});
       setEventForm({ status: 'aktif', stock: 0 });
@@ -8965,16 +8969,81 @@ ${pages.join('')}
                      {/* ============ LENDING FORM (Create & Edit) ============ */}
                      {activeTab === 'lending' && modalAction !== 'return' && (
                         <form onSubmit={handleSaveLending} className="space-y-4">
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                 <label className="label-form">Nama Peminjam *</label>
-                                 <input type="text" required aria-label="Nama Peminjam" value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="input-form" />
+                           {/* Identitas Peminjam */}
+                           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                 <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Identitas Peminjam</span>
+                                 <button
+                                    type="button"
+                                    onClick={() => { setContactPickerSearch(''); setShowContactPicker(true); }}
+                                    className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition"
+                                 >
+                                    👤 Pilih dari Kontak
+                                 </button>
                               </div>
-                              <div>
-                                 <label className="label-form">Nomor WhatsApp *</label>
-                                 <input type="text" required aria-label="Nomor WhatsApp Peminjam" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="input-form" placeholder="08xxx / 628xxx / +628xxx / +61xxx" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                 <div>
+                                    <label className="label-form">Nama Peminjam *</label>
+                                    <input type="text" required aria-label="Nama Peminjam" value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="input-form" placeholder="Ketik nama atau pilih dari kontak" />
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Nomor WhatsApp *</label>
+                                    <input type="text" required aria-label="Nomor WhatsApp Peminjam" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="input-form" placeholder="08xxx / 628xxx / +628xxx / +61xxx" />
+                                 </div>
                               </div>
                            </div>
+
+                           {/* ── Contact Picker Modal ── */}
+                           {showContactPicker && (
+                              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowContactPicker(false)}>
+                                 <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                                    <div className="p-4 border-b border-gray-200">
+                                       <h3 className="font-bold text-gray-900 text-sm mb-2">Pilih Kontak</h3>
+                                       <input
+                                          type="text"
+                                          autoFocus
+                                          value={contactPickerSearch}
+                                          onChange={e => setContactPickerSearch(e.target.value)}
+                                          placeholder="🔍 Cari nama atau nomor WA..."
+                                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                                       />
+                                    </div>
+                                    <div className="overflow-y-auto flex-1">
+                                       {(() => {
+                                          const q = contactPickerSearch.toLowerCase();
+                                          const filtered = consumersList.filter(c =>
+                                             (c.nama_lengkap || '').toLowerCase().includes(q) ||
+                                             (c.nomor_wa || '').toLowerCase().includes(q)
+                                          ).slice(0, 50);
+                                          if (filtered.length === 0) return (
+                                             <p className="text-sm text-gray-400 text-center py-8">Kontak tidak ditemukan</p>
+                                          );
+                                          return filtered.map(c => (
+                                             <button
+                                                key={c.nomor_wa}
+                                                type="button"
+                                                className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition"
+                                                onClick={() => {
+                                                   setLendingForm(prev => ({
+                                                      ...prev,
+                                                      nama_peminjam: c.nama_lengkap,
+                                                      nomor_wa_peminjam: c.nomor_wa,
+                                                   }));
+                                                   setShowContactPicker(false);
+                                                }}
+                                             >
+                                                <p className="font-semibold text-gray-900 text-sm">{c.nama_lengkap}</p>
+                                                <p className="text-xs text-gray-500 font-mono mt-0.5">{c.nomor_wa}</p>
+                                             </button>
+                                          ));
+                                       })()}
+                                    </div>
+                                    <div className="p-3 border-t border-gray-100">
+                                       <button type="button" onClick={() => setShowContactPicker(false)} className="w-full text-sm text-gray-500 font-bold py-2 rounded-lg hover:bg-gray-100 transition">Tutup</button>
+                                    </div>
+                                 </div>
+                              </div>
+                           )}
                            <div>
                               <label className="label-form">Estimasi Tanggal Pengembalian</label>
                               <input
