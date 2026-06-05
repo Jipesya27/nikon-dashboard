@@ -76,7 +76,7 @@ function toWaE164(nomor: string): string {
   return nomor;
 }
 
-async function sendWA(
+export async function sendWA(
   nomor: string,
   pesan: string,
   template?: { name: string; params: string[] },
