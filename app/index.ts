@@ -52,6 +52,7 @@ export interface PeminjamanItem {
    catatan?: string;
    catatan_pengembalian?: string;
    catatan_admin?: string;
+   accs_returned?: string[];
    status_pengembalian: 'dipinjam' | 'dikembalikan';
 }
 export interface PeminjamanBarang {

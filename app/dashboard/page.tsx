@@ -1922,7 +1922,28 @@ ${kode ? `
       else if (type === 'lending') {
          setLendingForm(item ? { ...(item as PeminjamanBarang), items_dipinjam: (item as PeminjamanBarang).items_dipinjam || [] } : { items_dipinjam: [{ nama_barang: '', nomor_seri: '', catatan: '', catatan_pengembalian: '', status_pengembalian: 'dipinjam' }], status_peminjaman: 'aktif' });
          setEditingId((item as PeminjamanBarang)?.id_peminjaman || null);
-         setAccsReturnChecked({});
+         // Pre-populate aksesori yang sudah dikembalikan sebelumnya
+         if (action === 'return' && item) {
+            const initialAccsChecked: Record<number, Record<string, boolean>> = {};
+            ((item as PeminjamanBarang).items_dipinjam || []).forEach((pi, idx) => {
+               if (pi.status_pengembalian !== 'dikembalikan') return;
+               const allAccs = [pi.accs1,pi.accs2,pi.accs3,pi.accs4,pi.accs5,pi.accs6,pi.accs7].filter(Boolean) as string[];
+               if (!allAccs.length) return;
+               initialAccsChecked[idx] = {};
+               if (pi.accs_returned && pi.accs_returned.length > 0) {
+                  // Gunakan field accs_returned jika tersedia
+                  allAccs.forEach(a => { initialAccsChecked[idx][a] = pi.accs_returned!.includes(a); });
+               } else {
+                  // Fallback: parse catatan_pengembalian untuk "Aksesori belum dicentang: X, Y"
+                  const uncheckedMatch = (pi.catatan_pengembalian || '').match(/Aksesori belum dicentang:\s*([^|]+)/);
+                  const uncheckedAccs = uncheckedMatch ? uncheckedMatch[1].split(', ').map(s => s.trim()) : [];
+                  allAccs.forEach(a => { initialAccsChecked[idx][a] = !uncheckedAccs.includes(a); });
+               }
+            });
+            setAccsReturnChecked(initialAccsChecked);
+         } else {
+            setAccsReturnChecked({});
+         }
       }
       else if (type === 'botsettings') {
          setBotSettingsForm((item as PengaturanBot) || {});
@@ -2942,21 +2963,26 @@ ${kode ? `
          // Build items dulu agar bisa cek aksesori yang tidak dicentang
          const itemsWithAccsNotes = lending.items_dipinjam.map((item, idx) => {
             const allAccs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean) as string[];
+            if (item.status_pengembalian !== 'dikembalikan') return item;
+            const checkedAccsList = allAccs.filter(a => !!(accsChecked[idx]?.[a]));
             const unchecked = allAccs.filter(a => !(accsChecked[idx]?.[a]));
-            if (unchecked.length > 0 && item.status_pengembalian === 'dikembalikan') {
+            // Hapus note lama "Aksesori belum dicentang" sebelum append yang baru
+            const catatanBase = (item.catatan_pengembalian || '').replace(/\s*\|?\s*Aksesori belum dicentang:[^|]*/g, '').replace(/\|\s*$/, '').trim();
+            if (unchecked.length > 0) {
                const note = `Aksesori belum dicentang: ${unchecked.join(', ')}`;
-               return { ...item, catatan_pengembalian: [item.catatan_pengembalian, note].filter(Boolean).join(' | ') };
+               return { ...item, accs_returned: checkedAccsList, catatan_pengembalian: [catatanBase, note].filter(Boolean).join(' | ') };
             }
-            return item;
+            return { ...item, accs_returned: allAccs, catatan_pengembalian: catatanBase || item.catatan_pengembalian };
          });
 
          // Status: selesai hanya jika SEMUA item dikembalikan DAN semua aksesori dicentang
          const allItemsReturned  = itemsWithAccsNotes.every(item => item.status_pengembalian === 'dikembalikan');
          const someItemsReturned = itemsWithAccsNotes.some(item => item.status_pengembalian === 'dikembalikan');
-         const hasUncheckedAccs  = itemsWithAccsNotes.some((item, idx) => {
+         const hasUncheckedAccs  = itemsWithAccsNotes.some((item) => {
             if (item.status_pengembalian !== 'dikembalikan') return false;
             const allAccs = [item.accs1,item.accs2,item.accs3,item.accs4,item.accs5,item.accs6,item.accs7].filter(Boolean) as string[];
-            return allAccs.some(a => !(accsChecked[idx]?.[a]));
+            if (allAccs.length === 0) return false;
+            return allAccs.some(a => !(item.accs_returned ?? []).includes(a));
          });
          const newStatusPeminjaman = (allItemsReturned && !hasUncheckedAccs) ? 'selesai'
             : (someItemsReturned || hasUncheckedAccs) ? 'partial'
