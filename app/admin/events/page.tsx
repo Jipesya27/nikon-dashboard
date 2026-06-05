@@ -52,6 +52,8 @@ export default function AdminEventsPage() {
   const [catatanValidasi, setCatatanValidasi] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [blastModal, setBlastModal] = useState<{ eventName?: string } | null>(null);
+  const [blasting, setBlasting] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -104,6 +106,27 @@ export default function AdminEventsPage() {
       showToast(message, 'error');
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleBlastWA = async () => {
+    if (!blastModal) return;
+    setBlasting(true);
+    try {
+      const res = await fetch('/api/admin/events/blast-wa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(blastModal.eventName ? { eventName: blastModal.eventName } : {}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showToast(`Blast selesai: ${data.sent} terkirim, ${data.skipped} dilewati, ${data.failed} gagal.`);
+      setBlastModal(null);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal blast WA';
+      showToast(message, 'error');
+    } finally {
+      setBlasting(false);
     }
   };
 
@@ -165,6 +188,12 @@ export default function AdminEventsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setBlastModal({})}
+              className="text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-all shadow-sm"
+            >
+              📢 Blast WA Semua
+            </button>
             <Link href="/admin/events/deposit" className="text-xs font-semibold text-gray-700 border border-gray-300 hover:border-gray-400 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-all">
               Kelola Deposit →
             </Link>
@@ -200,12 +229,21 @@ export default function AdminEventsPage() {
               {countPerEvent.map(ev => (
                 <div key={ev.name} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   <p className="font-semibold text-gray-900 text-sm truncate" title={ev.name}>{ev.name}</p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="text-2xl font-bold text-gray-900">{ev.total}</span>
-                    <div className="text-xs text-gray-400 leading-relaxed">
-                      <div><span className="text-green-600 font-semibold">{ev.terdaftar}</span> terdaftar</div>
-                      <div><span className="text-yellow-600 font-semibold">{ev.menunggu}</span> menunggu</div>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl font-bold text-gray-900">{ev.total}</span>
+                      <div className="text-xs text-gray-400 leading-relaxed">
+                        <div><span className="text-green-600 font-semibold">{ev.terdaftar}</span> terdaftar</div>
+                        <div><span className="text-yellow-600 font-semibold">{ev.menunggu}</span> menunggu</div>
+                      </div>
                     </div>
+                    <button
+                      onClick={() => setBlastModal({ eventName: ev.name })}
+                      className="text-xs font-semibold bg-green-50 hover:bg-green-100 text-green-700 border border-green-300 px-2.5 py-1 rounded-lg transition-all"
+                      title={`Blast WA ke peserta ${ev.name}`}
+                    >
+                      📢 Blast
+                    </button>
                   </div>
                 </div>
               ))}
@@ -435,6 +473,41 @@ export default function AdminEventsPage() {
                 className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-lg transition-all shadow-sm"
               >
                 {processingId ? '...' : 'Tolak & Kirim WA'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Blast WA Modal */}
+      {blastModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">📢 Blast WhatsApp</h3>
+            <p className="text-gray-500 text-sm mb-4">
+              {blastModal.eventName
+                ? <>Kirim WA ke semua peserta event <strong className="text-gray-900">{blastModal.eventName}</strong> (kecuali yang ditolak).</>
+                : 'Kirim WA ke seluruh peserta semua event aktif (kecuali yang ditolak).'}
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-xs text-blue-700 mb-4 space-y-1">
+              <p>• <strong>Terdaftar + tiket</strong> → template tiket resmi dikirim</p>
+              <p>• <strong>Terdaftar (tanpa tiket)</strong> → template konfirmasi daftar</p>
+              <p>• <strong>Menunggu validasi</strong> → template konfirmasi daftar</p>
+              <p>• <strong>Ditolak</strong> → tidak dikirim</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setBlastModal(null)}
+                className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-semibold py-2.5 rounded-lg border border-gray-300 transition-all"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleBlastWA}
+                disabled={blasting}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-lg transition-all shadow-sm"
+              >
+                {blasting ? 'Mengirim...' : '📢 Kirim Sekarang'}
               </button>
             </div>
           </div>

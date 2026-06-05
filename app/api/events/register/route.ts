@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendNotif } from '@/app/lib/notify';
+import { sendNotif, sendWATemplate } from '@/app/lib/notify';
 import { generateTicket } from '@/app/lib/generate-ticket';
 
 export const dynamic = 'force-dynamic';
@@ -309,10 +309,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Notif ke peserta & admin (channel: WA / Email / keduanya)
-    const pesanWA = isGratis
-      ? `Halo ${nama_lengkap}, pendaftaran Anda untuk event ${event.event_title} telah berhasil! Status: *Terdaftar*. Event ini gratis — selamat datang!${ticketUrl ? `\n\nSilakan download tiket Anda di:\n${ticketUrl}\n\nTunjukkan tiket ini saat registrasi di lokasi acara.` : ''} Terima kasih.`
-      : `Halo ${nama_lengkap}, pendaftaran Anda untuk event ${event.event_title} telah kami terima. Status: Menunggu Validasi. Kami akan memverifikasi bukti pembayaran Anda. Notifikasi konfirmasi akan dikirim dalam 1-2 hari kerja. Terima kasih.`;
+    // Notif ke peserta & admin
     const pesanAdmin =
       `🔔 *Pendaftar Event Baru!*\n\n` +
       `📋 *Event:* ${event.event_title}\n` +
@@ -322,17 +319,29 @@ export async function POST(req: Request) {
       `📷 *Kamera:* ${tipe_kamera}\n` +
       `📍 *Kota:* ${kabupaten_kotamadya}\n` +
       `⏰ *Waktu Daftar:* ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n\n` +
-      `Status: *Menunggu Validasi* — silakan cek tab Event di dashboard.`;
+      `Status: *${isGratis ? 'Terdaftar (Gratis)' : 'Menunggu Validasi'}* — silakan cek tab Event di dashboard.`;
 
     // konversi 08... ke 62... untuk WA
     const waTarget = nomor_wa.startsWith('0') ? '62' + nomor_wa.slice(1) : nomor_wa;
+
+    // Kirim WA ke peserta via template (agar bekerja di luar 24h window)
+    if (isGratis && ticketUrl) {
+      // Gratis + tiket langsung tersedia → pakai template approved
+      await sendWATemplate(waTarget, 'notif_event_approved', [nama_lengkap, event.event_title, ticketUrl]);
+    } else if (isGratis) {
+      // Gratis tapi tiket belum tersedia (fallback)
+      await sendWATemplate(waTarget, 'notif_daftar_event', [nama_lengkap, event.event_title]);
+    } else {
+      // Berbayar / deposit → konfirmasi menunggu validasi
+      await sendWATemplate(waTarget, 'notif_daftar_event', [nama_lengkap, event.event_title]);
+    }
+
+    // Email peserta (jika channel wa_and_email / email_only) + notif admin
+    const pesanPeserta = isGratis
+      ? `Pendaftaran Anda untuk ${event.event_title} berhasil!${ticketUrl ? ` Tiket: ${ticketUrl}` : ''}`
+      : `Pendaftaran Anda untuk ${event.event_title} telah kami terima. Menunggu validasi pembayaran.`;
     await sendNotif(
-      {
-        phone: waTarget, email, message: pesanWA,
-        subject: `Pendaftaran Event ${event.event_title} Diterima`,
-        // Event gratis: kirim teks langsung karena template Fonnte hardcode "Menunggu Validasi"
-        ...(isGratis ? {} : { waTemplate: { name: 'notif_daftar_event', params: [nama_lengkap, event.event_title] } }),
-      },
+      { phone: undefined, email, message: pesanPeserta, subject: `Pendaftaran Event ${event.event_title} Diterima` },
       { message: pesanAdmin, subject: `🔔 Pendaftar Event Baru — ${event.event_title}` },
     );
 
