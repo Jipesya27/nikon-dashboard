@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifyAdminSession } from '@/app/lib/session';
-import { sendWA, sendWATemplateWithDoc } from '@/app/lib/notify';
+import { sendWA, sendWATemplate, sendWATemplateWithDoc } from '@/app/lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,11 @@ export async function POST(req: NextRequest) {
 
   try {
     if (templateName && documentUrl) {
+      // Template dengan DOCUMENT header (hindari — iOS tidak support)
       await sendWATemplateWithDoc(target, templateName, bodyParams ?? [], documentUrl, documentFilename ?? 'dokumen.pdf');
+    } else if (templateName) {
+      // Template body-only (cross-platform iOS + Android)
+      await sendWATemplate(target, templateName, bodyParams ?? []);
     } else {
       if (!message) return NextResponse.json({ error: 'message wajib diisi' }, { status: 400 });
       await sendWA(target, message);
