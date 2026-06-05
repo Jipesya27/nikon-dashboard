@@ -160,6 +160,23 @@ function normalizeWaNumber(nomor: string): string {
    return digits;
 }
 
+// --- FORMAT DAFTAR BARANG UNTUK BODY WA ---
+function formatLendingItemsForWA(
+   items: { nama_barang: string; nomor_seri?: string; accs1?: string; accs2?: string; accs3?: string; accs4?: string; accs5?: string; accs6?: string; accs7?: string; catatan?: string; catatan_pengembalian?: string; status_pengembalian?: string }[],
+   type: 'pinjam' | 'kembali',
+): string {
+   const relevant = type === 'pinjam' ? items : items.filter(i => i.status_pengembalian === 'dikembalikan');
+   return relevant.map((item, idx) => {
+      const accs = [item.accs1, item.accs2, item.accs3, item.accs4, item.accs5, item.accs6, item.accs7].filter(Boolean);
+      const catatan = type === 'pinjam' ? item.catatan : item.catatan_pengembalian;
+      let line = `${idx + 1}. ${item.nama_barang}`;
+      if (item.nomor_seri) line += ` (SN: ${item.nomor_seri})`;
+      if (accs.length > 0) line += `\n   Aksesori: ${accs.join(', ')}`;
+      if (catatan) line += `\n   Catatan: ${catatan}`;
+      return line;
+   }).join('\n');
+}
+
 // --- API PENGIRIMAN AMAN VIA SUPABASE EDGE FUNCTION ---
 const sendWhatsAppMessage = async (
    targetWa: string,
@@ -2496,9 +2513,10 @@ ${kode ? `
                const estLabel = lendingForm.tanggal_estimasi_pengembalian
                   ? new Date(lendingForm.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
                   : '-';
+               const itemList = formatLendingItemsForWA(lendingForm.items_dipinjam ?? [], 'pinjam');
                await sendWhatsAppMessage(waNumber, '', {
                   templateName: 'notif_lending_init',
-                  bodyParams: [lendingForm.nama_peminjam!, estLabel, viewUrl],
+                  bodyParams: [lendingForm.nama_peminjam!, estLabel, itemList, viewUrl],
                });
             }
          } catch (waErr) {
@@ -2970,9 +2988,10 @@ ${kode ? `
                if (docRes.ok) {
                   const { viewUrl } = await docRes.json();
                   const tglLabel = new Date(tglKembali).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
+                  const itemList = formatLendingItemsForWA(itemsWithAccsNotes, 'kembali');
                   await sendWhatsAppMessage(lending.nomor_wa_peminjam, '', {
                      templateName: 'notif_lending_return',
-                     bodyParams: [lending.nama_peminjam, tglLabel, viewUrl],
+                     bodyParams: [lending.nama_peminjam, tglLabel, itemList, viewUrl],
                   });
                }
             } catch (waErr) {
