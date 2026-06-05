@@ -141,9 +141,18 @@ export const ROLE_OPTIONS = [
   { value: 'Marketing', label: 'Marketing' },
   { value: 'Finance', label: 'Finance' },
   { value: 'Service', label: 'Service' },
+  { value: 'Kurir', label: 'Kurir (Akses halaman pengiriman)' },
   { value: 'Karyawan', label: 'Karyawan (Default)' },
 ] as const;
 export type Role = typeof ROLE_OPTIONS[number]['value'];
+
+// ============ STATUS PENGIRIMAN ============
+export const STATUS_PENGIRIMAN_OPTIONS = [
+  { value: 'menunggu', label: 'Menunggu' },
+  { value: 'dikirim', label: 'Sedang Dikirim' },
+  { value: 'terkirim', label: 'Terkirim' },
+] as const;
+export type StatusPengiriman = typeof STATUS_PENGIRIMAN_OPTIONS[number]['value'];
 
 // ============ BUDGET CONSENT (mgt & finance) ============
 export const CONSENT_OPTIONS = [

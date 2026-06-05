@@ -141,6 +141,25 @@ function getEventClosedStatus(evt: { status: string; stock: number; date: string
    return { closed: false, reason: 'Aktif' };
 }
 
+// --- KODE PEMINJAMAN (5 karakter, tanpa O/I/0/1 untuk menghindari kebingungan) ---
+function generateKodePeminjaman(): string {
+   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+   let code = '';
+   for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+   return code;
+}
+
+// --- NORMALISASI NOMOR WHATSAPP ---
+// 08xxx → 628xxx | 628xxx → 628xxx | +628xxx → 628xxx | +61xxx → 61xxx
+function normalizeWaNumber(nomor: string): string {
+   const hasPlus = nomor.trimStart().startsWith('+');
+   const digits = nomor.replace(/\D/g, '');
+   if (!digits) return '';
+   if (hasPlus) return digits;
+   if (digits.startsWith('0')) return '62' + digits.slice(1);
+   return digits;
+}
+
 // --- API PENGIRIMAN AMAN VIA SUPABASE EDGE FUNCTION ---
 const sendWhatsAppMessageViaFonnte = async (targetWa: string, message: string) => {
    try {
@@ -359,6 +378,8 @@ export default function NikonDashboard() {
    const [konsumenForm, setKonsumenForm] = useState<Partial<KonsumenData>>({});
    const [karyawanForm, setKaryawanForm] = useState<Partial<Karyawan>>({ role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
    const [lendingForm, setLendingForm] = useState<Partial<PeminjamanBarang>>({ items_dipinjam: [], status_peminjaman: 'aktif' });
+   const [showContactPicker, setShowContactPicker] = useState(false);
+   const [contactPickerSearch, setContactPickerSearch] = useState('');
    const [accsReturnChecked, setAccsReturnChecked] = useState<Record<number, Record<string, boolean>>>({});
    const [assetForm, setAssetForm] = useState<Partial<BarangAset>>({});
    const [botSettingsForm, setBotSettingsForm] = useState<Partial<PengaturanBot>>({});
@@ -1646,6 +1667,11 @@ export default function NikonDashboard() {
       const tglEstimasi = l.tanggal_estimasi_pengembalian
          ? new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
          : '-';
+      const kode = l.kode_peminjaman || '';
+      const perimbaURL = kode ? `${window.location.origin}/penerima?kode=${kode}` : '';
+      const qrSrc = kode
+         ? `https://chart.googleapis.com/chart?cht=qr&chs=160x160&chl=${encodeURIComponent(perimbaURL)}&choe=UTF-8`
+         : '';
       const itemsHtml = l.items_dipinjam.map((item, idx) => {
          const accs = [item.accs1, item.accs2, item.accs3, item.accs4, item.accs5, item.accs6, item.accs7]
             .filter(Boolean).join('<br>');
@@ -1680,6 +1706,9 @@ export default function NikonDashboard() {
   .sign-box { text-align: center; width: 200px; }
   .sign-box .label { font-size: 10pt; margin-bottom: 70px; }
   .sign-box .line { border-top: 1px solid #000; padding-top: 4px; font-size: 10pt; }
+  .qr-section { display:flex; align-items:center; gap:16px; border:1px solid #ddd; border-radius:6px; padding:10px 14px; margin-bottom:20px; background:#fafafa; }
+  .qr-section .kode-besar { font-family:monospace; font-size:28pt; font-weight:bold; letter-spacing:6px; color:#111; }
+  .qr-section .kode-label { font-size:8.5pt; color:#555; margin-top:3px; }
   @media print { body { padding: 12px; } button { display:none; } }
 </style>
 </head><body>
@@ -1701,6 +1730,15 @@ export default function NikonDashboard() {
   <tr><td>Tanggal Pinjam</td><td>: ${tglPinjam}</td></tr>
   <tr><td>Estimasi Kembali</td><td>: ${tglEstimasi}</td></tr>
 </table>
+${kode ? `
+<div class="qr-section">
+  <img src="${qrSrc}" alt="QR Kode Peminjaman" width="160" height="160" style="flex-shrink:0" />
+  <div>
+    <div class="kode-besar">${kode}</div>
+    <div class="kode-label">Kode Peminjaman — scan QR atau ketik kode ini di halaman penerima barang</div>
+  </div>
+</div>
+` : ''}
 <table class="items">
   <thead><tr>
     <th style="width:36px;text-align:center">No</th>
@@ -1904,6 +1942,8 @@ export default function NikonDashboard() {
       setKonsumenForm({});
       setKaryawanForm({});
       setLendingForm({ items_dipinjam: [], status_peminjaman: 'aktif' });
+      setShowContactPicker(false);
+      setContactPickerSearch('');
       setBotSettingsForm({});
       setAssetForm({});
       setEventForm({ status: 'aktif', stock: 0 });
@@ -2340,11 +2380,19 @@ export default function NikonDashboard() {
       e.preventDefault();
       setIsSubmitting(true);
       try {
+         // Normalisasi nomor WA sebelum semua operasi DB dan pengiriman
+         const waNumber = normalizeWaNumber(lendingForm.nomor_wa_peminjam || '');
+         if (!waNumber) {
+            alert('Nomor WhatsApp tidak valid.');
+            setIsSubmitting(false);
+            return;
+         }
+
          // 1. Pastikan konsumen ada atau buat baru
-         const { error: consumerError } = await supabase.from('konsumen').select('nomor_wa').eq('nomor_wa', lendingForm.nomor_wa_peminjam!).single();
+         const { error: consumerError } = await supabase.from('konsumen').select('nomor_wa').eq('nomor_wa', waNumber).single();
          if (consumerError && consumerError.code === 'PGRST116') { // Not found
             await sbWrite({ action: 'insert', table: 'konsumen', data: {
-               nomor_wa: lendingForm.nomor_wa_peminjam!,
+               nomor_wa: waNumber,
                nama_lengkap: lendingForm.nama_peminjam!,
                status_langkah: 'START',
                alamat_rumah: 'BELUM_DIISI', kelurahan: 'BELUM_DIISI', kecamatan: 'BELUM_DIISI',
@@ -2358,7 +2406,7 @@ export default function NikonDashboard() {
          let ktpUrl = lendingForm.link_ktp_peminjam;
          if (lendingForm.link_ktp_peminjam instanceof File) {
             // Upload file baru
-            ktpUrl = await uploadFileToStorage(lendingForm.link_ktp_peminjam, 'KTP_Peminjam', lendingForm.nomor_wa_peminjam!);
+            ktpUrl = await uploadFileToStorage(lendingForm.link_ktp_peminjam, 'KTP_Peminjam', waNumber);
             // Hapus file lama jika ada dan ini adalah mode edit
             if (modalAction === 'edit' && editingId) {
                const { data: originalLending } = await supabase.from('peminjaman_barang').select('link_ktp_peminjam').eq('id_peminjaman', editingId).single();
@@ -2374,19 +2422,29 @@ export default function NikonDashboard() {
          let fotoPenerimaanUrls: string[] = Array.isArray(lendingForm.foto_penerimaan) ? (lendingForm.foto_penerimaan as string[]) : [];
          for (const file of lendingFotoPenerimaanFiles) {
             try {
-               const url = await uploadFileToStorage(file, 'Lending_Penerimaan', lendingForm.nomor_wa_peminjam!);
+               const url = await uploadFileToStorage(file, 'Lending_Penerimaan', waNumber);
                fotoPenerimaanUrls = [...fotoPenerimaanUrls, url];
             } catch { /* skip failed upload */ }
          }
 
          const dataToSave: Partial<PeminjamanBarang> = {
             ...lendingForm,
+            nomor_wa_peminjam: waNumber,
             link_ktp_peminjam: ktpUrl,
             foto_penerimaan: fotoPenerimaanUrls.length > 0 ? fotoPenerimaanUrls : (lendingForm.foto_penerimaan ?? null),
          };
          if (modalAction === 'create') {
             dataToSave.tanggal_peminjaman = new Date().toISOString();
             dataToSave.status_peminjaman = 'aktif';
+            dataToSave.status_pengiriman = 'menunggu';
+            // Generate kode_peminjaman unik (coba hingga tidak tabrakan)
+            let kode = generateKodePeminjaman();
+            for (let attempt = 0; attempt < 5; attempt++) {
+               const { data: existing } = await supabase.from('peminjaman_barang').select('id_peminjaman').eq('kode_peminjaman', kode).maybeSingle();
+               if (!existing) break;
+               kode = generateKodePeminjaman();
+            }
+            dataToSave.kode_peminjaman = kode;
          }
          // Saat edit, kalau tanggal estimasi diubah, reset reminder_sent_at agar reminder bisa dikirim ulang
          if (modalAction === 'edit' && editingId) {
@@ -2411,7 +2469,7 @@ export default function NikonDashboard() {
             if (accs.length > 0) message += `\n   _Aksesori: ${accs.join(', ')}_`;
          });
          message += getText('lendingInitFooter', {});
-         await sendWhatsAppMessageViaFonnte(lendingForm.nomor_wa_peminjam!, message);
+         await sendWhatsAppMessageViaFonnte(waNumber, message);
 
          // Telegram notif admin — fire-and-forget
          fetch('/api/admin/notify-lending', {
@@ -2420,7 +2478,7 @@ export default function NikonDashboard() {
             body: JSON.stringify({
                type: 'pinjam',
                nama_peminjam: lendingForm.nama_peminjam,
-               nomor_wa: lendingForm.nomor_wa_peminjam,
+               nomor_wa: waNumber,
                items: lendingForm.items_dipinjam?.map(item => ({
                   nama_barang: item.nama_barang,
                   nomor_seri: item.nomor_seri,
@@ -3339,8 +3397,9 @@ export default function NikonDashboard() {
       const wa = (l.nomor_wa_peminjam || "").toLowerCase();
       const status = (l.status_peminjaman || "").toLowerCase();
       const items = l.items_dipinjam.map(item => `${item.nama_barang} ${item.nomor_seri}`).join(' ').toLowerCase();
+      const kode = (l.kode_peminjaman || "").toLowerCase();
       const search = searchLending.toLowerCase();
-      return name.includes(search) || wa.includes(search) || status.includes(search) || items.includes(search);
+      return name.includes(search) || wa.includes(search) || status.includes(search) || items.includes(search) || kode.includes(search);
    }), [lendingRecords, searchLending]);
 
    const sortedLendingRecords = useMemo(() => {
@@ -5395,6 +5454,7 @@ export default function NikonDashboard() {
                               <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                                  <tr>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'nama_peminjam')}>Peminjam {sortConfigLending.column === 'nama_peminjam' && <span className="text-xs">{sortConfigLending.direction === 'asc' ? '↑' : '↓'}</span>}</th>
+                                    <th className="px-3 py-3 text-center font-bold text-gray-600">Kode</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">KTP</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">Foto</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">Barang Dipinjam</th>
@@ -5402,6 +5462,7 @@ export default function NikonDashboard() {
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">Est. Kembali</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'tanggal_pengembalian')}>Tgl Kembali {sortConfigLending.column === 'tanggal_pengembalian' && <span className="text-xs">{sortConfigLending.direction === 'asc' ? '↑' : '↓'}</span>}</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigLending, setSortConfigLending, 'status_peminjaman')}>Status {sortConfigLending.column === 'status_peminjaman' && <span className="text-xs">{sortConfigLending.direction === 'asc' ? '↑' : '↓'}</span>}</th>
+                                    <th className="px-3 py-3 text-center font-bold text-gray-600">Pengiriman</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">Aksi</th>
                                  </tr>
                               </thead>
@@ -5411,6 +5472,12 @@ export default function NikonDashboard() {
                                        <td className="px-3 py-2.5">
                                           <p className="font-bold text-slate-800">{l.nama_peminjam}</p>
                                           <p className="text-[11px] text-gray-500 font-mono">{l.nomor_wa_peminjam}</p>
+                                       </td>
+                                       <td className="px-3 py-2.5 text-center">
+                                          {l.kode_peminjaman
+                                             ? <span className="font-mono font-black text-sm text-indigo-700 tracking-widest bg-indigo-50 px-2 py-1 rounded">{l.kode_peminjaman}</span>
+                                             : <span className="text-gray-300 text-[11px]">—</span>
+                                          }
                                        </td>
                                        <td className="px-3 py-2.5 text-center">
                                           {l.link_ktp_peminjam ? (
@@ -5481,6 +5548,18 @@ export default function NikonDashboard() {
                                        <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</td>
                                        <td className="px-3 py-2.5 text-center">
                                           <span className={`px-2 py-1 rounded text-[10px] font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
+                                       </td>
+                                       <td className="px-3 py-2.5 text-center">
+                                          {(() => {
+                                             const sp = l.status_pengiriman || 'menunggu';
+                                             const cfg: Record<string, { cls: string; label: string }> = {
+                                                menunggu: { cls: 'bg-gray-100 text-gray-600', label: 'Menunggu' },
+                                                dikirim:  { cls: 'bg-blue-100 text-blue-700', label: 'Dikirim' },
+                                                terkirim: { cls: 'bg-green-100 text-green-700', label: 'Terkirim' },
+                                             };
+                                             const c = cfg[sp] || cfg.menunggu;
+                                             return <span className={`px-2 py-1 rounded text-[10px] font-bold ${c.cls}`}>{c.label}</span>;
+                                          })()}
                                        </td>
                                        <td className="px-3 py-2.5">
                                           <div className="flex flex-col gap-1 min-w-[80px]">
@@ -8992,16 +9071,81 @@ ${pages.join('')}
                      {/* ============ LENDING FORM (Create & Edit) ============ */}
                      {activeTab === 'lending' && modalAction !== 'return' && (
                         <form onSubmit={handleSaveLending} className="space-y-4">
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                 <label className="label-form">Nama Peminjam *</label>
-                                 <input type="text" required aria-label="Nama Peminjam" value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="input-form" />
+                           {/* Identitas Peminjam */}
+                           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                 <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Identitas Peminjam</span>
+                                 <button
+                                    type="button"
+                                    onClick={() => { setContactPickerSearch(''); setShowContactPicker(true); }}
+                                    className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition"
+                                 >
+                                    👤 Pilih dari Kontak
+                                 </button>
                               </div>
-                              <div>
-                                 <label className="label-form">Nomor WhatsApp *</label>
-                                 <input type="text" required aria-label="Nomor WhatsApp Peminjam" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="input-form" placeholder="Contoh: 6281234567890" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                 <div>
+                                    <label className="label-form">Nama Peminjam *</label>
+                                    <input type="text" required aria-label="Nama Peminjam" value={lendingForm.nama_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nama_peminjam: e.target.value })} className="input-form" placeholder="Ketik nama atau pilih dari kontak" />
+                                 </div>
+                                 <div>
+                                    <label className="label-form">Nomor WhatsApp *</label>
+                                    <input type="text" required aria-label="Nomor WhatsApp Peminjam" value={lendingForm.nomor_wa_peminjam || ''} onChange={e => setLendingForm({ ...lendingForm, nomor_wa_peminjam: e.target.value })} className="input-form" placeholder="08xxx / 628xxx / +628xxx / +61xxx" />
+                                 </div>
                               </div>
                            </div>
+
+                           {/* ── Contact Picker Modal ── */}
+                           {showContactPicker && (
+                              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowContactPicker(false)}>
+                                 <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                                    <div className="p-4 border-b border-gray-200">
+                                       <h3 className="font-bold text-gray-900 text-sm mb-2">Pilih Kontak</h3>
+                                       <input
+                                          type="text"
+                                          autoFocus
+                                          value={contactPickerSearch}
+                                          onChange={e => setContactPickerSearch(e.target.value)}
+                                          placeholder="🔍 Cari nama atau nomor WA..."
+                                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                                       />
+                                    </div>
+                                    <div className="overflow-y-auto flex-1">
+                                       {(() => {
+                                          const q = contactPickerSearch.toLowerCase();
+                                          const filtered = consumersList.filter(c =>
+                                             (c.nama_lengkap || '').toLowerCase().includes(q) ||
+                                             (c.nomor_wa || '').toLowerCase().includes(q)
+                                          ).slice(0, 50);
+                                          if (filtered.length === 0) return (
+                                             <p className="text-sm text-gray-400 text-center py-8">Kontak tidak ditemukan</p>
+                                          );
+                                          return filtered.map(c => (
+                                             <button
+                                                key={c.nomor_wa}
+                                                type="button"
+                                                className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition"
+                                                onClick={() => {
+                                                   setLendingForm(prev => ({
+                                                      ...prev,
+                                                      nama_peminjam: c.nama_lengkap,
+                                                      nomor_wa_peminjam: c.nomor_wa,
+                                                   }));
+                                                   setShowContactPicker(false);
+                                                }}
+                                             >
+                                                <p className="font-semibold text-gray-900 text-sm">{c.nama_lengkap}</p>
+                                                <p className="text-xs text-gray-500 font-mono mt-0.5">{c.nomor_wa}</p>
+                                             </button>
+                                          ));
+                                       })()}
+                                    </div>
+                                    <div className="p-3 border-t border-gray-100">
+                                       <button type="button" onClick={() => setShowContactPicker(false)} className="w-full text-sm text-gray-500 font-bold py-2 rounded-lg hover:bg-gray-100 transition">Tutup</button>
+                                    </div>
+                                 </div>
+                              </div>
+                           )}
                            <div>
                               <label className="label-form">Estimasi Tanggal Pengembalian</label>
                               <input
