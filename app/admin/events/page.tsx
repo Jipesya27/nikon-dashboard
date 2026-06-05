@@ -54,6 +54,8 @@ export default function AdminEventsPage() {
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [blastModal, setBlastModal] = useState<{ eventName?: string } | null>(null);
   const [blasting, setBlasting] = useState(false);
+  const [exportModal, setExportModal] = useState(false);
+  const [exportEventName, setExportEventName] = useState<string>('all');
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -130,6 +132,40 @@ export default function AdminEventsPage() {
     }
   };
 
+  const handleExportCSV = () => {
+    const rows = exportEventName === 'all' ? registrations : registrations.filter(r => r.event_name === exportEventName);
+    if (rows.length === 0) { showToast('Tidak ada data untuk diekspor.', 'error'); return; }
+
+    const headers = ['No', 'Event', 'Nama', 'Nomor WA', 'Kota', 'Tipe Kamera', 'Tipe Pembayaran', 'Status', 'Alasan Tolak', 'Ticket URL', 'Waktu Daftar'];
+    const csvRows = [
+      headers.join(','),
+      ...rows.map((r, i) => [
+        i + 1,
+        `"${(r.event_name || '').replace(/"/g, '""')}"`,
+        `"${(r.nama_lengkap || '').replace(/"/g, '""')}"`,
+        r.nomor_wa,
+        `"${(r.kabupaten_kotamadya || '').replace(/"/g, '""')}"`,
+        `"${(r.tipe_kamera || '').replace(/"/g, '""')}"`,
+        r.payment_type,
+        STATUS_LABELS[r.status_pendaftaran] || r.status_pendaftaran,
+        `"${(r.rejection_reason || '').replace(/"/g, '""')}"`,
+        r.ticket_url || '',
+        new Date(r.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+      ].join(',')),
+    ];
+
+    const blob = new Blob(['﻿' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const eventLabel = exportEventName === 'all' ? 'Semua-Event' : exportEventName.replace(/\s+/g, '-');
+    a.href = url;
+    a.download = `Peserta-${eventLabel}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setExportModal(false);
+    showToast(`CSV berhasil diekspor (${rows.length} baris).`);
+  };
+
   const handleReject = async () => {
     if (!rejectModal) return;
     setProcessingId(rejectModal.id);
@@ -188,6 +224,12 @@ export default function AdminEventsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setExportEventName('all'); setExportModal(true); }}
+              className="text-xs font-semibold bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg transition-all shadow-sm"
+            >
+              ⬇️ Export CSV
+            </button>
             <button
               onClick={() => setBlastModal({})}
               className="text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-all shadow-sm"
@@ -473,6 +515,45 @@ export default function AdminEventsPage() {
                 className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-lg transition-all shadow-sm"
               >
                 {processingId ? '...' : 'Tolak & Kirim WA'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export CSV Modal */}
+      {exportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">⬇️ Export CSV Peserta</h3>
+            <p className="text-gray-500 text-sm mb-4">Pilih event yang ingin diekspor ke file CSV.</p>
+            <select
+              value={exportEventName}
+              onChange={e => setExportEventName(e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-[#FFE800] mb-2"
+            >
+              <option value="all">Semua Event ({registrations.length} peserta)</option>
+              {uniqueEvents.map(ev => (
+                <option key={ev} value={ev}>
+                  {ev} ({registrations.filter(r => r.event_name === ev).length} peserta)
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mb-4">
+              Kolom: No, Event, Nama, Nomor WA, Kota, Tipe Kamera, Tipe Pembayaran, Status, Alasan Tolak, Ticket URL, Waktu Daftar
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setExportModal(false)}
+                className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-semibold py-2.5 rounded-lg border border-gray-300 transition-all"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleExportCSV}
+                className="flex-1 bg-[#FFE800] hover:bg-yellow-400 text-black text-sm font-bold py-2.5 rounded-lg transition-all shadow-sm"
+              >
+                ⬇️ Download CSV
               </button>
             </div>
           </div>

@@ -201,6 +201,7 @@ export default function NikonDashboard() {
    const [searchClaim, setSearchClaim] = useState('');
    const [filterStatusWarna, setFilterStatusWarna] = useState<string>('Semua');
    const [filterDuplikat, setFilterDuplikat] = useState(false);
+   const [filterColClaims, setFilterColClaims] = useState<Record<string, string>>({});
    // tanggal_cetak kini disimpan permanen di kolom claim_promo.tanggal_cetak (Supabase)
    // — tidak lagi pakai localStorage
 
@@ -3183,28 +3184,54 @@ export default function NikonDashboard() {
    }, [claims]);
 
    const filteredClaims = useMemo(() => claims.filter((c: ClaimPromo) => {
-      const name = (consumers[c.nomor_wa] || c.nomor_wa || "").toLowerCase();
+      const name = (c.nama_penerima_claim || consumers[c.nomor_wa] || c.nomor_wa || "").toLowerCase();
       const seri = (c.nomor_seri || "").toLowerCase();
       const promo = (c.jenis_promosi || getNamaPromo(c.tipe_barang)).toLowerCase();
       const mkt = (c.validasi_by_mkt || "").toLowerCase();
       const fa = (c.validasi_by_fa || "").toLowerCase();
       const search = searchClaim.toLowerCase();
-      
+
       const matchesSearch = name.includes(search) || seri.includes(search) || promo.includes(search) || mkt.includes(search) || fa.includes(search);
       if (!matchesSearch) return false;
-      
+
       if (filterStatusWarna !== 'Semua') {
          const color = getClaimStatusColor(c);
          if (color !== filterStatusWarna) return false;
       }
       if (filterDuplikat && !(c.id_claim && duplicateClaimIds.has(c.id_claim))) return false;
+
+      // Per-column filters
+      const fc = filterColClaims;
+      if (fc.nama && !name.includes(fc.nama.toLowerCase())) return false;
+      if (fc.nomor_seri && !seri.includes(fc.nomor_seri.toLowerCase())) return false;
+      if (fc.tipe_barang && fc.tipe_barang !== '__all__' && c.tipe_barang !== fc.tipe_barang) return false;
+      if (fc.jenis_promosi && fc.jenis_promosi !== '__all__' && promo !== fc.jenis_promosi.toLowerCase()) return false;
+      if (fc.nama_toko && !(c.nama_toko || '').toLowerCase().includes(fc.nama_toko.toLowerCase())) return false;
+      if (fc.validasi_by_mkt && fc.validasi_by_mkt !== '__all__' && mkt !== fc.validasi_by_mkt.toLowerCase()) return false;
+      if (fc.validasi_by_fa && fc.validasi_by_fa !== '__all__' && fa !== fc.validasi_by_fa.toLowerCase()) return false;
+      if (fc.tanggal_pembelian && !(c.tanggal_pembelian || '').includes(fc.tanggal_pembelian)) return false;
+
       return true;
-   }), [claims, searchClaim, filterStatusWarna, filterDuplikat, duplicateClaimIds, consumers, getNamaPromo, getClaimStatusColor]);
+   }), [claims, searchClaim, filterStatusWarna, filterDuplikat, filterColClaims, duplicateClaimIds, consumers, getNamaPromo, getClaimStatusColor]);
 
    const sortedClaims = useMemo(() => {
       const sortableItems = [...filteredClaims];
       return sortableItems.sort(getSortFunction(sortConfigClaims, consumers));
    }, [filteredClaims, sortConfigClaims, consumers, getSortFunction]);
+
+   // Unique option lists for per-column claim dropdowns
+   const claimColOptions = useMemo(() => {
+      const tipe = Array.from(new Set(claims.map(c => c.tipe_barang).filter(Boolean))).sort();
+      const promo = Array.from(new Set(claims.map(c => c.jenis_promosi || getNamaPromo(c.tipe_barang)).filter(Boolean))).sort();
+      const mkt = Array.from(new Set(claims.map(c => c.validasi_by_mkt).filter(Boolean))).sort();
+      const fa = Array.from(new Set(claims.map(c => c.validasi_by_fa).filter(Boolean))).sort();
+      return { tipe, promo, mkt, fa };
+   }, [claims, getNamaPromo]);
+
+   const setClaimColFilter = (col: string, val: string) =>
+      setFilterColClaims(prev => ({ ...prev, [col]: val }));
+
+   const hasActiveColFilters = Object.values(filterColClaims).some(v => v && v !== '__all__');
 
    const claimNumberMap = useMemo(() => {
       const map = new Map<string, number>();
@@ -4683,6 +4710,14 @@ export default function NikonDashboard() {
                            ⚠️ Duplikat
                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-black ${filterDuplikat ? 'bg-white text-red-500' : 'bg-red-100 text-red-600'}`}>{duplicateClaimIds.size}</span>
                         </button>
+                        {hasActiveColFilters && (
+                           <button
+                              onClick={() => setFilterColClaims({})}
+                              className="flex items-center gap-1 px-3 py-2.5 rounded-md border shadow-sm text-sm font-bold whitespace-nowrap transition bg-amber-50 text-amber-700 border-amber-400 hover:bg-amber-100"
+                           >
+                              🔽 Reset Filter Kolom
+                           </button>
+                        )}
                      </div>
                      <div className="flex gap-2 overflow-x-auto pb-1">
                         {([
@@ -4746,6 +4781,84 @@ export default function NikonDashboard() {
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">Kirim Status</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600 w-28">Cetak Label</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-600">Aksi</th>
+                                 </tr>
+                                 {/* ── Filter row per kolom ── */}
+                                 <tr className="bg-yellow-50 border-b border-yellow-200">
+                                    {/* checkbox, No, Status → kosong */}
+                                    <th className="px-1 py-1.5" />
+                                    <th className="px-1 py-1.5" />
+                                    <th className="px-1 py-1.5" />
+                                    {/* Nama */}
+                                    <th className="px-2 py-1.5">
+                                       <input
+                                          type="text" placeholder="Filter nama…" value={filterColClaims.nama || ''}
+                                          onChange={e => setClaimColFilter('nama', e.target.value)}
+                                          className="w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400"
+                                       />
+                                    </th>
+                                    {/* No Seri */}
+                                    <th className="px-2 py-1.5">
+                                       <input
+                                          type="text" placeholder="Filter seri…" value={filterColClaims.nomor_seri || ''}
+                                          onChange={e => setClaimColFilter('nomor_seri', e.target.value)}
+                                          className="w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400"
+                                       />
+                                    </th>
+                                    {/* Barang */}
+                                    <th className="px-2 py-1.5">
+                                       <select value={filterColClaims.tipe_barang || '__all__'} onChange={e => setClaimColFilter('tipe_barang', e.target.value)}
+                                          className="w-full text-xs px-1 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400">
+                                          <option value="__all__">Semua</option>
+                                          {claimColOptions.tipe.map(v => <option key={v} value={v}>{v}</option>)}
+                                       </select>
+                                    </th>
+                                    {/* Promo */}
+                                    <th className="px-2 py-1.5">
+                                       <select value={filterColClaims.jenis_promosi || '__all__'} onChange={e => setClaimColFilter('jenis_promosi', e.target.value)}
+                                          className="w-full text-xs px-1 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400">
+                                          <option value="__all__">Semua</option>
+                                          {claimColOptions.promo.map(v => <option key={v} value={v}>{v}</option>)}
+                                       </select>
+                                    </th>
+                                    {/* Tgl Beli */}
+                                    <th className="px-2 py-1.5">
+                                       <input
+                                          type="text" placeholder="cth: 2024-01" value={filterColClaims.tanggal_pembelian || ''}
+                                          onChange={e => setClaimColFilter('tanggal_pembelian', e.target.value)}
+                                          className="w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400"
+                                       />
+                                    </th>
+                                    {/* Tgl Submit, Durasi → kosong */}
+                                    <th className="px-1 py-1.5" />
+                                    <th className="px-1 py-1.5" />
+                                    {/* Toko */}
+                                    <th className="px-2 py-1.5">
+                                       <input
+                                          type="text" placeholder="Filter toko…" value={filterColClaims.nama_toko || ''}
+                                          onChange={e => setClaimColFilter('nama_toko', e.target.value)}
+                                          className="w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400"
+                                       />
+                                    </th>
+                                    {/* Nota/Garansi → kosong */}
+                                    <th className="px-1 py-1.5" />
+                                    {/* MKT / FA (gabung di satu th) */}
+                                    <th className="px-2 py-1.5">
+                                       <select value={filterColClaims.validasi_by_mkt || '__all__'} onChange={e => setClaimColFilter('validasi_by_mkt', e.target.value)}
+                                          className="w-full text-xs px-1 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400 mb-1">
+                                          <option value="__all__">MKT: Semua</option>
+                                          {claimColOptions.mkt.map(v => <option key={v} value={v}>{v}</option>)}
+                                       </select>
+                                       <select value={filterColClaims.validasi_by_fa || '__all__'} onChange={e => setClaimColFilter('validasi_by_fa', e.target.value)}
+                                          className="w-full text-xs px-1 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:border-yellow-400">
+                                          <option value="__all__">FA: Semua</option>
+                                          {claimColOptions.fa.map(v => <option key={v} value={v}>{v}</option>)}
+                                       </select>
+                                    </th>
+                                    {/* Catatan MKT, Kirim Status, Cetak Label, Aksi → kosong */}
+                                    <th className="px-1 py-1.5" />
+                                    <th className="px-1 py-1.5" />
+                                    <th className="px-1 py-1.5" />
+                                    <th className="px-1 py-1.5" />
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-100">
