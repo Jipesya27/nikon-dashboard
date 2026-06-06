@@ -67,6 +67,7 @@ const EMPTY_FORM: FormState = {
 
 export default function EventRegisterPage() {
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [pastEvents, setPastEvents] = useState<EventItem[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
   const [formData, setFormData] = useState<FormState>(EMPTY_FORM);
   const [step, setStep] = useState<'list' | 'form' | 'success'>('list');
@@ -90,8 +91,10 @@ export default function EventRegisterPage() {
       try {
         const res = await fetch('/api/events/register');
         const result = await res.json();
-        if (res.ok) setEvents(result.events || []);
-        else setErrorMsg(result.error || 'Gagal memuat daftar event.');
+        if (res.ok) {
+          setEvents(result.events || []);
+          setPastEvents(result.pastEvents || []);
+        } else setErrorMsg(result.error || 'Gagal memuat daftar event.');
       } catch (e: unknown) {
         setErrorMsg(e instanceof Error ? e.message : 'Unknown error');
       } finally {
@@ -324,7 +327,8 @@ export default function EventRegisterPage() {
 
           {/* RESULT COUNT */}
           <p className="text-xs text-gray-600 font-medium">
-            Menampilkan <span className="font-bold text-gray-900">{visibleEvents.length}</span> dari {events.length} event
+            Menampilkan <span className="font-bold text-gray-900">{visibleEvents.length}</span> event aktif
+            {pastEvents.length > 0 && <> · <span className="text-gray-400">{pastEvents.length} selesai</span></>}
           </p>
 
           {/* EMPTY STATE */}
@@ -455,6 +459,60 @@ export default function EventRegisterPage() {
               );
             })}
           </div>
+
+          {/* ── SECTION: EVENT SELESAI ── */}
+          {pastEvents.length > 0 && (
+            <div className="mt-10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Event Selesai</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pastEvents.map(evt => (
+                  <div key={evt.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col opacity-60 grayscale">
+                    <div
+                      className="relative bg-gray-100 cursor-pointer"
+                      onClick={() => evt.event_description ? setDescEvent(evt) : undefined}
+                    >
+                      {evt.event_image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={driveImgSrc(evt.event_image)}
+                          alt={evt.event_title}
+                          className="w-full aspect-[3/4] object-contain"
+                        />
+                      ) : (
+                        <div className="w-full aspect-[3/4] bg-gray-800 flex items-center justify-center">
+                          <span className="text-gray-400 font-black text-5xl">N</span>
+                        </div>
+                      )}
+                      {/* Badge SELESAI */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="bg-black/70 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">✓ Selesai</span>
+                      </div>
+                    </div>
+                    <div className="p-3 flex flex-col gap-1 flex-1">
+                      {evt.event_speaker_genre && (
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{evt.event_speaker_genre}</span>
+                      )}
+                      <h3 className="font-bold text-sm text-gray-500 leading-snug line-clamp-2">{evt.event_title}</h3>
+                      <div className="flex items-center gap-1 text-[11px] text-gray-400">
+                        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        {evt.event_date}
+                      </div>
+                      {evt.event_speaker && (
+                        <div className="flex items-center gap-1 text-[11px] text-gray-400">
+                          <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                          {evt.event_speaker}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <p className="text-center text-xs text-gray-500 pt-6">
             Nikon Indonesia · Powered by Alta Nikindo

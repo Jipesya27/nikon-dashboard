@@ -112,20 +112,13 @@ export async function GET() {
       });
     }
 
-    // Filter event yang masih bisa didaftar
     const now = new Date();
-    const activeEvents = (events || []).filter(e => {
-      if (e.event_status === 'close' || e.event_status === 'Out of stock') return false;
+    const mapped = (events || []).map(e => {
       const evtDate = parseIdDate(e.event_date);
-      if (evtDate && evtDate < now) return false;
-      const regCount = counts[e.id] || 0;
-      if (e.event_partisipant_stock > 0 && regCount >= e.event_partisipant_stock) return false;
-      return true;
-    });
-
-    return NextResponse.json({
-      success: true,
-      events: activeEvents.map(e => ({
+      const isPast = !!(evtDate && evtDate < now);
+      const isFull = e.event_partisipant_stock > 0 && (counts[e.id] || 0) >= e.event_partisipant_stock;
+      const isClosed = e.event_status === 'close' || e.event_status === 'Out of stock';
+      return {
         id: e.id,
         event_title: e.event_title,
         event_date: e.event_date,
@@ -139,7 +132,14 @@ export async function GET() {
         bank_info: e.bank_info,
         event_partisipant_stock: e.event_partisipant_stock,
         registered_count: counts[e.id] || 0,
-      })),
+        is_past: isPast || isFull || isClosed,
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      events: mapped.filter(e => !e.is_past),
+      pastEvents: mapped.filter(e => e.is_past),
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
