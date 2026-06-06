@@ -160,10 +160,128 @@ Barang Dikembalikan:
 
 ---
 
-## 7. Infrastruktur & Konvensi
+## 7. Notifikasi Admin via Telegram
+
+Semua notifikasi ke admin (claim promo, garansi, event, CS request) dikirim via **Telegram**, bukan WhatsApp.
+
+### Konfigurasi
+
+- **Env vars**: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`
+- **DB**: `telegram_admin_chat_id` di tabel `pengaturan_bot` (override env var)
+- **Bot**: `@JipesyaMonitoring_bot`
+- **Chat ID admin**: `8491326460`
+
+### `app/lib/notify.ts`
+
+- `sendTelegram(chatId, message)` — kirim via Telegram Bot API, MarkdownV2 dengan fallback plain-text
+- `sendNotif()` — admin notifications dikirim ke Telegram (bukan WA)
+- `getSettings()` — fetch `telegram_admin_chat_id` dari `pengaturan_bot`
+
+### Dashboard — Pengaturan Telegram
+
+- Tab: **Pengaturan** → section "Notifikasi Admin via Telegram"
+- State: `telegramChatId`, `telegramChatIdInput`, `telegramSaving`, `telegramMsg`
+- `saveTelegramChatId()` → upsert ke `pengaturan_bot` (field `url_file: ''` bukan null, karena NOT NULL constraint)
+- Test link: `/api/test-notif?telegram=1`
+
+### `supabase/functions/fonnte-bot/index.ts` — CS Handoff
+
+- `sendTelegramAdminNotif(nama, nomor, isOffHours)` — notif ke admin saat konsumen request CS (menu "9")
+- Dalam jam operasional: "🔔 *Permintaan CS Baru!*"
+- Di luar jam operasional: "⏰ *Permintaan CS (Di Luar Jam Operasional)*" — tetap dikirim agar bisa follow-up urgent
+- Dipanggil di `case "9"` untuk kedua kondisi jam operasional
+
+---
+
+## 8. Infrastruktur Backup — STB HG680P + Synology DS223J
+
+### Arsitektur
+
+**Active-Passive Failover**: jika GitHub/Supabase/Vercel bermasalah, traffic dialihkan ke sistem lokal.
+
+```
+Internet → backup.altanikindo.web.id
+         → Cloudflare Tunnel (nikon-synology)
+         → cloudflared di Synology (192.168.18.145)
+         → STB di LAN (192.168.18.63:3000)
+```
+
+### Hardware
+
+| Perangkat | IP | Spesifikasi |
+|---|---|---|
+| STB HG680P | 192.168.18.63 | AML S905X, Cortex-A53 (ARM64), Armbian |
+| Synology DS223J | 192.168.18.145 | Realtek RTD1619B (ARM64) |
+
+### Synology — Docker Containers
+
+| Container | Image | Port |
+|---|---|---|
+| postgres | postgres:15 | **5433** (bukan 5432, konflik dengan Synology internal) |
+| minio | minio/minio | 9010 (API), 9011 (Console) |
+| wetty | wettyoss/wetty | 7681 |
+| cloudflared | cloudflare/cloudflared | — |
+
+**docker-compose path**: `/volume1/docker/nikon/docker-compose.yml`
+
+### STB — Next.js via PM2
+
+- **Node.js**: v20 (install via NodeSource)
+- **Build**: `npm run build` (standalone output)
+- **Run**: PM2 → `pm2 start .next/standalone/server.js --name nikon`
+- **Status**: Online di port 3000
+- **Pending**: `pm2 startup && pm2 save` (auto-start saat reboot)
+
+### Database Replication
+
+- **Script**: `/opt/nikon-backup/backup.sh` (di STB)
+- **Alur**: `pg_dump` dari Supabase → `pg_restore` ke PostgreSQL lokal (Synology port 5433)
+- **Jadwal**: setiap 6 jam — `0 */6 * * *`
+- **Retention**: 3 dump terakhir di `/opt/nikon-backup/dumps/`
+- **Log**: `/opt/nikon-backup/backup.log`
+
+### Cloudflare Tunnel
+
+- **Nama**: `nikon-synology`
+- **Status**: HEALTHY
+- **Connector**: Latief-Family (linux_arm64) — berjalan di Synology
+
+| Hostname | Target | Keterangan |
+|---|---|---|
+| `terminal.altanikindo.web.id` | `http://localhost:7681` | Wetty → SSH ke STB |
+| `backup.altanikindo.web.id` | `http://192.168.18.63:3000` | Next.js di STB (backup site) |
+
+- Hostname diatur di tab **Published application routes** di Cloudflare Zero Trust → Networks → Tunnels → nikon-synology
+- DNS record dibuat otomatis oleh Cloudflare
+
+### `next.config.ts`
+
+- `output: 'standalone'` — wajib untuk deploy di Docker/PM2 tanpa node_modules penuh
+
+### `Dockerfile`
+
+- Multi-stage: `deps` → `builder` → `runner`
+- Base image: `node:20-alpine`
+- User: `nextjs` (non-root)
+- Port: 3000
+- CMD: `node server.js`
+
+### Status Phase
+
+| Phase | Keterangan | Status |
+|---|---|---|
+| Phase 1 | Synology setup (Docker containers) | ✅ Selesai |
+| Phase 2 | DB replication (pg_dump cron) | ✅ Selesai |
+| Phase 3 | Deploy Next.js di STB via PM2 | ✅ (pm2 startup pending) |
+| Phase 4 | Cloudflare Tunnel + failover routing | ⏳ Tunnel OK, DNS propagasi |
+
+---
+
+## 9. Infrastruktur & Konvensi
 
 - **DB access**: gunakan proxy `/api/admin/sb-read` (GET) dan `/api/admin/sb-write` (POST) via helper `sbRead` / `sbWrite`. Jangan akses Supabase langsung dari client.
 - **Branch utama**: `main`. Semua perubahan di-push ke `main`.
-- **Notifikasi**: `sendNotif()` dari `@/app/lib/notify` — kirim ke WA konsumen + email admin.
+- **Notifikasi konsumen**: `sendNotif()` dari `@/app/lib/notify` — kirim ke WA konsumen. Admin menerima via Telegram.
 - **Google Drive upload**: OAuth2 dengan refresh token, file disimpan di folder `GOOGLE_DRIVE_FOLDER_ID`.
 - **File upload limit**: 10 MB, tipe: JPG, PNG, WEBP, GIF, PDF.
+- **`pengaturan_bot.url_file`**: NOT NULL constraint — selalu isi dengan `''` (string kosong) bukan `null`.
