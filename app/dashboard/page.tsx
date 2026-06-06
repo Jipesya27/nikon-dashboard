@@ -2293,6 +2293,7 @@ ${kode ? `
                event_title: budgetForm.title,
                event_date: budgetForm.event_date || '',
                event_time: budgetForm.event_time || null,
+               event_location: budgetForm.event_location || null,
                event_image: finalEventImage,
                event_price: '0',
                event_partisipant_stock: 0,
@@ -2332,7 +2333,7 @@ ${kode ? `
             if (linkedId) {
                await sbWrite({
                   action: 'update', table: 'events',
-                  data: { event_title: budgetForm.title, event_date: budgetForm.event_date || '', event_time: budgetForm.event_time || null, event_image: finalEventImage, wa_group_link: budgetForm.wa_group_link || null },
+                  data: { event_title: budgetForm.title, event_date: budgetForm.event_date || '', event_time: budgetForm.event_time || null, event_location: budgetForm.event_location || null, event_image: finalEventImage, wa_group_link: budgetForm.wa_group_link || null },
                   match: { id: linkedId }
                });
                await fetch('/api/event-reports', {
@@ -2628,6 +2629,7 @@ ${kode ? `
             event_speaker_genre: ef.event_speaker_genre ?? null,
             deposit_amount: ef.deposit_amount ?? null,
             event_time: ef.event_time ?? null,
+            event_location: ef.event_location ?? null,
             wa_group_link: ef.wa_group_link ?? null,
          };
          if (eventImageFile) {
@@ -7909,6 +7911,10 @@ ${pages.join('')}
                                              <input type="text" value={budgetForm.event_time || ''} onChange={e => setBudgetForm({ ...budgetForm, event_time: e.target.value })} className="input-form" placeholder="Contoh: 09.00 WIB - Selesai" />
                                           </div>
                                           <div>
+                                             <label className="label-form">Lokasi Acara</label>
+                                             <input type="text" value={budgetForm.event_location || ''} onChange={e => setBudgetForm({ ...budgetForm, event_location: e.target.value })} className="input-form" placeholder="Contoh: Studio TV, ISBI Bandung" />
+                                          </div>
+                                          <div>
                                              <label className="label-form">Link Grup WhatsApp</label>
                                              <input type="url" value={budgetForm.wa_group_link || ''} onChange={e => setBudgetForm({ ...budgetForm, wa_group_link: e.target.value })} className="input-form" placeholder="https://chat.whatsapp.com/..." />
                                           </div>
@@ -8983,6 +8989,10 @@ ${pages.join('')}
                                     <div>
                                        <label className="label-form">Jam Acara</label>
                                        <input type="text" value={getVal('event_time')} onChange={e => setField('event_time', e.target.value)} className="input-form" placeholder="Contoh: 09.00 WIB - Selesai" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Lokasi Acara</label>
+                                       <input type="text" value={getVal('event_location')} onChange={e => setField('event_location', e.target.value)} className="input-form" placeholder="Contoh: Studio TV, ISBI Bandung" />
                                     </div>
                                     <div>
                                        <label className="label-form">Link Grup WhatsApp</label>

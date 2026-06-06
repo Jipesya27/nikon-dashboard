@@ -58,13 +58,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, sent: 0, skipped: 0, failed: 0 });
   }
 
-  // Batch-fetch data event (speaker, jam, wa_group_link)
+  // Batch-fetch data event (speaker, jam, lokasi, wa_group_link)
   const eventIds = [...new Set(regs.map(r => r.event_id).filter(Boolean))];
-  const eventMap: Record<string, { event_date?: string; event_time?: string; event_speaker?: string; wa_group_link?: string }> = {};
+  const eventMap: Record<string, { event_date?: string; event_time?: string; event_location?: string; event_speaker?: string; wa_group_link?: string }> = {};
   if (eventIds.length > 0) {
     const { data: evts } = await supabase
       .from('events')
-      .select('id, event_date, event_time, event_speaker, wa_group_link')
+      .select('id, event_date, event_time, event_location, event_speaker, wa_group_link')
       .in('id', eventIds);
     (evts || []).forEach(ev => { eventMap[ev.id] = ev; });
   }
@@ -83,27 +83,30 @@ export async function POST(req: NextRequest) {
         // Gunakan notif_event_blast jika data event lengkap
         const tanggal = ev.event_date || '';
         const jam = ev.event_time || '';
+        const lokasi = ev.event_location || '';
         const pembicara = ev.event_speaker || '';
         const waGrup = ev.wa_group_link || '';
 
-        if (tanggal && jam && pembicara && waGrup) {
-          // notif_event_blast — 7 params
+        if (tanggal && jam && lokasi && pembicara && waGrup) {
+          // notif_event_blast — 8 params (lengkap dengan lokasi + wa grup)
           await sendWATemplate(wa, 'notif_event_blast', [
             reg.nama_lengkap,
             reg.event_name,
             tanggal,
             jam,
+            lokasi,
             pembicara,
             reg.ticket_url,
             waGrup,
           ]);
-        } else if (tanggal && jam && pembicara) {
-          // notif_event_blast_no_group — 6 params (tanpa wa_group)
+        } else if (tanggal && jam && lokasi && pembicara) {
+          // notif_event_blast_no_group — 7 params (tanpa wa_group)
           await sendWATemplate(wa, 'notif_event_blast_no_group', [
             reg.nama_lengkap,
             reg.event_name,
             tanggal,
             jam,
+            lokasi,
             pembicara,
             reg.ticket_url,
           ]);
