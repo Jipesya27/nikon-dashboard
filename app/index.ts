@@ -115,6 +115,7 @@ export interface AffiliatePenjualan {
 export interface EventDataExtended extends EventData {
    event_title?: string;
    event_date?: string;
+   event_time?: string;
    event_price?: string;
    event_image?: string;
    event_partisipant_stock?: number;
@@ -124,4 +125,5 @@ export interface EventDataExtended extends EventData {
    event_speaker?: string;
    event_speaker_genre?: string;
    deposit_amount?: string;
+   wa_group_link?: string;
 }

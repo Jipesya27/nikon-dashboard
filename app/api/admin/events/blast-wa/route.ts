@@ -1,12 +1,13 @@
 /**
  * POST /api/admin/events/blast-wa
  * Blast WA ke semua peserta event (atau peserta event tertentu).
- * - Peserta status "terdaftar" → kirim template tiket (notif_event_approved)
- * - Peserta status "menunggu_validasi" → kirim template konfirmasi (notif_daftar_event)
- * - Peserta status "ditolak" → skip (tidak dikirim)
+ * - Peserta status "terdaftar" → kirim notif_event_blast (7 params)
+ *   atau notif_event_approved (3 params, fallback jika event_time/speaker/wa_group tidak lengkap)
+ * - Peserta status "menunggu_validasi" → kirim notif_daftar_event
+ * - Peserta status "ditolak" → skip
  *
  * Body JSON:
- *   { eventName?: string }   — kosong = blast semua event aktif
+ *   { eventName?: string }   — kosong = blast semua event
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -27,7 +28,6 @@ function toWaE164(nomor: string): string {
   return nomor;
 }
 
-// Delay antar pesan agar tidak kena rate-limit Meta
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   // Ambil registrasi yang belum ditolak
   let query = supabase
     .from('event_registrations')
-    .select('id, nama_lengkap, nomor_wa, event_name, status_pendaftaran, ticket_url')
+    .select('id, nama_lengkap, nomor_wa, event_id, event_name, status_pendaftaran, ticket_url')
     .neq('status_pendaftaran', 'ditolak')
     .order('created_at', { ascending: true });
 
@@ -58,6 +58,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, sent: 0, skipped: 0, failed: 0 });
   }
 
+  // Batch-fetch data event (speaker, jam, wa_group_link)
+  const eventIds = [...new Set(regs.map(r => r.event_id).filter(Boolean))];
+  const eventMap: Record<string, { event_date?: string; event_time?: string; event_speaker?: string; wa_group_link?: string }> = {};
+  if (eventIds.length > 0) {
+    const { data: evts } = await supabase
+      .from('events')
+      .select('id, event_date, event_time, event_speaker, wa_group_link')
+      .in('id', eventIds);
+    (evts || []).forEach(ev => { eventMap[ev.id] = ev; });
+  }
+
   let sent = 0, skipped = 0, failed = 0;
   const errors: string[] = [];
 
@@ -65,12 +76,42 @@ export async function POST(req: NextRequest) {
     const wa = toWaE164(reg.nomor_wa || '');
     if (!wa) { skipped++; continue; }
 
+    const ev = eventMap[reg.event_id] || {};
+
     try {
       if (reg.status_pendaftaran === 'terdaftar' && reg.ticket_url) {
-        // Kirim tiket
-        await sendWATemplate(wa, 'notif_event_approved', [reg.nama_lengkap, reg.event_name, reg.ticket_url]);
+        // Gunakan notif_event_blast jika data event lengkap
+        const tanggal = ev.event_date || '';
+        const jam = ev.event_time || '';
+        const pembicara = ev.event_speaker || '';
+        const waGrup = ev.wa_group_link || '';
+
+        if (tanggal && jam && pembicara && waGrup) {
+          // notif_event_blast — 7 params
+          await sendWATemplate(wa, 'notif_event_blast', [
+            reg.nama_lengkap,
+            reg.event_name,
+            tanggal,
+            jam,
+            pembicara,
+            reg.ticket_url,
+            waGrup,
+          ]);
+        } else if (tanggal && jam && pembicara) {
+          // notif_event_blast_no_group — 6 params (tanpa wa_group)
+          await sendWATemplate(wa, 'notif_event_blast_no_group', [
+            reg.nama_lengkap,
+            reg.event_name,
+            tanggal,
+            jam,
+            pembicara,
+            reg.ticket_url,
+          ]);
+        } else {
+          // Fallback ke template lama
+          await sendWATemplate(wa, 'notif_event_approved', [reg.nama_lengkap, reg.event_name, reg.ticket_url]);
+        }
       } else if (reg.status_pendaftaran === 'terdaftar') {
-        // Terdaftar tapi belum ada tiket (edge case)
         await sendWATemplate(wa, 'notif_daftar_event', [reg.nama_lengkap, reg.event_name]);
       } else if (reg.status_pendaftaran === 'menunggu_validasi') {
         await sendWATemplate(wa, 'notif_daftar_event', [reg.nama_lengkap, reg.event_name]);
@@ -84,7 +125,6 @@ export async function POST(req: NextRequest) {
       errors.push(`${reg.nama_lengkap} (${wa}): ${e instanceof Error ? e.message : String(e)}`);
     }
 
-    // 500ms antar pesan
     await sleep(500);
   }
 

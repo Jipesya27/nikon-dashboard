@@ -2625,6 +2625,8 @@ ${kode ? `
             event_speaker: ef.event_speaker ?? null,
             event_speaker_genre: ef.event_speaker_genre ?? null,
             deposit_amount: ef.deposit_amount ?? null,
+            event_time: ef.event_time ?? null,
+            wa_group_link: ef.wa_group_link ?? null,
          };
          if (eventImageFile) {
             const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', String(payload.event_title || 'poster').replace(/\s+/g, '_'));
@@ -8967,6 +8969,14 @@ ${pages.join('')}
                                     <div>
                                        <label className="label-form">Info Rekening Pembayaran</label>
                                        <input type="text" value={getVal('bank_info')} onChange={e => setField('bank_info', e.target.value)} className="input-form" list="dl-bank-info" placeholder="Contoh: BCA 123456789 a.n. Nikon Indonesia" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Jam Acara</label>
+                                       <input type="text" value={getVal('event_time')} onChange={e => setField('event_time', e.target.value)} className="input-form" placeholder="Contoh: 09.00 WIB - Selesai" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Link Grup WhatsApp</label>
+                                       <input type="url" value={getVal('wa_group_link')} onChange={e => setField('wa_group_link', e.target.value)} className="input-form" placeholder="https://chat.whatsapp.com/..." />
                                     </div>
                                     <div>
                                        <label className="label-form">Poster Event {getVal('event_image', 'image') ? '(Upload ulang akan mengganti)' : ''}</label>

@@ -189,11 +189,16 @@ export async function POST(req: NextRequest) {
     void writeAuditLog({ user_name: auditUser, action: 'approve_payment', table_name: 'event_registrations', record_id: registrationId, new_values: { status_pendaftaran: 'terdaftar', ticket_url: ticketUrl, catatan_validasi: catatanValidasi || null } });
 
     // WA (Meta template) + Email (via channel settings)
+    const waGroupLink = (eventInfo?.wa_group_link as string) || '';
+    const waApprovalTemplate = waGroupLink ? 'notif_event_approved_v2' : 'notif_event_approved';
+    const waApprovalParams = waGroupLink
+      ? [reg.nama_lengkap, reg.event_name, ticketUrl, waGroupLink]
+      : [reg.nama_lengkap, reg.event_name, ticketUrl];
     await Promise.allSettled([
       sendWATemplate(
         reg.nomor_wa,
-        'notif_event_approved',
-        [reg.nama_lengkap, reg.event_name, ticketUrl],
+        waApprovalTemplate,
+        waApprovalParams,
       ),
       sendNotif({
         phone: reg.nomor_wa,
