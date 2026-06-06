@@ -2292,12 +2292,14 @@ ${kode ? `
             const eventPayload = {
                event_title: budgetForm.title,
                event_date: budgetForm.event_date || '',
+               event_time: budgetForm.event_time || null,
                event_image: finalEventImage,
                event_price: '0',
                event_partisipant_stock: 0,
                event_status: 'close',
                event_description: budgetForm.objectives || '',
                event_payment_tipe: 'regular',
+               wa_group_link: budgetForm.wa_group_link || null,
             };
             const { data: newEvents, error: evErr } = await sbWrite<{ id: string }>({
                action: 'insert', table: 'events', data: eventPayload, select: 'id'
@@ -2330,7 +2332,7 @@ ${kode ? `
             if (linkedId) {
                await sbWrite({
                   action: 'update', table: 'events',
-                  data: { event_title: budgetForm.title, event_date: budgetForm.event_date || '', event_image: finalEventImage },
+                  data: { event_title: budgetForm.title, event_date: budgetForm.event_date || '', event_time: budgetForm.event_time || null, event_image: finalEventImage, wa_group_link: budgetForm.wa_group_link || null },
                   match: { id: linkedId }
                });
                await fetch('/api/event-reports', {
@@ -7901,6 +7903,14 @@ ${pages.join('')}
                                           <div>
                                              <label className="label-form">Tanggal Event</label>
                                              <input type="date" value={budgetForm.event_date || ''} onChange={e => setBudgetForm({ ...budgetForm, event_date: e.target.value })} className="input-form" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Jam Acara</label>
+                                             <input type="text" value={budgetForm.event_time || ''} onChange={e => setBudgetForm({ ...budgetForm, event_time: e.target.value })} className="input-form" placeholder="Contoh: 09.00 WIB - Selesai" />
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Link Grup WhatsApp</label>
+                                             <input type="url" value={budgetForm.wa_group_link || ''} onChange={e => setBudgetForm({ ...budgetForm, wa_group_link: e.target.value })} className="input-form" placeholder="https://chat.whatsapp.com/..." />
                                           </div>
                                           <div>
                                              <label className="label-form">Poster / Gambar Event</label>
