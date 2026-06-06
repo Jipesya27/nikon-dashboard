@@ -102,7 +102,9 @@ export default function UploadLombaPage() {
     if (selectedFotosCount === 0) { setGlobalError('Pilih minimal 1 foto untuk diupload.'); return; }
 
     setUploading(true);
-    const eventTitle = events.find(e => e.id === selectedEvent)?.event_title || selectedEvent;
+    const eventObj = events.find(e => e.id === selectedEvent);
+    const eventTitle = eventObj?.event_title || selectedEvent;
+    const eventDate = eventObj?.event_date || '';
     const cleanIg = igAccount.trim().replace(/^@/, '');
 
     let allOk = true;
@@ -132,6 +134,7 @@ export default function UploadLombaPage() {
       try {
         const fd = new FormData();
         fd.append('eventName', eventTitle);
+        fd.append('eventDate', eventDate);
         fd.append('igAccount', cleanIg);
         fd.append('fotoIndex', String(i + 1));
         fd.append('file', slot.file);

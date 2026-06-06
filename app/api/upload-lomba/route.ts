@@ -125,6 +125,7 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const eventName = (formData.get('eventName') as string | null)?.trim();
+    const eventDate = (formData.get('eventDate') as string | null)?.trim() || '';
     const igAccount = (formData.get('igAccount') as string | null)?.trim();
     const fotoIndex = (formData.get('fotoIndex') as string | null)?.trim();
     const file      = formData.get('file') as File | null;
@@ -148,8 +149,9 @@ export async function POST(req: Request) {
 
     const ext       = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const cleanEvt  = sanitize(eventName);
+    const cleanDate = eventDate ? `_${sanitize(eventDate)}` : '';
     const cleanIg   = sanitize(igAccount);
-    const fileName  = `${cleanEvt}_${cleanIg}_foto${idx}.${ext}`;
+    const fileName  = `${cleanEvt}${cleanDate}_${cleanIg}_foto${idx}.${ext}`;
 
     const token    = await getAccessToken();
     const folderId = await getOrCreateFolder(LOMBA_FOLDER_NAME, PARENT_FOLDER_ID, token);
