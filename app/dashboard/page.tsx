@@ -3721,6 +3721,10 @@ ${kode ? `
                               <span>🎟️ Daftar Event (Publik)</span>
                               <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                            </Link>
+                           <Link href="/nikon/upload-lomba" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
+                              <span>📸 Upload Foto Lomba (Publik)</span>
+                              <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                           </Link>
                            {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                               <Link href="/admin/google-auth" target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)} className="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 group">
                                  <span>🔐 Google Drive Auth</span>
@@ -5865,6 +5869,24 @@ ${kode ? `
                            </div>
                         );
                      })()}
+                     {/* Quick links event */}
+                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                           { href: '/events/register', icon: '🎟️', label: 'Daftar Event', sub: 'Halaman publik' },
+                           { href: '/nikon/upload-lomba', icon: '📸', label: 'Upload Foto Lomba', sub: 'Halaman publik' },
+                           { href: '/admin/events', icon: '🗂️', label: 'Validasi Pembayaran', sub: 'Admin panel' },
+                           { href: '/admin/events/attendance', icon: '📋', label: 'Absensi Event', sub: 'Scan QR' },
+                        ].map(link => (
+                           <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-2.5 bg-white border border-gray-200 hover:border-[#FFE500] hover:shadow-sm rounded-xl px-3 py-2.5 transition-all group">
+                              <span className="text-xl shrink-0">{link.icon}</span>
+                              <div className="min-w-0">
+                                 <p className="text-xs font-bold text-gray-800 group-hover:text-black truncate leading-tight">{link.label}</p>
+                                 <p className="text-[10px] text-gray-400 truncate">{link.sub}</p>
+                              </div>
+                           </a>
+                        ))}
+                     </div>
                      <input type="text" title="Cari Event" aria-label="Cari Event" placeholder="🔍 Cari Judul Event..." value={searchEvent} onChange={e => setSearchEvent(e.target.value)} className="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm outline-none focus:border-[#FFE500] text-sm font-medium" />
                      {viewMode === 'table' ? (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
