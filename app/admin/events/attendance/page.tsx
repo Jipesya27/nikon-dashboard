@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -164,9 +164,26 @@ export default function AdminAttendancePage() {
 
   const recentAttendees = registrations.filter(r => r.is_attended).slice(0, 8);
 
+  // Nomor urut kehadiran per event (diurutkan by attended_at ASC)
+  const attendanceNumberMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    const byEvent: Record<string, Registration[]> = {};
+    registrations.filter(r => r.is_attended && r.attended_at).forEach(r => {
+      const key = r.event_id || 'unknown';
+      if (!byEvent[key]) byEvent[key] = [];
+      byEvent[key].push(r);
+    });
+    Object.values(byEvent).forEach(group => {
+      group.sort((a, b) => new Date(a.attended_at!).getTime() - new Date(b.attended_at!).getTime());
+      group.forEach((r, i) => { map[r.id] = i + 1; });
+    });
+    return map;
+  }, [registrations]);
+
   const exportCSV = () => {
-    const headers = ['Status', 'Nama', 'Event', 'No WA', 'Kota', 'Tipe Kamera', 'Waktu Hadir', 'Admin Scan', 'Tgl Daftar'];
+    const headers = ['No. Hadir', 'Status', 'Nama', 'Event', 'No WA', 'Kota', 'Tipe Kamera', 'Waktu Hadir', 'Admin Scan', 'Tgl Daftar'];
     const rows = filtered.map(r => [
+      attendanceNumberMap[r.id] != null ? String(attendanceNumberMap[r.id]) : '-',
       r.is_attended ? 'Hadir' : 'Belum Hadir',
       r.nama_lengkap,
       r.event_name,
@@ -323,7 +340,14 @@ export default function AdminAttendancePage() {
 
               {scanResult.reg && (
                 <div className={`rounded-lg p-4 mb-4 text-sm space-y-1 border ${scanResult.type === 'success' ? 'bg-green-50 border-green-200' : scanResult.type === 'already' ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'}`}>
-                  <p className="font-bold text-lg text-gray-900">{scanResult.reg.nama_lengkap}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-lg text-gray-900">{scanResult.reg.nama_lengkap}</p>
+                    {attendanceNumberMap[scanResult.reg.id] != null && (
+                      <span className="bg-green-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                        #{attendanceNumberMap[scanResult.reg.id]}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-gray-600">📅 {scanResult.reg.event_name}</p>
                   <p className="text-gray-400 text-xs">📱 {scanResult.reg.nomor_wa}</p>
                   {scanResult.reg.tipe_kamera && <p className="text-gray-400 text-xs">📷 {scanResult.reg.tipe_kamera}</p>}
@@ -385,6 +409,7 @@ export default function AdminAttendancePage() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
+                      <th className="px-4 py-3 text-left text-xs uppercase font-bold text-gray-500">No.</th>
                       <th className="px-4 py-3 text-left text-xs uppercase font-bold text-gray-500">Status</th>
                       <th className="px-4 py-3 text-left text-xs uppercase font-bold text-gray-500">Nama</th>
                       <th className="px-4 py-3 text-left text-xs uppercase font-bold text-gray-500">Event</th>
@@ -396,6 +421,15 @@ export default function AdminAttendancePage() {
                   <tbody className="divide-y divide-gray-100">
                     {filtered.map(r => (
                       <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 text-center">
+                          {attendanceNumberMap[r.id] != null ? (
+                            <span className="inline-flex items-center justify-center bg-green-100 text-green-700 text-xs font-bold w-7 h-7 rounded-full border border-green-300">
+                              {attendanceNumberMap[r.id]}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300 text-xs">–</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           {r.is_attended ? (
                             <span className="text-[10px] bg-green-50 text-green-700 border border-green-300 px-2 py-1 rounded font-bold uppercase">✓ Hadir</span>
