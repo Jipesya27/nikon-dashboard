@@ -28,6 +28,43 @@ function formatSize(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
+/**
+ * Kompres gambar via Canvas sebelum upload.
+ * - Resize max 2560px (sisi terpanjang)
+ * - Quality 0.85 JPEG
+ * - Hasil selalu < ~3 MB
+ */
+async function compressImage(file: File): Promise<File> {
+  // HEIC tidak bisa dibaca canvas di semua browser — skip compress, kirim as-is
+  if (file.type === 'image/heic' || file.type === 'image/heif') return file;
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX_DIM = 2560;
+      let { width, height } = img;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width >= height) { height = Math.round(height * MAX_DIM / width); width = MAX_DIM; }
+        else                 { width  = Math.round(width  * MAX_DIM / height); height = MAX_DIM; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        if (!blob) { resolve(file); return; }
+        // Pertahankan nama asli, ubah ekstensi ke jpg
+        const name = file.name.replace(/\.[^.]+$/, '.jpg');
+        resolve(new File([blob], name, { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Gagal baca gambar')); };
+    img.src = url;
+  });
+}
+
 /* ─────────────────────────────────────────────────────────── component */
 export default function UploadLombaPage() {
   const [events, setEvents] = useState<EventOption[]>([]);
@@ -132,12 +169,15 @@ export default function UploadLombaPage() {
       }, 600);
 
       try {
+        // Kompres gambar sebelum upload (max 2560px, JPEG 0.85)
+        const compressed = await compressImage(slot.file);
+
         const fd = new FormData();
         fd.append('eventName', eventTitle);
         fd.append('eventDate', eventDate);
         fd.append('igAccount', cleanIg);
         fd.append('fotoIndex', String(i + 1));
-        fd.append('file', slot.file);
+        fd.append('file', compressed);
 
         const res = await fetch('/api/upload-lomba', { method: 'POST', body: fd });
         const data = await res.json();
