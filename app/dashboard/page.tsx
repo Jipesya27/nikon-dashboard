@@ -1570,7 +1570,7 @@ export default function NikonDashboard() {
       const csvRows = [headers.join(',')];
       selected.forEach((c: ClaimPromo, idx: number) => {
          const konsumen = consumersList.find(k => k.nomor_wa === c.nomor_wa);
-         const nama = c.nama_penerima_claim || konsumen?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa;
+         const nama = konsumen?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa;
          const namaWa = `${nama} (${c.nomor_wa})`;
          const parts: string[] = [];
          if (konsumen?.alamat_rumah) parts.push(konsumen.alamat_rumah.toUpperCase());
@@ -2118,8 +2118,7 @@ ${kode ? `
             catatan_fa: claimForm.catatan_fa || '',
             link_kartu_garansi: garansiUrl ?? '',
             link_nota_pembelian: notaUrl ?? '',
-            // Default: penerima = pendaftar, notifikasi = nomor pendaftar (konsisten dgn form publik)
-            nama_penerima_claim: claimForm.nama_penerima_claim || claimForm.nama_pendaftar || '',
+            nama_penerima_claim: claimForm.nama_pendaftar || '',
             nomor_wa_update: claimForm.nomor_wa_update || claimForm.nomor_wa || '',
          };
 
@@ -3169,24 +3168,21 @@ ${kode ? `
       const dateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
       ctx.fillText(dateStr, canvas.width - 30, 45);
       ctx.textAlign = 'left';
-      const isUntukOrangLain = !!(c.nama_penerima_claim);
-      const nama = (isUntukOrangLain ? c.nama_penerima_claim! : (consumer?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa)).toUpperCase();
-      const noWa = isUntukOrangLain ? (c.nomor_wa_update || c.nomor_wa) : c.nomor_wa;
+      const nama = (consumer?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa).toUpperCase();
+      const noWa = c.nomor_wa;
       ctx.font = '14px Arial';
       ctx.fillText('Kepada :', 40, 94);
       ctx.font = 'bold 15px Arial';
       ctx.fillText(`${nama} (${noWa})`, 130, 94);
       ctx.font = '15px Arial';
       let currentY = 122;
-      if (c.nama_penerima_claim && c.alamat_pengiriman) {
-         // Claim untuk orang lain — pakai alamat_pengiriman (free-text)
+      if (c.alamat_pengiriman) {
          const alamatLines = wrapText(ctx, c.alamat_pengiriman.toUpperCase(), 590);
          alamatLines.forEach((line) => {
             ctx.fillText(line, 160, currentY);
             currentY += 25;
          });
       } else {
-         // Claim untuk diri sendiri — pakai alamat terstruktur konsumen
          const alamat = consumer?.alamat_rumah !== 'BELUM_DIISI' ? consumer?.alamat_rumah : '-';
          const alamatLines = wrapText(ctx, (alamat || '-').toUpperCase(), 590);
          alamatLines.forEach((line) => {
@@ -3336,7 +3332,7 @@ ${kode ? `
    }, [claims]);
 
    const filteredClaims = useMemo(() => claims.filter((c: ClaimPromo) => {
-      const name = (c.nama_penerima_claim || consumers[c.nomor_wa] || c.nomor_wa || "").toLowerCase();
+      const name = (consumers[c.nomor_wa] || c.nomor_wa || "").toLowerCase();
       const seri = (c.nomor_seri || "").toLowerCase();
       const promo = (c.jenis_promosi || getNamaPromo(c.tipe_barang)).toLowerCase();
       const mkt = (c.validasi_by_mkt || "").toLowerCase();
@@ -5108,8 +5104,7 @@ ${kode ? `
                                           </span>
                                        </td>
                                        <td className="px-3 py-2.5">
-                                          <p className="font-bold text-slate-800">{c.nama_penerima_claim || consumers[c.nomor_wa] || c.nomor_wa}</p>
-                                          {c.nama_penerima_claim && <span className="text-[9px] bg-purple-100 text-purple-700 px-1 rounded font-bold">Orang Lain</span>}
+                                          <p className="font-bold text-slate-800">{consumers[c.nomor_wa] || c.nomor_wa}</p>
                                           <p className="text-[10px] text-gray-500 font-mono">{c.nomor_wa}</p>
                                        </td>
                                        <td className="px-3 py-2.5 font-mono text-xs">
@@ -5207,8 +5202,7 @@ ${kode ? `
                                           <span className="font-bold text-lg text-gray-600 bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center text-center">{claimNumberMap.get(c.id_claim!)}</span>
                                           <div>
                                              <h3 className="font-bold text-base text-slate-800">
-                                                {c.nama_penerima_claim || consumers[c.nomor_wa] || c.nomor_wa}
-                                                {c.nama_penerima_claim && <span className="ml-1 text-[10px] bg-purple-100 text-purple-700 px-1 rounded font-bold">Orang Lain</span>}
+                                                {consumers[c.nomor_wa] || c.nomor_wa}
                                              </h3>
                                              <p className="text-xs text-gray-500 font-mono flex items-center gap-2">
                                                 {c.nomor_seri}
