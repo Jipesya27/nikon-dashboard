@@ -459,7 +459,7 @@ export default function AddressFields({
           inputMode="numeric"
           value={isEmpty(values.kodepos) ? '' : values.kodepos}
           onChange={e => handleKodeposChange(e.target.value)}
-          placeholder="Ketik 5 digit → semua bidang terisi otomatis"
+          placeholder="Ketik 5 digit"
           maxLength={5}
           pattern="[0-9]{5}"
           required={required}
