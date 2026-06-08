@@ -29,6 +29,7 @@ type DepositRegistration = {
   refund_requested_at: string | null;
   is_attended: boolean;
   attended_at: string | null;
+  catatan_validasi: string | null;
 };
 
 type EventInfo = { id: string; event_title: string; event_date: string; deposit_amount: string | null };
@@ -147,7 +148,7 @@ export default function AdminDepositPage() {
       'No', 'Nama Lengkap', 'Nomor WA', 'Kota', 'Nama Event', 'Tanggal Event',
       'Jumlah Deposit', 'Kehadiran', 'Waktu Hadir', 'Status Pengembalian', 'Nama Bank', 'No Rekening',
       'Nama Pemilik Rekening', 'Tgl Daftar', 'Tgl Isi Rekening', 'Status Pendaftaran',
-      'Link Bukti Bayar Deposit',
+      'Link Bukti Bayar Deposit', 'Catatan Validasi',
     ];
     const rows = filtered.map((r, i) => [
       String(i + 1),
@@ -167,6 +168,7 @@ export default function AdminDepositPage() {
       esc(fmtDate(r.refund_requested_at)),
       esc(r.status_pendaftaran),
       esc(r.bukti_transfer_url),
+      esc(r.catatan_validasi),
     ].join(','));
     const BOM = '﻿';
     const csv = BOM + [headers.join(','), ...rows].join('\n');
@@ -306,6 +308,13 @@ export default function AdminDepositPage() {
                             {reg.kabupaten_kotamadya && <span>📍 {reg.kabupaten_kotamadya}</span>}
                           </div>
                         </div>
+
+                        {/* Catatan validasi */}
+                        {reg.catatan_validasi && (
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg">📝 Catatan: {reg.catatan_validasi}</p>
+                          </div>
+                        )}
 
                         {/* Bukti pembayaran deposit */}
                         <div className="mt-3 pt-3 border-t border-gray-100">
