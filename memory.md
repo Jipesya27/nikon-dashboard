@@ -8,19 +8,20 @@ Dokumen ini merangkum semua skema, alur, dan keputusan desain yang sudah diimple
 
 ### Alur Halaman `/claim`
 
-1. **Layar konfirmasi nomor WA** — User input nomor WA. Nomor ini **hanya untuk notifikasi** (bukan untuk ambil data alamat). Tidak ada API call di sini; langsung lanjut ke form.
+1. **Layar konfirmasi nomor WA** — User input nomor WA. Nomor ini **hanya untuk notifikasi**. Tidak ada API call di sini; langsung lanjut ke form.
 2. **Form pengisian** terdiri dari 3 bagian:
-   - **Bagian 1 — Data Diri Pendaftar**: Nama, Email (opsional), NIK (opsional), Alamat Rumah, lalu AddressFields (kodepos → kelurahan, kecamatan, kabupaten/kota, provinsi)
-   - **Bagian 2 — Upload Dokumen**: Foto Kartu Garansi + Foto Nota Pembelian (JPG/PNG/WEBP/GIF/PDF, maks 10 MB)
-   - **Bagian 3 — Data Produk**: Nomor Seri, Tipe Barang, Jenis Promosi, Tanggal Pembelian, Nama Toko, Alamat Pengiriman
+   - **Bagian 1 — Data Diri Pendaftar**: Nomor WA (readOnly, bisa ganti), Email (wajib), Nama Lengkap (wajib), NIK (opsional)
+   - **Bagian 2 — Upload Dokumen**: Foto Kartu Garansi (+ OCR otomatis) + Foto Nota Pembelian (JPG/PNG/WEBP/GIF/PDF, maks 10 MB)
+   - **Bagian 3 — Data Produk**: Tipe Barang, Nomor Seri, Jenis Promosi, Tanggal Pembelian, Nama Toko, **Alamat Pengiriman Hadiah** (standalone, diisi bebas)
 
 ### Aturan Penting Claim
 
 - **Nomor WA = hanya untuk notifikasi**, tidak terikat dengan data alamat.
 - **Tidak ada skema "sendiri / orang lain"** — penerima claim selalu = pendaftar itu sendiri (`nama_penerima_claim = nama_lengkap`).
-- **Kodepos** diisi manual oleh user; `AddressFields` component menangani lookup cascading dari KODEPOS_DB lokal (kodepos → kelurahan → kecamatan → kabupaten → provinsi). Tidak ada fetch dari DB via WA.
-- Jika nomor WA belum ada di tabel `konsumen`, record baru dibuat saat POST dengan data yang diisi di form.
-- Jika sudah ada, data diri di `konsumen` diupdate (NIK hanya diupdate kalau diisi, supaya tidak timpa NIK lama).
+- **Tidak ada section alamat rumah** di form publik — field `alamat_rumah`, `kelurahan`, `kecamatan`, `kabupaten_kotamadya`, `provinsi`, `kodepos` **dihapus dari form dan tidak disimpan ke konsumen** saat submit claim.
+- **Tidak ada checkbox "sama dengan alamat rumah"** — `alamat_pengiriman` diisi langsung/bebas.
+- Jika nomor WA belum ada di tabel `konsumen`, record baru dibuat dengan placeholder `BELUM_DIISI` untuk field alamat.
+- Jika sudah ada, hanya `nama_lengkap`, `email`, `nik` yang diupdate (bukan alamat).
 
 ### API `/api/claim` — Field yang dikirim
 
@@ -28,21 +29,29 @@ Dokumen ini merangkum semua skema, alur, dan keputusan desain yang sudah diimple
 |---|---|
 | `phone` | nomor WA dari layar konfirmasi |
 | `nama_lengkap`, `email`, `nik` | form data diri |
-| `alamat_rumah`, `kelurahan`, `kecamatan`, `kabupaten_kotamadya`, `provinsi`, `kodepos` | form (manual + AddressFields) |
 | `nomor_seri`, `tipe_barang`, `jenis_promosi`, `tanggal_pembelian`, `nama_toko`, `alamat_pengiriman` | form data produk |
 | `foto_kartu_garansi`, `foto_nota_pembelian` | file upload |
 
-**Field yang TIDAK ada lagi**: `recipient_type`, `nama_penerima_claim` (server set sendiri), `nomor_wa_update` (server pakai `matchedPhone`).
+**Field yang TIDAK ada lagi**: `alamat_rumah`, `kelurahan`, `kecamatan`, `kabupaten_kotamadya`, `provinsi`, `kodepos`, `recipient_type`, `nama_penerima_claim` (server set sendiri = nama_lengkap), `nomor_wa_update` (server pakai `matchedPhone`).
 
 ### API `/api/claim` — Yang dilakukan server
 
 1. Cari konsumen via `normalizePhone` (cek varian format 62xxx / 0xxx / +62xxx)
-2. Jika tidak ada → INSERT konsumen baru dengan `status_langkah: 'START'`
-3. UPDATE tabel `konsumen` dengan data diri terbaru
+2. Jika tidak ada → INSERT konsumen baru dengan `status_langkah: 'START'` dan placeholder `BELUM_DIISI` untuk field alamat
+3. UPDATE tabel `konsumen` — hanya: `nama_lengkap`, `email` (jika diisi), `nik` (jika diisi), `updated_at`
 4. Upload 2 file ke Google Drive (via OAuth2 refresh token)
 5. INSERT ke `claim_promo` (`nama_penerima_claim = nama_lengkap`, `nomor_wa_update = matchedPhone`)
 6. Reset `status_langkah` konsumen ke `'START'`
 7. Kirim notifikasi ke konsumen + admin (`sendNotif`)
+
+### Admin Dashboard — Tab Claim
+
+- **Tambah Claim** dan **Edit Claim** tidak lagi memiliki section "Data Konsumen (auto-sync)" (ungu) dengan field alamat.
+- Tidak ada field "Nama Penerima Hadiah" di form admin — sudah dihapus (selalu sama dengan pendaftar).
+- WA `onBlur` di admin form hanya prefill `nama_pendaftar` dari konsumen, tidak pull seluruh data konsumen.
+- `handleSaveClaim`: konsumenPayload hanya berisi `nomor_wa`, `nama_lengkap`, `status_langkah` — tidak include address fields.
+- `nama_penerima_claim` di-default ke `nama_pendaftar` otomatis saat save.
+- `nomor_wa_update` di-default ke `nomor_wa` otomatis saat save.
 
 ---
 
