@@ -222,14 +222,6 @@ Internet → backup.altanikindo.web.id
 | STB HG680P | 192.168.18.63 | AML S905X, Cortex-A53 (ARM64), Armbian |
 | Synology DS223J | 192.168.18.145 | Realtek RTD1619B (ARM64) |
 
-### Synology — Google Drive Backup
-
-- **Tool**: Synology Cloud Sync
-- **Akun**: WebMarketingAlta (Google Drive)
-- **Remote path**: Root folder (semua file upload app)
-- **Local path**: `/dashboard/backups`
-- **Status**: Up to date (sync otomatis)
-
 ### Synology — Docker Containers
 
 | Container | Image | Port |
@@ -290,7 +282,7 @@ Internet → backup.altanikindo.web.id
 | Phase 1 | Synology setup (Docker containers) | ✅ Selesai |
 | Phase 2 | DB replication (pg_dump cron) | ✅ Selesai |
 | Phase 3 | Deploy Next.js di STB via PM2 | ✅ Selesai |
-| Phase 4 | Cloudflare Tunnel + failover routing | ✅ Selesai |
+| Phase 4 | Cloudflare Tunnel + failover routing | ⏳ Tunnel OK, DNS propagasi |
 
 ---
 
