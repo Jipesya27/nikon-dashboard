@@ -281,7 +281,7 @@ Internet → backup.altanikindo.web.id
 |---|---|---|
 | Phase 1 | Synology setup (Docker containers) | ✅ Selesai |
 | Phase 2 | DB replication (pg_dump cron) | ✅ Selesai |
-| Phase 3 | Deploy Next.js di STB via PM2 | ✅ (pm2 startup pending) |
+| Phase 3 | Deploy Next.js di STB via PM2 | ✅ Selesai |
 | Phase 4 | Cloudflare Tunnel + failover routing | ⏳ Tunnel OK, DNS propagasi |
 
 ---
