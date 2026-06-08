@@ -3177,11 +3177,19 @@ ${kode ? `
       ctx.font = '15px Arial';
       let currentY = 122;
       if (c.alamat_pengiriman) {
+         // Alamat jalan
          const alamatLines = wrapText(ctx, c.alamat_pengiriman.toUpperCase(), 590);
-         alamatLines.forEach((line) => {
-            ctx.fillText(line, 160, currentY);
-            currentY += 25;
-         });
+         alamatLines.forEach((line) => { ctx.fillText(line, 160, currentY); currentY += 25; });
+         // Wilayah terstruktur
+         const wilayahArr = [];
+         if (c.kelurahan_pengiriman)  wilayahArr.push(`KEL. ${c.kelurahan_pengiriman}`);
+         if (c.kecamatan_pengiriman)  wilayahArr.push(`KEC. ${c.kecamatan_pengiriman}`);
+         if (c.kabupaten_pengiriman)  wilayahArr.push(c.kabupaten_pengiriman);
+         if (wilayahArr.length > 0) {
+            const wilayahLines = wrapText(ctx, wilayahArr.join(', ').toUpperCase(), 590);
+            wilayahLines.forEach((line) => { ctx.fillText(line, 160, currentY); currentY += 25; });
+         }
+         if (c.kodepos_pengiriman) { ctx.fillText(c.kodepos_pengiriman, 160, currentY); currentY += 25; }
       } else {
          const alamat = consumer?.alamat_rumah !== 'BELUM_DIISI' ? consumer?.alamat_rumah : '-';
          const alamatLines = wrapText(ctx, (alamat || '-').toUpperCase(), 590);
@@ -8756,9 +8764,30 @@ ${pages.join('')}
                                     <input type="text" required value={claimForm.nama_pendaftar || ''} onChange={e => setClaimForm({ ...claimForm, nama_pendaftar: e.target.value })} className="input-form" list="dl-nama-lengkap" placeholder="Auto-isi dari data konsumen" />
                                  </div>
                               </div>
-                              <div className="mt-3">
-                                 <label className="label-form">Alamat Pengiriman Hadiah</label>
-                                 <textarea rows={2} aria-label="Alamat Pengiriman Hadiah" value={claimForm.alamat_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, alamat_pengiriman: e.target.value })} className="input-form resize-none" />
+                              <div className="mt-3 space-y-2">
+                                 <p className="text-xs font-bold text-gray-700 uppercase tracking-wider">📦 Alamat Pengiriman Hadiah</p>
+                                 <div>
+                                    <label className="label-form">Alamat Jalan / RT / RW</label>
+                                    <textarea rows={2} aria-label="Alamat Pengiriman Hadiah" value={claimForm.alamat_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, alamat_pengiriman: e.target.value })} className="input-form resize-none" placeholder="Jl. Sudirman No. 10 RT 02/03" />
+                                 </div>
+                                 <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                       <label className="label-form">Kelurahan</label>
+                                       <input type="text" value={claimForm.kelurahan_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, kelurahan_pengiriman: e.target.value })} className="input-form" placeholder="Kelurahan" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Kecamatan</label>
+                                       <input type="text" value={claimForm.kecamatan_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, kecamatan_pengiriman: e.target.value })} className="input-form" placeholder="Kecamatan" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Kota / Kabupaten</label>
+                                       <input type="text" value={claimForm.kabupaten_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, kabupaten_pengiriman: e.target.value })} className="input-form" placeholder="Kota/Kabupaten" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Kodepos</label>
+                                       <input type="text" value={claimForm.kodepos_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, kodepos_pengiriman: e.target.value })} className="input-form" placeholder="Kodepos" maxLength={5} />
+                                    </div>
+                                 </div>
                               </div>
                            </div>
 

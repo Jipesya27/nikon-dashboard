@@ -2,6 +2,7 @@
 
 import { useState, useRef, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import AddressFields, { AddressValues } from '@/app/components/AddressFields';
 
 type FormState = {
   email: string;
@@ -22,6 +23,10 @@ const EMPTY_FORM: FormState = {
   tanggal_pembelian: '', nama_toko: '',
 };
 
+const EMPTY_ADDRESS: AddressValues = {
+  kelurahan: '', kecamatan: '', kabupaten_kotamadya: '', provinsi: '', kodepos: '',
+};
+
 function ClaimForm() {
   const searchParams = useSearchParams();
   const phoneFromUrl = searchParams.get('phone') || '';
@@ -34,6 +39,7 @@ function ClaimForm() {
   const [loading, setLoading]   = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [formData, setFormData] = useState<FormState>(EMPTY_FORM);
+  const [addressPengiriman, setAddressPengiriman] = useState<AddressValues>(EMPTY_ADDRESS);
 
   const [fileGaransi, setFileGaransi]   = useState<File | null>(null);
   const [fileNota, setFileNota]         = useState<File | null>(null);
@@ -150,6 +156,11 @@ function ClaimForm() {
       const fd = new FormData();
       fd.append('phone', phone);
       Object.entries(formData).forEach(([k, v]) => fd.append(k, v));
+      fd.append('kelurahan_pengiriman',  addressPengiriman.kelurahan);
+      fd.append('kecamatan_pengiriman',  addressPengiriman.kecamatan);
+      fd.append('kabupaten_pengiriman',  addressPengiriman.kabupaten_kotamadya);
+      fd.append('provinsi_pengiriman',   addressPengiriman.provinsi);
+      fd.append('kodepos_pengiriman',    addressPengiriman.kodepos);
       fd.append('foto_kartu_garansi', compGaransi);
       fd.append('foto_nota_pembelian', compNota);
 
@@ -424,11 +435,22 @@ function ClaimForm() {
               <label className={labelCls}>Nama Toko / Dealer {req}</label>
               <input type="text" name="nama_toko" value={formData.nama_toko} onChange={handleChange} required placeholder="Nama toko tempat pembelian" className={inputCls} />
             </div>
-            <div>
-              <label className={labelCls}>Alamat Pengiriman Hadiah {req}</label>
-              <textarea name="alamat_pengiriman" value={formData.alamat_pengiriman} onChange={handleChange} required rows={3}
-                placeholder="Alamat lengkap tujuan pengiriman hadiah"
-                className={inputCls + " resize-none"} />
+            {/* Alamat Pengiriman Hadiah — terstruktur */}
+            <div className="space-y-3 pt-1">
+              <p className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-1">📦 Alamat Pengiriman Hadiah</p>
+              <div>
+                <label className={labelCls}>Alamat Jalan / RT / RW {req}</label>
+                <textarea name="alamat_pengiriman" value={formData.alamat_pengiriman} onChange={handleChange} required rows={2}
+                  placeholder="Contoh: Jl. Sudirman No. 10 RT 02/03"
+                  className={inputCls + " resize-none"} />
+              </div>
+              <AddressFields
+                values={addressPengiriman}
+                onChange={partial => setAddressPengiriman(prev => ({ ...prev, ...partial }))}
+                required
+                inputClassName={inputCls}
+                labelClassName={labelCls}
+              />
             </div>
           </div>
 

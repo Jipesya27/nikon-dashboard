@@ -147,7 +147,12 @@ export async function POST(req: Request) {
     const jenis_promosi       = (formData.get('jenis_promosi') as string)?.trim() || null;
     const tanggal_pembelian   = (formData.get('tanggal_pembelian') as string)?.trim() || null;
     const nama_toko           = (formData.get('nama_toko') as string)?.trim();
-    const alamat_pengiriman   = (formData.get('alamat_pengiriman') as string)?.trim();
+    const alamat_pengiriman      = (formData.get('alamat_pengiriman') as string)?.trim();
+    const kelurahan_pengiriman   = (formData.get('kelurahan_pengiriman') as string)?.trim() || null;
+    const kecamatan_pengiriman   = (formData.get('kecamatan_pengiriman') as string)?.trim() || null;
+    const kabupaten_pengiriman   = (formData.get('kabupaten_pengiriman') as string)?.trim() || null;
+    const provinsi_pengiriman    = (formData.get('provinsi_pengiriman') as string)?.trim() || null;
+    const kodepos_pengiriman     = (formData.get('kodepos_pengiriman') as string)?.trim() || null;
 
     // Penerima = pendaftar itu sendiri
     const nama_penerima_claim = nama_lengkap;
@@ -251,6 +256,11 @@ export async function POST(req: Request) {
       tanggal_pembelian,
       nama_toko,
       alamat_pengiriman,
+      kelurahan_pengiriman,
+      kecamatan_pengiriman,
+      kabupaten_pengiriman,
+      provinsi_pengiriman,
+      kodepos_pengiriman,
       nomor_wa_update,
       link_kartu_garansi: urlGaransi,
       link_nota_pembelian: urlNota,
