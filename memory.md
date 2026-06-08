@@ -244,10 +244,36 @@ Internet → backup.altanikindo.web.id
 ### STB — Next.js via PM2
 
 - **Node.js**: v20 (install via NodeSource)
+- **Repo path**: `/opt/nikon-dashboard`
 - **Build**: `npm run build` (standalone output)
-- **Run**: PM2 → `pm2 start .next/standalone/server.js --name nikon`
+- **Static files**: setelah build wajib copy manual:
+  ```bash
+  cp -r .next/static .next/standalone/.next/static
+  cp -r public .next/standalone/public
+  ```
+- **Env vars**: disimpan di `/opt/nikon-dashboard/.env.local` — wajib ada: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, dan semua env lainnya sama dengan Vercel
+- **Start command** (env vars harus di-load saat start):
+  ```bash
+  set -a && source /opt/nikon-dashboard/.env.local && set +a
+  pm2 start /opt/nikon-dashboard/.next/standalone/server.js --name nikon-dashboard
+  pm2 save
+  ```
+- **PENTING**: `export $(grep -v '^#' .env.local | xargs)` tidak berfungsi untuk JWT token (ada karakter spesial). Gunakan `set -a; source` sebagai gantinya.
+- **Auto-start**: `pm2 startup` sudah dikonfigurasi (systemd)
 - **Status**: Online di port 3000
-- **Pending**: `pm2 startup && pm2 save` (auto-start saat reboot)
+
+### Monitoring Infrastruktur
+
+- **Tab**: 🖥️ Infrastruktur di dashboard (kategori Manajemen) — hanya Admin & Super Admin
+- **API**: `/api/infrastruktur/stb` — return CPU load avg, RAM, disk, uptime (Node.js `os` module + `df`)
+- **Polling**: otomatis setiap 30 detik, dipanggil dari `backup.altanikindo.web.id/api/infrastruktur/stb`
+- **CSP**: `backup.altanikindo.web.id` sudah ditambahkan ke `connect-src` di `next.config.ts`
+
+### Akses Super Admin di Sidebar
+
+- 🖥️ **Backup Dashboard** → `https://backup.altanikindo.web.id/dashboard` (buka tab baru)
+- 💻 **Terminal SSH** → `https://terminal.altanikindo.web.id` (buka tab baru)
+- Hanya muncul untuk role **Super Admin** di bagian "Halaman Lain" sidebar
 
 ### Database Replication
 
