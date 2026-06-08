@@ -27,6 +27,8 @@ type DepositRegistration = {
   no_rekening: string | null;
   nama_pemilik_rekening: string | null;
   refund_requested_at: string | null;
+  is_attended: boolean;
+  attended_at: string | null;
 };
 
 type EventInfo = { id: string; event_title: string; event_date: string; deposit_amount: string | null };
@@ -143,7 +145,7 @@ export default function AdminDepositPage() {
     };
     const headers = [
       'No', 'Nama Lengkap', 'Nomor WA', 'Kota', 'Nama Event', 'Tanggal Event',
-      'Jumlah Deposit', 'Status Pengembalian', 'Nama Bank', 'No Rekening',
+      'Jumlah Deposit', 'Kehadiran', 'Waktu Hadir', 'Status Pengembalian', 'Nama Bank', 'No Rekening',
       'Nama Pemilik Rekening', 'Tgl Daftar', 'Tgl Isi Rekening', 'Status Pendaftaran',
       'Link Bukti Bayar Deposit',
     ];
@@ -155,6 +157,8 @@ export default function AdminDepositPage() {
       esc(r.event?.event_title || r.event_name),
       esc(r.event?.event_date || ''),
       esc(r.event?.deposit_amount || ''),
+      esc(r.is_attended ? 'Hadir' : 'Tidak Hadir'),
+      esc(r.attended_at ? new Date(r.attended_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB' : ''),
       esc(statusLabel(r)),
       esc(r.nama_bank),
       esc(r.no_rekening),
