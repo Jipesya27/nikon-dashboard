@@ -7597,6 +7597,165 @@ ${pages.join('')}
             </div>
          )}
 
+         {activeTab === 'infrastruktur' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (() => {
+            const fmtBytes = (b: number) => b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : (b / 1048576).toFixed(0) + ' MB';
+            const fmtUptime = (s: number) => {
+               const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+               return d > 0 ? `${d}h ${h}j ${m}m` : h > 0 ? `${h}j ${m}m` : `${m}m`;
+            };
+            const barColor = (pct: number) => pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-400' : 'bg-green-500';
+            const MetricBar = ({ label, used, total, pct, unitUsed, unitTotal }: { label: string; used: string; total: string; pct: number; unitUsed?: string; unitTotal?: string }) => (
+               <div>
+                  <div className="flex justify-between text-sm mb-1">
+                     <span className="font-semibold text-gray-700">{label}</span>
+                     <span className="text-gray-500">{used}{unitUsed} / {total}{unitTotal} <span className="font-bold text-gray-800">({pct}%)</span></span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2.5">
+                     <div className={`h-2.5 rounded-full transition-all ${barColor(pct)}`} style={{ width: `${pct}%` }} />
+                  </div>
+               </div>
+            );
+            return (
+               <div className="space-y-6 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                     <h2 className="text-2xl font-bold text-gray-900">🖥️ Monitoring Infrastruktur</h2>
+                     <div className="flex items-center gap-3">
+                        {stbLastUpdated && <span className="text-xs text-gray-400">Update: {stbLastUpdated.toLocaleTimeString('id-ID')}</span>}
+                        <button
+                           onClick={() => { setStbMetrics(null); setStbLastUpdated(null); setActiveTab('dashboard'); setTimeout(() => setActiveTab('infrastruktur'), 50); }}
+                           className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-bold hover:bg-gray-700 transition"
+                        >
+                           🔄 Refresh
+                        </button>
+                     </div>
+                  </div>
+
+                  {/* STB Card */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
+                     <div className="flex items-center gap-3 mb-5">
+                        <div className={`w-3 h-3 rounded-full ${stbLoading ? 'bg-yellow-400 animate-pulse' : stbError ? 'bg-red-500' : 'bg-green-500'}`} />
+                        <h3 className="text-lg font-bold text-gray-900">STB HG680P — <span className="font-mono text-gray-600">192.168.18.63</span></h3>
+                        <span className="ml-auto text-xs text-gray-400">Armbian · ARM64</span>
+                     </div>
+
+                     {stbLoading && !stbMetrics && (
+                        <div className="flex items-center justify-center py-12 text-gray-400">
+                           <svg className="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                           Mengambil data STB...
+                        </div>
+                     )}
+
+                     {stbError && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+                           <strong>Gagal terhubung:</strong> {stbError}
+                        </div>
+                     )}
+
+                     {stbMetrics && (
+                        <div className="space-y-5">
+                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div className="bg-gray-50 rounded-xl p-3">
+                                 <div className="text-gray-500 text-xs mb-1">Hostname</div>
+                                 <div className="font-bold font-mono">{stbMetrics.hostname}</div>
+                              </div>
+                              <div className="bg-gray-50 rounded-xl p-3">
+                                 <div className="text-gray-500 text-xs mb-1">CPU</div>
+                                 <div className="font-bold text-xs">{stbMetrics.cpu.model}</div>
+                                 <div className="text-gray-500 text-xs">{stbMetrics.cpu.cores} core</div>
+                              </div>
+                              <div className="bg-gray-50 rounded-xl p-3">
+                                 <div className="text-gray-500 text-xs mb-1">System Uptime</div>
+                                 <div className="font-bold">{fmtUptime(stbMetrics.uptime.system)}</div>
+                              </div>
+                              <div className="bg-gray-50 rounded-xl p-3">
+                                 <div className="text-gray-500 text-xs mb-1">App Uptime</div>
+                                 <div className="font-bold">{fmtUptime(stbMetrics.uptime.process)}</div>
+                              </div>
+                           </div>
+
+                           <div className="space-y-3 pt-2">
+                              <MetricBar
+                                 label="CPU Load"
+                                 used={stbMetrics.cpu.loadAvg[0].toString()}
+                                 total={stbMetrics.cpu.cores.toString()}
+                                 pct={stbMetrics.cpu.usagePercent}
+                                 unitUsed={` (1m avg)`}
+                                 unitTotal={` core`}
+                              />
+                              <MetricBar
+                                 label="RAM"
+                                 used={fmtBytes(stbMetrics.memory.used)}
+                                 total={fmtBytes(stbMetrics.memory.total)}
+                                 pct={stbMetrics.memory.usedPercent}
+                              />
+                              <MetricBar
+                                 label="Disk (/)"
+                                 used={fmtBytes(stbMetrics.disk.used)}
+                                 total={fmtBytes(stbMetrics.disk.total)}
+                                 pct={stbMetrics.disk.usedPercent}
+                              />
+                           </div>
+
+                           <div className="pt-1 text-xs text-gray-400 flex gap-4">
+                              <span>Load avg: {stbMetrics.cpu.loadAvg.join(' / ')}</span>
+                              <span>RAM free: {fmtBytes(stbMetrics.memory.free)}</span>
+                              <span>Disk free: {fmtBytes(stbMetrics.disk.free)}</span>
+                           </div>
+                        </div>
+                     )}
+                  </div>
+
+                  {/* Synology Card */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
+                     <div className="flex items-center gap-3 mb-3">
+                        <div className="w-3 h-3 rounded-full bg-blue-400" />
+                        <h3 className="text-lg font-bold text-gray-900">Synology DS223J — <span className="font-mono text-gray-600">192.168.18.145</span></h3>
+                     </div>
+                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        {[
+                           { label: 'PostgreSQL', detail: 'port 5433', status: 'Aktif' },
+                           { label: 'MinIO', detail: 'port 9010/9011', status: 'Aktif' },
+                           { label: 'Wetty (SSH)', detail: 'port 7681', status: 'Aktif' },
+                           { label: 'Cloudflared', detail: 'tunnel nikon-synology', status: 'HEALTHY' },
+                           { label: 'Cloud Sync', detail: 'Google Drive → /dashboard/backups', status: 'Up to date' },
+                        ].map(s => (
+                           <div key={s.label} className="bg-gray-50 rounded-xl p-3">
+                              <div className="font-bold text-gray-800">{s.label}</div>
+                              <div className="text-gray-500 text-xs mt-0.5">{s.detail}</div>
+                              <div className="mt-2 inline-flex items-center gap-1 text-xs text-green-700 font-semibold">
+                                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />{s.status}
+                              </div>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+
+                  {/* Cloudflare Card */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
+                     <div className="flex items-center gap-3 mb-3">
+                        <div className="w-3 h-3 rounded-full bg-orange-400" />
+                        <h3 className="text-lg font-bold text-gray-900">Cloudflare Tunnel</h3>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        {[
+                           { hostname: 'backup.altanikindo.web.id', target: '192.168.18.63:3000', desc: 'Next.js backup site' },
+                           { hostname: 'terminal.altanikindo.web.id', target: 'localhost:7681', desc: 'Wetty SSH ke STB' },
+                        ].map(r => (
+                           <div key={r.hostname} className="bg-gray-50 rounded-xl p-3 flex items-start gap-3">
+                              <div className="w-1.5 h-1.5 bg-orange-400 rounded-full mt-1.5 shrink-0" />
+                              <div>
+                                 <div className="font-mono font-bold text-gray-800 text-xs">{r.hostname}</div>
+                                 <div className="text-gray-500 text-xs">→ {r.target}</div>
+                                 <div className="text-gray-400 text-xs mt-0.5">{r.desc}</div>
+                              </div>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+            );
+         })()}
+
          {/* MODALS */}
          {isModalOpen && (() => {
             // Distinct values dari data DB — digabung dengan pinned dari autocomplete_items, tanpa hidden
