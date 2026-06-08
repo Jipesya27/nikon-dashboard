@@ -328,3 +328,18 @@ Internet → backup.altanikindo.web.id
 - **Google Drive upload**: OAuth2 dengan refresh token, file disimpan di folder `GOOGLE_DRIVE_FOLDER_ID`.
 - **File upload limit**: 10 MB, tipe: JPG, PNG, WEBP, GIF, PDF.
 - **`pengaturan_bot.url_file`**: NOT NULL constraint — selalu isi dengan `''` (string kosong) bukan `null`.
+- **WhatsApp API**: sudah migrasi dari Fonnte ke Meta. `api.fonnte.com` tidak lagi ada di CSP `connect-src`.
+
+### Google Drive — Struktur Folder File Event
+
+Semua file disimpan di root `GOOGLE_DRIVE_FOLDER_ID`. Subfolder dibuat otomatis oleh sistem:
+
+| Jenis File | Folder | Format Nama File |
+|---|---|---|
+| Bukti transfer pendaftaran event | Root (`GOOGLE_DRIVE_FOLDER_ID`) | `EventReg_{EventTitle}_{FullName}_{Timestamp}.{ext}` |
+| Bukti pengembalian deposit | `Pengembalian Deposit` | — |
+| Tiket event (generated PDF) | `Tiket Event` | — |
+| Dokumen peminjaman (generated PDF) | `Dokumen Peminjaman` | — |
+| Upload foto lomba | `Upload File Lomba` | — |
+| Dokumen penerima barang | `Penerima_Barang` | — |
+| Attachment WhatsApp | `message_attachment` | — |
