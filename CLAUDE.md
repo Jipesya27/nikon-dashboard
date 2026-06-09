@@ -2,11 +2,20 @@
 
 # Nikon Dashboard — Project Memory
 
-## Tech Stack
+## Tech Stack & Deployment
 - **Framework**: Next.js App Router (`/app` directory)
-- **Database**: Supabase (Postgres)
+- **Database**: Supabase (Postgres + Edge Functions)
 - **Styling**: Tailwind CSS
 - **Language**: TypeScript
+- **WhatsApp**: WhatsApp Business API (Meta/Facebook Graph API) — bukan Fonnte, meski nama fungsinya `sendWhatsAppMessageViaFonnte`
+- **File storage**: Google Drive via `/api/upload-google-drive`
+- **Deploy edge functions**: GitHub Actions → `.github/workflows/deploy-supabase-functions.yml`
+  - Butuh secrets: `SUPABASE_ACCESS_TOKEN` dan `SUPABASE_PROJECT_REF`
+  - Bisa trigger manual dari GitHub Actions tab
+  - Supabase CLI: `npx supabase functions deploy <nama> --project-ref <ref>`
+
+## Warna Brand
+- Nikon yellow: `#FFE800`
 
 ## Supabase Client Pattern
 ```ts
@@ -17,8 +26,17 @@ const supabase = createClient(
 ```
 Admin pages proxy through `/api/admin/sb` — jangan hardcode URL Supabase langsung.
 
-## Warna Brand
-- Nikon yellow: `#FFE800`
+## File Penting
+| File | Keterangan |
+|---|---|
+| `app/nikon/page.tsx` | Landing page publik + WebChatWidget (~line 834) |
+| `app/dashboard/page.tsx` | Dashboard admin utama, sangat besar |
+| `app/chatbot/page.tsx` | Halaman manajemen template chatbot |
+| `app/admin/events/page.tsx` | Validasi pembayaran + daftar registrasi |
+| `app/admin/events/attendance/page.tsx` | Absensi via QR code |
+| `app/admin/events/deposit/page.tsx` | Kelola refund deposit |
+| `supabase/functions/fonnte-bot/index.ts` | Logika bot WhatsApp (menu, CS, garansi, dll) |
+| `supabase/functions/send-wa/index.ts` | Kirim pesan/media ke WhatsApp via Meta API |
 
 ## Tabel Database Utama
 
@@ -27,6 +45,18 @@ Admin pages proxy through `/api/admin/sb` — jangan hardcode URL Supabase langs
 
 ### `event_registrations`
 `id`, `created_at`, `nama_lengkap`, `nomor_wa`, `email`, `kabupaten_kotamadya`, `tipe_kamera`, `event_name`, `event_id`, `bukti_transfer_url`, `status_pendaftaran` (`menunggu_validasi`|`terdaftar`|`ditolak`), `payment_type` (`regular`|`deposit`), `ticket_url`, `rejection_reason`, `is_attended`, `attended_at`, `attended_by`, `nama_bank`, `no_rekening`, `nama_pemilik_rekening`, `status_pengembalian_deposit` (`requested`|`Processed`), `bukti_pengembalian_deposit`, `refund_requested_at`
+
+### `riwayat_pesan`
+Log semua pesan WhatsApp (IN/OUT): `nomor_wa`, `isi_pesan`, `arah_pesan`, `url_media`, `bicara_dengan_cs`, `jenis_pesan`
+
+### `chatbot_responses`
+Pesan bot yang bisa dikustomisasi via dashboard (key/message). `getMsg(key, fallback)` baca DB dulu; **fallback hanya aktif jika key belum ada di DB**. Perubahan teks bot di kode tidak otomatis override DB.
+
+### `konsumen`
+Data & status langkah konsumen (`status_langkah`)
+
+### `pengaturan_bot`
+Pengaturan bot lain (URL file promo, dealer, dll)
 
 ## Halaman Admin Events
 | Path | Fungsi |
@@ -49,3 +79,20 @@ Admin pages proxy through `/api/admin/sb` — jangan hardcode URL Supabase langs
 
 ## Access Control
 `RoleGate` di `app/components/RoleGate.tsx` — roles yang dibutuhkan untuk admin events: `['admin_events', 'admin_deposit', 'admin_attendance', 'events', 'eventregistrations']`
+
+## Bot WhatsApp (fonnte-bot)
+- Menu utama: 1–10, diakses dengan ketik angka
+- Opsi 9 = Hubungi CS: cek `isOperatingHours()`, set `bicara_dengan_cs=true` jika aktif
+- Jam operasional CS: **Senin–Jumat 10.00–16.00 WIB, Sabtu 10.00–12.00 WIB**
+- Pesan CS_OFFLINE & CS_WAITING keduanya selalu append "Hari libur nasional dan tanggal merah LIBUR" secara paksa di kode (karena DB bisa stale)
+
+## Tab Pesan Dashboard
+- State utama: `selectedWa` (null = tampil daftar kontak, string = buka thread)
+- Layout mobile: sidebar hidden saat `selectedWa` set; tombol back floating `fixed top-20 left-3 z-[200] md:hidden`
+- Tema chat: background `#ffffff`, bubble OUT `#dcf8c6` (WA green), bubble IN `white + border`
+- Kirim file: upload ke Google Drive → simpan `url_media` di DB → kirim via `send-wa` dengan `{ mediaUrl, mediaType }`
+- `send-wa` edge function support: `text`, `template`, `image`, `video`, `document`
+
+## Catatan Deploy Edge Functions
+- Perubahan kode edge function **harus di-deploy** agar aktif di production
+- Tanpa deploy, perubahan fallback di `getMsg()` tidak efek karena DB menyimpan nilai lama
