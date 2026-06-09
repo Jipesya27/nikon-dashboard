@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { KODEPOS_DB } from '@/app/lib/kodepos-db';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -345,10 +345,36 @@ export default function AddressFields({
       kelurahan: kel.nama,
       ...(kel.kodepos ? { kodepos: kel.kodepos } : {}),
     });
+    setKodeposStatus(null);
   };
 
-  // ── Kodepos quick-fill ───────────────────────────────────────────────────
+  // ── Kodepos list — unique kodepos dari kelurahan di kecamatan terpilih ────
+  const kodeposList = useMemo<WilayahItem[]>(() => {
+    if (kelList.length === 0) return [];
+    const seen = new Set<string>();
+    return kelList
+      .filter(k => k.kodepos && !seen.has(k.kodepos) && seen.add(k.kodepos))
+      .map(k => ({ id: k.kodepos!, nama: k.kodepos! }));
+  }, [kelList]);
 
+  // pilih kodepos dari dropdown → filter kelurahan aktif ke yang cocok
+  const handleKodeposSelect = (item: WilayahItem) => {
+    const kp = item.nama;
+    // cari semua kelurahan dengan kodepos ini
+    const matching = kelList.filter(k => k.kodepos === kp);
+    const autoKel = matching.length === 1 ? matching[0] : null;
+    onChange({
+      kodepos: kp,
+      ...(autoKel ? { kelurahan: autoKel.nama } : {}),
+    });
+    setKodeposStatus(
+      matching.length > 1
+        ? { ok: true, msg: `${matching.length} kelurahan ditemukan — pilih di atas` }
+        : null
+    );
+  };
+
+  // ── Kodepos free-text (5 digit) → cascade upward ─────────────────────────
   const handleKodeposChange = (raw: string) => {
     const kp = raw.replace(/\D/g, '').slice(0, 5);
     onChange({ kodepos: kp });
@@ -366,7 +392,6 @@ export default function AddressFields({
         });
         setKodeposStatus({ ok: true, msg: `✓ ${db.kelurahan[0]}, ${db.kecamatan}, ${db.kabupaten}` });
 
-        // Also init cascade so dropdowns reflect the filled values
         const provMatch = provList.find(
           p => p.nama.toLowerCase() === db.provinsi.toLowerCase()
         );
@@ -511,30 +536,54 @@ export default function AddressFields({
         labelCls={labelClassName}
       />
 
-      {/* 5. Kode Pos — ketik 5 digit untuk auto-fill semua field di atas */}
-      <div>
-        <label htmlFor="addr-kodepos" className={labelClassName}>
-          Kode Pos{required && ' *'}
-        </label>
-        <input
-          id="addr-kodepos"
-          type="text"
-          aria-label="Kode Pos"
-          inputMode="numeric"
-          value={isEmpty(values.kodepos) ? '' : values.kodepos}
-          onChange={e => handleKodeposChange(e.target.value)}
-          placeholder="Ketik 5 digit"
-          maxLength={5}
-          pattern="[0-9]{5}"
-          required={required}
-          className={inputClassName}
-        />
-        {kodeposStatus && (
-          <p className={`text-xs mt-1 ${kodeposStatus.ok ? 'text-green-700' : 'text-amber-600'}`}>
-            {kodeposStatus.msg}
-          </p>
-        )}
-      </div>
+      {/* 5. Kode Pos — dropdown jika kecamatan sudah dipilih, else free-text */}
+      {kodeposList.length > 0 ? (
+        <div>
+          <Combobox
+            key={`kp-${kecId}`}
+            id="addr-kodepos"
+            label="Kode Pos"
+            value={isEmpty(values.kodepos) ? '' : values.kodepos}
+            options={kodeposList}
+            onSelect={handleKodeposSelect}
+            onClear={required ? undefined : () => { onChange({ kodepos: '', kelurahan: '' }); setKodeposStatus(null); }}
+            loading={false}
+            disabled={false}
+            required={required}
+            inputCls={inputClassName}
+            labelCls={labelClassName}
+          />
+          {kodeposStatus && (
+            <p className={`text-xs mt-1 ${kodeposStatus.ok ? 'text-green-700' : 'text-amber-600'}`}>
+              {kodeposStatus.msg}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div>
+          <label htmlFor="addr-kodepos" className={labelClassName}>
+            Kode Pos{required && ' *'}
+          </label>
+          <input
+            id="addr-kodepos"
+            type="text"
+            aria-label="Kode Pos"
+            inputMode="numeric"
+            value={isEmpty(values.kodepos) ? '' : values.kodepos}
+            onChange={e => handleKodeposChange(e.target.value)}
+            placeholder="Ketik 5 digit untuk auto-isi wilayah"
+            maxLength={5}
+            pattern="[0-9]{5}"
+            required={required}
+            className={inputClassName}
+          />
+          {kodeposStatus && (
+            <p className={`text-xs mt-1 ${kodeposStatus.ok ? 'text-green-700' : 'text-amber-600'}`}>
+              {kodeposStatus.msg}
+            </p>
+          )}
+        </div>
+      )}
 
     </div>
   );
