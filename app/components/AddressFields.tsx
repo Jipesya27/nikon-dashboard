@@ -412,10 +412,10 @@ export default function AddressFields({
 
   if (apiError) {
     const fields: { key: keyof AddressValues; label: string }[] = [
-      { key: 'kelurahan',          label: 'Kelurahan' },
-      { key: 'kecamatan',          label: 'Kecamatan' },
-      { key: 'kabupaten_kotamadya',label: 'Kabupaten / Kotamadya' },
       { key: 'provinsi',           label: 'Provinsi' },
+      { key: 'kabupaten_kotamadya',label: 'Kota / Kabupaten' },
+      { key: 'kecamatan',          label: 'Kecamatan' },
+      { key: 'kelurahan',          label: 'Kelurahan' },
       { key: 'kodepos',            label: 'Kode Pos' },
     ];
     return (
@@ -447,7 +447,71 @@ export default function AddressFields({
 
   return (
     <div className="space-y-3">
-      {/* Kode Pos — first so user can auto-fill everything by typing it */}
+
+      {/* 1. Provinsi */}
+      <Combobox
+        key="prov"
+        id="addr-provinsi"
+        label="Provinsi"
+        value={isEmpty(values.provinsi) ? '' : values.provinsi}
+        options={provList}
+        onSelect={handleProvSelect}
+        onClear={required ? undefined : clearProv}
+        loading={loadingProv}
+        required={required}
+        inputCls={inputClassName}
+        labelCls={labelClassName}
+      />
+
+      {/* 2. Kota / Kabupaten */}
+      <Combobox
+        key={`kab-${provId}`}
+        id="addr-kabupaten"
+        label="Kota / Kabupaten"
+        value={isEmpty(values.kabupaten_kotamadya) ? '' : values.kabupaten_kotamadya}
+        options={kabList}
+        onSelect={handleKabSelect}
+        onClear={required ? undefined : clearKab}
+        loading={loadingKab}
+        disabled={!provId && !loadingProv && kabList.length === 0}
+        required={required}
+        inputCls={inputClassName}
+        labelCls={labelClassName}
+      />
+
+      {/* 3. Kecamatan */}
+      <Combobox
+        key={`kec-${kabId}`}
+        id="addr-kecamatan"
+        label="Kecamatan"
+        value={isEmpty(values.kecamatan) ? '' : values.kecamatan}
+        options={kecList}
+        onSelect={handleKecSelect}
+        onClear={required ? undefined : clearKec}
+        loading={loadingKec}
+        disabled={!kabId && kecList.length === 0}
+        required={required}
+        inputCls={inputClassName}
+        labelCls={labelClassName}
+      />
+
+      {/* 4. Kelurahan */}
+      <Combobox
+        key={`kel-${kecId}`}
+        id="addr-kelurahan"
+        label="Kelurahan"
+        value={isEmpty(values.kelurahan) ? '' : values.kelurahan}
+        options={kelList}
+        onSelect={handleKelSelect}
+        onClear={required ? undefined : clearKel}
+        loading={loadingKel}
+        disabled={!kecId && kelList.length === 0}
+        required={required}
+        inputCls={inputClassName}
+        labelCls={labelClassName}
+      />
+
+      {/* 5. Kode Pos — ketik 5 digit untuk auto-fill semua field di atas */}
       <div>
         <label htmlFor="addr-kodepos" className={labelClassName}>
           Kode Pos{required && ' *'}
@@ -472,68 +536,6 @@ export default function AddressFields({
         )}
       </div>
 
-      {/* Provinsi */}
-      <Combobox
-        key="prov"
-        id="addr-provinsi"
-        label="Provinsi"
-        value={isEmpty(values.provinsi) ? '' : values.provinsi}
-        options={provList}
-        onSelect={handleProvSelect}
-        onClear={required ? undefined : clearProv}
-        loading={loadingProv}
-        required={required}
-        inputCls={inputClassName}
-        labelCls={labelClassName}
-      />
-
-      {/* Kabupaten / Kota */}
-      <Combobox
-        key={`kab-${provId}`}
-        id="addr-kabupaten"
-        label="Kabupaten / Kotamadya"
-        value={isEmpty(values.kabupaten_kotamadya) ? '' : values.kabupaten_kotamadya}
-        options={kabList}
-        onSelect={handleKabSelect}
-        onClear={required ? undefined : clearKab}
-        loading={loadingKab}
-        disabled={!provId && !loadingProv && kabList.length === 0}
-        required={required}
-        inputCls={inputClassName}
-        labelCls={labelClassName}
-      />
-
-      {/* Kecamatan & Kelurahan side by side */}
-      <div className="grid grid-cols-2 gap-3">
-        <Combobox
-          key={`kec-${kabId}`}
-          id="addr-kecamatan"
-          label="Kecamatan"
-          value={isEmpty(values.kecamatan) ? '' : values.kecamatan}
-          options={kecList}
-          onSelect={handleKecSelect}
-          onClear={required ? undefined : clearKec}
-          loading={loadingKec}
-          disabled={!kabId && kecList.length === 0}
-          required={required}
-          inputCls={inputClassName}
-          labelCls={labelClassName}
-        />
-        <Combobox
-          key={`kel-${kecId}`}
-          id="addr-kelurahan"
-          label="Kelurahan"
-          value={isEmpty(values.kelurahan) ? '' : values.kelurahan}
-          options={kelList}
-          onSelect={handleKelSelect}
-          onClear={required ? undefined : clearKel}
-          loading={loadingKel}
-          disabled={!kecId && kelList.length === 0}
-          required={required}
-          inputCls={inputClassName}
-          labelCls={labelClassName}
-        />
-      </div>
     </div>
   );
 }
