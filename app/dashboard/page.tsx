@@ -9133,28 +9133,23 @@ ${pages.join('')}
                                     <label className="label-form">Alamat Jalan / RT / RW</label>
                                     <textarea rows={2} aria-label="Alamat Pengiriman Hadiah" value={claimForm.alamat_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, alamat_pengiriman: e.target.value })} className="input-form resize-none" placeholder="Jl. Sudirman No. 10 RT 02/03" />
                                  </div>
-                                 <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                       <label className="label-form">Kelurahan</label>
-                                       <input type="text" value={claimForm.kelurahan_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, kelurahan_pengiriman: e.target.value })} className="input-form" placeholder="Kelurahan" />
-                                    </div>
-                                    <div>
-                                       <label className="label-form">Kecamatan</label>
-                                       <input type="text" value={claimForm.kecamatan_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, kecamatan_pengiriman: e.target.value })} className="input-form" placeholder="Kecamatan" />
-                                    </div>
-                                    <div>
-                                       <label className="label-form">Kota / Kabupaten</label>
-                                       <input type="text" value={claimForm.kabupaten_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, kabupaten_pengiriman: e.target.value })} className="input-form" placeholder="Kota/Kabupaten" />
-                                    </div>
-                                    <div>
-                                       <label className="label-form">Provinsi</label>
-                                       <input type="text" value={claimForm.provinsi_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, provinsi_pengiriman: e.target.value })} className="input-form" placeholder="Provinsi" />
-                                    </div>
-                                    <div>
-                                       <label className="label-form">Kodepos</label>
-                                       <input type="text" value={claimForm.kodepos_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, kodepos_pengiriman: e.target.value })} className="input-form" placeholder="Kodepos" maxLength={5} />
-                                    </div>
-                                 </div>
+                                 <AddressFields
+                                    values={{
+                                       provinsi:            claimForm.provinsi_pengiriman   || '',
+                                       kabupaten_kotamadya: claimForm.kabupaten_pengiriman  || '',
+                                       kecamatan:           claimForm.kecamatan_pengiriman  || '',
+                                       kelurahan:           claimForm.kelurahan_pengiriman  || '',
+                                       kodepos:             claimForm.kodepos_pengiriman    || '',
+                                    }}
+                                    onChange={partial => setClaimForm(prev => ({
+                                       ...prev,
+                                       ...(partial.provinsi            !== undefined && { provinsi_pengiriman:   partial.provinsi }),
+                                       ...(partial.kabupaten_kotamadya !== undefined && { kabupaten_pengiriman:  partial.kabupaten_kotamadya }),
+                                       ...(partial.kecamatan           !== undefined && { kecamatan_pengiriman:  partial.kecamatan }),
+                                       ...(partial.kelurahan           !== undefined && { kelurahan_pengiriman:  partial.kelurahan }),
+                                       ...(partial.kodepos             !== undefined && { kodepos_pengiriman:    partial.kodepos }),
+                                    }))}
+                                 />
                               </div>
                            </div>
 
