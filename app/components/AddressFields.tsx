@@ -23,7 +23,7 @@ interface AddressFieldsProps {
   labelClassName?: string;
 }
 
-// ─── Module-level API cache ───────────────────────────────────────────────────
+// ─── Module-level caches ─────────────────────────────────────────────────────
 
 const _cache = new Map<string, WilayahItem[]>();
 
@@ -34,6 +34,32 @@ async function fetchWilayah(url: string): Promise<WilayahItem[]> {
   const data: WilayahItem[] = await res.json();
   _cache.set(url, data);
   return data;
+}
+
+// Kodepos map: BPS code (tanpa titik) → kodepos 5 digit
+let _kodeposMap: Record<string, string> | null = null;
+let _kodeposMapLoading = false;
+let _kodeposMapCallbacks: Array<() => void> = [];
+
+function getKodeposMap(): Promise<Record<string, string>> {
+  return new Promise(resolve => {
+    if (_kodeposMap) { resolve(_kodeposMap); return; }
+    _kodeposMapCallbacks.push(() => resolve(_kodeposMap!));
+    if (_kodeposMapLoading) return;
+    _kodeposMapLoading = true;
+    fetch('/kodepos/kodepos-map.json')
+      .then(r => r.json())
+      .then(data => {
+        _kodeposMap = data;
+        _kodeposMapCallbacks.forEach(cb => cb());
+        _kodeposMapCallbacks = [];
+      })
+      .catch(() => {
+        _kodeposMap = {};
+        _kodeposMapCallbacks.forEach(cb => cb());
+        _kodeposMapCallbacks = [];
+      });
+  });
 }
 
 const BASE = '/api/wilayah';
@@ -228,6 +254,7 @@ export default function AddressFields({
 
   const [kodeposStatus, setKodeposStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [apiError, setApiError] = useState(false);
+  const [kpMap, setKpMap] = useState<Record<string, string> | null>(null);
 
   // ── Load provinces once + try to init cascade from existing values ──────────
   useEffect(() => {
@@ -332,6 +359,9 @@ export default function AddressFields({
     onChange({ kecamatan: kec.nama, kelurahan: '', kodepos: '' });
     setKodeposStatus(null);
 
+    // Pre-load kodepos map (background, satu kali)
+    if (!kpMap) getKodeposMap().then(setKpMap);
+
     setLoadingKel(true);
     try {
       const data = (await fetchWilayah(`${BASE}/kelurahan/${kec.id}.json`))
@@ -341,44 +371,60 @@ export default function AddressFields({
   };
 
   const handleKelSelect = (kel: WilayahItem) => {
-    // Cari kodepos: dari data API dulu, fallback ke KODEPOS_DB
-    let kodepos = kel.kodepos || '';
-    if (!kodepos && values.kecamatan) {
-      const kelNormLower = kel.nama.toLowerCase();
-      const kecNormLower = values.kecamatan.toLowerCase();
-      const found = Object.entries(KODEPOS_DB).find(([, db]) =>
-        db.kecamatan.toLowerCase() === kecNormLower &&
-        db.kelurahan.some(k => k.toLowerCase() === kelNormLower)
-      );
-      if (found) kodepos = found[0];
-    }
-    onChange({ kelurahan: kel.nama, ...(kodepos ? { kodepos } : {}) });
+    // Set nama dulu tanpa tunggu kodepos
+    onChange({ kelurahan: kel.nama });
     setKodeposStatus(null);
+
+    // Cari kodepos async: 1) dari BPS map, 2) dari API field, 3) KODEPOS_DB fallback
+    getKodeposMap().then(kpMap => {
+      let kodepos = kpMap[kel.id] || kel.kodepos || '';
+
+      if (!kodepos && values.kecamatan) {
+        const kelLow = kel.nama.toLowerCase();
+        const kecLow = values.kecamatan.toLowerCase();
+        const found = Object.entries(KODEPOS_DB).find(([, db]) =>
+          db.kecamatan.toLowerCase() === kecLow &&
+          db.kelurahan.some(k => k.toLowerCase() === kelLow)
+        );
+        if (found) kodepos = found[0];
+      }
+
+      if (kodepos) onChange({ kodepos });
+    });
   };
 
   // ── Kodepos list — unique kodepos dari kecamatan terpilih ────────────────
   const kodeposList = useMemo<WilayahItem[]>(() => {
-    // Prioritas 1: dari data API kelurahan (ada field kodepos)
-    const fromApi = kelList.filter(k => k.kodepos);
-    if (fromApi.length > 0) {
-      const seen = new Set<string>();
-      return fromApi
-        .filter(k => !seen.has(k.kodepos!) && seen.add(k.kodepos!))
-        .map(k => ({ id: k.kodepos!, nama: k.kodepos! }));
-    }
-    // Prioritas 2: cari di KODEPOS_DB berdasarkan nama kecamatan
-    if (!values.kecamatan) return [];
-    const kecLower = values.kecamatan.toLowerCase();
     const seen = new Set<string>();
     const result: WilayahItem[] = [];
+
+    // Prioritas 1: dari BPS map (kpMap), pakai kel.id sebagai key
+    if (kpMap && kelList.length > 0) {
+      for (const kel of kelList) {
+        const kp = kpMap[kel.id];
+        if (kp && !seen.has(kp)) { seen.add(kp); result.push({ id: kp, nama: kp }); }
+      }
+      if (result.length > 0) return result.sort((a, b) => a.nama.localeCompare(b.nama));
+    }
+
+    // Prioritas 2: dari field kodepos di data API kelurahan
+    for (const kel of kelList) {
+      if (kel.kodepos && !seen.has(kel.kodepos)) {
+        seen.add(kel.kodepos); result.push({ id: kel.kodepos, nama: kel.kodepos });
+      }
+    }
+    if (result.length > 0) return result.sort((a, b) => a.nama.localeCompare(b.nama));
+
+    // Prioritas 3: fallback KODEPOS_DB berdasarkan nama kecamatan
+    if (!values.kecamatan) return [];
+    const kecLower = values.kecamatan.toLowerCase();
     for (const [kp, db] of Object.entries(KODEPOS_DB)) {
       if (db.kecamatan.toLowerCase() === kecLower && !seen.has(kp)) {
-        seen.add(kp);
-        result.push({ id: kp, nama: kp });
+        seen.add(kp); result.push({ id: kp, nama: kp });
       }
     }
     return result.sort((a, b) => a.nama.localeCompare(b.nama));
-  }, [kelList, values.kecamatan]);
+  }, [kelList, kpMap, values.kecamatan]);
 
   // pilih kodepos dari dropdown → filter kelurahan aktif ke yang cocok
   const handleKodeposSelect = (item: WilayahItem) => {
