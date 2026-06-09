@@ -635,9 +635,35 @@ export default function NikonDashboard() {
    };
 
    // --- GOOGLE DRIVE UPLOAD HELPER ---
+   /** Kompres gambar sebelum upload — maks 1800px, JPEG 0.82. PDF dilewati. */
+   const compressForUpload = (file: File): Promise<File> => new Promise(resolve => {
+      if (!file.type.startsWith('image/')) { resolve(file); return; }
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+         URL.revokeObjectURL(url);
+         const MAX = 1800;
+         let { width, height } = img;
+         if (width > MAX || height > MAX) {
+            if (width >= height) { height = Math.round(height * MAX / width); width = MAX; }
+            else { width = Math.round(width * MAX / height); height = MAX; }
+         }
+         const canvas = document.createElement('canvas');
+         canvas.width = width; canvas.height = height;
+         canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+         canvas.toBlob(blob => {
+            if (!blob) { resolve(file); return; }
+            resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
+         }, 'image/jpeg', 0.82);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+   });
+
    const uploadFileToStorage = async (file: File, prefix: string, serial: string) => {
+      const compressed = await compressForUpload(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', compressed);
       formData.append('prefix', prefix);
       formData.append('serial', serial);
 
@@ -647,8 +673,10 @@ export default function NikonDashboard() {
       });
 
       if (!response.ok) {
-         const error = await response.json();
-         throw new Error(error.error || 'Upload failed');
+         const text = await response.text();
+         let msg = 'Upload failed';
+         try { msg = JSON.parse(text).error || msg; } catch { msg = text.slice(0, 120); }
+         throw new Error(msg);
       }
 
       const data = await response.json();
@@ -9117,6 +9145,10 @@ ${pages.join('')}
                                     <div>
                                        <label className="label-form">Kota / Kabupaten</label>
                                        <input type="text" value={claimForm.kabupaten_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, kabupaten_pengiriman: e.target.value })} className="input-form" placeholder="Kota/Kabupaten" />
+                                    </div>
+                                    <div>
+                                       <label className="label-form">Provinsi</label>
+                                       <input type="text" value={claimForm.provinsi_pengiriman || ''} onChange={e => setClaimForm({ ...claimForm, provinsi_pengiriman: e.target.value })} className="input-form" placeholder="Provinsi" />
                                     </div>
                                     <div>
                                        <label className="label-form">Kodepos</label>
