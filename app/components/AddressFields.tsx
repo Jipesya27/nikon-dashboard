@@ -341,21 +341,44 @@ export default function AddressFields({
   };
 
   const handleKelSelect = (kel: WilayahItem) => {
-    onChange({
-      kelurahan: kel.nama,
-      ...(kel.kodepos ? { kodepos: kel.kodepos } : {}),
-    });
+    // Cari kodepos: dari data API dulu, fallback ke KODEPOS_DB
+    let kodepos = kel.kodepos || '';
+    if (!kodepos && values.kecamatan) {
+      const kelNormLower = kel.nama.toLowerCase();
+      const kecNormLower = values.kecamatan.toLowerCase();
+      const found = Object.entries(KODEPOS_DB).find(([, db]) =>
+        db.kecamatan.toLowerCase() === kecNormLower &&
+        db.kelurahan.some(k => k.toLowerCase() === kelNormLower)
+      );
+      if (found) kodepos = found[0];
+    }
+    onChange({ kelurahan: kel.nama, ...(kodepos ? { kodepos } : {}) });
     setKodeposStatus(null);
   };
 
-  // ── Kodepos list — unique kodepos dari kelurahan di kecamatan terpilih ────
+  // ── Kodepos list — unique kodepos dari kecamatan terpilih ────────────────
   const kodeposList = useMemo<WilayahItem[]>(() => {
-    if (kelList.length === 0) return [];
+    // Prioritas 1: dari data API kelurahan (ada field kodepos)
+    const fromApi = kelList.filter(k => k.kodepos);
+    if (fromApi.length > 0) {
+      const seen = new Set<string>();
+      return fromApi
+        .filter(k => !seen.has(k.kodepos!) && seen.add(k.kodepos!))
+        .map(k => ({ id: k.kodepos!, nama: k.kodepos! }));
+    }
+    // Prioritas 2: cari di KODEPOS_DB berdasarkan nama kecamatan
+    if (!values.kecamatan) return [];
+    const kecLower = values.kecamatan.toLowerCase();
     const seen = new Set<string>();
-    return kelList
-      .filter(k => k.kodepos && !seen.has(k.kodepos) && seen.add(k.kodepos))
-      .map(k => ({ id: k.kodepos!, nama: k.kodepos! }));
-  }, [kelList]);
+    const result: WilayahItem[] = [];
+    for (const [kp, db] of Object.entries(KODEPOS_DB)) {
+      if (db.kecamatan.toLowerCase() === kecLower && !seen.has(kp)) {
+        seen.add(kp);
+        result.push({ id: kp, nama: kp });
+      }
+    }
+    return result.sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [kelList, values.kecamatan]);
 
   // pilih kodepos dari dropdown → filter kelurahan aktif ke yang cocok
   const handleKodeposSelect = (item: WilayahItem) => {
