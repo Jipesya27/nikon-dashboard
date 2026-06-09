@@ -3249,7 +3249,11 @@ ${kode ? `
             const wilayahLines = wrapText(ctx, wilayahArr.join(', ').toUpperCase(), 590);
             wilayahLines.forEach((line) => { ctx.fillText(line, 160, currentY); currentY += 25; });
          }
-         if (c.kodepos_pengiriman) { ctx.fillText(c.kodepos_pengiriman, 160, currentY); currentY += 25; }
+         const provKodepos = [
+            c.provinsi_pengiriman ? c.provinsi_pengiriman.toUpperCase() : '',
+            c.kodepos_pengiriman  ? c.kodepos_pengiriman                : '',
+         ].filter(Boolean).join(' - ');
+         if (provKodepos) { ctx.fillText(provKodepos, 160, currentY); currentY += 25; }
       } else {
          const alamat = consumer?.alamat_rumah !== 'BELUM_DIISI' ? consumer?.alamat_rumah : '-';
          const alamatLines = wrapText(ctx, (alamat || '-').toUpperCase(), 590);
