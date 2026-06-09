@@ -3,19 +3,18 @@
 # Nikon Dashboard — Project Memory
 
 ## Tech Stack & Deployment
-- **Framework**: Next.js App Router (`/app` directory)
+- **Framework**: Next.js 16.2.6 App Router (Turbopack) · React 19 · Tailwind CSS v4 · TypeScript
 - **Database**: Supabase (Postgres + Edge Functions)
-- **Styling**: Tailwind CSS
-- **Language**: TypeScript
 - **WhatsApp**: WhatsApp Business API (Meta/Facebook Graph API) — bukan Fonnte, meski nama fungsinya `sendWhatsAppMessageViaFonnte`
 - **File storage**: Google Drive via `/api/upload-google-drive`
+- **Deploy frontend**: Vercel → branch **main** adalah production
 - **Deploy edge functions**: GitHub Actions → `.github/workflows/deploy-supabase-functions.yml`
   - Butuh secrets: `SUPABASE_ACCESS_TOKEN` dan `SUPABASE_PROJECT_REF`
   - Bisa trigger manual dari GitHub Actions tab
   - Supabase CLI: `npx supabase functions deploy <nama> --project-ref <ref>`
 
 ## Warna Brand
-- Nikon yellow: `#FFE800`
+- Nikon yellow: `#FFE500` (CSS var `--nikon-yellow`)
 
 ## Supabase Client Pattern
 ```ts
@@ -41,7 +40,12 @@ Admin pages proxy through `/api/admin/sb` — jangan hardcode URL Supabase langs
 ## Tabel Database Utama
 
 ### `events`
-`id`, `event_title`, `event_date`, `event_price`, `event_image`, `event_partisipant_stock`, `event_status` (`available`|`sold_out`), `event_description`, `event_payment_tipe` (`regular`|`deposit`|`gratis`), `event_speaker`, `event_speaker_genre`, `bank_info`, `deposit_amount`, `proposal_event_id`
+`id`, `event_title`, `event_date`, `event_price`, `event_image` (nullable), `event_partisipant_stock`, `event_description`, `event_payment_tipe`, `event_speaker`, `event_speaker_genre`, `bank_info`, `deposit_amount`, `proposal_event_id`
+
+**CHECK constraints:**
+- `event_payment_tipe`: `NULL | 'regular' | 'deposit' | 'gratis'`
+- `event_status`: `NULL | 'In stock' | 'Out of stock' | 'close'`
+- `event_image` sudah di-DROP NOT NULL — boleh NULL
 
 ### `event_registrations`
 `id`, `created_at`, `nama_lengkap`, `nomor_wa`, `email`, `kabupaten_kotamadya`, `tipe_kamera`, `event_name`, `event_id`, `bukti_transfer_url`, `status_pendaftaran` (`menunggu_validasi`|`terdaftar`|`ditolak`), `payment_type` (`regular`|`deposit`), `ticket_url`, `rejection_reason`, `is_attended`, `attended_at`, `attended_by`, `nama_bank`, `no_rekening`, `nama_pemilik_rekening`, `status_pengembalian_deposit` (`requested`|`Processed`), `bukti_pengembalian_deposit`, `refund_requested_at`
@@ -96,3 +100,23 @@ Pengaturan bot lain (URL file promo, dealer, dll)
 ## Catatan Deploy Edge Functions
 - Perubahan kode edge function **harus di-deploy** agar aktif di production
 - Tanpa deploy, perubahan fallback di `getMsg()` tidak efek karena DB menyimpan nilai lama
+
+## Auth
+- `verifyAdminSession(cookieStore)` — terima objek cookie getter `{ get: (name) => {value} | undefined }`, bukan string session mentah. Kembalikan `boolean`.
+- Contoh benar: `const cookieStore = await cookies(); return verifyAdminSession(cookieStore);`
+- `RoleGate` di `app/components/RoleGate.tsx` — roles admin events: `['admin_events', 'admin_deposit', 'admin_attendance', 'events', 'eventregistrations']`
+
+## Image Proxy (Google Drive)
+- URL Google Drive tidak bisa langsung di-render browser (CORS)
+- Proxy via `/api/events/image?id=<drive-file-id>` atau `/api/drive-file?id=<id>`
+- Helper `driveImgSrc(url)` di `app/nikon/page.tsx` mengekstrak ID dan mengubah ke proxy URL
+
+## Timezone
+- Semua format tanggal/waktu wajib `timeZone: 'Asia/Jakarta'` di opsi Intl
+- **Hanya berlaku untuk Date** — `toLocaleDateString`, `toLocaleString`, `toLocaleTimeString` pada `new Date(...)`
+- **JANGAN tambahkan** `timeZone` ke `.toLocaleString('id-ID')` pada **angka/number** — `NumberFormatOptions` tidak mengenal `timeZone` dan menyebabkan TypeScript build error di Vercel
+
+## Animasi (`app/globals.css`)
+Utility classes tersedia tanpa npm tambahan:
+- `.n-float` · `.n-glow` · `.n-bounce-arrow` · `.n-shimmer-btn` (dengan `::after` shimmer) · `.n-dot-bg` · `.n-gradient-bg` · `.n-text-gradient`
+- Keyframes: `bounce-in`, `spin-in`, `float-y`, `shimmer`, `glow-pulse`, `dot-drift`, `gradient-x`, `slide-left`, `slide-right`, `sticker-pop`, `bounce-down`, `badge-ping`, `word-pop`
