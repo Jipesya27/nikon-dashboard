@@ -638,7 +638,7 @@ export default function NikonDashboard() {
    /** Kompres gambar sebelum upload — maks 1800px, JPEG 0.82. PDF dilewati. */
    const compressForUpload = (file: File): Promise<File> => new Promise(resolve => {
       if (!file.type.startsWith('image/')) { resolve(file); return; }
-      const img = new Image();
+      const img = document.createElement('img') as HTMLImageElement;
       const url = URL.createObjectURL(file);
       img.onload = () => {
          URL.revokeObjectURL(url);
