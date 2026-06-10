@@ -19,6 +19,7 @@ import AddressFields from '@/app/components/AddressFields';
 import EventReport from '@/app/components/EventReport';
 import WaTemplatesTab from '@/app/components/WaTemplatesTab';
 import ExpenseClaimTab from '@/app/components/ExpenseClaimTab';
+import ResiTab from '@/app/components/ResiTab';
 
 /** Konversi Google Drive URL ke proxy lokal agar gambar bisa tampil di dashboard.
  *  drive.google.com tidak bisa di-load langsung karena CORS + domain whitelist Next.js. */
@@ -3610,6 +3611,7 @@ ${kode ? `
             { id: 'assets', label: '🗄️ Barang Aset', count: assets.length },
             { id: 'dealer', label: '🏪 Transaksi Dealer', count: dealerSheet?.rows.length },
             { id: 'affiliate', label: '🤝 Affiliate', count: affiliates.length },
+            { id: 'resi', label: '📦 Upload File Resi', count: undefined },
          ]
       },
       {
@@ -3650,6 +3652,7 @@ ${kode ? `
             if (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') return true;
             if (tab.id === 'userrole' || tab.id === 'autocomplete' || tab.id === 'wa_templates') return false;
             if (tab.id === 'expense_claim') return true; // semua karyawan bisa akses, filter per-user di API
+            if (tab.id === 'resi') return true; // semua karyawan bisa akses, filter per-user di API
             return (currentUser?.akses_halaman || []).includes(tab.id);
          })
       })).filter(group => group.tabs.length > 0);
@@ -5618,6 +5621,11 @@ ${kode ? `
                {/* ======================= KLAIM BIAYA ======================= */}
                {activeTab === 'expense_claim' && (
                   <ExpenseClaimTab currentUser={currentUser} />
+               )}
+
+               {/* ======================= UPLOAD FILE RESI ======================= */}
+               {activeTab === 'resi' && (
+                  <ResiTab currentUser={currentUser} />
                )}
 
                {/* ======================= LENDING FILTER HEADER ======================= */}
