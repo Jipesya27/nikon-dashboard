@@ -345,7 +345,8 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('folder', 'Klaim Biaya Karyawan');
+      fd.append('prefix', 'klaim');
+      fd.append('serial', `item${itemIdx}`);
       const res = await fetch('/api/upload-google-drive', { method: 'POST', body: fd });
       if (!res.ok) throw new Error(await res.text());
       const { url } = await res.json();
