@@ -121,8 +121,13 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
       );
     })
     .sort((a, b) => {
-      const va = (a[sortKey] ?? '').toLowerCase();
-      const vb = (b[sortKey] ?? '').toLowerCase();
+      const rawA = a[sortKey] ?? '';
+      const rawB = b[sortKey] ?? '';
+      if (typeof rawA === 'number' && typeof rawB === 'number') {
+        return sortDir === 'asc' ? rawA - rawB : rawB - rawA;
+      }
+      const va = String(rawA).toLowerCase();
+      const vb = String(rawB).toLowerCase();
       return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
     });
 
