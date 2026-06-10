@@ -79,6 +79,7 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
   const [showJneModal, setShowJneModal] = useState(false);
   const [parsingPdf,   setParsingPdf]   = useState(false);
   const [jneFileName,  setJneFileName]  = useState('');
+  const [jneFile,      setJneFile]      = useState<File | null>(null);
   const [savingJne,    setSavingJne]    = useState(false);
 
   const fileInputRef  = useRef<HTMLInputElement>(null);
@@ -159,6 +160,24 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
     try {
       const createdBy   = currentUser?.username     ?? '';
       const namaPembuat = currentUser?.nama_karyawan ?? '';
+
+      // Upload PDF ke Google Drive terlebih dahulu
+      let pdfUrl = '';
+      let pdfName = jneFileName;
+      if (jneFile) {
+        const fd = new FormData();
+        fd.append('file', jneFile);
+        fd.append('prefix', 'jne');
+        fd.append('serial', Date.now().toString());
+        fd.append('subfolderName', 'File Resi');
+        const upRes = await fetch('/api/upload-google-drive', { method: 'POST', body: fd });
+        if (upRes.ok) {
+          const upData = await upRes.json();
+          pdfUrl  = upData.url  ?? '';
+          pdfName = jneFileName;
+        }
+      }
+
       let saved = 0;
       for (const r of jneRows) {
         const payload = {
@@ -173,8 +192,8 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
           penerima:      r.receiver_name,
           barang:        r.goods,
           ongkir:        r.amount,
-          file_url:      '',
-          file_name:     '',
+          file_url:      pdfUrl,
+          file_name:     pdfName,
           catatan:       '',
         };
         const res = await fetch('/api/resi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -189,7 +208,7 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
   }
 
   async function parsePdfJne(file: File) {
-    setParsingPdf(true); setJneFileName(file.name);
+    setParsingPdf(true); setJneFileName(file.name); setJneFile(file);
     try {
       const fd = new FormData();
       fd.append('file', file);
