@@ -91,9 +91,15 @@ async function generateExpenseClaimPDF(
     page.drawText(wa(text), { x, y: yCur, size, font: bold ? fontBold : font, color });
   };
 
+  // Sort items by tanggal ASC untuk PDF
+  const sortedItems = [...claim.items].sort((a, b) =>
+    (a.tanggal || '').localeCompare(b.tanggal || '')
+  );
+
   // Header (centered)
   const headerLines = [
     `Claim by : ${wa(claim.nama_pembuat)}`,
+    ...(claim.from_person ? [`From : ${wa(claim.from_person)}`] : []),
     `To : ${wa(claim.to_person)}`,
     fmtDateHeader(claim.claim_date),
   ];
@@ -135,9 +141,9 @@ async function generateExpenseClaimPDF(
   y = headerRowY - ROW_H;
 
   // Data rows (items + 2 empty rows)
-  const MIN_ROWS = Math.max(claim.items.length + 2, 5);
+  const MIN_ROWS = Math.max(sortedItems.length + 2, 5);
   for (let i = 0; i < MIN_ROWS; i++) {
-    const item = claim.items[i];
+    const item = sortedItems[i];
     drawHLine(p1, y - ROW_H);
     if (item) {
       drawText(p1, String(i + 1),           COL_X.no   + 4, y - 13, 9);
@@ -297,7 +303,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
   function openCreate() {
     setEditTarget(null);
     setForm({
-      to_person: '', claim_date: new Date().toISOString().slice(0, 10),
+      from_person: '', to_person: '', claim_date: new Date().toISOString().slice(0, 10),
       items: [emptyItem()], receipt_urls: [], catatan: '',
     });
     setShowModal(true);
@@ -319,6 +325,12 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
   }
   function removeItem(idx: number) {
     setForm(f => ({ ...f, items: (f.items ?? []).filter((_, i) => i !== idx) }));
+  }
+  function sortItemsByDate() {
+    setForm(f => ({
+      ...f,
+      items: [...(f.items ?? [])].sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || '')),
+    }));
   }
 
   // ── Upload receipt ────────────────────────────────────────────────────────
@@ -453,10 +465,14 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
               {/* Header fields */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="label-form">From (Pengirim)</label>
+                  <input className="input-form" value={form.from_person ?? ''} onChange={e => setForm(f => ({ ...f, from_person: e.target.value }))} placeholder="Nama / divisi pengirim" />
+                </div>
+                <div>
                   <label className="label-form">To (Penerima) *</label>
                   <input className="input-form" value={form.to_person ?? ''} onChange={e => setForm(f => ({ ...f, to_person: e.target.value }))} placeholder="Nama penerima / atasan" />
                 </div>
-                <div>
+                <div className="col-span-2">
                   <label className="label-form">Tanggal Klaim *</label>
                   <input type="date" className="input-form" value={form.claim_date ?? ''} onChange={e => setForm(f => ({ ...f, claim_date: e.target.value }))} />
                 </div>
@@ -466,7 +482,10 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="label-form mb-0">Detail Pengeluaran *</label>
-                  <button onClick={addItem} className="text-xs text-blue-600 hover:underline">+ Tambah baris</button>
+                  <div className="flex gap-2">
+                    <button onClick={sortItemsByDate} className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2 py-0.5 rounded hover:bg-gray-50 transition" title="Urutkan berdasarkan tanggal">↑ Sort Tanggal</button>
+                    <button onClick={addItem} className="text-xs text-blue-600 hover:underline">+ Tambah baris</button>
+                  </div>
                 </div>
                 <div className="border rounded-lg overflow-hidden">
                   <table className="w-full text-sm">
@@ -580,6 +599,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
               {/* Claim summary */}
               <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
                 <p><span className="text-gray-500">Claim by:</span> <strong>{pdfTarget.nama_pembuat}</strong></p>
+                {pdfTarget.from_person && <p><span className="text-gray-500">From:</span> <strong>{pdfTarget.from_person}</strong></p>}
                 <p><span className="text-gray-500">To:</span> <strong>{pdfTarget.to_person}</strong></p>
                 <p><span className="text-gray-500">Tanggal:</span> {fmtDateHeader(pdfTarget.claim_date)}</p>
                 <p><span className="text-gray-500">Total:</span> <strong className="text-green-700">Rp {fmtRp(pdfTarget.total_nominal)}</strong></p>
@@ -676,7 +696,7 @@ function ClaimCard({ claim, isAdmin, currentUsername, onEdit, onDelete, onStatus
           </span>
           <div className="min-w-0">
             <p className="font-semibold text-sm text-gray-800 truncate">
-              {claim.nama_pembuat} → {claim.to_person}
+              {claim.nama_pembuat}{claim.from_person ? ` (${claim.from_person})` : ''} → {claim.to_person}
             </p>
             <p className="text-xs text-gray-500">{fmtDate(claim.claim_date)} · {claim.items.length} item · Rp {new Intl.NumberFormat('id-ID').format(claim.total_nominal)}</p>
           </div>

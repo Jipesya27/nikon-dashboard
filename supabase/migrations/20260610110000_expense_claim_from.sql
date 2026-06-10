@@ -1,0 +1,1 @@
+ALTER TABLE expense_claim ADD COLUMN IF NOT EXISTS from_person TEXT NOT NULL DEFAULT '';

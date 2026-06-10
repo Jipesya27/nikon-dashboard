@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
     .insert({
       created_by:   user.username,
       nama_pembuat: user.nama,
+      from_person:  body.from_person ?? '',
       to_person:    body.to_person ?? '',
       claim_date:   body.claim_date ?? new Date().toISOString().slice(0, 10),
       status:       'draft',
