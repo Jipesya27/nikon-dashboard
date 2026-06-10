@@ -58,7 +58,9 @@ function parseJneText(text: string): JneRow[] {
       destination = destParts.join(' ');
       rest = i + 1; // skip phone line
     }
-    rest += 2; // skip '11 PT ALTA' + 'NIKINDO' (shipper constant)
+    // Skip shipper: cari NIKINDO (bisa 2 atau 3 baris tergantung PDF)
+    while (rest < bl.length && bl[rest] !== 'NIKINDO') rest++;
+    rest++; // skip NIKINDO itu sendiri
 
     // Cari baris Cash untuk extract amount
     const cashIdx = bl.findIndex((l, i) => i >= rest && /Cash[\d,]+\.\d/.test(l));
