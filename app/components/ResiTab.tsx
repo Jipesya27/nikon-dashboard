@@ -71,6 +71,7 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
   const [showJneModal, setShowJneModal] = useState(false);
   const [parsingPdf,   setParsingPdf]   = useState(false);
   const [jneFileName,  setJneFileName]  = useState('');
+  const [savingJne,    setSavingJne]    = useState(false);
 
   const fileInputRef  = useRef<HTMLInputElement>(null);
   const jnePdfRef     = useRef<HTMLInputElement>(null);
@@ -143,6 +144,33 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
     } catch (e) {
       alert('Gagal upload: ' + (e instanceof Error ? e.message : 'Error'));
     } finally { setUploading(false); }
+  }
+
+  async function saveJneToDb() {
+    setSavingJne(true);
+    try {
+      const createdBy   = currentUser?.username     ?? '';
+      const namaPembuat = currentUser?.nama_karyawan ?? '';
+      let saved = 0;
+      for (const r of jneRows) {
+        const payload = {
+          created_by:    createdBy,
+          nama_pembuat:  namaPembuat,
+          tanggal_kirim: r.date,
+          nama_expedisi: `JNE ${r.service}`,
+          file_url:      '',
+          file_name:     '',
+          catatan:       `${r.cnote_no} | ${r.destination} | ${r.receiver_name} | ${r.goods}`,
+        };
+        const res = await fetch('/api/resi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (res.ok) saved++;
+      }
+      alert(`${saved} dari ${jneRows.length} resi berhasil disimpan.`);
+      setShowJneModal(false);
+      fetchRecords();
+    } catch (e) {
+      alert('Gagal simpan: ' + (e instanceof Error ? e.message : 'Error'));
+    } finally { setSavingJne(false); }
   }
 
   async function parsePdfJne(file: File) {
@@ -481,6 +509,13 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
 
             <div className="px-5 py-4 border-t flex gap-2 justify-end">
               <button onClick={() => setShowJneModal(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">Tutup</button>
+              <button
+                onClick={saveJneToDb}
+                disabled={savingJne}
+                className="px-4 py-2 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-black font-semibold text-sm disabled:opacity-50"
+              >
+                {savingJne ? 'Menyimpan...' : `💾 Simpan ke DB (${jneRows.length} resi)`}
+              </button>
             </div>
           </div>
         </div>
