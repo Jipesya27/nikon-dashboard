@@ -32,23 +32,27 @@ function parseJneText(text: string): JneRow[] {
     const e = b + 1 < starts.length ? starts[b + 1].idx : lines.length;
     const bl = lines.slice(s, e);
 
-    const [dd, mm, yy] = bl[1].split('-');
+    // Tanggal bisa 1 baris "DD-MM-YY" atau terpecah 2 baris "DD-MM-" + "YY"
+    let dateStr = bl[1];
+    let timeIdx = 2;
+    if (bl[1].endsWith('-')) { dateStr = bl[1] + bl[2]; timeIdx = 3; }
+    const [dd, mm, yy] = dateStr.split('-');
     const isoDate = `${2000 + parseInt(yy)}-${mm}-${dd}`;
-    const time = bl[2];
+    const time = bl[timeIdx];
 
     let service = '', destination = '';
-    let rest = 4;
-    const l3 = bl[3];
+    let rest = timeIdx + 2; // default: timeIdx+1 = service line, +2 = baris setelahnya
+    const l3 = bl[timeIdx + 1];
     // Baris lengkap: <service><weight><qty><DEST>+<phone>
     const full = l3.match(/^(.+?)(\d)(\d)([A-Z].+)\+\d+$/);
     if (full) {
       service = full[1];
       destination = full[4].trim();
-      rest = 4;
+      rest = timeIdx + 2;
     } else {
       // Destination multi-baris — service = strip 2 digit terakhir (weight+qty)
       service = l3.replace(/\d{2}$/, '');
-      let i = 4;
+      let i = timeIdx + 2;
       const destParts: string[] = [];
       while (i < bl.length && !bl[i].startsWith('+')) { destParts.push(bl[i]); i++; }
       destination = destParts.join(' ');
