@@ -1,3 +1,4 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "buildCommand": "NEXT_DEBUG_BUILD=1 npm run build"
 }
