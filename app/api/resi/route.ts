@@ -66,10 +66,17 @@ export async function POST(req: NextRequest) {
       created_by:    createdBy,
       nama_pembuat:  namaPembuat,
       tanggal_kirim: body.tanggal_kirim ?? new Date().toISOString().slice(0, 10),
+      jam_kirim:     body.jam_kirim     ?? '',
       nama_expedisi: body.nama_expedisi ?? '',
-      file_url:      body.file_url ?? '',
-      file_name:     body.file_name ?? '',
-      catatan:       body.catatan ?? '',
+      cnote_no:      body.cnote_no      ?? '',
+      service:       body.service       ?? '',
+      tujuan:        body.tujuan        ?? '',
+      penerima:      body.penerima      ?? '',
+      barang:        body.barang        ?? '',
+      ongkir:        body.ongkir        ?? 0,
+      file_url:      body.file_url      ?? '',
+      file_name:     body.file_name     ?? '',
+      catatan:       body.catatan       ?? '',
     })
     .select()
     .single();
