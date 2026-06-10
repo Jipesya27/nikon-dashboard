@@ -302,6 +302,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
     } finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchClaims(); }, [fetchClaims]);
 
   // ── Open modal ────────────────────────────────────────────────────────────
@@ -439,7 +440,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
         <div className="text-center py-16 text-gray-400">
           <p className="text-4xl mb-3">🧾</p>
           <p className="font-semibold">Belum ada klaim</p>
-          <p className="text-sm">Klik "Buat Klaim Baru" untuk mulai</p>
+          <p className="text-sm">Klik &quot;Buat Klaim Baru&quot; untuk mulai</p>
         </div>
       )}
 
