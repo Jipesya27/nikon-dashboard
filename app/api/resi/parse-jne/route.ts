@@ -62,13 +62,34 @@ function parseJneText(text: string): JneRow[] {
     const amtM = cashLine.match(/Cash([\d,]+)\.00/);
     const amount = amtM ? parseInt(amtM[1].replace(/,/g, '')) : 0;
 
-    // pdf-parse memproses kolom kiri dulu lalu kolom kanan, sehingga
-    // middleLines = [receiver baris...] + [goods baris...] dengan jumlah sama.
-    // Split di tengah untuk memisahkan penerima dan barang.
+    // Teks sebelum angka pertama di baris Cash (bisa berisi barang/penerima yang menyatu)
+    const cashPrefixM = cashLine.match(/^([^0-9]*)/);
+    const cashPrefix = cashPrefixM ? cashPrefixM[1].trim() : '';
     const middleLines = cashIdx > 0 ? bl.slice(rest, cashIdx) : [];
-    const half = Math.floor(middleLines.length / 2);
-    const receiver_name = middleLines.slice(0, half).join(' ');
-    const goods = middleLines.slice(half).join(' ');
+
+    let receiver_name = '', goods = '';
+    if (!cashPrefix) {
+      // Case A: baris Cash murni angka — middleLines = penerima + barang, split tengah (ceil)
+      const half = Math.ceil(middleLines.length / 2);
+      receiver_name = middleLines.slice(0, half).join(' ');
+      goods = middleLines.slice(half).join(' ');
+    } else if (middleLines.length === 0) {
+      // Case B: penerima+barang menyatu di baris Cash — split dengan kata barang di akhir
+      const gMatch = cashPrefix.match(
+        /(BATERAI|LENSA KAMERA|KAMERA|LENSA|FLASH|CHARGER|TRIPOD|MEMORY CARD|MEMORY|CARD|AKSESORIS|FILTER|HOOD|STRAP|CASE|REMOTE|GRIP|SPEEDLIGHT|SOFTBOX|STAND|CABLE|CLEANING KIT|KIT|SET|BUNDLE|BAG|TAS)$/,
+      );
+      if (gMatch) {
+        goods = gMatch[1];
+        receiver_name = cashPrefix.slice(0, cashPrefix.length - goods.length).trim();
+      } else {
+        receiver_name = cashPrefix;
+        goods = '';
+      }
+    } else {
+      // Case C: cashPrefix = barang saja, middleLines = semua baris penerima
+      receiver_name = middleLines.join(' ');
+      goods = cashPrefix;
+    }
 
     rows.push({
       no: starts[b].no,
