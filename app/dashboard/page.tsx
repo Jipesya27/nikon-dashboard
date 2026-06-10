@@ -18,6 +18,7 @@ import Header from '@/app/Header';
 import AddressFields from '@/app/components/AddressFields';
 import EventReport from '@/app/components/EventReport';
 import WaTemplatesTab from '@/app/components/WaTemplatesTab';
+import ExpenseClaimTab from '@/app/components/ExpenseClaimTab';
 
 /** Konversi Google Drive URL ke proxy lokal agar gambar bisa tampil di dashboard.
  *  drive.google.com tidak bisa di-load langsung karena CORS + domain whitelist Next.js. */
@@ -3602,7 +3603,8 @@ ${kode ? `
          category: 'Operasional',
          tabs: [
             { id: 'promos', label: '📢 Promo', count: promos.length },
-            { id: 'claims', label: '🎫 Claim', count: claims.length },
+            { id: 'claims', label: '🎫 Claim Promo', count: claims.length },
+            { id: 'expense_claim', label: '🧾 Klaim Biaya', count: undefined },
             { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
             { id: 'services', label: '🔧 Service', count: services.length },
             { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
@@ -3647,6 +3649,7 @@ ${kode ? `
          tabs: group.tabs.filter(tab => {
             if (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') return true;
             if (tab.id === 'userrole' || tab.id === 'autocomplete' || tab.id === 'wa_templates') return false;
+            if (tab.id === 'expense_claim') return true; // semua karyawan bisa akses, filter per-user di API
             return (currentUser?.akses_halaman || []).includes(tab.id);
          })
       })).filter(group => group.tabs.length > 0);
@@ -5610,6 +5613,11 @@ ${kode ? `
                         </div>
                      )}
                   </div>
+               )}
+
+               {/* ======================= KLAIM BIAYA ======================= */}
+               {activeTab === 'expense_claim' && (
+                  <ExpenseClaimTab currentUser={currentUser} />
                )}
 
                {/* ======================= LENDING FILTER HEADER ======================= */}

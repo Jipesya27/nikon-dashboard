@@ -1,0 +1,635 @@
+================================================================================
+  DOKUMENTASI STRUKTUR DATABASE — NIKON DASHBOARD
+  Platform: Supabase (PostgreSQL)
+  Dibuat: 2026-06-03
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  DAFTAR TABEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1.  karyawan
+  2.  konsumen
+  3.  riwayat_pesan
+  4.  claim_promo
+  5.  garansi
+  6.  promosi
+  7.  autocomplete
+  8.  status_service
+  9.  pengaturan_bot
+  10. events
+  11. event_registrations
+  12. budget_approval
+  13. barang_aset
+  14. peminjaman_barang
+  15. affiliate
+  16. affiliate_skema
+  17. affiliate_penjualan
+
+
+================================================================================
+  1. TABEL: karyawan
+  Deskripsi: Data admin dan staf internal yang bisa login ke dashboard
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id_karyawan            | UUID          | PRIMARY KEY           | Generated via gen_random_uuid()
+  username               | TEXT          | NOT NULL              | Dipakai untuk login
+  password               | TEXT          |                       | bcrypt hash
+  nama_karyawan          | TEXT          | NOT NULL              |
+  role                   | TEXT          | CHECK (lihat bawah)   | Level akses
+  status_aktif           | BOOLEAN       |                       | true = aktif
+  akses_halaman          | TEXT[]        |                       | Array tab yang bisa diakses (non-admin)
+  nomor_wa               | TEXT          |                       | Untuk reset password via OTP WA
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+  CHECK CONSTRAINT — role:
+    'Super Admin' | 'Admin' | 'Customer Service' | 'Marketing' | 'Finance' | 'Service' | 'Karyawan'
+
+  CATATAN:
+  - Super Admin: akses penuh + Editor Teks Bot
+  - Admin: akses penuh
+  - Role lain: akses terbatas sesuai akses_halaman[]
+
+
+================================================================================
+  2. TABEL: konsumen
+  Deskripsi: Pelanggan yang berinteraksi via WhatsApp chatbot
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  nomor_wa               | TEXT          | PRIMARY KEY           | Format: 62xxx (kode negara tanpa +)
+  id_konsumen            | UUID          |                       |
+  nama_lengkap           | TEXT          |                       |
+  status_langkah         | TEXT          |                       | State machine chatbot (lihat enum)
+  alamat_rumah           | TEXT          |                       |
+  nik                    | TEXT          |                       | Nomor Induk Kependudukan
+  kelurahan              | TEXT          |                       |
+  kecamatan              | TEXT          |                       |
+  kabupaten_kotamadya    | TEXT          |                       |
+  provinsi               | TEXT          |                       |
+  kodepos                | TEXT          |                       |
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+  ENUM — status_langkah:
+    'START'                        Menu utama
+    'TALKING_TO_CS'                Sedang bicara dengan CS
+    'MENUNGGU_UPLOAD_WEB'          Diarahkan ke form claim web
+    'MENUNGGU_UPLOAD_GARANSI_WEB'  Diarahkan ke form garansi web
+    'TANYA_UPDATE_WA'              Proses update nomor WA
+    'TANYA_UPDATE_WA_INPUT'        Input nomor WA baru
+    'OFFER_GARANSI_AFTER_CLAIM'    Ditawari daftar garansi setelah claim
+    'MENUNGGU_SERI_CLAIM'          Input nomor seri untuk cek status
+    'MENUNGGU_SERI_GARANSI'        Input nomor seri untuk cek status garansi
+    'MENUNGGU_RESI_SERVICE'        Input nomor resi untuk cek status service
+
+
+================================================================================
+  3. TABEL: riwayat_pesan
+  Deskripsi: Log semua pesan WhatsApp masuk dan keluar
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id_pesan               | UUID          | PRIMARY KEY           | Generated via gen_random_uuid()
+  nomor_wa               | TEXT          | FK → konsumen         |
+  nama_profil_wa         | TEXT          |                       | Nama profil WA konsumen
+  arah_pesan             | TEXT          | 'IN' | 'OUT'          | IN = dari konsumen, OUT = dari bot/CS
+  isi_pesan              | TEXT          |                       | Isi teks pesan
+  waktu_pesan            | TIMESTAMPTZ   |                       |
+  bicara_dengan_cs       | BOOLEAN       |                       | true = ditangani CS manusia
+  url_media              | TEXT          |                       | URL jika pesan mengandung media
+  jenis_pesan            | TEXT          | 'chat'|'system'|'bot' |
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+  RELASI: nomor_wa → konsumen.nomor_wa  [N:1]
+
+
+================================================================================
+  4. TABEL: claim_promo
+  Deskripsi: Pengajuan klaim promosi produk Nikon
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id_claim               | UUID          | PRIMARY KEY           | Generated via gen_random_uuid()
+  nomor_wa               | TEXT          | FK → konsumen         |
+  nomor_seri             | TEXT          |                       | Nomor seri produk
+  tipe_barang            | TEXT          |                       | Autocomplete dari tabel autocomplete
+  tanggal_pembelian      | DATE          |                       |
+  nama_toko              | TEXT          |                       | Autocomplete dari tabel autocomplete
+  jenis_promosi          | TEXT          | CHECK (lihat bawah)   | Jenis promosi yang diklaim
+  validasi_by_mkt        | TEXT          | CHECK (lihat bawah)   | Status validasi Marketing
+  validasi_by_fa         | TEXT          | CHECK (lihat bawah)   | Status validasi Finance & Accounting
+  catatan_mkt            | TEXT          |                       | Catatan dari Marketing
+  catatan_fa             | TEXT          |                       | Catatan dari Finance & Accounting
+  nama_jasa_pengiriman   | TEXT          |                       | Jasa kirim hadiah
+  nomor_resi             | TEXT          |                       | Resi pengiriman hadiah
+  resi_sent_at           | TIMESTAMPTZ   | NULLABLE              | Waktu admin kirim status resi via WA
+  link_kartu_garansi     | TEXT          |                       | URL Google Drive
+  link_nota_pembelian    | TEXT          |                       | URL Google Drive
+  nomor_wa_update        | TEXT          |                       | Nomor WA alternatif (jika beda)
+  nama_pendaftar         | TEXT          |                       |
+  nama_penerima_claim    | TEXT          |                       |
+  alamat_pengiriman      | TEXT          |                       |
+  tanggal_cetak          | TEXT[]        |                       | Array timestamp waktu cetak
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+  CHECK CONSTRAINT — validasi_by_mkt, validasi_by_fa:
+    'Dalam Proses Verifikasi' | 'Valid' | 'Ditolak'
+    (+ 'HOLD' di aplikasi, sebelum migrasi enum)
+
+  CHECK CONSTRAINT — jenis_promosi:
+    'Cashback' | 'Free Aksesori' | 'Free Lensa' | 'Free Battery' | 'Free Memory Card'
+    'Free Bag' | 'Voucher Belanja' | 'Diskon Service' | 'Trade-in' | 'Bundling' | 'Lainnya'
+
+  STATUS WARNA (logic di UI, bukan kolom DB):
+    Putih  = Belum dicek (validasi_by_mkt NULL)
+    Orange = HOLD (salah satu validasi = 'HOLD')
+    Biru   = Tunggu FA (mkt Valid, fa belum)
+    Pink   = Tunggu Resi (keduanya Valid, resi belum ada)
+    Merah  = Tidak Valid (salah satu = 'Ditolak')
+    Hijau  = Selesai (resi ada, resi_sent_at NULL)
+    Teal   = Resi Terkirim (resi ada + resi_sent_at terisi)
+
+  RELASI: nomor_wa → konsumen.nomor_wa  [N:1]
+
+  WA TEMPLATES TERKAIT:
+    notif_claim_received  → saat submit baru
+    notif_claim_approved  → saat admin validasi = Valid
+    notif_claim_rejected  → saat admin validasi = Tidak Valid
+
+
+================================================================================
+  5. TABEL: garansi
+  Deskripsi: Registrasi garansi produk Nikon
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id_garansi             | UUID          | PRIMARY KEY           | Generated via gen_random_uuid()
+  id_claim               | UUID          | FK → claim_promo, NULLABLE | Opsional (bisa standalone)
+  nomor_wa               | TEXT          | FK → konsumen (soft)  |
+  nomor_wa_update        | TEXT          |                       | Nomor WA alternatif
+  nama_pendaftar         | TEXT          |                       |
+  nama_toko              | TEXT          |                       |
+  nomor_seri             | TEXT          |                       |
+  tipe_barang            | TEXT          |                       |
+  tanggal_pembelian      | DATE          |                       |
+  status_validasi        | TEXT          | CHECK (lihat bawah)   | Status utama validasi garansi
+  jenis_garansi          | TEXT          | CHECK (lihat bawah)   |
+  lama_garansi           | TEXT          | CHECK (lihat bawah)   |
+  validasi_by_mkt        | TEXT          | CHECK (lihat bawah)   |
+  validasi_by_fa         | TEXT          | CHECK (lihat bawah)   |
+  catatan_mkt            | TEXT          |                       |
+  catatan_fa             | TEXT          |                       |
+  link_kartu_garansi     | TEXT          |                       | URL Google Drive
+  link_nota_pembelian    | TEXT          |                       | URL Google Drive
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+  CHECK CONSTRAINT — status_validasi:
+    'Menunggu' | 'Proses Validasi' | 'Valid' | 'Tidak Valid'
+
+  CHECK CONSTRAINT — validasi_by_mkt, validasi_by_fa:
+    'Proses Validasi' | 'Valid' | 'Ditolak'
+
+  CHECK CONSTRAINT — jenis_garansi:
+    'Jasa 30%' | 'Jasa 50%' | 'Jasa 100%' | 'Sparepart 30%' | 'Sparepart 50%'
+    'Sparepart 100%' | 'Full' | 'Extended 2 Years'
+
+  CHECK CONSTRAINT — lama_garansi:
+    '6 Bulan' | '1 Tahun' | '2 Tahun' | '3 Tahun'
+
+  RELASI:
+    id_claim   → claim_promo.id_claim  [N:1, opsional]
+    nomor_wa   → konsumen.nomor_wa     [N:1]
+
+  INDEX:
+    idx_garansi_nomor_wa   ON (nomor_wa)
+    idx_garansi_nomor_seri ON (nomor_seri)
+
+  WA TEMPLATES TERKAIT:
+    notif_garansi_received  → saat submit baru
+    notif_garansi_approved  → saat admin validasi = Valid
+    notif_garansi_rejected  → saat admin validasi = Tidak Valid
+
+
+================================================================================
+  6. TABEL: promosi
+  Deskripsi: Master data promosi aktif yang tersedia
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id_promo               | UUID          | PRIMARY KEY           |
+  nama_promo             | TEXT          |                       | Autocomplete: field_key='nama_promo'
+  tipe_produk            | JSONB         |                       | Array: [{nama_produk: string}]
+  tanggal_mulai          | DATE          |                       |
+  tanggal_selesai        | DATE          |                       |
+  status_aktif           | BOOLEAN       |                       |
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+
+================================================================================
+  7. TABEL: autocomplete
+  Deskripsi: Saran nilai isian untuk dropdown/autocomplete di form
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id                     | UUID          | PRIMARY KEY           |
+  field_key              | TEXT          |                       | Kategori saran (lihat bawah)
+  value                  | TEXT          |                       | Nilai yang disarankan
+  hidden                 | BOOLEAN       |                       | true = disembunyikan dari saran
+
+  NILAI field_key yang digunakan:
+    'tipe_barang'   → nama model/tipe produk Nikon
+    'nama_toko'     → nama toko/dealer
+    'nama_promo'    → nama promosi
+    'speaker'       → nama pembicara event
+
+
+================================================================================
+  8. TABEL: status_service
+  Deskripsi: Antrian dan status perbaikan produk di service center
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id_service             | UUID          | PRIMARY KEY           |
+  nomor_tanda_terima     | TEXT          |                       | Nomor tanda terima service
+  nomor_seri             | TEXT          |                       | Nomor seri produk
+  status_service         | TEXT          | CHECK (lihat bawah)   |
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+  CHECK CONSTRAINT — status_service:
+    'Diterima' | 'Pengecekan oleh Teknisi' | 'Menunggu Sparepart' | 'Dalam Pengerjaan'
+    'Quality Check' | 'Siap Diambil' | 'Selesai' | 'Tidak Bisa Diperbaiki' | 'Dibatalkan'
+
+
+================================================================================
+  9. TABEL: pengaturan_bot
+  Deskripsi: Konfigurasi chatbot dan pengaturan sistem (key-value store)
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id                     | INTEGER       | PRIMARY KEY           |
+  nama_pengaturan        | TEXT          | UNIQUE                | Key konfigurasi
+  url_file               | TEXT          |                       | Nilai berupa URL
+  description            | TEXT          |                       | Nilai berupa teks
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+  updated_at             | TIMESTAMPTZ   |                       |
+
+  KEY PENTING (nama_pengaturan):
+    'notif_channel'         → 'wa_only' | 'email_only' | 'wa_and_email'
+    'admin_email'           → alamat email admin untuk notifikasi
+    'chatbot_text:*'        → teks pesan chatbot (prefix chatbot_text:)
+
+
+================================================================================
+  10. TABEL: events
+  Deskripsi: Master data event/workshop yang diselenggarakan
+================================================================================
+
+  Kolom                       | Tipe      | Constraint          | Keterangan
+  ----------------------------|-----------|---------------------|---------------------------
+  id                          | UUID      | PRIMARY KEY         | Generated via gen_random_uuid()
+  created_at                  | TIMESTAMPTZ | DEFAULT now()     |
+  event_title                 | TEXT      |                     | Judul event
+  event_date                  | TEXT      |                     | Tanggal (format teks fleksibel)
+  event_price                 | TEXT      |                     | Harga tampilan (teks)
+  event_image                 | TEXT      |                     | Google Drive URL gambar
+  event_partisipant_stock     | INTEGER   | DEFAULT 0           | Kuota peserta
+  event_status                | TEXT      | CHECK (lihat bawah) | Status ketersediaan
+  event_description           | TEXT      |                     | Detail acara
+  event_payment_tipe          | TEXT      | CHECK (lihat bawah) | Tipe pembayaran
+  event_speaker               | TEXT      |                     | Nama pembicara
+  event_speaker_genre         | TEXT      |                     | Genre/kategori pembicara
+  event_upload_payment_screenshot | TEXT  |                     | Instruksi upload bukti bayar
+  bank_info                   | TEXT      |                     | Info rekening untuk transfer
+  deposit_amount              | TEXT      |                     | Nominal deposit (jika deposit)
+  proposal_event_id           | TEXT      |                     | Relasi ke budget_approval
+
+  CHECK CONSTRAINT — event_status:
+    'In stock' | 'Out of stock' | 'close'
+
+  CHECK CONSTRAINT — event_payment_tipe:
+    'regular' | 'deposit'
+    (Note: 'gratis' ditangani secara logis di kode, tidak di constraint DB)
+
+  RELASI: id → event_registrations.event_id  [1:N]
+
+
+================================================================================
+  11. TABEL: event_registrations
+  Deskripsi: Data peserta yang mendaftar pada suatu event
+================================================================================
+
+  Kolom                       | Tipe      | Constraint          | Keterangan
+  ----------------------------|-----------|---------------------|---------------------------
+  id                          | UUID      | PRIMARY KEY         | Juga dipakai di QR code tiket
+  created_at                  | TIMESTAMPTZ | DEFAULT now()     |
+  event_id                    | TEXT      | FK → events.id      |
+  event_name                  | TEXT      |                     | Denormalized (bukan FK name)
+  nama_lengkap                | TEXT      |                     |
+  nomor_wa                    | TEXT      |                     |
+  email                       | TEXT      | NULLABLE            |
+  tipe_kamera                 | TEXT      |                     | Tipe kamera yang dimiliki
+  kabupaten_kotamadya         | TEXT      |                     |
+  payment_type                | TEXT      | CHECK (lihat bawah) | Tipe pembayaran saat daftar
+  status_pendaftaran          | TEXT      | CHECK (lihat bawah) | Status pendaftaran
+  rejection_reason            | TEXT      |                     | Alasan penolakan
+  bukti_transfer_url          | TEXT      |                     | Google Drive URL bukti bayar
+  ticket_url                  | TEXT      |                     | Google Drive URL PDF tiket
+  is_attended                 | BOOLEAN   | DEFAULT false       | Sudah absen atau belum
+  attended_at                 | TIMESTAMPTZ | NULLABLE          | Waktu scan QR absensi
+  attended_by                 | TEXT      |                     | Nama admin yang scan
+  nama_bank                   | TEXT      |                     | Untuk keperluan refund deposit
+  no_rekening                 | TEXT      |                     | Untuk keperluan refund deposit
+  nama_pemilik_rekening       | TEXT      |                     | Untuk keperluan refund deposit
+  status_pengembalian_deposit | TEXT      | CHECK (lihat bawah) | Status refund deposit
+  bukti_pengembalian_deposit  | TEXT      |                     | Google Drive URL bukti refund
+  refund_requested_at         | TIMESTAMPTZ | NULLABLE          | Waktu permintaan refund
+
+  CHECK CONSTRAINT — status_pendaftaran:
+    'menunggu_validasi' | 'terdaftar' | 'ditolak'
+
+  CHECK CONSTRAINT — payment_type:
+    'regular' | 'deposit'
+
+  CHECK CONSTRAINT — status_pengembalian_deposit:
+    'Diminta' | 'Diproses' | 'Sudah Dikembalikan' | 'Ditolak'
+
+  FORMAT QR CODE TIKET:
+    "NIKON-EVT|{id}|{event_title}"
+
+  RELASI: event_id → events.id  [N:1]
+
+  WA TEMPLATES TERKAIT:
+    notif_daftar_event       → saat daftar event berbayar
+    notif_event_approved     → saat admin approve + generate tiket
+    notif_event_rejected     → saat admin reject
+    notif_event_attendance   → saat scan QR absensi
+    notif_deposit_refund     → saat admin proses refund deposit
+
+  CATATAN PENTING — Event GRATIS:
+    - status_pendaftaran langsung 'terdaftar' tanpa perlu validasi admin
+    - Tiket di-generate otomatis saat pendaftaran
+    - Notifikasi WA berupa teks bebas (BUKAN template Meta)
+
+
+================================================================================
+  12. TABEL: budget_approval
+  Deskripsi: Proposal anggaran untuk event atau operasional
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id_budget              | UUID          | PRIMARY KEY           |
+  proposal_no            | TEXT          |                       | Nomor proposal
+  title                  | TEXT          |                       | Judul proposal
+  period                 | TEXT          |                       | Periode/bulan anggaran
+  objectives             | TEXT          |                       | Tujuan proposal
+  detail_activity        | TEXT          |                       | Detail kegiatan
+  expected_result        | TEXT          |                       | Hasil yang diharapkan
+  total_cost             | NUMERIC       |                       | Total biaya
+  budget_source          | TEXT          | CHECK (lihat bawah)   | Sumber anggaran
+  drafter_name           | TEXT          |                       | Pembuat proposal
+  proposed_name          | TEXT          |                       | Nama PROPOSED/PREPARED BY
+  mgt_name_1             | TEXT          |                       | Nama Management Approver (kolom 1)
+  mgt_name_2             | TEXT          |                       | Nama Management Approver (kolom 2)
+  mgt_name_3             | TEXT          |                       | Nama Management Approver (kolom 3/CONSENT)
+  finance_name           | TEXT          |                       | Nama Finance & Accounting Approver
+  mgt_comment_1          | TEXT          |                       | Komentar management
+  mgt_comment_2          | TEXT          |                       | Komentar management
+  mgt_consent            | TEXT          | CHECK (lihat bawah)   | Keputusan management
+  finance_consent        | TEXT          | CHECK (lihat bawah)   | Keputusan finance
+  items                  | JSONB         |                       | Array BudgetItem (lihat struktur bawah)
+  attachment_urls        | TEXT[]        |                       | Array URL Google Drive lampiran
+  event_date             | TEXT          |                       | Tanggal event (jika ada)
+  event_image            | TEXT          |                       | Gambar event (jika ada)
+  linked_event_id        | TEXT          | FK → events.id        | Relasi ke event (opsional)
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+  CHECK CONSTRAINT — mgt_consent, finance_consent:
+    'Approved' | 'Rejected' | 'Pending Review' | 'Need Revision'
+
+  CHECK CONSTRAINT — budget_source:
+    'Marketing Budget' | 'Operational Budget' | 'Event Budget' | 'Service Budget' | 'Other'
+
+  STRUKTUR JSONB — items (array BudgetItem):
+    [
+      {
+        purpose:    string,   -- Keperluan/item
+        qty:        number,   -- Jumlah
+        cost_unit:  number,   -- Harga per unit
+        value:      number,   -- Total nilai (qty * cost_unit)
+        petty_cash: string?,  -- Kode petty cash (opsional)
+        item_type:  'event' | 'petty'  -- Tipe item
+      }
+    ]
+
+
+================================================================================
+  13. TABEL: barang_aset
+  Deskripsi: Inventori aset perusahaan yang bisa dipinjamkan
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id                     | UUID          | PRIMARY KEY           |
+  nama_barang_aset       | TEXT          |                       | Nama barang/aset
+  no_seri_aset           | TEXT          |                       | Nomor seri aset
+  accs1 – accs7          | TEXT          |                       | Aksesori bawaan (7 slot)
+  catatan                | TEXT          |                       | Catatan tambahan
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+  CATATAN: Tidak ada FK langsung ke peminjaman_barang.
+  Relasi via field nama_barang di items_dipinjam (JSONB) — denormalized.
+
+
+================================================================================
+  14. TABEL: peminjaman_barang
+  Deskripsi: Peminjaman aset kepada konsumen atau pihak luar
+================================================================================
+
+  Kolom                       | Tipe      | Constraint          | Keterangan
+  ----------------------------|-----------|---------------------|---------------------------
+  id_peminjaman               | UUID      | PRIMARY KEY         |
+  nomor_wa_peminjam           | TEXT      | FK → konsumen       |
+  nama_peminjam               | TEXT      |                     |
+  link_ktp_peminjam           | TEXT      |                     | Google Drive URL foto KTP
+  items_dipinjam              | JSONB     |                     | Array PeminjamanItem (lihat bawah)
+  foto_penerimaan             | TEXT[]    |                     | Array URL foto saat terima
+  foto_pengembalian           | TEXT[]    |                     | Array URL foto saat kembali
+  tanggal_peminjaman          | DATE      |                     |
+  tanggal_pengembalian        | TIMESTAMPTZ | NULLABLE          | Waktu aktual dikembalikan
+  tanggal_estimasi_pengembalian | TIMESTAMPTZ | NULLABLE        | Target tanggal kembali
+  reminder_sent_at            | TIMESTAMPTZ | NULLABLE          | Waktu terakhir reminder dikirim
+  status_peminjaman           | TEXT      | CHECK: 'aktif'|'selesai' |
+  status_wa                   | TEXT      |                     | Status pengiriman WA
+  created_at                  | TIMESTAMPTZ | DEFAULT now()     |
+  updated_at                  | TIMESTAMPTZ |                   |
+
+  CHECK CONSTRAINT — status_peminjaman:
+    'aktif' | 'selesai'
+
+  STRUKTUR JSONB — items_dipinjam (array PeminjamanItem):
+    [
+      {
+        nama_barang:          string,
+        nomor_seri:           string,
+        accs1 – accs7:        string?,
+        catatan:              string?,   -- Catatan saat pinjam
+        catatan_pengembalian: string?,   -- Catatan saat kembali
+        catatan_admin:        string?,
+        status_pengembalian:  'dipinjam' | 'dikembalikan'
+      }
+    ]
+
+  INDEX:
+    idx_peminjaman_active_estimasi ON (tanggal_estimasi_pengembalian)
+      WHERE status_peminjaman = 'aktif' AND reminder_sent_at IS NULL
+
+  RELASI: nomor_wa_peminjam → konsumen.nomor_wa  [N:1]
+
+  WA TEMPLATE TERKAIT:
+    notif_lending_reminder → cron harian, kirim ke peminjam jatuh tempo
+
+
+================================================================================
+  15. TABEL: affiliate
+  Deskripsi: Data mitra affiliate/reseller
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id                     | UUID          | PRIMARY KEY           |
+  nama                   | TEXT          |                       | Nama affiliate
+  phone                  | TEXT          |                       | Nomor telepon
+  alamat                 | TEXT          |                       |
+  map                    | TEXT          | NULLABLE              | URL Google Maps
+  foto_profil            | TEXT          | NULLABLE              | URL foto profil
+  awal_kontrak           | DATE          | NULLABLE              | Tanggal mulai kontrak
+  akhir_kontrak          | DATE          | NULLABLE              | Tanggal selesai kontrak
+  fee_max_6_jam          | NUMERIC       | NULLABLE              | Fee untuk sesi ≤ 6 jam
+  fee_diatas_6_jam       | NUMERIC       | NULLABLE              | Fee untuk sesi > 6 jam
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+  RELASI: id → affiliate_skema.affiliate_id  [1:N]
+          id → affiliate_penjualan.affiliate_id  [1:N]
+
+
+================================================================================
+  16. TABEL: affiliate_skema
+  Deskripsi: Skema komisi per barang untuk setiap affiliate
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id                     | UUID          | PRIMARY KEY           |
+  affiliate_id           | UUID          | FK → affiliate.id     |
+  barang                 | TEXT          |                       | Nama/tipe barang
+  nilai_barang           | NUMERIC       |                       | Harga barang
+  potongan_persen        | NUMERIC       |                       | Persentase komisi (%)
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+  RELASI: affiliate_id → affiliate.id  [N:1]
+
+
+================================================================================
+  17. TABEL: affiliate_penjualan
+  Deskripsi: Rekap penjualan melalui affiliate
+================================================================================
+
+  Kolom                  | Tipe          | Constraint            | Keterangan
+  -----------------------|---------------|-----------------------|---------------------------
+  id                     | UUID          | PRIMARY KEY           |
+  affiliate_id           | UUID          | FK → affiliate.id     |
+  barang                 | TEXT          |                       | Nama/tipe barang yang terjual
+  harga_barang           | NUMERIC       |                       | Harga jual
+  persentase             | NUMERIC       |                       | Persentase komisi yang berlaku
+  foto_urls              | TEXT[]        | NULLABLE              | Foto bukti penjualan
+  created_at             | TIMESTAMPTZ   | DEFAULT now()         |
+
+  RELASI: affiliate_id → affiliate.id  [N:1]
+
+
+================================================================================
+  RELASI ANTAR TABEL (RINGKASAN)
+================================================================================
+
+  konsumen (nomor_wa)
+    ├── riwayat_pesan.nomor_wa           [1 konsumen : N pesan]
+    ├── claim_promo.nomor_wa             [1 konsumen : N klaim]
+    ├── garansi.nomor_wa                 [1 konsumen : N garansi]
+    └── peminjaman_barang.nomor_wa_peminjam [1 konsumen : N peminjaman]
+
+  claim_promo (id_claim)
+    └── garansi.id_claim                 [1 klaim : 0-1 garansi, opsional]
+
+  events (id)
+    └── event_registrations.event_id    [1 event : N registrasi]
+
+  budget_approval (id_budget)
+    └── events.proposal_event_id        [1 proposal : 0-1 event, soft link]
+
+  affiliate (id)
+    ├── affiliate_skema.affiliate_id    [1 affiliate : N skema komisi]
+    └── affiliate_penjualan.affiliate_id [1 affiliate : N penjualan]
+
+  barang_aset
+    └── peminjaman_barang.items_dipinjam.nama_barang  [DENORMALIZED via JSONB]
+        (Tidak ada FK — relasi via nama barang di dalam array JSONB)
+
+
+================================================================================
+  PENYIMPANAN FILE EKSTERNAL (Google Drive)
+================================================================================
+
+  Semua upload menggunakan Google Drive API dengan struktur:
+    Root folder: GOOGLE_DRIVE_FOLDER_ID (env var)
+    ├── Tiket Event/              ← PDF e-tiket peserta event
+    └── Pengembalian Deposit/     ← Bukti transfer refund deposit
+
+  Kolom yang menyimpan URL Google Drive:
+    claim_promo.link_kartu_garansi
+    claim_promo.link_nota_pembelian
+    garansi.link_kartu_garansi
+    garansi.link_nota_pembelian
+    event_registrations.bukti_transfer_url
+    event_registrations.ticket_url
+    event_registrations.bukti_pengembalian_deposit
+    peminjaman_barang.link_ktp_peminjam
+    peminjaman_barang.foto_penerimaan[]
+    peminjaman_barang.foto_pengembalian[]
+    budget_approval.attachment_urls[]
+    events.event_image
+
+  Semua file di-set PUBLIC (reader: anyone) setelah upload.
+  Akses via proxy: /api/events/image?id=DRIVE_FILE_ID
+
+
+================================================================================
+  RINGKASAN STATISTIK
+================================================================================
+
+  Total tabel         : 17
+  Tabel dengan JSONB  : 3  (budget_approval.items, peminjaman_barang.items_dipinjam,
+                             promosi.tipe_produk)
+  Tabel dengan arrays : 3  (karyawan.akses_halaman, budget_approval.attachment_urls,
+                             peminjaman_barang.foto_penerimaan/pengembalian)
+  Primary key type    : UUID (semua tabel), kecuali:
+                          - konsumen: TEXT (nomor_wa)
+                          - pengaturan_bot: INTEGER
+  Soft-delete         : Tidak ada — data dihapus permanen
+  Row Level Security  : Akses database via service_role key (tidak ada RLS aktif)
+                        — semua proteksi via session check di API layer
+
+================================================================================
+  END OF DOCUMENT
+================================================================================

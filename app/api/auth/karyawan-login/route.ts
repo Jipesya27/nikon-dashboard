@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     maxAge: SESSION_MAX_AGE_SECONDS,
     path: '/',
   });
-  res.cookies.set('karyawan_identity', `${karyawan.nama_karyawan}|${karyawan.username}`, {
+  res.cookies.set('karyawan_identity', `${karyawan.nama_karyawan}|${karyawan.username}|${karyawan.role}`, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
