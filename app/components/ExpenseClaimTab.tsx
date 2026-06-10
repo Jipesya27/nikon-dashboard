@@ -173,36 +173,41 @@ async function generateExpenseClaimPDF(
     drawVLine(p1, x, tableBottom, tableTop)
   );
 
-  // ── PAGE 2+: Receipt images ────────────────────────────────────────────────
-  if (claim.receipt_urls.length > 0) {
+  // ── PAGE 2+: Receipt images — urutan ikut sortedItems ─────────────────────
+  // Kumpulkan item yang punya receipt_url, dalam urutan sortedItems
+  const receiptItems = sortedItems
+    .map((item, idx) => ({ item, origIdx: idx }))
+    .filter(({ item }) => !!item.receipt_url);
+
+  if (receiptItems.length > 0) {
     const imgPageMarginX = 40;
     const imgPageMarginY = 40;
     const imgContentW = PW - imgPageMarginX * 2;
-    const imgContentH = PH - imgPageMarginY * 2;
 
     let curPage = pdfDoc.addPage([PW, PH]);
     let curX = imgPageMarginX;
     let curY = PH - imgPageMarginY;
     let rowH  = 0;
 
-    for (let i = 0; i < claim.receipt_urls.length; i++) {
-      const scale   = imageScales[i] ?? 1.0;
-      const imgW    = imgContentW * Math.min(Math.max(scale, 0.3), 1.0);
+    for (let ri = 0; ri < receiptItems.length; ri++) {
+      const { item, origIdx } = receiptItems[ri];
+      const scale = imageScales[origIdx] ?? 0.9;
+      const imgW  = imgContentW * Math.min(Math.max(scale, 0.3), 1.0);
 
       // Fetch image
       let embeddedImg;
       try {
-        const proxyUrl = driveProxyUrl(claim.receipt_urls[i]);
+        const proxyUrl = driveProxyUrl(item.receipt_url!);
         const resp = await fetch(proxyUrl);
         const buf  = new Uint8Array(await resp.arrayBuffer());
         const ct   = resp.headers.get('content-type') || '';
-        if (ct.includes('png') || proxyUrl.endsWith('.png')) {
+        if (ct.includes('png')) {
           embeddedImg = await pdfDoc.embedPng(buf);
         } else {
           embeddedImg = await pdfDoc.embedJpg(buf);
         }
       } catch {
-        continue; // skip gambar yang gagal
+        continue;
       }
 
       const aspect = embeddedImg.height / embeddedImg.width;
@@ -225,12 +230,12 @@ async function generateExpenseClaimPDF(
       const drawY = curY - imgH;
       curPage.drawImage(embeddedImg, { x: curX, y: drawY, width: imgW, height: imgH });
 
-      // Badge circle (kuning dengan nomor)
+      // Badge circle kuning — nomor = posisi di tabel (origIdx + 1)
       const R = 14;
       const cx = curX + R + 4;
       const cy = drawY + imgH - R - 4;
       curPage.drawCircle({ x: cx, y: cy, size: R, color: rgb(1, 0.78, 0), borderColor: rgb(0.4, 0.3, 0), borderWidth: 0.5 });
-      const numStr = String(i + 1);
+      const numStr = String(origIdx + 1);
       const nW = fontBold.widthOfTextAtSize(numStr, 11);
       curPage.drawText(numStr, { x: cx - nW / 2, y: cy - 5, size: 11, font: fontBold, color: rgb(0, 0, 0) });
 
@@ -274,9 +279,9 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
     to_person: '', claim_date: new Date().toISOString().slice(0, 10),
     items: [emptyItem()], receipt_urls: [], catatan: '',
   });
-  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null); // index item yang sedang upload
   const [saving, setSaving] = useState(false);
-  const receiptInputRef = useRef<HTMLInputElement>(null);
+  const receiptInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // PDF export modal
   const [pdfTarget,    setPdfTarget]    = useState<ExpenseClaim | null>(null);
@@ -333,9 +338,9 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
     }));
   }
 
-  // ── Upload receipt ────────────────────────────────────────────────────────
-  async function uploadReceipt(file: File) {
-    setUploadingReceipt(true);
+  // ── Upload receipt per item ───────────────────────────────────────────────
+  async function uploadReceiptForItem(file: File, itemIdx: number) {
+    setUploadingIdx(itemIdx);
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -343,14 +348,14 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
       const res = await fetch('/api/upload-google-drive', { method: 'POST', body: fd });
       if (!res.ok) throw new Error(await res.text());
       const { url } = await res.json();
-      setForm(f => ({ ...f, receipt_urls: [...(f.receipt_urls ?? []), url] }));
+      updateItem(itemIdx, { receipt_url: url });
     } catch (e) {
       alert('Gagal upload: ' + (e instanceof Error ? e.message : 'Error'));
-    } finally { setUploadingReceipt(false); }
+    } finally { setUploadingIdx(null); }
   }
 
-  function removeReceipt(idx: number) {
-    setForm(f => ({ ...f, receipt_urls: (f.receipt_urls ?? []).filter((_, i) => i !== idx) }));
+  function removeReceiptForItem(itemIdx: number) {
+    updateItem(itemIdx, { receipt_url: undefined });
   }
 
   // ── Save ───────────────────────────────────────────────────────────────────
@@ -397,7 +402,8 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
   // ── Open PDF modal ─────────────────────────────────────────────────────────
   function openPdfExport(c: ExpenseClaim) {
     setPdfTarget(c);
-    setImageScales(c.receipt_urls.map(() => 0.9));
+    // scales array sesuai jumlah items (index sama dengan item index)
+    setImageScales(c.items.map(() => 0.9));
   }
 
   async function handleGeneratePdf() {
@@ -478,12 +484,12 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                 </div>
               </div>
 
-              {/* Items table */}
+              {/* Items table — tiap baris punya kolom upload foto */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="label-form mb-0">Detail Pengeluaran *</label>
                   <div className="flex gap-2">
-                    <button onClick={sortItemsByDate} className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2 py-0.5 rounded hover:bg-gray-50 transition" title="Urutkan berdasarkan tanggal">↑ Sort Tanggal</button>
+                    <button onClick={sortItemsByDate} className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2 py-0.5 rounded hover:bg-gray-50 transition">↑ Sort Tanggal</button>
                     <button onClick={addItem} className="text-xs text-blue-600 hover:underline">+ Tambah baris</button>
                   </div>
                 </div>
@@ -491,16 +497,17 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b">
                       <tr>
-                        <th className="px-2 py-2 text-left font-semibold text-gray-700 w-6">No</th>
-                        <th className="px-2 py-2 text-left font-semibold text-gray-700 w-32">Tanggal</th>
+                        <th className="px-2 py-2 text-left font-semibold text-gray-700 w-5">No</th>
+                        <th className="px-2 py-2 text-left font-semibold text-gray-700 w-28">Tanggal</th>
                         <th className="px-2 py-2 text-left font-semibold text-gray-700">Keterangan</th>
-                        <th className="px-2 py-2 text-right font-semibold text-gray-700 w-28">Nominal (Rp)</th>
-                        <th className="w-8"></th>
+                        <th className="px-2 py-2 text-right font-semibold text-gray-700 w-24">Nominal (Rp)</th>
+                        <th className="px-2 py-2 text-center font-semibold text-gray-700 w-20">Bukti</th>
+                        <th className="w-6"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {(form.items ?? []).map((item, idx) => (
-                        <tr key={idx} className="border-t">
+                        <tr key={idx} className="border-t align-middle">
                           <td className="px-2 py-1 text-gray-400 text-xs">{idx + 1}</td>
                           <td className="px-1 py-1">
                             <input type="date" className="input-form text-xs py-1" value={item.tanggal} onChange={e => updateItem(idx, { tanggal: e.target.value })} />
@@ -510,6 +517,46 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                           </td>
                           <td className="px-1 py-1">
                             <input type="number" className="input-form text-xs py-1 text-right" value={item.nominal || ''} onChange={e => updateItem(idx, { nominal: Number(e.target.value) })} placeholder="0" min={0} />
+                          </td>
+                          {/* Kolom foto per baris */}
+                          <td className="px-1 py-1 text-center">
+                            <input
+                              ref={el => { receiptInputRefs.current[idx] = el; }}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={e => {
+                                const f = e.target.files?.[0];
+                                if (f) uploadReceiptForItem(f, idx);
+                                e.target.value = '';
+                              }}
+                            />
+                            {item.receipt_url ? (
+                              <div className="relative inline-block group">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={driveProxyUrl(item.receipt_url)}
+                                  alt="bukti"
+                                  className="w-10 h-10 object-cover rounded cursor-pointer border border-gray-200"
+                                  onClick={() => window.open(driveProxyUrl(item.receipt_url!), '_blank')}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeReceiptForItem(idx)}
+                                  className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full hidden group-hover:flex items-center justify-center leading-none"
+                                >×</button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => receiptInputRefs.current[idx]?.click()}
+                                disabled={uploadingIdx === idx}
+                                className="text-xs text-gray-400 hover:text-blue-600 border border-dashed border-gray-300 hover:border-blue-400 rounded px-1.5 py-1 transition disabled:opacity-50"
+                                title="Upload foto bukti"
+                              >
+                                {uploadingIdx === idx ? '⟳' : '📎'}
+                              </button>
+                            )}
                           </td>
                           <td className="px-1 py-1 text-center">
                             {(form.items ?? []).length > 1 && (
@@ -525,48 +572,11 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                         <td className="px-2 py-2 text-right font-bold text-sm">
                           Rp {fmtRp((form.items ?? []).reduce((s, i) => s + (Number(i.nominal) || 0), 0))}
                         </td>
-                        <td></td>
+                        <td colSpan={2}></td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
-              </div>
-
-              {/* Receipt upload */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="label-form mb-0">Bukti Pembayaran (foto/screenshot)</label>
-                  <button
-                    type="button"
-                    onClick={() => receiptInputRef.current?.click()}
-                    disabled={uploadingReceipt}
-                    className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1 rounded border border-blue-200 transition disabled:opacity-50"
-                  >
-                    {uploadingReceipt ? 'Mengupload...' : '+ Tambah Foto'}
-                  </button>
-                  <input
-                    ref={receiptInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadReceipt(f); e.target.value = ''; }}
-                  />
-                </div>
-                {(form.receipt_urls ?? []).length > 0 && (
-                  <div className="grid grid-cols-3 gap-2">
-                    {(form.receipt_urls ?? []).map((url, i) => (
-                      <div key={i} className="relative group rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={driveProxyUrl(url)} alt={`Bukti ${i+1}`} className="w-full h-24 object-cover" />
-                        <div className="absolute top-1 left-1 bg-yellow-400 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{i+1}</div>
-                        <button
-                          onClick={() => removeReceipt(i)}
-                          className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full hidden group-hover:flex items-center justify-center"
-                        >×</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* Catatan */}
@@ -605,44 +615,50 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                 <p><span className="text-gray-500">Total:</span> <strong className="text-green-700">Rp {fmtRp(pdfTarget.total_nominal)}</strong></p>
               </div>
 
-              {/* Image scales */}
-              {pdfTarget.receipt_urls.length > 0 ? (
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 mb-3">Ukuran gambar bukti di PDF</p>
-                  <div className="space-y-4">
-                    {pdfTarget.receipt_urls.map((url, i) => (
-                      <div key={i} className="flex items-center gap-4">
-                        <div className="relative flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={driveProxyUrl(url)} alt={`Bukti ${i+1}`} className="w-full h-full object-cover" />
-                          <div className="absolute top-1 left-1 bg-yellow-400 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{i+1}</div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between text-xs text-gray-600 mb-1">
-                            <span>Bukti #{i+1}</span>
-                            <span className="font-semibold">{Math.round((imageScales[i] ?? 0.9) * 100)}%</span>
+              {/* Image scales — per item (sorted by tanggal) */}
+              {(() => {
+                const sortedForPdf = [...pdfTarget.items]
+                  .map((item, idx) => ({ item, origIdx: idx }))
+                  .sort((a, b) => (a.item.tanggal || '').localeCompare(b.item.tanggal || ''))
+                  .filter(({ item }) => !!item.receipt_url);
+                return sortedForPdf.length > 0 ? (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 mb-3">Ukuran gambar bukti di PDF (urutan sesuai tabel)</p>
+                    <div className="space-y-4">
+                      {sortedForPdf.map(({ item, origIdx }) => (
+                        <div key={origIdx} className="flex items-center gap-4">
+                          <div className="relative flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={driveProxyUrl(item.receipt_url!)} alt={`Bukti ${origIdx+1}`} className="w-full h-full object-cover" />
+                            <div className="absolute top-1 left-1 bg-yellow-400 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{origIdx+1}</div>
                           </div>
-                          <input
-                            type="range" min={30} max={100} step={5}
-                            value={Math.round((imageScales[i] ?? 0.9) * 100)}
-                            onChange={e => {
-                              const next = [...imageScales];
-                              next[i] = Number(e.target.value) / 100;
-                              setImageScales(next);
-                            }}
-                            className="w-full accent-yellow-400"
-                          />
-                          <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                            <span>Kecil (30%)</span><span>Penuh (100%)</span>
+                          <div className="flex-1">
+                            <div className="flex justify-between text-xs text-gray-600 mb-1">
+                              <span className="truncate max-w-[180px]">#{origIdx+1} · {item.description || '(tanpa keterangan)'}</span>
+                              <span className="font-semibold ml-2 flex-shrink-0">{Math.round((imageScales[origIdx] ?? 0.9) * 100)}%</span>
+                            </div>
+                            <input
+                              type="range" min={30} max={100} step={5}
+                              value={Math.round((imageScales[origIdx] ?? 0.9) * 100)}
+                              onChange={e => {
+                                const next = [...imageScales];
+                                next[origIdx] = Number(e.target.value) / 100;
+                                setImageScales(next);
+                              }}
+                              className="w-full accent-yellow-400"
+                            />
+                            <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                              <span>Kecil (30%)</span><span>Penuh (100%)</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 italic">Tidak ada foto bukti yang diunggah.</p>
-              )}
+                ) : (
+                  <p className="text-sm text-gray-500 italic">Tidak ada foto bukti yang diunggah di item manapun.</p>
+                );
+              })()}
             </div>
 
             <div className="px-5 py-4 border-t flex gap-2 justify-end">
@@ -745,6 +761,7 @@ function ClaimCard({ claim, isAdmin, currentUsername, onEdit, onDelete, onStatus
                 <th className="text-left pb-1 w-24">Tanggal</th>
                 <th className="text-left pb-1">Keterangan</th>
                 <th className="text-right pb-1">Nominal</th>
+                <th className="text-center pb-1 w-8">📎</th>
               </tr>
             </thead>
             <tbody>
@@ -754,6 +771,17 @@ function ClaimCard({ claim, isAdmin, currentUsername, onEdit, onDelete, onStatus
                   <td className="py-1 text-xs text-gray-600">{fmtDateShort(item.tanggal)}</td>
                   <td className="py-1">{item.description}</td>
                   <td className="py-1 text-right font-mono text-sm">{new Intl.NumberFormat('id-ID').format(item.nominal)}</td>
+                  <td className="py-1 text-center">
+                    {item.receipt_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={driveProxyUrl(item.receipt_url)}
+                        alt="bukti"
+                        className="w-7 h-7 object-cover rounded cursor-pointer border border-gray-200 inline-block"
+                        onClick={() => window.open(driveProxyUrl(item.receipt_url!), '_blank')}
+                      />
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -761,30 +789,38 @@ function ClaimCard({ claim, isAdmin, currentUsername, onEdit, onDelete, onStatus
               <tr>
                 <td colSpan={3} className="pt-2 text-right text-xs font-bold text-gray-700">TOTAL</td>
                 <td className="pt-2 text-right font-bold font-mono">Rp {new Intl.NumberFormat('id-ID').format(claim.total_nominal)}</td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
 
-          {/* Receipts */}
-          {claim.receipt_urls.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-gray-600 mb-2">Bukti Pembayaran ({claim.receipt_urls.length})</p>
-              <div className="grid grid-cols-3 gap-2">
-                {claim.receipt_urls.map((url, i) => (
-                  <div key={i} className="relative rounded-lg overflow-hidden border border-gray-200 bg-white">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={driveProxyUrl(url)}
-                      alt={`Bukti ${i+1}`}
-                      className="w-full h-28 object-cover cursor-pointer"
-                      onClick={() => window.open(driveProxyUrl(url), '_blank')}
-                    />
-                    <div className="absolute top-1 left-1 bg-yellow-400 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{i+1}</div>
-                  </div>
-                ))}
+          {/* Receipts per item (sorted by tanggal) */}
+          {(() => {
+            const withPhoto = [...claim.items]
+              .map((item, idx) => ({ item, origIdx: idx }))
+              .sort((a, b) => (a.item.tanggal || '').localeCompare(b.item.tanggal || ''))
+              .filter(({ item }) => !!item.receipt_url);
+            return withPhoto.length > 0 ? (
+              <div>
+                <p className="text-xs font-semibold text-gray-600 mb-2">Bukti Pembayaran ({withPhoto.length})</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {withPhoto.map(({ item, origIdx }) => (
+                    <div key={origIdx} className="relative rounded-lg overflow-hidden border border-gray-200 bg-white">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={driveProxyUrl(item.receipt_url!)}
+                        alt={`Bukti ${origIdx+1}`}
+                        className="w-full h-28 object-cover cursor-pointer"
+                        onClick={() => window.open(driveProxyUrl(item.receipt_url!), '_blank')}
+                      />
+                      <div className="absolute top-1 left-1 bg-yellow-400 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{origIdx+1}</div>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-[9px] px-1 py-0.5 truncate">{item.description}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            ) : null;
+          })()}
 
           {claim.catatan && (
             <p className="text-xs text-gray-500 italic">Catatan: {claim.catatan}</p>
