@@ -3,6 +3,11 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 
 interface Karyawan { username: string; nama_karyawan: string; role: string; }
 
+interface JneRow {
+  no: number; cnote_no: string; date: string; time: string;
+  service: string; destination: string; amount: number; goods: string;
+}
+
 interface ResiRecord {
   id?: string;
   created_at?: string;
@@ -61,7 +66,14 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
   const [saving,     setSaving]     = useState(false);
   const [uploading,  setUploading]  = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // PDF JNE import
+  const [jneRows,      setJneRows]      = useState<JneRow[]>([]);
+  const [showJneModal, setShowJneModal] = useState(false);
+  const [parsingPdf,   setParsingPdf]   = useState(false);
+  const [jneFileName,  setJneFileName]  = useState('');
+
+  const fileInputRef  = useRef<HTMLInputElement>(null);
+  const jnePdfRef     = useRef<HTMLInputElement>(null);
 
   const fetchRecords = useCallback(async () => {
     setLoading(true); setError('');
@@ -133,6 +145,22 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
     } finally { setUploading(false); }
   }
 
+  async function parsePdfJne(file: File) {
+    setParsingPdf(true); setJneFileName(file.name);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/resi/parse-jne', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      const { rows } = await res.json();
+      if (!rows?.length) { alert('Tidak ada data resi ditemukan di PDF ini.'); return; }
+      setJneRows(rows);
+      setShowJneModal(true);
+    } catch (e) {
+      alert('Gagal parse PDF: ' + (e instanceof Error ? e.message : 'Error'));
+    } finally { setParsingPdf(false); }
+  }
+
   async function handleSave() {
     if (!form.tanggal_kirim) { alert('Tanggal kirim wajib diisi'); return; }
     if (!form.nama_expedisi.trim()) { alert('Nama ekspedisi wajib diisi'); return; }
@@ -177,10 +205,19 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
           <h2 className="text-lg font-bold text-gray-900">📦 Upload File Resi</h2>
           <p className="text-xs text-gray-500 mt-0.5">{records.length} data tersimpan</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="px-4 py-2 bg-[#FFE500] hover:bg-yellow-400 text-black font-bold rounded-lg text-sm transition"
-        >+ Tambah Resi</button>
+        <div className="flex gap-2">
+          <input ref={jnePdfRef} type="file" accept=".pdf" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) parsePdfJne(f); e.target.value = ''; }} />
+          <button
+            onClick={() => jnePdfRef.current?.click()}
+            disabled={parsingPdf}
+            className="px-4 py-2 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-lg text-sm transition disabled:opacity-50 flex items-center gap-1.5"
+          >{parsingPdf ? '⟳ Parsing...' : '📑 Import PDF JNE'}</button>
+          <button
+            onClick={openCreate}
+            className="px-4 py-2 bg-[#FFE500] hover:bg-yellow-400 text-black font-bold rounded-lg text-sm transition"
+          >+ Tambah Resi</button>
+        </div>
       </div>
 
       {/* Search */}
@@ -384,6 +421,64 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
               >
                 {saving ? 'Menyimpan...' : (editTarget ? 'Simpan Perubahan' : 'Tambah')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Preview Import PDF JNE ── */}
+      {showJneModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center pt-6 pb-6 overflow-y-auto px-3">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <div>
+                <h3 className="font-bold text-gray-800">📑 Import PDF JNE — Preview</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{jneFileName} · {jneRows.length} resi ditemukan</p>
+              </div>
+              <button onClick={() => setShowJneModal(false)} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
+            </div>
+
+            <div className="px-5 py-4 overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b">
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">No</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Cnote No</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Tanggal</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Jam</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Service</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Tujuan</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Barang / Penerima</th>
+                    <th className="text-right px-3 py-2 font-semibold text-gray-600">Ongkir</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jneRows.map(r => (
+                    <tr key={r.no} className="border-b hover:bg-gray-50">
+                      <td className="px-3 py-2 text-gray-500">{r.no}</td>
+                      <td className="px-3 py-2 font-mono text-gray-800">{r.cnote_no}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{r.date}</td>
+                      <td className="px-3 py-2 text-gray-500">{r.time}</td>
+                      <td className="px-3 py-2">{r.service}</td>
+                      <td className="px-3 py-2 max-w-[140px] truncate" title={r.destination}>{r.destination}</td>
+                      <td className="px-3 py-2 max-w-[180px] truncate text-gray-600" title={r.goods}>{r.goods}</td>
+                      <td className="px-3 py-2 text-right font-medium">Rp {r.amount.toLocaleString('id-ID')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-50 font-bold">
+                    <td colSpan={7} className="px-3 py-2 text-right text-gray-700">Grand Total</td>
+                    <td className="px-3 py-2 text-right text-green-700">
+                      Rp {jneRows.reduce((s, r) => s + r.amount, 0).toLocaleString('id-ID')}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className="px-5 py-4 border-t flex gap-2 justify-end">
+              <button onClick={() => setShowJneModal(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">Tutup</button>
             </div>
           </div>
         </div>
