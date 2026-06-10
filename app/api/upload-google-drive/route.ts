@@ -39,8 +39,28 @@ async function getAccessToken() {
   return data.access_token as string;
 }
 
-async function uploadToGoogleDrive(file: File, fileName: string, accessToken: string) {
-  const metadata = { name: fileName, parents: [FOLDER_ID] };
+async function findOrCreateSubfolder(name: string, accessToken: string): Promise<string> {
+  // Cari subfolder dengan nama tertentu di dalam parent folder
+  const q = encodeURIComponent(`name='${name}' and mimeType='application/vnd.google-apps.folder' and '${FOLDER_ID}' in parents and trashed=false`);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const data = await res.json();
+  if (data.files && data.files.length > 0) return data.files[0].id as string;
+
+  // Buat subfolder baru
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [FOLDER_ID] }),
+  });
+  const created = await createRes.json();
+  if (!created.id) throw new Error(`Gagal buat subfolder: ${JSON.stringify(created)}`);
+  return created.id as string;
+}
+
+async function uploadToGoogleDrive(file: File, fileName: string, accessToken: string, folderId = FOLDER_ID) {
+  const metadata = { name: fileName, parents: [folderId] };
   const form = new FormData();
   form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
   form.append("file", file);
@@ -94,6 +114,7 @@ export async function POST(req: Request) {
     const file = formData.get('file') as File;
     const prefix = formData.get('prefix') as string;
     const serial = formData.get('serial') as string;
+    const subfolderName = (formData.get('subfolderName') as string | null) ?? '';
 
     if (!file || !prefix || !serial) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
@@ -112,8 +133,12 @@ export async function POST(req: Request) {
     const ext = originalName.length > 1 ? originalName.pop() : '';
     const cleanBaseName = sanitizeFileName(originalName.join('.'));
 
+    const folderId = subfolderName
+      ? await findOrCreateSubfolder(subfolderName, accessToken)
+      : FOLDER_ID;
+
     const fileName = `${prefix}_${serial}_${cleanBaseName}_${Date.now()}.${ext}`;
-    const url = await uploadToGoogleDrive(file, fileName, accessToken);
+    const url = await uploadToGoogleDrive(file, fileName, accessToken, folderId);
 
     return NextResponse.json({ success: true, url });
   } catch (error: unknown) {
