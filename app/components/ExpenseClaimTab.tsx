@@ -369,7 +369,12 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
 
     setSaving(true);
     try {
-      const payload = { ...form, items };
+      const payload = {
+        ...form,
+        items,
+        created_by:   currentUser?.username ?? '',
+        nama_pembuat: currentUser?.nama_karyawan ?? '',
+      };
       const url    = editTarget ? `/api/expense-claim/${editTarget.id}` : '/api/expense-claim';
       const method = editTarget ? 'PATCH' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
