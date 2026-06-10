@@ -448,7 +448,8 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
                     <th className="text-left px-3 py-2 font-semibold text-gray-600">Jam</th>
                     <th className="text-left px-3 py-2 font-semibold text-gray-600">Service</th>
                     <th className="text-left px-3 py-2 font-semibold text-gray-600">Tujuan</th>
-                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Barang / Penerima</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Penerima</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Barang</th>
                     <th className="text-right px-3 py-2 font-semibold text-gray-600">Ongkir</th>
                   </tr>
                 </thead>
@@ -460,15 +461,16 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
                       <td className="px-3 py-2 whitespace-nowrap">{r.date}</td>
                       <td className="px-3 py-2 text-gray-500">{r.time}</td>
                       <td className="px-3 py-2">{r.service}</td>
-                      <td className="px-3 py-2 max-w-[140px] truncate" title={r.destination}>{r.destination}</td>
-                      <td className="px-3 py-2 max-w-[180px] truncate text-gray-600" title={r.goods}>{r.goods}</td>
+                      <td className="px-3 py-2 max-w-[120px] truncate" title={r.destination}>{r.destination}</td>
+                      <td className="px-3 py-2 max-w-[140px] truncate font-medium" title={r.receiver_name}>{r.receiver_name}</td>
+                      <td className="px-3 py-2 max-w-[150px] truncate text-gray-600" title={r.goods}>{r.goods}</td>
                       <td className="px-3 py-2 text-right font-medium">Rp {r.amount.toLocaleString('id-ID')}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50 font-bold">
-                    <td colSpan={7} className="px-3 py-2 text-right text-gray-700">Grand Total</td>
+                    <td colSpan={8} className="px-3 py-2 text-right text-gray-700">Grand Total</td>
                     <td className="px-3 py-2 text-right text-green-700">
                       Rp {jneRows.reduce((s, r) => s + r.amount, 0).toLocaleString('id-ID')}
                     </td>

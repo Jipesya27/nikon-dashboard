@@ -12,6 +12,7 @@ export interface JneRow {
   service: string;
   destination: string;
   amount: number;
+  receiver_name: string;
   goods: string;
 }
 
@@ -60,7 +61,11 @@ function parseJneText(text: string): JneRow[] {
     const cashLine = cashIdx >= 0 ? bl[cashIdx] : '';
     const amtM = cashLine.match(/Cash([\d,]+)\.00/);
     const amount = amtM ? parseInt(amtM[1].replace(/,/g, '')) : 0;
-    const goods = cashIdx > 0 ? bl.slice(rest, cashIdx).join(' ') : '';
+
+    // Baris antara shipper dan Cash: baris pertama = nama penerima, sisanya = deskripsi barang
+    const middleLines = cashIdx > 0 ? bl.slice(rest, cashIdx) : [];
+    const receiver_name = middleLines[0] ?? '';
+    const goods = middleLines.slice(1).join(' ');
 
     rows.push({
       no: starts[b].no,
@@ -70,6 +75,7 @@ function parseJneText(text: string): JneRow[] {
       service,
       destination,
       amount,
+      receiver_name,
       goods,
     });
   }
