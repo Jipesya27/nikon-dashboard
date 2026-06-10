@@ -5,7 +5,7 @@ interface Karyawan { username: string; nama_karyawan: string; role: string; }
 
 interface JneRow {
   no: number; cnote_no: string; date: string; time: string;
-  service: string; destination: string; amount: number; goods: string;
+  service: string; destination: string; amount: number; receiver_name: string; goods: string;
 }
 
 interface ResiRecord {
