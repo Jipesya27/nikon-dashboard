@@ -3604,7 +3604,6 @@ ${kode ? `
          tabs: [
             { id: 'promos', label: '📢 Promo', count: promos.length },
             { id: 'claims', label: '🎫 Claim Promo', count: claims.length },
-            { id: 'expense_claim', label: '🧾 Klaim Biaya', count: undefined },
             { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
             { id: 'services', label: '🔧 Service', count: services.length },
             { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
@@ -3620,6 +3619,7 @@ ${kode ? `
             { id: 'events', label: '📅 2. Daftar Event', count: events.length },
             { id: 'eventregistrations', label: '👥 3. Data Peserta', count: eventRegistrations.length },
             { id: 'eventreport', label: '📊 4. Report Event (SG)', count: undefined },
+            { id: 'expense_claim', label: '🧾 5. Claim Biaya', count: undefined },
          ]
       },
       {
