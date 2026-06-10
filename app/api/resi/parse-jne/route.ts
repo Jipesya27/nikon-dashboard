@@ -62,10 +62,13 @@ function parseJneText(text: string): JneRow[] {
     const amtM = cashLine.match(/Cash([\d,]+)\.00/);
     const amount = amtM ? parseInt(amtM[1].replace(/,/g, '')) : 0;
 
-    // Baris antara shipper dan Cash: semua kecuali baris terakhir = nama penerima, baris terakhir = barang
+    // pdf-parse memproses kolom kiri dulu lalu kolom kanan, sehingga
+    // middleLines = [receiver baris...] + [goods baris...] dengan jumlah sama.
+    // Split di tengah untuk memisahkan penerima dan barang.
     const middleLines = cashIdx > 0 ? bl.slice(rest, cashIdx) : [];
-    const receiver_name = middleLines.slice(0, -1).join(' ');
-    const goods = middleLines[middleLines.length - 1] ?? '';
+    const half = Math.floor(middleLines.length / 2);
+    const receiver_name = middleLines.slice(0, half).join(' ');
+    const goods = middleLines.slice(half).join(' ');
 
     rows.push({
       no: starts[b].no,
