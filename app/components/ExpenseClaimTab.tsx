@@ -783,7 +783,8 @@ interface ClaimCardProps {
 function ClaimCard({ claim, isAdmin, currentUsername, onEdit, onDelete, onStatus, onExportPdf }: ClaimCardProps) {
   const [expanded, setExpanded] = useState(false);
   const isOwner = claim.created_by === currentUsername;
-  const canEdit = isOwner && claim.status === 'draft';
+  const canEdit = isAdmin || (isOwner && claim.status === 'draft');
+  const canDelete = isAdmin || (isOwner && claim.status === 'draft');
 
   return (
     <div className="border border-gray-200 rounded-xl shadow-sm bg-white overflow-hidden">
@@ -829,7 +830,7 @@ function ClaimCard({ claim, isAdmin, currentUsername, onEdit, onDelete, onStatus
           {isAdmin && claim.status === 'approved' && (
             <button onClick={e => { e.stopPropagation(); onStatus(claim.id!, 'submitted'); }} className="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded transition">↩ Buka Kembali</button>
           )}
-          {(isAdmin || isOwner) && claim.status === 'draft' && (
+          {canDelete && (
             <button
               onClick={e => { e.stopPropagation(); onDelete(claim.id!); }}
               className="text-xs text-red-400 hover:text-red-600 px-1 py-1 transition"
