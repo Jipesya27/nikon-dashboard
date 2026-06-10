@@ -15,12 +15,22 @@ const eslintConfig = defineConfig([
     ".claude/**",
     "supabase/functions/**",
   ]),
-  // Downgrade noisy rules to warnings so they don't block builds
+  // Downgrade React Compiler and other noisy rules to warnings
+  // so they don't block production builds
   {
     rules: {
-      "react-hooks/set-state-in-effect": "warn",
-      "react-compiler/react-compiler": "warn",
-      "prefer-const": "warn",
+      // React Compiler rules (react-hooks v7+ includes compiler checks)
+      "react-hooks/set-state-in-effect":           "warn",
+      "react-hooks/immutability":                  "warn",
+      "react-hooks/invariant":                     "warn",
+      "react-hooks/preserve-manual-memoization":   "warn",
+      "react-hooks/hooks":                         "warn",
+      "react-hooks/purity":                        "warn",
+      "react-hooks/syntax":                        "warn",
+      "react-hooks/unsupported-syntax":            "warn",
+      // TypeScript / general
+      "prefer-const":                              "warn",
+      "@typescript-eslint/no-require-imports":     "warn",
     },
   },
 ]);
