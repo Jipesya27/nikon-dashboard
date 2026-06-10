@@ -18,9 +18,17 @@ interface ResiRecord {
   file_url: string;
   file_name: string;
   catatan?: string;
+  // Kolom JNE
+  cnote_no?: string;
+  service?: string;
+  tujuan?: string;
+  penerima?: string;
+  barang?: string;
+  ongkir?: number;
+  jam_kirim?: string;
 }
 
-type SortKey = 'tanggal_kirim' | 'nama_expedisi' | 'nama_pembuat' | 'file_name';
+type SortKey = 'tanggal_kirim' | 'nama_expedisi' | 'nama_pembuat' | 'file_name' | 'cnote_no' | 'penerima' | 'tujuan' | 'ongkir';
 type SortDir = 'asc' | 'desc';
 
 const EXPEDISI_LIST = ['JNE', 'J&T', 'SiCepat', 'AnterAja', 'Ninja Express', 'Pos Indonesia', 'Tiki', 'Lion Parcel', 'IDExpress', 'Lainnya'];
@@ -157,10 +165,17 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
           created_by:    createdBy,
           nama_pembuat:  namaPembuat,
           tanggal_kirim: r.date,
-          nama_expedisi: `JNE ${r.service}`,
+          jam_kirim:     r.time,
+          nama_expedisi: 'JNE',
+          cnote_no:      r.cnote_no,
+          service:       r.service,
+          tujuan:        r.destination,
+          penerima:      r.receiver_name,
+          barang:        r.goods,
+          ongkir:        r.amount,
           file_url:      '',
           file_name:     '',
-          catatan:       `${r.cnote_no} | ${r.destination} | ${r.receiver_name} | ${r.goods}`,
+          catatan:       '',
         };
         const res = await fetch('/api/resi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (res.ok) saved++;
@@ -268,58 +283,48 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className={thClass} onClick={() => handleSort('tanggal_kirim')}>
-                  Tgl Kirim <SortIcon col="tanggal_kirim" />
-                </th>
-                <th className={thClass} onClick={() => handleSort('nama_expedisi')}>
-                  Ekspedisi <SortIcon col="nama_expedisi" />
-                </th>
-                <th className={thClass} onClick={() => handleSort('file_name')}>
-                  File Resi <SortIcon col="file_name" />
-                </th>
-                {isAdmin && (
-                  <th className={thClass} onClick={() => handleSort('nama_pembuat')}>
-                    Oleh <SortIcon col="nama_pembuat" />
-                  </th>
-                )}
-                <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs">Catatan</th>
-                <th className="px-4 py-3 w-20"></th>
+                <th className={thClass} onClick={() => handleSort('cnote_no')}>Cnote No <SortIcon col="cnote_no" /></th>
+                <th className={thClass} onClick={() => handleSort('tanggal_kirim')}>Tanggal <SortIcon col="tanggal_kirim" /></th>
+                <th className="text-left px-3 py-3 font-semibold text-gray-600">Jam</th>
+                <th className={thClass} onClick={() => handleSort('nama_expedisi')}>Ekspedisi <SortIcon col="nama_expedisi" /></th>
+                <th className="text-left px-3 py-3 font-semibold text-gray-600">Service</th>
+                <th className={thClass} onClick={() => handleSort('tujuan')}>Tujuan <SortIcon col="tujuan" /></th>
+                <th className={thClass} onClick={() => handleSort('penerima')}>Penerima <SortIcon col="penerima" /></th>
+                <th className="text-left px-3 py-3 font-semibold text-gray-600">Barang</th>
+                <th className={thClass} onClick={() => handleSort('ongkir')}>Ongkir <SortIcon col="ongkir" /></th>
+                <th className="text-left px-3 py-3 font-semibold text-gray-600">File</th>
+                {isAdmin && <th className="text-left px-3 py-3 font-semibold text-gray-600">Oleh</th>}
+                <th className="px-3 py-3 w-16"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(r => (
                 <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-700">{fmtDate(r.tanggal_kirim)}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{r.nama_expedisi}</td>
-                  <td className="px-4 py-3">
-                    {r.file_url ? (
-                      <a
-                        href={r.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-xs font-medium"
-                      >
-                        📄 <span className="underline truncate max-w-[140px]">{r.file_name || 'Lihat File'}</span>
-                      </a>
-                    ) : <span className="text-gray-300 text-xs">-</span>}
+                  <td className="px-3 py-2.5 font-mono text-gray-700">{r.cnote_no || '-'}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap text-gray-700">{fmtDate(r.tanggal_kirim)}</td>
+                  <td className="px-3 py-2.5 text-gray-500">{r.jam_kirim || '-'}</td>
+                  <td className="px-3 py-2.5 font-medium text-gray-900">{r.nama_expedisi}</td>
+                  <td className="px-3 py-2.5 text-gray-600">{r.service || '-'}</td>
+                  <td className="px-3 py-2.5 max-w-[120px] truncate text-gray-600" title={r.tujuan}>{r.tujuan || '-'}</td>
+                  <td className="px-3 py-2.5 max-w-[130px] truncate font-medium text-gray-800" title={r.penerima}>{r.penerima || '-'}</td>
+                  <td className="px-3 py-2.5 max-w-[140px] truncate text-gray-600" title={r.barang}>{r.barang || '-'}</td>
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap font-medium text-gray-800">
+                    {r.ongkir ? `Rp ${r.ongkir.toLocaleString('id-ID')}` : '-'}
                   </td>
-                  {isAdmin && (
-                    <td className="px-4 py-3 text-gray-500 text-xs">{r.nama_pembuat}</td>
-                  )}
-                  <td className="px-4 py-3 text-gray-500 text-xs max-w-[160px] truncate">{r.catatan || '-'}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
+                    {r.file_url ? (
+                      <a href={r.file_url} target="_blank" rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline">📄</a>
+                    ) : <span className="text-gray-300">-</span>}
+                  </td>
+                  {isAdmin && <td className="px-3 py-2.5 text-gray-400">{r.nama_pembuat}</td>}
+                  <td className="px-3 py-2.5">
                     <div className="flex gap-1 justify-end">
-                      <button
-                        onClick={() => openEdit(r)}
-                        className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded transition"
-                      >✏️</button>
-                      <button
-                        onClick={() => handleDelete(r.id!)}
-                        className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded transition"
-                      >🗑</button>
+                      <button onClick={() => openEdit(r)} className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded">✏️</button>
+                      <button onClick={() => handleDelete(r.id!)} className="text-red-400 hover:text-red-600 px-2 py-1 rounded">🗑</button>
                     </div>
                   </td>
                 </tr>
