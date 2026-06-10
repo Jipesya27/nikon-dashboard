@@ -287,6 +287,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
   const [pdfTarget,    setPdfTarget]    = useState<ExpenseClaim | null>(null);
   const [imageScales,  setImageScales]  = useState<number[]>([]);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfTab, setPdfTab] = useState<'settings'|'preview'>('preview');
 
   const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin' || currentUser?.role === 'Finance';
 
@@ -409,8 +410,8 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
   // ── Open PDF modal ─────────────────────────────────────────────────────────
   function openPdfExport(c: ExpenseClaim) {
     setPdfTarget(c);
-    // scales array sesuai jumlah items (index sama dengan item index)
     setImageScales(c.items.map(() => 0.9));
+    setPdfTab('preview');
   }
 
   async function handleGeneratePdf() {
@@ -612,58 +613,136 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
               <button onClick={() => { setPdfTarget(null); }} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
             </div>
 
-            <div className="px-5 py-4 space-y-4">
-              {/* Claim summary */}
-              <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
-                <p><span className="text-gray-500">Claim by:</span> <strong>{pdfTarget.nama_pembuat}</strong></p>
-                {pdfTarget.from_person && <p><span className="text-gray-500">From:</span> <strong>{pdfTarget.from_person}</strong></p>}
-                <p><span className="text-gray-500">To:</span> <strong>{pdfTarget.to_person}</strong></p>
-                <p><span className="text-gray-500">Tanggal:</span> {fmtDateHeader(pdfTarget.claim_date)}</p>
-                <p><span className="text-gray-500">Total:</span> <strong className="text-green-700">Rp {fmtRp(pdfTarget.total_nominal)}</strong></p>
-              </div>
+            {/* Tabs */}
+            <div className="flex border-b px-5">
+              {(['preview', 'settings'] as const).map(t => (
+                <button key={t} onClick={() => setPdfTab(t)}
+                  className={`px-4 py-2.5 text-sm font-medium border-b-2 transition -mb-px ${pdfTab === t ? 'border-[#FFE500] text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-700'}`}>
+                  {t === 'preview' ? '👁 Preview' : '⚙️ Pengaturan Gambar'}
+                </button>
+              ))}
+            </div>
 
-              {/* Image scales — per item (sorted by tanggal) */}
-              {(() => {
+            <div className="px-5 py-4 space-y-4">
+
+            {/* ── Preview tab ── */}
+            {pdfTab === 'preview' && (() => {
+              const sortedItems = [...pdfTarget.items].sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || ''));
+              const receiptItems = sortedItems.map((item, idx) => ({ item, origIdx: idx })).filter(({ item }) => !!item.receipt_url);
+              return (
+                <div className="space-y-4">
+                  {/* Page 1 preview */}
+                  <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                    <div className="bg-gray-100 px-3 py-1.5 text-xs text-gray-500 font-medium">Halaman 1 — Tabel</div>
+                    <div className="p-4 bg-white text-xs font-mono space-y-1">
+                      <div className="text-center space-y-0.5 mb-3">
+                        <p><strong>Claim by : {pdfTarget.nama_pembuat}</strong></p>
+                        {pdfTarget.from_person && <p>From : {pdfTarget.from_person}</p>}
+                        <p>To : {pdfTarget.to_person}</p>
+                        <p>{fmtDateHeader(pdfTarget.claim_date)}</p>
+                      </div>
+                      <table className="w-full border-collapse text-[11px]">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border border-gray-300 px-1 py-0.5 text-left w-6">No</th>
+                            <th className="border border-gray-300 px-1 py-0.5 text-left w-20">Tanggal</th>
+                            <th className="border border-gray-300 px-1 py-0.5 text-left">Description</th>
+                            <th className="border border-gray-300 px-1 py-0.5 text-right w-20">Nominal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedItems.map((item, i) => (
+                            <tr key={i}>
+                              <td className="border border-gray-300 px-1 py-0.5">{i + 1}</td>
+                              <td className="border border-gray-300 px-1 py-0.5">{fmtDateShort(item.tanggal)}</td>
+                              <td className="border border-gray-300 px-1 py-0.5">{item.description}</td>
+                              <td className="border border-gray-300 px-1 py-0.5 text-right">{fmtRp(item.nominal)}</td>
+                            </tr>
+                          ))}
+                          {[...Array(Math.max(0, 2 - (sortedItems.length < 3 ? sortedItems.length : 0)))].map((_, i) => (
+                            <tr key={`empty-${i}`}><td className="border border-gray-300 px-1 py-0.5">&nbsp;</td><td className="border border-gray-300 px-1 py-0.5"></td><td className="border border-gray-300 px-1 py-0.5"></td><td className="border border-gray-300 px-1 py-0.5"></td></tr>
+                          ))}
+                          <tr className="bg-gray-50 font-bold">
+                            <td className="border border-gray-300 px-1 py-0.5" colSpan={3} align="right">TOTAL</td>
+                            <td className="border border-gray-300 px-1 py-0.5 text-right">{fmtRp(pdfTarget.total_nominal)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  {/* Page 2 preview */}
+                  {receiptItems.length > 0 && (
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                      <div className="bg-gray-100 px-3 py-1.5 text-xs text-gray-500 font-medium">Halaman 2+ — Foto Bukti ({receiptItems.length} foto)</div>
+                      <div className="p-3 bg-white flex flex-wrap gap-3">
+                        {receiptItems.map(({ item, origIdx }) => (
+                          <div key={origIdx} className="relative">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={driveProxyUrl(item.receipt_url!)} alt={`Bukti ${origIdx+1}`}
+                              style={{ width: `${Math.round((imageScales[origIdx] ?? 0.9) * 160)}px` }}
+                              className="rounded border border-gray-200 object-cover max-h-40" />
+                            <span className="absolute top-1 left-1 bg-yellow-400 text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">{origIdx + 1}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+              {/* ── Settings tab ── */}
+              {pdfTab === 'settings' && (() => {
                 const sortedForPdf = [...pdfTarget.items]
                   .map((item, idx) => ({ item, origIdx: idx }))
                   .sort((a, b) => (a.item.tanggal || '').localeCompare(b.item.tanggal || ''))
                   .filter(({ item }) => !!item.receipt_url);
-                return sortedForPdf.length > 0 ? (
-                  <div>
-                    <p className="text-sm font-semibold text-gray-700 mb-3">Ukuran gambar bukti di PDF (urutan sesuai tabel)</p>
-                    <div className="space-y-4">
-                      {sortedForPdf.map(({ item, origIdx }) => (
-                        <div key={origIdx} className="flex items-center gap-4">
-                          <div className="relative flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={driveProxyUrl(item.receipt_url!)} alt={`Bukti ${origIdx+1}`} className="w-full h-full object-cover" />
-                            <div className="absolute top-1 left-1 bg-yellow-400 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{origIdx+1}</div>
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex justify-between text-xs text-gray-600 mb-1">
-                              <span className="truncate max-w-[180px]">#{origIdx+1} · {item.description || '(tanpa keterangan)'}</span>
-                              <span className="font-semibold ml-2 flex-shrink-0">{Math.round((imageScales[origIdx] ?? 0.9) * 100)}%</span>
-                            </div>
-                            <input
-                              type="range" min={30} max={100} step={5}
-                              value={Math.round((imageScales[origIdx] ?? 0.9) * 100)}
-                              onChange={e => {
-                                const next = [...imageScales];
-                                next[origIdx] = Number(e.target.value) / 100;
-                                setImageScales(next);
-                              }}
-                              className="w-full accent-yellow-400"
-                            />
-                            <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                              <span>Kecil (30%)</span><span>Penuh (100%)</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                return (
+                  <div className="space-y-4">
+                    <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
+                      <p><span className="text-gray-500">Claim by:</span> <strong>{pdfTarget.nama_pembuat}</strong></p>
+                      {pdfTarget.from_person && <p><span className="text-gray-500">From:</span> <strong>{pdfTarget.from_person}</strong></p>}
+                      <p><span className="text-gray-500">To:</span> <strong>{pdfTarget.to_person}</strong></p>
+                      <p><span className="text-gray-500">Tanggal:</span> {fmtDateHeader(pdfTarget.claim_date)}</p>
+                      <p><span className="text-gray-500">Total:</span> <strong className="text-green-700">Rp {fmtRp(pdfTarget.total_nominal)}</strong></p>
                     </div>
+                    {sortedForPdf.length > 0 ? (
+                      <div>
+                        <p className="text-sm font-semibold text-gray-700 mb-3">Ukuran gambar bukti di PDF (urutan sesuai tabel)</p>
+                        <div className="space-y-4">
+                          {sortedForPdf.map(({ item, origIdx }) => (
+                            <div key={origIdx} className="flex items-center gap-4">
+                              <div className="relative flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={driveProxyUrl(item.receipt_url!)} alt={`Bukti ${origIdx+1}`} className="w-full h-full object-cover" />
+                                <div className="absolute top-1 left-1 bg-yellow-400 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{origIdx+1}</div>
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                  <span className="truncate max-w-[180px]">#{origIdx+1} · {item.description || '(tanpa keterangan)'}</span>
+                                  <span className="font-semibold ml-2 flex-shrink-0">{Math.round((imageScales[origIdx] ?? 0.9) * 100)}%</span>
+                                </div>
+                                <input
+                                  type="range" min={30} max={100} step={5}
+                                  value={Math.round((imageScales[origIdx] ?? 0.9) * 100)}
+                                  onChange={e => {
+                                    const next = [...imageScales];
+                                    next[origIdx] = Number(e.target.value) / 100;
+                                    setImageScales(next);
+                                  }}
+                                  className="w-full accent-yellow-400"
+                                />
+                                <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                                  <span>Kecil (30%)</span><span>Penuh (100%)</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">Tidak ada foto bukti yang diunggah di item manapun.</p>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-gray-500 italic">Tidak ada foto bukti yang diunggah di item manapun.</p>
                 );
               })()}
             </div>
@@ -746,6 +825,9 @@ function ClaimCard({ claim, isAdmin, currentUsername, onEdit, onDelete, onStatus
               <button onClick={e => { e.stopPropagation(); onStatus(claim.id!, 'approved'); }} className="text-xs bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded transition">✓ Setujui</button>
               <button onClick={e => { e.stopPropagation(); onStatus(claim.id!, 'rejected'); }} className="text-xs bg-red-400 hover:bg-red-500 text-white px-2 py-1 rounded transition">✕ Tolak</button>
             </>
+          )}
+          {isAdmin && claim.status === 'approved' && (
+            <button onClick={e => { e.stopPropagation(); onStatus(claim.id!, 'submitted'); }} className="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded transition">↩ Buka Kembali</button>
           )}
           {(isAdmin || isOwner) && claim.status === 'draft' && (
             <button
