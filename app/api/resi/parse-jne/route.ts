@@ -62,10 +62,10 @@ function parseJneText(text: string): JneRow[] {
     const amtM = cashLine.match(/Cash([\d,]+)\.00/);
     const amount = amtM ? parseInt(amtM[1].replace(/,/g, '')) : 0;
 
-    // Baris antara shipper dan Cash: baris pertama = nama penerima, sisanya = deskripsi barang
+    // Baris antara shipper dan Cash: semua kecuali baris terakhir = nama penerima, baris terakhir = barang
     const middleLines = cashIdx > 0 ? bl.slice(rest, cashIdx) : [];
-    const receiver_name = middleLines[0] ?? '';
-    const goods = middleLines.slice(1).join(' ');
+    const receiver_name = middleLines.slice(0, -1).join(' ');
+    const goods = middleLines[middleLines.length - 1] ?? '';
 
     rows.push({
       no: starts[b].no,
