@@ -11,8 +11,8 @@ function fmtRp(n: number) {
 
 function fmtDate(s: string) {
   if (!s) return '-';
-  const d = new Date(s);
-  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
+  const d = new Date(s + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 }
 
 function fmtDateShort(s: string) {
@@ -1057,7 +1057,7 @@ function ClaimCard({ claim, isAdmin, currentUsername, onEdit, onDelete, onStatus
               {claim.items.map((item, i) => (
                 <tr key={i} className="border-b border-gray-100">
                   <td className="py-1 text-gray-400 text-xs">{i+1}</td>
-                  <td className="py-1 text-xs text-gray-600">{fmtDateShort(item.tanggal)}</td>
+                  <td className="py-1 text-xs text-gray-600">{fmtDate(item.tanggal)}</td>
                   <td className="py-1">{item.description}</td>
                   <td className="py-1 text-right font-mono text-sm">{new Intl.NumberFormat('id-ID').format(item.nominal)}</td>
                   <td className="py-1 text-center">
