@@ -49,6 +49,32 @@ function driveProxyUrl(url: string) {
   return `/api/drive-file?id=${id}`;
 }
 
+function DatePickerInput({ value, onChange, className }: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const displayValue = value ? (() => {
+    const d = new Date(value + 'T00:00:00');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  })() : '';
+  return (
+    <div className={`relative ${className ?? ''}`}>
+      <div className="input-form flex items-center min-h-[38px] pointer-events-none">
+        {displayValue || <span className="text-gray-400 text-sm">Pilih tanggal</span>}
+      </div>
+      <input
+        type="date"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      />
+    </div>
+  );
+}
+
 function wa(s: string) {
   return (s || '').replace(/[^\x20-\xFF]/g, '').trim();
 }
@@ -584,7 +610,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                 </div>
                 <div className="col-span-2">
                   <label className="label-form">Tanggal Klaim *</label>
-                  <input type="date" className="input-form" value={form.claim_date ?? ''} onChange={e => setForm(f => ({ ...f, claim_date: e.target.value }))} />
+                  <DatePickerInput value={form.claim_date ?? ''} onChange={v => setForm(f => ({ ...f, claim_date: v }))} />
                 </div>
               </div>
 
@@ -614,7 +640,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                         <tr key={idx} className="border-t align-middle">
                           <td className="px-2 py-1 text-gray-400 text-xs">{idx + 1}</td>
                           <td className="px-1 py-1">
-                            <input type="date" className="input-form text-xs py-1" value={item.tanggal} onChange={e => updateItem(idx, { tanggal: e.target.value })} />
+                            <DatePickerInput value={item.tanggal} onChange={v => updateItem(idx, { tanggal: v })} className="text-xs" />
                           </td>
                           <td className="px-1 py-1">
                             <input className="input-form text-xs py-1" value={item.description} onChange={e => updateItem(idx, { description: e.target.value })} placeholder="Keterangan pengeluaran" />
@@ -775,8 +801,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
               {/* Fields */}
               <div>
                 <label className="label-form">Tanggal</label>
-                <input type="date" className="input-form" value={receiptModal.tanggal}
-                  onChange={e => setReceiptModal(m => m ? { ...m, tanggal: e.target.value } : null)} />
+                <DatePickerInput value={receiptModal.tanggal} onChange={v => setReceiptModal(m => m ? { ...m, tanggal: v } : null)} />
               </div>
               <div>
                 <label className="label-form">Keterangan</label>
