@@ -36,6 +36,11 @@ Admin pages proxy through `/api/admin/sb` — jangan hardcode URL Supabase langs
 | `app/admin/events/deposit/page.tsx` | Kelola refund deposit |
 | `supabase/functions/fonnte-bot/index.ts` | Logika bot WhatsApp (menu, CS, garansi, dll) |
 | `supabase/functions/send-wa/index.ts` | Kirim pesan/media ke WhatsApp via Meta API |
+| `app/components/ExpenseClaimTab.tsx` | Tab Klaim Biaya — form, modal upload bukti, export PDF |
+| `app/components/ResiTab.tsx` | Tab Resi Pengiriman — import PDF JNE, list resi |
+| `app/api/resi/parse-jne/route.ts` | Parser PDF "Laporan Penjualan Agen" JNE |
+| `app/api/expense-claim/route.ts` | CRUD klaim biaya |
+| `app/api/expense-claim/[id]/route.ts` | Update status / delete klaim |
 
 ## Tabel Database Utama
 
@@ -115,6 +120,52 @@ Pengaturan bot lain (URL file promo, dealer, dll)
 - Semua format tanggal/waktu wajib `timeZone: 'Asia/Jakarta'` di opsi Intl
 - **Hanya berlaku untuk Date** — `toLocaleDateString`, `toLocaleString`, `toLocaleTimeString` pada `new Date(...)`
 - **JANGAN tambahkan** `timeZone` ke `.toLocaleString('id-ID')` pada **angka/number** — `NumberFormatOptions` tidak mengenal `timeZone` dan menyebabkan TypeScript build error di Vercel
+
+## Tab Klaim Biaya (`app/components/ExpenseClaimTab.tsx`)
+- Modal "Buat Klaim Baru": From/To/Tanggal + tabel baris pengeluaran + catatan
+- Kolom **Bukti** di tiap baris → klik 📎 membuka **sub-modal upload** (z-60, di atas modal utama)
+- Sub-modal: frame gambar besar (aspect 4:3) + field Tanggal/Keterangan/Nominal + tombol Simpan
+  - Zoom: scroll/wheel (1×–5×), pinch mobile, drag saat zoom>1, double-click reset
+  - Klik frame saat zoom=1 → ganti foto; badge `120% ✕` muncul saat zoomed → klik reset
+  - Upload ke Google Drive via `/api/upload-google-drive`; blob URL di-revoke saat modal tutup
+- Export PDF multi-halaman: halaman 1 = tabel, halaman 2+ = foto bukti (lib `pdf-lib`)
+- Status klaim: `draft → submitted → approved/rejected`
+- `driveProxyUrl(url)` helper: ekstrak Drive ID → `/api/drive-file?id=<id>`
+
+## Tab Resi / Parser JNE (`app/api/resi/parse-jne/route.ts`)
+Parser PDF "Laporan Penjualan Agen" JNE menggunakan `pdf-parse`.
+
+### Struktur block tiap baris di pdf-parse output
+```
+bl[0]  no+cnote menyatu         "1016060014634426"
+bl[1]  tanggal part 1           "09-06-"   (ends with '-')
+bl[2]  tanggal part 2           "26"  ATAU  "26 19:43"  (tahun+jam menyatu!)
+bl[3]  waktu (jika bl[2]="26")  "19:43"
+bl[N]  service+weight+qty+dest  "REG2311SUKAWATI,GIANYAR+628111877781"  (with phone)
+                                 "REG2311JAMBANGAN,SURABAYA"             (no phone, dest menyatu)
+bl[+]  shipper: "11 PT ALTA" lalu "NIKINDO"  ATAU  "11 PT ALTANIKINDO" (1 kata)
+bl[+]  receiver name
+bl[+]  goods
+bl[+]  "0.00"  (asuransi — HARUS difilter dari middleLines)
+bl[+]  "Cash10,000.000.00SYAEDIN"  (payment+amount+evoucher+userid menyatu)
+```
+
+### Aturan parsing kritis
+- **Tanggal**: `bl[2]` bisa `"YY HH:MM"` → extract tahun & jam via regex, jangan asumsi `timeIdx=3`
+- **Service+Dest**: regex full `/^(.+?)(\d)(\d)([A-Z].+)\+\d+$/` (with phone) **atau** noPhone `/^(.+?)(\d)(\d)([A-Z].+)$/`
+- **Shipper skip**: `bl[i].includes('NIKINDO')` — handle `"NIKINDO"`, `"ALTANIKINDO"`, `"NIKINDO (NIKON)"`
+- **Non-NIKINDO shipper**: fallback skip baris yang diawali `^11\b` (kode agen)
+- **middleLines**: filter `"0.00"` (asuransi) sebelum parsing receiver/barang
+- **cashPrefix**: jika `=== 'Cash'` → anggap kosong (label metode bayar, bukan barang)
+- **Case A** (cashPrefix kosong): item terakhir middleLines = barang, sisanya = penerima
+- **Case B** (middleLines kosong): cashPrefix dipisah keyword barang di akhir string
+- **Case C** (cashPrefix ada, middleLines ada): cashPrefix = barang, middleLines = penerima
+
+### Tabel `resi_pengiriman`
+Kolom: `id`, `created_at`, `created_by`, `nama_pembuat`, `tanggal_kirim`, `nama_expedisi`, `file_url`, `file_name`, `catatan`, `cnote_no`, `service`, `tujuan`, `penerima`, `barang`, `ongkir`, `jam_kirim`
+
+## Tabel `expense_claim`
+`id`, `created_at`, `created_by`, `nama_pembuat`, `from_person`, `to_person`, `claim_date`, `status` (`draft|submitted|approved|rejected`), `catatan`, `items` (JSONB array: `{tanggal, description, nominal, receipt_url?}`), `receipt_urls` (TEXT[]), `total_nominal`
 
 ## Animasi (`app/globals.css`)
 Utility classes tersedia tanpa npm tambahan:
