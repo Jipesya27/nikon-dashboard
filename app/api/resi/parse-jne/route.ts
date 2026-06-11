@@ -33,36 +33,58 @@ function parseJneText(text: string): JneRow[] {
     const bl = lines.slice(s, e);
 
     // ── Tanggal & waktu ────────────────────────────────────────────────────
+    // Format bl[1]: "DD-MM-" (split, lanjut ke bl[2]) atau "DD-MM-YY" (lengkap)
+    // Format bl[2] jika split: "YY" saja ATAU "YY HH:MM" (tahun+jam menyatu 1 baris)
     let dateStr = bl[1];
     let timeIdx = 2;
-    if (bl[1].endsWith('-')) { dateStr = bl[1] + bl[2]; timeIdx = 3; }
+    if (bl[1].endsWith('-')) {
+      const part2 = bl[2];
+      const mergedYT = part2.match(/^(\d{2})\s+(\d{2}:\d{2})$/);
+      if (mergedYT) {
+        // "26 19:43" — tahun & jam di baris yang sama
+        dateStr = bl[1] + mergedYT[1];
+        // timeIdx tetap 2, time di-extract dari part2 (bukan bl[2] mentah)
+      } else {
+        dateStr = bl[1] + part2;
+        timeIdx = 3;
+      }
+    }
     const [dd, mm, yy] = dateStr.split('-');
     const isoDate = `${2000 + parseInt(yy)}-${mm}-${dd}`;
-    const time = bl[timeIdx];
+    // Ekstrak HH:MM dari baris timeIdx — bisa "19:43" atau "26 19:43"
+    const timeRaw = bl[timeIdx] ?? '';
+    const timeM = timeRaw.match(/(\d{2}:\d{2})/);
+    const time = timeM ? timeM[1] : timeRaw;
 
     // ── Service & destination ─────────────────────────────────────────────
     let service = '', destination = '';
     let rest = timeIdx + 2;
     const l3 = bl[timeIdx + 1];
 
-    // Baris lengkap: service+weight+qty+dest+phone semua satu baris
+    // Case 1 — with phone: service+weight+qty+dest+phone semua 1 baris
     const full = l3.match(/^(.+?)(\d)(\d)([A-Z].+)\+\d+$/);
+    // Case 2 — no phone: service+weight+qty+dest menyatu, tanpa phone
+    const noPhone = !full ? l3.match(/^(.+?)(\d)(\d)([A-Z].+)$/) : null;
+
     if (full) {
       service = full[1];
       destination = full[4].trim();
       rest = timeIdx + 2;
+    } else if (noPhone) {
+      service = noPhone[1];
+      destination = noPhone[4].trim();
+      rest = timeIdx + 2;
     } else {
-      // Destination multi-baris — service = strip 2 digit (weight+qty) di akhir
+      // Fallback: service+weight+qty di 1 baris, destination di baris berikutnya
       service = l3.replace(/\d{2}$/, '');
       let i = timeIdx + 2;
       const destParts: string[] = [];
-      // Batas: phone (+62...), baris shipper ID (^11), atau Cash
+      // Batas: phone (+62...), shipper ID (^11), atau Cash
       while (i < bl.length && !bl[i].startsWith('+') && !/^(11\b|Cash)/.test(bl[i])) {
         destParts.push(bl[i]);
         i++;
       }
       destination = destParts.join(' ');
-      // Skip baris phone jika ada
       if (i < bl.length && bl[i].startsWith('+')) i++;
       rest = i;
     }
@@ -90,19 +112,27 @@ function parseJneText(text: string): JneRow[] {
     const amtM = cashLine.match(/Cash([\d,]+)\.00/);
     const amount = amtM ? parseInt(amtM[1].replace(/,/g, '')) : 0;
 
-    // Teks sebelum angka pertama di baris Cash (bisa berisi barang/penerima yang menyatu)
+    // cashPrefix = teks non-digit sebelum angka pertama di baris Cash
+    // Jika nilainya "Cash" (label metode bayar) → bukan barang, anggap kosong
     const cashPrefixM = cashLine.match(/^([^0-9]*)/);
-    const cashPrefix = cashPrefixM ? cashPrefixM[1].trim() : '';
-    const middleLines = cashIdx > 0 ? bl.slice(rest, cashIdx) : [];
+    const rawPrefix = cashPrefixM ? cashPrefixM[1].trim() : '';
+    const cashPrefix = rawPrefix === 'Cash' ? '' : rawPrefix;
+
+    // Buang baris asuransi "0.00" dari middleLines sebelum parsing penerima/barang
+    const middleLines = (cashIdx > 0 ? bl.slice(rest, cashIdx) : []).filter(l => l !== '0.00');
 
     let receiver_name = '', goods = '';
     if (!cashPrefix) {
-      // Case A: baris Cash murni angka — middleLines = penerima + barang, split tengah (ceil)
-      const half = Math.ceil(middleLines.length / 2);
-      receiver_name = middleLines.slice(0, half).join(' ');
-      goods = middleLines.slice(half).join(' ');
+      // Case A: Cash murni angka (atau "Cash" label) — middleLines berisi penerima lalu barang
+      // Item terakhir = barang, sisanya = penerima
+      if (middleLines.length >= 2) {
+        goods = middleLines[middleLines.length - 1];
+        receiver_name = middleLines.slice(0, -1).join(' ');
+      } else {
+        receiver_name = middleLines.join(' ');
+      }
     } else if (middleLines.length === 0) {
-      // Case B: penerima+barang menyatu di baris Cash — split dengan kata barang di akhir
+      // Case B: penerima+barang menyatu di cashPrefix — split dengan keyword barang di akhir
       const gMatch = cashPrefix.match(
         /(BATERAI|LENSA KAMERA|KAMERA|LENSA|FLASH|CHARGER|TRIPOD|MEMORY CARD|MEMORY|CARD|AKSESORIS|FILTER|HOOD|STRAP|CASE|REMOTE|GRIP|SPEEDLIGHT|SOFTBOX|STAND|CABLE|CLEANING KIT|KIT|SET|BUNDLE|BAG|TAS|MAKANAN)$/,
       );
@@ -114,7 +144,7 @@ function parseJneText(text: string): JneRow[] {
         goods = '';
       }
     } else {
-      // Case C: cashPrefix = barang saja, middleLines = semua baris penerima
+      // Case C: cashPrefix = barang, middleLines = penerima
       receiver_name = middleLines.join(' ');
       goods = cashPrefix;
     }
