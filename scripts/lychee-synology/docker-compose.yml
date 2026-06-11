@@ -34,7 +34,7 @@ services:
     volumes:
       - /volume1/docker/lychee/conf:/conf
       - /volume1/docker/lychee/logs:/logs
-      - /volume1/photos:/uploads
+      - /volume2/photo:/uploads
     networks:
       - lychee-net
 
