@@ -51,13 +51,14 @@ function driveProxyUrl(url: string) {
 
 // ─── Image layout types & helpers ─────────────────────────────────────────────
 
-type ImgLayout = { x: number; y: number; w: number; h: number; page: number };
+type ImgLayout = { x: number; y: number; w: number; h: number; page: number; rotation: number };
 
 const PDF_W = 595.28;
 const PDF_H = 841.89;
-const CANVAS_W = 420; // UI pixels for A4 width
-const CANVAS_SC = CANVAS_W / PDF_W;
-const CANVAS_H = Math.round(PDF_H * CANVAS_SC);
+const CANVAS_W   = 420; // UI pixels for A4 width
+const CANVAS_SC  = CANVAS_W / PDF_W;
+const CANVAS_H   = Math.round(PDF_H * CANVAS_SC);
+const PAGE_GAP_PX = 24; // gap between A4 pages in the flat canvas (UI pixels)
 
 function autoLayout(
   items: { origIdx: number }[],
@@ -71,7 +72,7 @@ function autoLayout(
     const w = DEFAULT_W, h = w * aspect;
     if (curX + w > PDF_W - MX && curX > MX) { curX = MX; curY += rowH + GAP; rowH = 0; }
     if (curY + h > PDF_H - MY) { page++; curX = MX; curY = MY; rowH = 0; }
-    layouts.push({ x: curX, y: curY, w, h, page });
+    layouts.push({ x: curX, y: curY, w, h, page, rotation: 0 });
     rowH = Math.max(rowH, h); curX += w + GAP;
   }
   return layouts;
@@ -137,7 +138,7 @@ async function generateExpenseClaimPDF(
   claim: ExpenseClaim,
   receiptLayouts: ImgLayout[],
 ) {
-  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
+  const { PDFDocument, rgb, StandardFonts, degrees } = await import('pdf-lib');
 
   const pdfDoc = await PDFDocument.create();
   const font     = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -265,12 +266,25 @@ async function generateExpenseClaimPDF(
       } catch { continue; }
 
       // PDF y=0 is bottom; convert from top-origin
-      const pdfY = PH - layout.y - layout.h;
-      page.drawImage(embeddedImg, { x: layout.x, y: pdfY, width: layout.w, height: layout.h });
+      // Handle rotation: layout.w/h are the displayed bounding box after rotation
+      const rot = layout.rotation ?? 0;
+      const needsSwap = rot === 90 || rot === 270;
+      const origW = needsSwap ? layout.h : layout.w;
+      const origH = needsSwap ? layout.w : layout.h;
+      // Center of displayed box in PDF coords (y from bottom)
+      const cxPdf = layout.x + layout.w / 2;
+      const cyPdf = (PH - layout.y - layout.h) + layout.h / 2;
+      // Anchor point (bottom-left of pre-rotation image) so rotation is around center
+      let ancX: number, ancY: number;
+      if      (rot ===   0) { ancX = cxPdf - origW/2; ancY = cyPdf - origH/2; }
+      else if (rot ===  90) { ancX = cxPdf + origH/2; ancY = cyPdf - origW/2; }
+      else if (rot === 180) { ancX = cxPdf + origW/2; ancY = cyPdf + origH/2; }
+      else                  { ancX = cxPdf - origH/2; ancY = cyPdf + origW/2; }
+      page.drawImage(embeddedImg, { x: ancX, y: ancY, width: origW, height: origH, rotate: degrees(rot) });
 
       const R = 14;
       const cx = layout.x + R + 4;
-      const cy = pdfY + layout.h - R - 4;
+      const cy = (PH - layout.y - layout.h) + layout.h - R - 4;
       page.drawCircle({ x: cx, y: cy, size: R, color: rgb(1, 0.78, 0), borderColor: rgb(0.4, 0.3, 0), borderWidth: 0.5 });
       const numStr = String(origIdx + 1);
       const nW = fontBold.widthOfTextAtSize(numStr, 11);
@@ -344,6 +358,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
     startMX: number; startMY: number;
     startX: number; startY: number;
     startW: number; startH: number;
+    startPage: number;
   } | null>(null);
 
   const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin' || currentUser?.role === 'Finance';
@@ -599,25 +614,35 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
       startMX: e.clientX, startMY: e.clientY,
       startX: layout.x,   startY: layout.y,
       startW: layout.w,   startH: layout.h,
+      startPage: layout.page,
     };
   }
 
   function onLayoutPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!layoutDragRef.current) return;
     const d = layoutDragRef.current;
-    const dx = (e.clientX - d.startMX) / CANVAS_SC;
-    const dy = (e.clientY - d.startMY) / CANVAS_SC;
     setImageLayouts(prev => {
       const next = [...prev];
       const lay  = next[d.imgIdx];
       if (d.type === 'move') {
+        // Use flat-canvas coords so images can cross page boundaries
+        const PAGE_TOTAL_PX = CANVAS_H + PAGE_GAP_PX;
+        const startTotalTop = d.startPage * PAGE_TOTAL_PX + d.startY * CANVAS_SC;
+        const newTotalTop   = startTotalTop + (e.clientY - d.startMY);
+        const newTotalLeft  = d.startX * CANVAS_SC + (e.clientX - d.startMX);
+
+        const newPage = Math.max(0, Math.min(9, Math.floor(newTotalTop / PAGE_TOTAL_PX)));
+        const yPx     = newTotalTop - newPage * PAGE_TOTAL_PX;
+
         next[d.imgIdx] = {
           ...lay,
-          x: Math.max(0, Math.min(PDF_W - lay.w, d.startX + dx)),
-          y: Math.max(0, Math.min(PDF_H - lay.h, d.startY + dy)),
+          x:    Math.max(0, Math.min(PDF_W - lay.w, newTotalLeft / CANVAS_SC)),
+          y:    Math.max(0, Math.min(PDF_H - lay.h, yPx / CANVAS_SC)),
+          page: newPage,
         };
       } else {
         const aspect = d.startH / d.startW;
+        const dx = (e.clientX - d.startMX) / CANVAS_SC;
         const newW = Math.max(50, Math.min(PDF_W - d.startX, d.startW + dx));
         next[d.imgIdx] = { ...lay, w: newW, h: newW * aspect };
       }
@@ -626,6 +651,30 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
   }
 
   function onLayoutPointerUp() { layoutDragRef.current = null; }
+
+  function rotateLayout(imgIdx: number) {
+    setImageLayouts(prev => {
+      const next   = [...prev];
+      const lay    = next[imgIdx];
+      const newRot = ((lay.rotation ?? 0) + 90) % 360;
+      // When crossing 0↔90 or 180↔270 the displayed bounding box swaps w/h
+      const wasSwap = (lay.rotation ?? 0) === 90 || (lay.rotation ?? 0) === 270;
+      const willSwap = newRot === 90 || newRot === 270;
+      const newW = wasSwap !== willSwap ? lay.h : lay.w;
+      const newH = wasSwap !== willSwap ? lay.w : lay.h;
+      next[imgIdx] = { ...lay, rotation: newRot, w: newW, h: newH };
+      return next;
+    });
+  }
+
+  function moveToPage(imgIdx: number, delta: number) {
+    setImageLayouts(prev => {
+      const next = [...prev];
+      const lay  = next[imgIdx];
+      next[imgIdx] = { ...lay, page: Math.max(0, Math.min(9, lay.page + delta)) };
+      return next;
+    });
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -1015,7 +1064,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                 return (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-500">Drag gambar untuk pindah · Tarik sudut kanan bawah untuk resize</p>
+                      <p className="text-xs text-gray-500">Drag untuk pindah/antar-hal · ↻ putar · ◄► ganti hal · sudut kanan bawah = resize</p>
                       <button
                         onClick={() => setImageLayouts(autoLayout(receiptItems, aspectRatios))}
                         className="text-xs text-blue-600 hover:underline border border-blue-200 px-2 py-0.5 rounded"
@@ -1029,76 +1078,125 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                         <span className="animate-spin mr-2 text-xl">⟳</span> Memuat gambar...
                       </div>
                     ) : (
-                      <div className="overflow-y-auto max-h-[500px] space-y-4 pb-2">
-                        {Array.from({ length: numPages }).map((_, pageIdx) => (
-                          <div key={pageIdx}>
-                            {numPages > 1 && (
-                              <div className="text-xs text-center text-gray-400 mb-1">Halaman {pageIdx + 2}</div>
-                            )}
+                      /* ── Flat multi-page canvas (all pages stacked, images drag across) ── */
+                      <div
+                        className="overflow-y-auto mx-auto"
+                        style={{ width: CANVAS_W, maxHeight: 540 }}
+                      >
+                        <div
+                          className="relative"
+                          style={{ width: CANVAS_W, height: numPages * (CANVAS_H + PAGE_GAP_PX) - PAGE_GAP_PX }}
+                        >
+                          {/* A4 page backgrounds */}
+                          {Array.from({ length: numPages }).map((_, pageIdx) => (
                             <div
-                              className="relative bg-white shadow border border-gray-300 mx-auto overflow-hidden"
-                              style={{ width: CANVAS_W, height: CANVAS_H }}
+                              key={pageIdx}
+                              className="absolute bg-white shadow border border-gray-300"
+                              style={{
+                                left: 0, width: CANVAS_W,
+                                top: pageIdx * (CANVAS_H + PAGE_GAP_PX),
+                                height: CANVAS_H,
+                              }}
                             >
-                              {/* Subtle grid */}
                               <div className="absolute inset-0 pointer-events-none" style={{
                                 backgroundImage: 'linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)',
                                 backgroundSize: `${Math.round(50 * CANVAS_SC)}px ${Math.round(50 * CANVAS_SC)}px`,
                               }} />
-
-                              {receiptItems.map(({ item, origIdx }, imgIdx) => {
-                                const layout = imageLayouts[imgIdx];
-                                if (!layout || layout.page !== pageIdx) return null;
-                                return (
-                                  <div
-                                    key={origIdx}
-                                    className="absolute border-2 border-blue-400 overflow-hidden rounded shadow-md select-none"
-                                    style={{
-                                      left: layout.x * CANVAS_SC,
-                                      top:  layout.y * CANVAS_SC,
-                                      width:  layout.w * CANVAS_SC,
-                                      height: layout.h * CANVAS_SC,
-                                      cursor: 'move',
-                                      touchAction: 'none',
-                                    }}
-                                    onPointerDown={e => onLayoutPointerDown(e, imgIdx, 'move')}
-                                    onPointerMove={onLayoutPointerMove}
-                                    onPointerUp={onLayoutPointerUp}
-                                  >
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={driveProxyUrl(item.receipt_url!)}
-                                      alt={`Bukti ${origIdx + 1}`}
-                                      className="w-full h-full object-cover pointer-events-none"
-                                      draggable={false}
-                                    />
-                                    {/* Number badge */}
-                                    <div className="absolute top-1 left-1 bg-yellow-400 text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow pointer-events-none">
-                                      {origIdx + 1}
-                                    </div>
-                                    {/* Size label */}
-                                    <div className="absolute bottom-5 inset-x-0 flex justify-center pointer-events-none">
-                                      <span className="bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded">
-                                        {Math.round(layout.w)}×{Math.round(layout.h)}pt
-                                      </span>
-                                    </div>
-                                    {/* Resize handle — bottom right */}
-                                    <div
-                                      className="absolute bottom-0 right-0 w-5 h-5 bg-blue-500 hover:bg-blue-600 flex items-center justify-center"
-                                      style={{ cursor: 'se-resize', touchAction: 'none' }}
-                                      onPointerDown={e => { e.stopPropagation(); onLayoutPointerDown(e, imgIdx, 'resize'); }}
-                                      onPointerMove={onLayoutPointerMove}
-                                      onPointerUp={onLayoutPointerUp}
-                                    >
-                                      <svg width="10" height="10" viewBox="0 0 10 10" className="pointer-events-none">
-                                        <path d="M 2 8 L 8 2 M 5 8 L 8 5" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-                                      </svg>
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                              <div className="absolute top-1 right-2 text-[9px] text-gray-400 pointer-events-none">
+                                Hal.{pageIdx + 2}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+
+                          {/* Images — flat layer so drag crosses page boundaries */}
+                          {receiptItems.map(({ item, origIdx }, imgIdx) => {
+                            const layout = imageLayouts[imgIdx];
+                            if (!layout) return null;
+                            const rot      = layout.rotation ?? 0;
+                            const needsSwap = rot === 90 || rot === 270;
+                            const boxW = layout.w * CANVAS_SC;
+                            const boxH = layout.h * CANVAS_SC;
+                            const imgW = needsSwap ? boxH : boxW;
+                            const imgH = needsSwap ? boxW : boxH;
+                            const totalTop = layout.page * (CANVAS_H + PAGE_GAP_PX) + layout.y * CANVAS_SC;
+                            return (
+                              <div
+                                key={origIdx}
+                                className="absolute border-2 border-blue-400 rounded shadow-md select-none overflow-hidden"
+                                style={{
+                                  left: layout.x * CANVAS_SC,
+                                  top:  totalTop,
+                                  width:  boxW,
+                                  height: boxH,
+                                  cursor: 'move',
+                                  touchAction: 'none',
+                                  zIndex: 10,
+                                }}
+                                onPointerDown={e => onLayoutPointerDown(e, imgIdx, 'move')}
+                                onPointerMove={onLayoutPointerMove}
+                                onPointerUp={onLayoutPointerUp}
+                              >
+                                {/* Image with rotation */}
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={driveProxyUrl(item.receipt_url!)}
+                                  alt={`Bukti ${origIdx + 1}`}
+                                  draggable={false}
+                                  style={{
+                                    position: 'absolute',
+                                    width: imgW, height: imgH,
+                                    top: '50%', left: '50%',
+                                    transform: `translate(-50%,-50%) rotate(${rot}deg)`,
+                                    objectFit: 'cover',
+                                    pointerEvents: 'none',
+                                  }}
+                                />
+                                {/* Number badge */}
+                                <div className="absolute top-1 left-1 bg-yellow-400 text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow pointer-events-none z-10">
+                                  {origIdx + 1}
+                                </div>
+                                {/* Rotate button — top right */}
+                                <button
+                                  className="absolute top-1 right-1 bg-white/80 hover:bg-yellow-300 text-gray-800 text-xs w-5 h-5 rounded-full flex items-center justify-center shadow z-10"
+                                  style={{ touchAction: 'none' }}
+                                  title="Putar 90°"
+                                  onPointerDown={e => e.stopPropagation()}
+                                  onClick={e => { e.stopPropagation(); rotateLayout(imgIdx); }}
+                                >↻</button>
+                                {/* Page nav — bottom bar (leaves gap for resize handle) */}
+                                <div
+                                  className="absolute bottom-0 left-0 right-5 flex items-center justify-center gap-0.5 bg-black/50 py-0.5 z-10"
+                                  onPointerDown={e => e.stopPropagation()}
+                                >
+                                  <button
+                                    className="text-white text-[10px] px-1 hover:text-yellow-400 disabled:opacity-30"
+                                    disabled={layout.page === 0}
+                                    onClick={e => { e.stopPropagation(); moveToPage(imgIdx, -1); }}
+                                  >◄</button>
+                                  <span className="text-white text-[10px] min-w-[36px] text-center">
+                                    Hal.{layout.page + 2}
+                                  </span>
+                                  <button
+                                    className="text-white text-[10px] px-1 hover:text-yellow-400"
+                                    onClick={e => { e.stopPropagation(); moveToPage(imgIdx, 1); }}
+                                  >►</button>
+                                </div>
+                                {/* Resize handle — bottom right */}
+                                <div
+                                  className="absolute bottom-0 right-0 w-5 h-5 bg-blue-500 hover:bg-blue-600 flex items-center justify-center z-20"
+                                  style={{ cursor: 'se-resize', touchAction: 'none' }}
+                                  onPointerDown={e => { e.stopPropagation(); onLayoutPointerDown(e, imgIdx, 'resize'); }}
+                                  onPointerMove={onLayoutPointerMove}
+                                  onPointerUp={onLayoutPointerUp}
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 10 10" className="pointer-events-none">
+                                    <path d="M 2 8 L 8 2 M 5 8 L 8 5" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                                  </svg>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
