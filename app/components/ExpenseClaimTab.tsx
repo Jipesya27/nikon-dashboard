@@ -49,6 +49,34 @@ function driveProxyUrl(url: string) {
   return `/api/drive-file?id=${id}`;
 }
 
+// ─── Image layout types & helpers ─────────────────────────────────────────────
+
+type ImgLayout = { x: number; y: number; w: number; h: number; page: number };
+
+const PDF_W = 595.28;
+const PDF_H = 841.89;
+const CANVAS_W = 420; // UI pixels for A4 width
+const CANVAS_SC = CANVAS_W / PDF_W;
+const CANVAS_H = Math.round(PDF_H * CANVAS_SC);
+
+function autoLayout(
+  items: { origIdx: number }[],
+  aspects: Record<number, number>,
+): ImgLayout[] {
+  const MX = 40, MY = 40, GAP = 12, DEFAULT_W = 230;
+  const layouts: ImgLayout[] = [];
+  let curX = MX, curY = MY, rowH = 0, page = 0;
+  for (const { origIdx } of items) {
+    const aspect = aspects[origIdx] ?? 0.75;
+    const w = DEFAULT_W, h = w * aspect;
+    if (curX + w > PDF_W - MX && curX > MX) { curX = MX; curY += rowH + GAP; rowH = 0; }
+    if (curY + h > PDF_H - MY) { page++; curX = MX; curY = MY; rowH = 0; }
+    layouts.push({ x: curX, y: curY, w, h, page });
+    rowH = Math.max(rowH, h); curX += w + GAP;
+  }
+  return layouts;
+}
+
 function DatePickerInput({ value, onChange, className }: {
   value: string;
   onChange: (v: string) => void;
@@ -107,7 +135,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 async function generateExpenseClaimPDF(
   claim: ExpenseClaim,
-  imageScales: number[],   // 0.5 – 2.0 per receipt
+  receiptLayouts: ImgLayout[],
 ) {
   const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
 
@@ -210,74 +238,43 @@ async function generateExpenseClaimPDF(
     drawVLine(p1, x, tableBottom, tableTop)
   );
 
-  // ── PAGE 2+: Receipt images — urutan ikut sortedItems ─────────────────────
-  // Kumpulkan item yang punya receipt_url, dalam urutan sortedItems
-  const receiptItems = sortedItems
+  // ── PAGE 2+: Receipt images at absolute positions ─────────────────────────
+  const receiptItemsForPdf = sortedItems
     .map((item, idx) => ({ item, origIdx: idx }))
     .filter(({ item }) => !!item.receipt_url);
 
-  if (receiptItems.length > 0) {
-    const imgPageMarginX = 40;
-    const imgPageMarginY = 40;
-    const imgContentW = PW - imgPageMarginX * 2;
+  if (receiptItemsForPdf.length > 0 && receiptLayouts.length > 0) {
+    const numImgPages = Math.max(...receiptLayouts.map(l => l.page)) + 1;
+    const imgPages: ReturnType<typeof pdfDoc.addPage>[] = [];
+    for (let p = 0; p < numImgPages; p++) imgPages.push(pdfDoc.addPage([PW, PH]));
 
-    let curPage = pdfDoc.addPage([PW, PH]);
-    let curX = imgPageMarginX;
-    let curY = PH - imgPageMarginY;
-    let rowH  = 0;
+    for (let ri = 0; ri < receiptItemsForPdf.length; ri++) {
+      const { item, origIdx } = receiptItemsForPdf[ri];
+      const layout = receiptLayouts[ri];
+      if (!layout) continue;
+      const page = imgPages[layout.page];
+      if (!page) continue;
 
-    for (let ri = 0; ri < receiptItems.length; ri++) {
-      const { item, origIdx } = receiptItems[ri];
-      const scale = imageScales[origIdx] ?? 0.9;
-      const imgW  = imgContentW * Math.min(Math.max(scale, 0.3), 1.0);
-
-      // Fetch image
       let embeddedImg;
       try {
         const proxyUrl = driveProxyUrl(item.receipt_url!);
         const resp = await fetch(proxyUrl);
         const buf  = new Uint8Array(await resp.arrayBuffer());
         const ct   = resp.headers.get('content-type') || '';
-        if (ct.includes('png')) {
-          embeddedImg = await pdfDoc.embedPng(buf);
-        } else {
-          embeddedImg = await pdfDoc.embedJpg(buf);
-        }
-      } catch {
-        continue;
-      }
+        embeddedImg = ct.includes('png') ? await pdfDoc.embedPng(buf) : await pdfDoc.embedJpg(buf);
+      } catch { continue; }
 
-      const aspect = embeddedImg.height / embeddedImg.width;
-      const imgH   = imgW * aspect;
+      // PDF y=0 is bottom; convert from top-origin
+      const pdfY = PH - layout.y - layout.h;
+      page.drawImage(embeddedImg, { x: layout.x, y: pdfY, width: layout.w, height: layout.h });
 
-      // New row if not enough horizontal space
-      if (curX + imgW > PW - imgPageMarginX && curX > imgPageMarginX) {
-        curX  = imgPageMarginX;
-        curY -= rowH + 16;
-        rowH  = 0;
-      }
-      // New page if not enough vertical space
-      if (curY - imgH < imgPageMarginY) {
-        curPage = pdfDoc.addPage([PW, PH]);
-        curX    = imgPageMarginX;
-        curY    = PH - imgPageMarginY;
-        rowH    = 0;
-      }
-
-      const drawY = curY - imgH;
-      curPage.drawImage(embeddedImg, { x: curX, y: drawY, width: imgW, height: imgH });
-
-      // Badge circle kuning — nomor = posisi di tabel (origIdx + 1)
       const R = 14;
-      const cx = curX + R + 4;
-      const cy = drawY + imgH - R - 4;
-      curPage.drawCircle({ x: cx, y: cy, size: R, color: rgb(1, 0.78, 0), borderColor: rgb(0.4, 0.3, 0), borderWidth: 0.5 });
+      const cx = layout.x + R + 4;
+      const cy = pdfY + layout.h - R - 4;
+      page.drawCircle({ x: cx, y: cy, size: R, color: rgb(1, 0.78, 0), borderColor: rgb(0.4, 0.3, 0), borderWidth: 0.5 });
       const numStr = String(origIdx + 1);
       const nW = fontBold.widthOfTextAtSize(numStr, 11);
-      curPage.drawText(numStr, { x: cx - nW / 2, y: cy - 5, size: 11, font: fontBold, color: rgb(0, 0, 0) });
-
-      rowH  = Math.max(rowH, imgH);
-      curX += imgW + 12;
+      page.drawText(numStr, { x: cx - nW / 2, y: cy - 5, size: 11, font: fontBold, color: rgb(0, 0, 0) });
     }
   }
 
@@ -335,10 +332,19 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
   const lastTouchDist = useRef<number | null>(null);
 
   // PDF export modal
-  const [pdfTarget,    setPdfTarget]    = useState<ExpenseClaim | null>(null);
-  const [imageScales,  setImageScales]  = useState<number[]>([]);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [pdfTab, setPdfTab] = useState<'settings'|'preview'>('preview');
+  const [pdfTarget,      setPdfTarget]      = useState<ExpenseClaim | null>(null);
+  const [imageLayouts,   setImageLayouts]   = useState<ImgLayout[]>([]);
+  const [aspectRatios,   setAspectRatios]   = useState<Record<number, number>>({});
+  const [loadingLayouts, setLoadingLayouts] = useState(false);
+  const [generatingPdf,  setGeneratingPdf]  = useState(false);
+  const [pdfTab,         setPdfTab]         = useState<'layout'|'preview'>('layout');
+  const layoutDragRef = useRef<{
+    type: 'move' | 'resize';
+    imgIdx: number;
+    startMX: number; startMY: number;
+    startX: number; startY: number;
+    startW: number; startH: number;
+  } | null>(null);
 
   const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin' || currentUser?.role === 'Finance';
 
@@ -543,17 +549,83 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
   // ── Open PDF modal ─────────────────────────────────────────────────────────
   function openPdfExport(c: ExpenseClaim) {
     setPdfTarget(c);
-    setImageScales(c.items.map(() => 0.9));
-    setPdfTab('preview');
+    setPdfTab('layout');
+    setImageLayouts([]);
+    setAspectRatios({});
+    setLoadingLayouts(true);
+
+    const sorted = [...c.items].sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || ''));
+    const receipts = sorted
+      .map((item, idx) => ({ item, origIdx: idx }))
+      .filter(({ item }) => !!item.receipt_url);
+
+    if (receipts.length === 0) { setLoadingLayouts(false); return; }
+
+    const aspects: Record<number, number> = {};
+    Promise.all(receipts.map(({ item, origIdx }) =>
+      new Promise<void>(resolve => {
+        const img = new window.Image();
+        img.onload  = () => { aspects[origIdx] = img.naturalHeight / img.naturalWidth; resolve(); };
+        img.onerror = () => { aspects[origIdx] = 0.75; resolve(); };
+        img.src = driveProxyUrl(item.receipt_url!);
+      })
+    )).then(() => {
+      setAspectRatios(aspects);
+      setImageLayouts(autoLayout(receipts, aspects));
+      setLoadingLayouts(false);
+    });
   }
 
   async function handleGeneratePdf() {
     if (!pdfTarget) return;
     setGeneratingPdf(true);
-    try { await generateExpenseClaimPDF(pdfTarget, imageScales); }
+    try { await generateExpenseClaimPDF(pdfTarget, imageLayouts); }
     catch (e) { alert('Gagal generate PDF: ' + (e instanceof Error ? e.message : 'Error')); }
     finally { setGeneratingPdf(false); }
   }
+
+  // ── Layout drag handlers ───────────────────────────────────────────────────
+  function onLayoutPointerDown(
+    e: React.PointerEvent<HTMLDivElement>,
+    imgIdx: number,
+    type: 'move' | 'resize',
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    const layout = imageLayouts[imgIdx];
+    layoutDragRef.current = {
+      type, imgIdx,
+      startMX: e.clientX, startMY: e.clientY,
+      startX: layout.x,   startY: layout.y,
+      startW: layout.w,   startH: layout.h,
+    };
+  }
+
+  function onLayoutPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!layoutDragRef.current) return;
+    const d = layoutDragRef.current;
+    const dx = (e.clientX - d.startMX) / CANVAS_SC;
+    const dy = (e.clientY - d.startMY) / CANVAS_SC;
+    setImageLayouts(prev => {
+      const next = [...prev];
+      const lay  = next[d.imgIdx];
+      if (d.type === 'move') {
+        next[d.imgIdx] = {
+          ...lay,
+          x: Math.max(0, Math.min(PDF_W - lay.w, d.startX + dx)),
+          y: Math.max(0, Math.min(PDF_H - lay.h, d.startY + dy)),
+        };
+      } else {
+        const aspect = d.startH / d.startW;
+        const newW = Math.max(50, Math.min(PDF_W - d.startX, d.startW + dx));
+        next[d.imgIdx] = { ...lay, w: newW, h: newW * aspect };
+      }
+      return next;
+    });
+  }
+
+  function onLayoutPointerUp() { layoutDragRef.current = null; }
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -850,10 +922,10 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
 
             {/* Tabs */}
             <div className="flex border-b px-5">
-              {(['preview', 'settings'] as const).map(t => (
+              {(['layout', 'preview'] as const).map(t => (
                 <button key={t} onClick={() => setPdfTab(t)}
                   className={`px-4 py-2.5 text-sm font-medium border-b-2 transition -mb-px ${pdfTab === t ? 'border-[#FFE500] text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-700'}`}>
-                  {t === 'preview' ? '👁 Preview' : '⚙️ Pengaturan Gambar'}
+                  {t === 'layout' ? '📐 Layout A4' : '👁 Preview Tabel'}
                 </button>
               ))}
             </div>
@@ -925,57 +997,109 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                 </div>
               );
             })()}
-              {/* ── Settings tab ── */}
-              {pdfTab === 'settings' && (() => {
-                const sortedForPdf = [...pdfTarget.items]
+              {/* ── Layout tab ── */}
+              {pdfTab === 'layout' && (() => {
+                const sorted = [...pdfTarget.items].sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || ''));
+                const receiptItems = sorted
                   .map((item, idx) => ({ item, origIdx: idx }))
-                  .sort((a, b) => (a.item.tanggal || '').localeCompare(b.item.tanggal || ''))
                   .filter(({ item }) => !!item.receipt_url);
+
+                if (receiptItems.length === 0) {
+                  return <p className="text-sm text-gray-500 italic">Tidak ada foto bukti yang diunggah di item manapun.</p>;
+                }
+
+                const numPages = imageLayouts.length > 0
+                  ? Math.max(...imageLayouts.map(l => l.page)) + 1
+                  : 1;
+
                 return (
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
-                      <p><span className="text-gray-500">Claim by:</span> <strong>{pdfTarget.nama_pembuat}</strong></p>
-                      {pdfTarget.from_person && <p><span className="text-gray-500">From:</span> <strong>{pdfTarget.from_person}</strong></p>}
-                      <p><span className="text-gray-500">To:</span> <strong>{pdfTarget.to_person}</strong></p>
-                      <p><span className="text-gray-500">Tanggal:</span> {fmtDateHeader(pdfTarget.claim_date)}</p>
-                      <p><span className="text-gray-500">Total:</span> <strong className="text-green-700">Rp {fmtRp(pdfTarget.total_nominal)}</strong></p>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-500">Drag gambar untuk pindah · Tarik sudut kanan bawah untuk resize</p>
+                      <button
+                        onClick={() => setImageLayouts(autoLayout(receiptItems, aspectRatios))}
+                        className="text-xs text-blue-600 hover:underline border border-blue-200 px-2 py-0.5 rounded"
+                      >
+                        ↺ Reset
+                      </button>
                     </div>
-                    {sortedForPdf.length > 0 ? (
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700 mb-3">Ukuran gambar bukti di PDF (urutan sesuai tabel)</p>
-                        <div className="space-y-4">
-                          {sortedForPdf.map(({ item, origIdx }) => (
-                            <div key={origIdx} className="flex items-center gap-4">
-                              <div className="relative flex-shrink-0 w-24 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={driveProxyUrl(item.receipt_url!)} alt={`Bukti ${origIdx+1}`} className="w-full h-full object-cover" />
-                                <div className="absolute top-1 left-1 bg-yellow-400 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{origIdx+1}</div>
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                  <span className="truncate max-w-[180px]">#{origIdx+1} · {item.description || '(tanpa keterangan)'}</span>
-                                  <span className="font-semibold ml-2 flex-shrink-0">{Math.round((imageScales[origIdx] ?? 0.9) * 100)}%</span>
-                                </div>
-                                <input
-                                  type="range" min={30} max={100} step={5}
-                                  value={Math.round((imageScales[origIdx] ?? 0.9) * 100)}
-                                  onChange={e => {
-                                    const next = [...imageScales];
-                                    next[origIdx] = Number(e.target.value) / 100;
-                                    setImageScales(next);
-                                  }}
-                                  className="w-full accent-yellow-400"
-                                />
-                                <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                                  <span>Kecil (30%)</span><span>Penuh (100%)</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+
+                    {loadingLayouts ? (
+                      <div className="flex items-center justify-center py-10 text-gray-400">
+                        <span className="animate-spin mr-2 text-xl">⟳</span> Memuat gambar...
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500 italic">Tidak ada foto bukti yang diunggah di item manapun.</p>
+                      <div className="overflow-y-auto max-h-[500px] space-y-4 pb-2">
+                        {Array.from({ length: numPages }).map((_, pageIdx) => (
+                          <div key={pageIdx}>
+                            {numPages > 1 && (
+                              <div className="text-xs text-center text-gray-400 mb-1">Halaman {pageIdx + 2}</div>
+                            )}
+                            <div
+                              className="relative bg-white shadow border border-gray-300 mx-auto overflow-hidden"
+                              style={{ width: CANVAS_W, height: CANVAS_H }}
+                            >
+                              {/* Subtle grid */}
+                              <div className="absolute inset-0 pointer-events-none" style={{
+                                backgroundImage: 'linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)',
+                                backgroundSize: `${Math.round(50 * CANVAS_SC)}px ${Math.round(50 * CANVAS_SC)}px`,
+                              }} />
+
+                              {receiptItems.map(({ item, origIdx }, imgIdx) => {
+                                const layout = imageLayouts[imgIdx];
+                                if (!layout || layout.page !== pageIdx) return null;
+                                return (
+                                  <div
+                                    key={origIdx}
+                                    className="absolute border-2 border-blue-400 overflow-hidden rounded shadow-md select-none"
+                                    style={{
+                                      left: layout.x * CANVAS_SC,
+                                      top:  layout.y * CANVAS_SC,
+                                      width:  layout.w * CANVAS_SC,
+                                      height: layout.h * CANVAS_SC,
+                                      cursor: 'move',
+                                      touchAction: 'none',
+                                    }}
+                                    onPointerDown={e => onLayoutPointerDown(e, imgIdx, 'move')}
+                                    onPointerMove={onLayoutPointerMove}
+                                    onPointerUp={onLayoutPointerUp}
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={driveProxyUrl(item.receipt_url!)}
+                                      alt={`Bukti ${origIdx + 1}`}
+                                      className="w-full h-full object-cover pointer-events-none"
+                                      draggable={false}
+                                    />
+                                    {/* Number badge */}
+                                    <div className="absolute top-1 left-1 bg-yellow-400 text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow pointer-events-none">
+                                      {origIdx + 1}
+                                    </div>
+                                    {/* Size label */}
+                                    <div className="absolute bottom-5 inset-x-0 flex justify-center pointer-events-none">
+                                      <span className="bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded">
+                                        {Math.round(layout.w)}×{Math.round(layout.h)}pt
+                                      </span>
+                                    </div>
+                                    {/* Resize handle — bottom right */}
+                                    <div
+                                      className="absolute bottom-0 right-0 w-5 h-5 bg-blue-500 hover:bg-blue-600 flex items-center justify-center"
+                                      style={{ cursor: 'se-resize', touchAction: 'none' }}
+                                      onPointerDown={e => { e.stopPropagation(); onLayoutPointerDown(e, imgIdx, 'resize'); }}
+                                      onPointerMove={onLayoutPointerMove}
+                                      onPointerUp={onLayoutPointerUp}
+                                    >
+                                      <svg width="10" height="10" viewBox="0 0 10 10" className="pointer-events-none">
+                                        <path d="M 2 8 L 8 2 M 5 8 L 8 5" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                                      </svg>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 );
