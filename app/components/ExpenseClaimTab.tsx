@@ -291,6 +291,11 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
     previewUrl: string | null;
     existingUrl?: string;
   } | null>(null);
+  const [imgZoom,    setImgZoom]    = useState(1);
+  const [imgOffset,  setImgOffset]  = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart     = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const lastTouchDist = useRef<number | null>(null);
 
   // PDF export modal
   const [pdfTarget,    setPdfTarget]    = useState<ExpenseClaim | null>(null);
@@ -353,6 +358,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
   function openReceiptModal(idx: number) {
     const item = (form.items ?? [])[idx];
     if (!item) return;
+    setImgZoom(1); setImgOffset({ x: 0, y: 0 });
     setReceiptModal({
       idx,
       tanggal: item.tanggal,
@@ -369,6 +375,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
       URL.revokeObjectURL(receiptModal.previewUrl);
     }
     setReceiptModal(null);
+    setImgZoom(1); setImgOffset({ x: 0, y: 0 });
   }
 
   function removeReceiptInModal() {
@@ -377,6 +384,48 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
     }
     setReceiptModal(m => m ? { ...m, file: null, previewUrl: null, existingUrl: undefined } : null);
   }
+
+  // ── Image zoom / pan handlers ─────────────────────────────────────────────
+  function onImgWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    setImgZoom(z => {
+      const next = Math.min(Math.max(z * factor, 1), 5);
+      if (next <= 1) { setImgOffset({ x: 0, y: 0 }); return 1; }
+      return next;
+    });
+  }
+  function onImgMouseDown(e: React.MouseEvent) {
+    if (imgZoom <= 1) return;
+    e.preventDefault();
+    setIsDragging(true);
+    dragStart.current = { x: e.clientX, y: e.clientY, ox: imgOffset.x, oy: imgOffset.y };
+  }
+  function onImgMouseMove(e: React.MouseEvent) {
+    if (!isDragging || !dragStart.current) return;
+    setImgOffset({ x: dragStart.current.ox + e.clientX - dragStart.current.x, y: dragStart.current.oy + e.clientY - dragStart.current.y });
+  }
+  function onImgMouseUp() { setIsDragging(false); dragStart.current = null; }
+  function onImgDblClick() { setImgZoom(1); setImgOffset({ x: 0, y: 0 }); }
+  function onImgTouchStart(e: React.TouchEvent) {
+    if (e.touches.length === 2) {
+      lastTouchDist.current = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    } else if (e.touches.length === 1 && imgZoom > 1) {
+      dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, ox: imgOffset.x, oy: imgOffset.y };
+    }
+  }
+  function onImgTouchMove(e: React.TouchEvent) {
+    if (e.touches.length === 2 && lastTouchDist.current !== null) {
+      e.preventDefault();
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      const ratio = dist / lastTouchDist.current;
+      lastTouchDist.current = dist;
+      setImgZoom(z => { const next = Math.min(Math.max(z * ratio, 1), 5); if (next <= 1) setImgOffset({ x: 0, y: 0 }); return next; });
+    } else if (e.touches.length === 1 && dragStart.current) {
+      setImgOffset({ x: dragStart.current.ox + e.touches[0].clientX - dragStart.current.x, y: dragStart.current.oy + e.touches[0].clientY - dragStart.current.y });
+    }
+  }
+  function onImgTouchEnd() { lastTouchDist.current = null; dragStart.current = null; setIsDragging(false); }
 
   async function handleSaveReceipt() {
     if (!receiptModal) return;
@@ -649,12 +698,32 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
             <div className="px-5 py-4 space-y-4">
               {/* Large image frame */}
               <div
-                className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center cursor-pointer overflow-hidden relative hover:border-blue-400 transition"
-                onClick={() => receiptFileInputRef.current?.click()}
+                className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden relative select-none"
+                style={{ cursor: !receiptModal.previewUrl ? 'pointer' : imgZoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in' }}
+                onClick={() => { if (!receiptModal.previewUrl || imgZoom <= 1) receiptFileInputRef.current?.click(); }}
+                onWheel={receiptModal.previewUrl ? onImgWheel : undefined}
+                onMouseDown={receiptModal.previewUrl ? onImgMouseDown : undefined}
+                onMouseMove={receiptModal.previewUrl ? onImgMouseMove : undefined}
+                onMouseUp={receiptModal.previewUrl ? onImgMouseUp : undefined}
+                onMouseLeave={receiptModal.previewUrl ? onImgMouseUp : undefined}
+                onDoubleClick={receiptModal.previewUrl ? onImgDblClick : undefined}
+                onTouchStart={receiptModal.previewUrl ? onImgTouchStart : undefined}
+                onTouchMove={receiptModal.previewUrl ? onImgTouchMove : undefined}
+                onTouchEnd={receiptModal.previewUrl ? onImgTouchEnd : undefined}
               >
                 {receiptModal.previewUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={receiptModal.previewUrl} alt="preview" className="w-full h-full object-contain" />
+                  <img
+                    src={receiptModal.previewUrl}
+                    alt="preview"
+                    draggable={false}
+                    className="w-full h-full object-contain pointer-events-none"
+                    style={{
+                      transform: `scale(${imgZoom}) translate(${imgOffset.x / imgZoom}px, ${imgOffset.y / imgZoom}px)`,
+                      transformOrigin: 'center',
+                      transition: isDragging ? 'none' : 'transform 0.15s ease',
+                    }}
+                  />
                 ) : (
                   <div className="text-center text-gray-400 space-y-2 pointer-events-none">
                     <p className="text-4xl">📷</p>
@@ -666,8 +735,22 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                     <span className="animate-spin text-3xl">⟳</span>
                   </div>
                 )}
-                {receiptModal.previewUrl && uploadingIdx !== receiptModal.idx && (
-                  <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full pointer-events-none">Klik untuk ganti</div>
+                {/* Zoom badge — klik untuk reset */}
+                {receiptModal.previewUrl && imgZoom > 1 && (
+                  <button
+                    type="button"
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={e => { e.stopPropagation(); setImgZoom(1); setImgOffset({ x: 0, y: 0 }); }}
+                    className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white text-xs px-2 py-1 rounded-full transition"
+                  >
+                    {Math.round(imgZoom * 100)}% ✕
+                  </button>
+                )}
+                {/* Hint saat zoom = 1 */}
+                {receiptModal.previewUrl && imgZoom === 1 && uploadingIdx !== receiptModal.idx && (
+                  <div className="absolute bottom-2 inset-x-0 flex justify-center pointer-events-none">
+                    <span className="bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full">Scroll/pinch zoom · klik ganti foto</span>
+                  </div>
                 )}
               </div>
               <input
@@ -678,6 +761,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                   if (f) {
                     if (receiptModal.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(receiptModal.previewUrl);
                     const url = URL.createObjectURL(f);
+                    setImgZoom(1); setImgOffset({ x: 0, y: 0 });
                     setReceiptModal(m => m ? { ...m, file: f, previewUrl: url } : null);
                   }
                   e.target.value = '';
