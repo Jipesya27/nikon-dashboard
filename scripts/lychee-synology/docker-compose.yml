@@ -1,0 +1,43 @@
+services:
+  db:
+    image: mariadb:11
+    container_name: lychee-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: lychee_root
+      MYSQL_DATABASE: lychee
+      MYSQL_USER: lychee
+      MYSQL_PASSWORD: lychee_pass
+    volumes:
+      - /volume1/docker/lychee/db:/var/lib/mysql
+    networks:
+      - lychee-net
+
+  lychee:
+    image: lycheeorg/lychee:latest
+    container_name: lychee-app
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "3010:80"
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: lychee
+      DB_USERNAME: lychee
+      DB_PASSWORD: lychee_pass
+      APP_URL: http://latief-family.local:3010
+      TIMEZONE: Asia/Jakarta
+      PHP_TZ: Asia/Jakarta
+    volumes:
+      - /volume1/docker/lychee/conf:/conf
+      - /volume1/docker/lychee/logs:/logs
+      - /volume1/photos:/uploads
+    networks:
+      - lychee-net
+
+networks:
+  lychee-net:
+    driver: bridge
