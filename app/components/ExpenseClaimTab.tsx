@@ -986,7 +986,7 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                           <div key={origIdx} className="relative">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={driveProxyUrl(item.receipt_url!)} alt={`Bukti ${origIdx+1}`}
-                              style={{ width: `${Math.round((imageScales[origIdx] ?? 0.9) * 160)}px` }}
+                              style={{ width: '144px' }}
                               className="rounded border border-gray-200 object-cover max-h-40" />
                             <span className="absolute top-1 left-1 bg-yellow-400 text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">{origIdx + 1}</span>
                           </div>
