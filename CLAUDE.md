@@ -123,12 +123,22 @@ Pengaturan bot lain (URL file promo, dealer, dll)
 
 ## Tab Klaim Biaya (`app/components/ExpenseClaimTab.tsx`)
 - Modal "Buat Klaim Baru": From/To/Tanggal + tabel baris pengeluaran + catatan
+- Field tanggal: `DatePickerInput` wrapper — tampilan DD MMM YYYY (en-GB), klik memanggil `showPicker()` via ref
 - Kolom **Bukti** di tiap baris → klik 📎 membuka **sub-modal upload** (z-60, di atas modal utama)
 - Sub-modal: frame gambar besar (aspect 4:3) + field Tanggal/Keterangan/Nominal + tombol Simpan
   - Zoom: scroll/wheel (1×–5×), pinch mobile, drag saat zoom>1, double-click reset
   - Klik frame saat zoom=1 → ganti foto; badge `120% ✕` muncul saat zoomed → klik reset
   - Upload ke Google Drive via `/api/upload-google-drive`; blob URL di-revoke saat modal tutup
-- Export PDF multi-halaman: halaman 1 = tabel, halaman 2+ = foto bukti (lib `pdf-lib`)
+- Export PDF — modal tab "📐 Layout A4":
+  - `ImgLayout` type: `{ x, y, w, h, page, rotation }` (posisi dalam PDF points, rotation: 0|90|180|270)
+  - `autoLayout()`: auto-susun gambar dalam grid flow per halaman
+  - Canvas **flat multi-page**: semua halaman A4 di-stack vertikal dalam satu div, gambar bisa di-drag melewati batas halaman (multi-monitor style)
+  - Drag gambar: pointer capture on element; `onLayoutPointerMove` hitung `totalTop` dari semua halaman → derive `page` + `y` otomatis
+  - Rotate button **↻** (top-right): putar 90° CW, swap w/h saat melintasi 0↔90 atau 180↔270
+  - Page nav **◄ Hal.N ►** (bottom bar): pindah halaman via tombol
+  - Resize handle: pojok kanan bawah (biru), drag = resize proporsional
+  - Constants: `PDF_W=595.28`, `PDF_H=841.89`, `CANVAS_W=420`, `CANVAS_SC=420/595.28`, `CANVAS_H≈594`, `PAGE_GAP_PX=24`
+  - PDF generation: `degrees()` dari pdf-lib, anchor-point dihitung per-rotasi agar gambar berputar di tengah bounding box
 - Status klaim: `draft → submitted → approved/rejected`
 - `driveProxyUrl(url)` helper: ekstrak Drive ID → `/api/drive-file?id=<id>`
 
