@@ -279,9 +279,18 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
     to_person: '', claim_date: new Date().toISOString().slice(0, 10),
     items: [emptyItem()], receipt_urls: [], catatan: '',
   });
-  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null); // index item yang sedang upload
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const receiptInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const receiptFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [receiptModal, setReceiptModal] = useState<{
+    idx: number;
+    tanggal: string;
+    description: string;
+    nominal: number;
+    file: File | null;
+    previewUrl: string | null;
+    existingUrl?: string;
+  } | null>(null);
 
   // PDF export modal
   const [pdfTarget,    setPdfTarget]    = useState<ExpenseClaim | null>(null);
@@ -340,25 +349,63 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
     }));
   }
 
-  // ── Upload receipt per item ───────────────────────────────────────────────
-  async function uploadReceiptForItem(file: File, itemIdx: number) {
-    setUploadingIdx(itemIdx);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('prefix', 'klaim');
-      fd.append('serial', `item${itemIdx}`);
-      const res = await fetch('/api/upload-google-drive', { method: 'POST', body: fd });
-      if (!res.ok) throw new Error(await res.text());
-      const { url } = await res.json();
-      updateItem(itemIdx, { receipt_url: url });
-    } catch (e) {
-      alert('Gagal upload: ' + (e instanceof Error ? e.message : 'Error'));
-    } finally { setUploadingIdx(null); }
+  // ── Receipt upload modal ──────────────────────────────────────────────────
+  function openReceiptModal(idx: number) {
+    const item = (form.items ?? [])[idx];
+    if (!item) return;
+    setReceiptModal({
+      idx,
+      tanggal: item.tanggal,
+      description: item.description,
+      nominal: item.nominal,
+      file: null,
+      previewUrl: item.receipt_url ? driveProxyUrl(item.receipt_url) : null,
+      existingUrl: item.receipt_url,
+    });
   }
 
-  function removeReceiptForItem(itemIdx: number) {
-    updateItem(itemIdx, { receipt_url: undefined });
+  function closeReceiptModal() {
+    if (receiptModal?.previewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(receiptModal.previewUrl);
+    }
+    setReceiptModal(null);
+  }
+
+  function removeReceiptInModal() {
+    if (receiptModal?.previewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(receiptModal.previewUrl);
+    }
+    setReceiptModal(m => m ? { ...m, file: null, previewUrl: null, existingUrl: undefined } : null);
+  }
+
+  async function handleSaveReceipt() {
+    if (!receiptModal) return;
+    const { idx, tanggal, description, nominal, file, existingUrl } = receiptModal;
+    let receipt_url: string | undefined = existingUrl;
+
+    if (file) {
+      setUploadingIdx(idx);
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('prefix', 'klaim');
+        fd.append('serial', `item${idx}`);
+        const res = await fetch('/api/upload-google-drive', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error(await res.text());
+        receipt_url = (await res.json()).url;
+      } catch (e) {
+        alert('Gagal upload: ' + (e instanceof Error ? e.message : 'Error'));
+        setUploadingIdx(null);
+        return;
+      }
+      setUploadingIdx(null);
+    }
+
+    const items = [...(form.items ?? [])];
+    items[idx] = { ...items[idx], tanggal, description, nominal, receipt_url };
+    setForm(f => ({ ...f, items }));
+    if (receiptModal.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(receiptModal.previewUrl);
+    setReceiptModal(null);
   }
 
   // ── Save ───────────────────────────────────────────────────────────────────
@@ -528,41 +575,28 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
                           </td>
                           {/* Kolom foto per baris */}
                           <td className="px-1 py-1 text-center">
-                            <input
-                              ref={el => { receiptInputRefs.current[idx] = el; }}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={e => {
-                                const f = e.target.files?.[0];
-                                if (f) uploadReceiptForItem(f, idx);
-                                e.target.value = '';
-                              }}
-                            />
                             {item.receipt_url ? (
-                              <div className="relative inline-block group">
+                              <button
+                                type="button"
+                                onClick={() => openReceiptModal(idx)}
+                                title="Edit bukti"
+                                className="relative inline-block"
+                              >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={driveProxyUrl(item.receipt_url)}
                                   alt="bukti"
-                                  className="w-10 h-10 object-cover rounded cursor-pointer border border-gray-200"
-                                  onClick={() => window.open(driveProxyUrl(item.receipt_url!), '_blank')}
+                                  className="w-10 h-10 object-cover rounded border border-gray-200"
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => removeReceiptForItem(idx)}
-                                  className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full hidden group-hover:flex items-center justify-center leading-none"
-                                >×</button>
-                              </div>
+                              </button>
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => receiptInputRefs.current[idx]?.click()}
-                                disabled={uploadingIdx === idx}
-                                className="text-xs text-gray-400 hover:text-blue-600 border border-dashed border-gray-300 hover:border-blue-400 rounded px-1.5 py-1 transition disabled:opacity-50"
+                                onClick={() => openReceiptModal(idx)}
+                                className="text-xs text-gray-400 hover:text-blue-600 border border-dashed border-gray-300 hover:border-blue-400 rounded px-1.5 py-1 transition"
                                 title="Upload foto bukti"
                               >
-                                {uploadingIdx === idx ? '⟳' : '📎'}
+                                📎
                               </button>
                             )}
                           </td>
@@ -598,6 +632,87 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
               <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">Batal</button>
               <button onClick={handleSave} disabled={saving} className="px-5 py-2 bg-[#FFE500] hover:bg-yellow-400 text-black font-bold rounded-lg text-sm disabled:opacity-50">
                 {saving ? 'Menyimpan...' : (editTarget ? 'Simpan Perubahan' : 'Buat Klaim')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Receipt Upload Modal ── */}
+      {receiptModal && (
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <h3 className="font-bold text-gray-800">📎 Upload Bukti</h3>
+              <button onClick={closeReceiptModal} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              {/* Large image frame */}
+              <div
+                className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center cursor-pointer overflow-hidden relative hover:border-blue-400 transition"
+                onClick={() => receiptFileInputRef.current?.click()}
+              >
+                {receiptModal.previewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={receiptModal.previewUrl} alt="preview" className="w-full h-full object-contain" />
+                ) : (
+                  <div className="text-center text-gray-400 space-y-2 pointer-events-none">
+                    <p className="text-4xl">📷</p>
+                    <p className="text-sm font-medium">Klik untuk pilih gambar</p>
+                  </div>
+                )}
+                {uploadingIdx === receiptModal.idx && (
+                  <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                    <span className="animate-spin text-3xl">⟳</span>
+                  </div>
+                )}
+                {receiptModal.previewUrl && uploadingIdx !== receiptModal.idx && (
+                  <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full pointer-events-none">Klik untuk ganti</div>
+                )}
+              </div>
+              <input
+                ref={receiptFileInputRef}
+                type="file" accept="image/*" className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    if (receiptModal.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(receiptModal.previewUrl);
+                    const url = URL.createObjectURL(f);
+                    setReceiptModal(m => m ? { ...m, file: f, previewUrl: url } : null);
+                  }
+                  e.target.value = '';
+                }}
+              />
+              {receiptModal.previewUrl && (
+                <button type="button" onClick={removeReceiptInModal} className="text-xs text-red-500 hover:text-red-700 underline">
+                  Hapus foto
+                </button>
+              )}
+              {/* Fields */}
+              <div>
+                <label className="label-form">Tanggal</label>
+                <input type="date" className="input-form" value={receiptModal.tanggal}
+                  onChange={e => setReceiptModal(m => m ? { ...m, tanggal: e.target.value } : null)} />
+              </div>
+              <div>
+                <label className="label-form">Keterangan</label>
+                <input className="input-form" value={receiptModal.description} placeholder="Keterangan pengeluaran"
+                  onChange={e => setReceiptModal(m => m ? { ...m, description: e.target.value } : null)} />
+              </div>
+              <div>
+                <label className="label-form">Nominal (Rp)</label>
+                <input type="number" className="input-form text-right" value={receiptModal.nominal || ''} placeholder="0" min={0}
+                  onChange={e => setReceiptModal(m => m ? { ...m, nominal: Number(e.target.value) } : null)} />
+              </div>
+            </div>
+            <div className="px-5 py-4 border-t flex gap-2 justify-end">
+              <button onClick={closeReceiptModal} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">Batal</button>
+              <button
+                onClick={handleSaveReceipt}
+                disabled={uploadingIdx !== null}
+                className="px-5 py-2 bg-[#FFE500] hover:bg-yellow-400 text-black font-bold rounded-lg text-sm disabled:opacity-50 flex items-center gap-2"
+              >
+                {uploadingIdx !== null ? <><span className="animate-spin">⟳</span> Mengupload...</> : 'Simpan'}
               </button>
             </div>
           </div>
