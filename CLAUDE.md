@@ -15,6 +15,7 @@
 
 ## Infrastruktur Lokal
 - **NAS**: Synology DS223J
+- **STB**: HG680P — AML S905X, Cortex-A53 (ARM64), Armbian · IP `192.168.18.63` · port `:3000` (Next.js backup site)
 
 ## Warna Brand
 - Nikon yellow: `#FFE500` (CSS var `--nikon-yellow`)
