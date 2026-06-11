@@ -13,6 +13,9 @@
   - Bisa trigger manual dari GitHub Actions tab
   - Supabase CLI: `npx supabase functions deploy <nama> --project-ref <ref>`
 
+## Infrastruktur Lokal
+- **NAS**: Synology DS223J
+
 ## Warna Brand
 - Nikon yellow: `#FFE500` (CSS var `--nikon-yellow`)
 
