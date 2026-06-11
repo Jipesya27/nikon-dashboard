@@ -54,6 +54,7 @@ function DatePickerInput({ value, onChange, className }: {
   onChange: (v: string) => void;
   className?: string;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const displayValue = value ? (() => {
     const d = new Date(value + 'T00:00:00');
@@ -62,14 +63,24 @@ function DatePickerInput({ value, onChange, className }: {
   })() : '';
   return (
     <div className={`relative ${className ?? ''}`}>
-      <div className="input-form flex items-center min-h-[38px] pointer-events-none">
+      <div
+        className="input-form flex items-center min-h-[38px] cursor-pointer select-none"
+        onClick={() => {
+          const el = inputRef.current;
+          if (!el) return;
+          if (typeof el.showPicker === 'function') el.showPicker();
+          else el.click();
+        }}
+      >
         {displayValue || <span className="text-gray-400 text-sm">Pilih tanggal</span>}
       </div>
       <input
+        ref={inputRef}
         type="date"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        className="absolute opacity-0 pointer-events-none w-0 h-0"
+        tabIndex={-1}
       />
     </div>
   );
