@@ -14,8 +14,25 @@
   - Supabase CLI: `npx supabase functions deploy <nama> --project-ref <ref>`
 
 ## Infrastruktur Lokal
-- **NAS**: Synology DS223J
-- **STB**: HG680P — AML S905X, Cortex-A53 (ARM64), Armbian · IP `192.168.18.63` · port `:3000` (Next.js backup site)
+- **NAS**: Synology DS223J · CPU Realtek RTD1619B 1.7GHz · RAM 1GB · DSM 7.3.2 · IP `192.168.18.169` (static) · QuickConnect: `latief-family`
+  - Foto tersimpan di `/volume2/photo` (Volume 2, 1.74TB)
+  - Docker/folder lain di Volume 1
+  - Cloudflare Tunnel `nikon-synology` berjalan di sini → forward ke STB
+  - NFS aktif: `/volume2/photo` di-share ke STB (`192.168.18.63`)
+- **STB**: HG680P — AML S905X, Cortex-A53 (ARM64), Armbian · IP `192.168.18.63`
+  - port `:3000` → Next.js backup site (`backup.altanikindo.web.id`)
+  - port `:7681` → Wetty SSH (`terminal.altanikindo.web.id`)
+  - Docker 29.5.3 + Compose v5.1.4 terinstall
+  - `/mnt/photos` → NFS mount dari Synology `/volume2/photo`
+
+## Setup Lychee (Photo Gallery) — IN PROGRESS
+- **Arsitektur**: STB menjalankan Lychee, Synology hanya storage via NFS
+- **Files**: `scripts/lychee-stb/docker-compose.yml` + `scripts/lychee-stb/setup-stb.sh`
+- **Status**: Container `lychee-db` + `lychee-app` sudah Running di STB port `3010`
+- **TODO**: Tambah public hostname di Cloudflare Tunnel (Zero Trust Dashboard)
+  - Tunnel: `nikon-synology`
+  - Subdomain target: `lychee.altanikindo.web.id` → `http://192.168.18.63:3010`
+- **Auto-mount NFS**: Belum ditambahkan ke `/etc/fstab` — perlu ditambahkan agar tetap mount setelah reboot
 
 ## Warna Brand
 - Nikon yellow: `#FFE500` (CSS var `--nikon-yellow`)
