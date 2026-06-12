@@ -29,10 +29,17 @@
 - **Arsitektur**: STB menjalankan Lychee, Synology hanya storage via NFS
 - **Files**: `scripts/lychee-stb/docker-compose.yml` + `scripts/lychee-stb/setup-stb.sh`
 - **Status**: Container `lychee-db` + `lychee-app` sudah Running di STB port `3010`
-- **TODO**: Tambah public hostname di Cloudflare Tunnel (Zero Trust Dashboard)
-  - Tunnel: `nikon-synology`
-  - Subdomain target: `lychee.altanikindo.web.id` → `http://192.168.18.63:3010`
-- **Auto-mount NFS**: Belum ditambahkan ke `/etc/fstab` — perlu ditambahkan agar tetap mount setelah reboot
+- **Port mapping**: `3010:8000` (Caddy di Lychee v6+ jalan di port 8000, bukan 80)
+- **APP_KEY**: sudah di-set di docker-compose.yml
+- **NFS**: `/mnt/photos` ter-mount dari Synology, container bisa lihat semua folder foto (`/uploads`)
+- **Sync**: Sudah dijalankan via Import → from Server → /uploads (symlink mode)
+- **TODO**:
+  - Verifikasi gallery tampil foto di browser
+  - Tambah public hostname di Cloudflare Tunnel (Zero Trust Dashboard)
+    - Tunnel: `nikon-synology`
+    - Subdomain target: `lychee.altanikindo.web.id` → `http://192.168.18.63:3010`
+  - Auto-mount NFS di `/etc/fstab` agar tetap mount setelah reboot STB:
+    `192.168.18.169:/volume2/photo /mnt/photos nfs defaults,_netdev 0 0`
 
 ## Warna Brand
 - Nikon yellow: `#FFE500` (CSS var `--nikon-yellow`)
