@@ -29,6 +29,7 @@ services:
       DB_USERNAME: lychee
       DB_PASSWORD: lychee_pass
       APP_URL: http://192.168.18.63:3010
+      APP_KEY: "base64:kVv/vFfnWWu9iAZvsobRnoJV5SUR04t1oCqFFVRlg80="
       TIMEZONE: Asia/Jakarta
       PHP_TZ: Asia/Jakarta
     volumes:
