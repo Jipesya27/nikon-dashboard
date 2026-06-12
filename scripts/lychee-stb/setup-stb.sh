@@ -1,7 +1,7 @@
 #!/bin/bash
 # Setup Lychee di STB HG680P — jalankan sebagai root
 
-NAS_IP="192.168.18.145"
+NAS_IP="192.168.18.169"
 NAS_SHARE="/volume2/photo"
 MOUNT_POINT="/mnt/photos"
 
