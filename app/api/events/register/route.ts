@@ -113,11 +113,18 @@ export async function GET() {
     }
 
     const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
     const mapped = (events || []).map(e => {
       const evtDate = parseIdDate(e.event_date);
       const isPast = !!(evtDate && evtDate < now);
       const isFull = e.event_partisipant_stock > 0 && (counts[e.id] || 0) >= e.event_partisipant_stock;
       const isClosed = e.event_status === 'close' || e.event_status === 'Out of stock';
+
+      // Jika belum dibuka (registration_open_date belum tiba), sembunyikan banner
+      const notOpenYet = !!(e.registration_open_date && todayStr < e.registration_open_date);
+      // Jika pendaftaran sudah ditutup (registration_close_date terlewat), anggap selesai
+      const regClosed = !!(e.registration_close_date && todayStr > e.registration_close_date);
+
       return {
         id: e.id,
         event_title: e.event_title,
@@ -131,14 +138,17 @@ export async function GET() {
         deposit_amount: e.deposit_amount,
         bank_info: e.bank_info,
         event_partisipant_stock: e.event_partisipant_stock,
+        registration_open_date: e.registration_open_date ?? null,
+        registration_close_date: e.registration_close_date ?? null,
         registered_count: counts[e.id] || 0,
-        is_past: isPast || isFull || isClosed,
+        is_past: isPast || isFull || isClosed || regClosed,
+        banner_hidden: notOpenYet,
       };
     });
 
     return NextResponse.json({
       success: true,
-      events: mapped.filter(e => !e.is_past),
+      events: mapped.filter(e => !e.is_past && !e.banner_hidden),
       pastEvents: mapped.filter(e => e.is_past),
     });
   } catch (err: unknown) {

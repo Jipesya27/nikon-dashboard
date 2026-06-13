@@ -8,7 +8,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { DEFAULT_TEMPLATES, applyTemplate, loadChatbotTemplates, DB_KEY_PREFIX, TEMPLATE_CATEGORIES } from '@/app/lib/chatbotTemplate';
 import { Karyawan, KonsumenData, RiwayatPesan, ClaimPromo, Garansi, Promosi, PengaturanBot, StatusService, BudgetApproval, BudgetItem, EventData, EventRegistration, PeminjamanBarang, BarangAset, Affiliate, AffiliateSkema, AffiliatePenjualan } from '@/app/index';
 import {
-   VALIDASI_OPTIONS, STATUS_VALIDASI_GARANSI_OPTIONS, JENIS_GARANSI_OPTIONS, LAMA_GARANSI_OPTIONS,
+   VALIDASI_OPTIONS, STATUS_VALIDASI_GARANSI_OPTIONS, JENIS_GARANSI_OPTIONS, LAMA_GARANSI_OPTIONS, JENIS_GARANSI_LAMA_MAP,
    STATUS_SERVICE_OPTIONS, JENIS_PROMOSI_OPTIONS, JASA_PENGIRIMAN_OPTIONS, EVENT_STATUS_OPTIONS,
    PAYMENT_TYPE_OPTIONS, STATUS_PENDAFTARAN_OPTIONS, STATUS_REFUND_DEPOSIT_OPTIONS,
    ROLE_OPTIONS, CONSENT_OPTIONS, BUDGET_SOURCE_OPTIONS, STATUS_LANGKAH_OPTIONS,
@@ -135,17 +135,32 @@ const ID_MONTHS: Record<string, number> = {
 };
 function parseIdDate(str: string): Date | null {
    if (!str) return null;
+   // Format ISO: "2026-05-24"
+   if (/^\d{4}-\d{2}-\d{2}/.test(str.trim())) {
+      const d = new Date(str.trim().substring(0, 10));
+      return isNaN(d.getTime()) ? null : d;
+   }
+   // Format teks: "05 Jun 2026" atau "05 Juni 2026"
+   const MONTH_ABBR: Record<string, number> = {
+      jan:0, feb:1, mar:2, apr:3, mei:4, may:4, jun:5, jul:6, agu:7, aug:7, sep:8, okt:9, oct:9, nov:10, des:11, dec:11,
+      januari:0, februari:1, maret:2, april:3, juni:5, juli:6, agustus:7, september:8, oktober:9, november:10, desember:11,
+   };
    const p = str.trim().toLowerCase().split(/\s+/);
    if (p.length < 3) return null;
-   const d = parseInt(p[0]), m = ID_MONTHS[p[1]], y = parseInt(p[2]);
+   const d = parseInt(p[0]), m = MONTH_ABBR[p[1]], y = parseInt(p[2]);
    if (isNaN(d) || m === undefined || isNaN(y)) return null;
-   return new Date(y, m, d + 1);
+   return new Date(y, m, d);
 }
 function getEventClosedStatus(evt: { status: string; stock: number; date: string }, regCount: number): { closed: boolean; reason: string } {
    if (evt.status === 'close') return { closed: true, reason: 'Ditutup Admin' };
    if (evt.stock > 0 && regCount >= evt.stock) return { closed: true, reason: 'Kuota Penuh' };
+   // Cek tanggal: event dianggap selesai jika tanggal acara sudah lewat (hari ini masih aktif, besok baru tidak aktif)
    const evtDate = parseIdDate(evt.date);
-   if (evtDate && evtDate < new Date()) return { closed: true, reason: 'Acara Selesai' };
+   if (evtDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (evtDate < today) return { closed: true, reason: 'Acara Selesai' };
+   }
    return { closed: false, reason: 'Aktif' };
 }
 
@@ -241,6 +256,7 @@ export default function NikonDashboard() {
    const [eventRegistrationsCount, setEventRegistrationsCount] = useState<Record<string, number>>({});
    const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]);
    const [searchRegistration, setSearchRegistration] = useState('');
+   const [filterRegEventName, setFilterRegEventName] = useState('Semua');
    type AutocompleteItem = { id: string; field_key: string; value: string; hidden: boolean };
    const [autocompleteItems, setAutocompleteItems] = useState<AutocompleteItem[]>([]);
    const [acFieldTab, setAcFieldTab] = useState('tipe_barang');
@@ -312,6 +328,8 @@ export default function NikonDashboard() {
    };
 
    const [searchGaransi, setSearchGaransi] = useState('');
+   const [showAllActivities, setShowAllActivities] = useState(false);
+   const [filterStatusGaransi, setFilterStatusGaransi] = useState('Semua');
    const [searchService, setSearchService] = useState('');
    const [searchBudget, setSearchBudget] = useState('');
    const [searchKaryawan, setSearchKaryawan] = useState('');
@@ -2700,6 +2718,8 @@ ${kode ? `
             event_time: ef.event_time ?? null,
             event_location: ef.event_location ?? null,
             wa_group_link: ef.wa_group_link ?? null,
+            registration_open_date: ef.registration_open_date ?? null,
+            registration_close_date: ef.registration_close_date ?? null,
          };
          if (eventImageFile) {
             const imageUrl = await uploadFileToStorage(eventImageFile, 'EventPoster', String(payload.event_title || 'poster').replace(/\s+/g, '_'));
@@ -3405,6 +3425,34 @@ ${kode ? `
       return counts;
    }, [claims, getClaimStatusColor]);
 
+   // ── Sidebar actionable counts ──────────────────────────────────────────────
+   const sidebarCounts = useMemo(() => {
+      const todayStr = new Date().toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' });
+      // Pesan: thread WA yang masih dalam mode CS (belum resolve)
+      const csUnresolved = (() => {
+         const perWa = new Map<string, boolean>();
+         messages.forEach(m => { if (m.bicara_dengan_cs !== undefined) perWa.set(m.nomor_wa, !!m.bicara_dengan_cs); });
+         return Array.from(perWa.values()).filter(Boolean).length;
+      })();
+      // Konsumen baru hari ini
+      const konsumenBaru = consumersList.filter(k => {
+         if (!k.created_at) return false;
+         const d = new Date(k.created_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' });
+         return d === todayStr;
+      }).length;
+      // Claim belum di cek
+      const claimBelumCek = claimStatusCounts.Putih ?? 0;
+      // Garansi belum divalidasi
+      const garansiBelum = warranties.filter(w => w.status_validasi !== 'Valid').length;
+      // Service aktif / belum selesai
+      const serviceAktif = services.filter(s => s.status_service !== 'selesai' && s.status_service !== 'diambil').length;
+      // Peminjaman aktif
+      const peminjamanAktif = lendingRecords.filter(l => l.status_peminjaman === 'aktif').length;
+      // Peserta menunggu validasi
+      const pesertaPending = eventRegistrations.filter(r => r.status_pendaftaran === 'menunggu_validasi').length;
+      return { csUnresolved, konsumenBaru, claimBelumCek, garansiBelum, serviceAktif, peminjamanAktif, pesertaPending };
+   }, [messages, consumersList, claimStatusCounts, warranties, services, lendingRecords, eventRegistrations]);
+
    const duplicateClaimIds = useMemo(() => {
       const duplicatesToMark = new Set<string>();
       const snToIds: Record<string, string[]> = {};
@@ -3556,7 +3604,21 @@ ${kode ? `
       return `${dd} ${bulan[d.getMonth()]} ${d.getFullYear()}`;
    };
 
-   const filteredWarranties = useMemo(() => warranties.filter((w: Garansi) => (w.nomor_seri || "").toLowerCase().includes(searchGaransi.toLowerCase())), [warranties, searchGaransi]);
+   const warrantyStatusCounts = useMemo(() => {
+      const counts: Record<string, number> = {};
+      warranties.forEach(w => {
+         const s = w.status_validasi || 'Belum';
+         counts[s] = (counts[s] || 0) + 1;
+      });
+      return counts;
+   }, [warranties]);
+
+   const filteredWarranties = useMemo(() => warranties.filter((w: Garansi) => {
+      const matchSearch = (w.nomor_seri || '').toLowerCase().includes(searchGaransi.toLowerCase());
+      const matchStatus = filterStatusGaransi === 'Semua' || (w.status_validasi || 'Belum') === filterStatusGaransi;
+      return matchSearch && matchStatus;
+   }), [warranties, searchGaransi, filterStatusGaransi]);
+
    const sortedWarranties = useMemo(() => {
       const sortableItems = [...filteredWarranties];
       return sortableItems.sort(getSortFunction(sortConfigWarranties, consumers));
@@ -3612,30 +3674,30 @@ ${kode ? `
          category: 'Utama',
          tabs: [
             { id: 'dashboard', label: '🎯 Dashboard', count: undefined },
-            { id: 'messages', label: '💬 Pesan', count: messagesCount || messages.length },
-            { id: 'konsumen', label: '👥 Konsumen', count: consumersList.length },
+            { id: 'messages', label: '💬 Pesan', count: sidebarCounts.csUnresolved || undefined },
+            { id: 'konsumen', label: '👥 Konsumen', count: sidebarCounts.konsumenBaru || undefined },
          ]
       },
       {
          category: 'Operasional',
          tabs: [
-            { id: 'promos', label: '📢 Promo', count: promos.length },
-            { id: 'claims', label: '🎫 Claim Promo', count: claims.length },
-            { id: 'warranties', label: '🛡️ Garansi', count: warranties.length },
-            { id: 'services', label: '🔧 Service', count: services.length },
-            { id: 'lending', label: '📦 Peminjaman', count: lendingRecords.length },
-            { id: 'assets', label: '🗄️ Barang Aset', count: assets.length },
-            { id: 'dealer', label: '🏪 Transaksi Dealer', count: dealerSheet?.rows.length },
-            { id: 'affiliate', label: '🤝 Affiliate', count: affiliates.length },
+            { id: 'promos', label: '📢 Promo', count: undefined },
+            { id: 'claims', label: '🎫 Claim Promo', count: sidebarCounts.claimBelumCek || undefined },
+            { id: 'warranties', label: '🛡️ Garansi', count: sidebarCounts.garansiBelum || undefined },
+            { id: 'services', label: '🔧 Service', count: sidebarCounts.serviceAktif || undefined },
+            { id: 'lending', label: '📦 Peminjaman', count: sidebarCounts.peminjamanAktif || undefined },
+            { id: 'assets', label: '🗄️ Barang Aset', count: undefined },
+            { id: 'dealer', label: '🏪 Transaksi Dealer', count: undefined },
+            { id: 'affiliate', label: '🤝 Affiliate', count: undefined },
             { id: 'resi', label: '📦 Upload File Resi', count: undefined },
          ]
       },
       {
          category: 'Event',
          tabs: [
-            { id: 'budgets', label: '💳 1. Proposal Event', count: budgets.length },
-            { id: 'events', label: '📅 2. Daftar Event', count: events.length },
-            { id: 'eventregistrations', label: '👥 3. Data Peserta', count: eventRegistrations.length },
+            { id: 'budgets', label: '💳 1. Proposal Event', count: undefined },
+            { id: 'events', label: '📅 2. Daftar Event', count: undefined },
+            { id: 'eventregistrations', label: '👥 3. Data Peserta', count: sidebarCounts.pesertaPending || undefined },
             { id: 'eventreport', label: '📊 4. Report Event (SG)', count: undefined },
             { id: 'expense_claim', label: '🧾 5. Claim Biaya', count: undefined },
          ]
@@ -4102,13 +4164,17 @@ ${kode ? `
                            <div className="bg-white rounded-xl border border-gray-200 p-4">
                               <div className="flex items-center justify-between mb-3">
                                  <h3 className="text-sm font-semibold text-gray-800">Aktivitas Terkini</h3>
-                                 <span className="text-xs text-blue-600 font-medium">Semua</span>
+                                 {activities.length > 7 && (
+                                    <button onClick={() => setShowAllActivities(v => !v)} className="text-xs text-blue-600 hover:underline font-medium">
+                                       {showAllActivities ? 'Ringkas' : `Semua (${activities.length})`}
+                                    </button>
+                                 )}
                               </div>
                               {activities.length === 0 ? (
                                  <p className="text-sm text-gray-400 py-4 text-center">Tidak ada aktivitas terbaru</p>
                               ) : (
                                  <div className="space-y-3">
-                                    {activities.slice(0, 7).map((a, i) => (
+                                    {(showAllActivities ? activities : activities.slice(0, 7)).map((a, i) => (
                                        <div key={i} className="flex items-start gap-3">
                                           <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: a.iconBg }}>
                                              <svg className="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4632,6 +4698,7 @@ ${kode ? `
                      setFilterColClaims={setFilterColClaims}
                      claimStatusCounts={claimStatusCounts}
                      viewMode={viewMode}
+                     setViewMode={setViewMode}
                      filterColClaims={filterColClaims}
                      setClaimColFilter={setClaimColFilter}
                      claimColOptions={claimColOptions}
@@ -4670,39 +4737,68 @@ ${kode ? `
                {/* ======================= WARRANTIES ======================= */}
                {activeTab === 'warranties' && (
                   <div className="space-y-4 animate-fade-in text-gray-900">
-                     {/* Stat cards */}
+                     {/* Stat cards — clickable filter */}
                      {(() => {
-                        const validCount = warranties.filter(w => w.status_validasi === 'Valid').length;
-                        const invalidCount = warranties.filter(w => w.status_validasi !== 'Valid').length;
+                        const validCount   = warrantyStatusCounts['Valid'] ?? 0;
+                        const belumCount   = warrantyStatusCounts['Belum'] ?? 0;
+                        const lainnya      = warranties.length - validCount - belumCount;
+                        const statCards = [
+                           { key: 'Semua', label: 'Total Garansi', count: warranties.length,  accent: '#6b7280', sub: 'Semua data' },
+                           { key: 'Valid', label: 'Valid',          count: validCount,          accent: '#10b981', sub: 'Sudah divalidasi' },
+                           { key: 'Belum', label: 'Belum Validasi', count: belumCount,          accent: '#f59e0b', sub: 'Perlu aksi' },
+                           { key: '__lain', label: 'Lainnya',       count: lainnya,             accent: '#6366f1', sub: 'Status lain' },
+                        ];
                         return (
-                           <div className="grid grid-cols-3 gap-2">
-                              {([
-                                 { label: 'Total', count: warranties.length, color: 'text-gray-900', bar: 'bg-gray-400' },
-                                 { label: 'Valid', count: validCount, color: 'text-green-700', bar: 'bg-green-500' },
-                                 { label: 'Tidak Valid', count: invalidCount, color: 'text-red-700', bar: 'bg-red-400' },
-                              ] as { label: string; count: number; color: string; bar: string }[]).map(s => (
-                                 <div key={s.label} className="bg-white rounded-xl p-3 border-2 border-gray-200 shadow-sm">
-                                    <div className={`w-full h-1 rounded-full mb-2 ${s.bar}`}></div>
-                                    <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
-                                    <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mt-0.5">{s.label}</p>
-                                 </div>
+                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                              {statCards.map(s => (
+                                 <button key={s.key}
+                                    onClick={() => setFilterStatusGaransi(filterStatusGaransi === s.key ? 'Semua' : s.key)}
+                                    className={`bg-white rounded-xl p-4 text-left border transition-all hover:shadow-sm ${filterStatusGaransi === s.key ? 'border-gray-300 shadow-sm' : 'border-gray-200 hover:border-gray-300'}`}
+                                    style={{ borderTop: `3px solid ${s.accent}` }}
+                                 >
+                                    <p className="text-xs text-gray-400 font-medium mb-1">{s.label}</p>
+                                    <p className="text-2xl font-bold text-gray-900">{s.count}</p>
+                                    <p className="text-xs mt-1.5 font-medium" style={{ color: s.accent }}>{s.sub}</p>
+                                 </button>
                               ))}
                            </div>
                         );
                      })()}
-                     <input type="text" title="Cari Garansi" aria-label="Cari Garansi" placeholder="🔍 Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full p-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm" />
+                     {/* Search + quick filter pills */}
+                     <div className="flex flex-wrap items-center gap-2">
+                        <div className="relative flex-1 min-w-[160px]">
+                           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                           <input type="text" title="Cari Garansi" aria-label="Cari Garansi" placeholder="Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full pl-8 pr-3 py-2 border border-gray-200 bg-white text-gray-800 rounded-lg outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-xs" />
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                           {[
+                              { key: 'Semua',  label: 'Semua',          count: warranties.length,                    activeClass: 'bg-gray-700 text-white',     inactiveClass: 'bg-gray-100 text-gray-600 hover:bg-gray-200' },
+                              { key: 'Valid',  label: 'Valid',           count: warrantyStatusCounts['Valid'] ?? 0,   activeClass: 'bg-emerald-500 text-white',   inactiveClass: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
+                              { key: 'Belum',  label: 'Belum Validasi',  count: warrantyStatusCounts['Belum'] ?? 0,  activeClass: 'bg-amber-500 text-white',     inactiveClass: 'bg-amber-50 text-amber-700 hover:bg-amber-100' },
+                              ...Object.entries(warrantyStatusCounts)
+                                 .filter(([k]) => k !== 'Valid' && k !== 'Belum')
+                                 .map(([k, v]) => ({ key: k, label: k, count: v, activeClass: 'bg-indigo-500 text-white', inactiveClass: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' })),
+                           ].map(p => (
+                              <button key={p.key}
+                                 onClick={() => setFilterStatusGaransi(filterStatusGaransi === p.key ? 'Semua' : p.key)}
+                                 className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition flex items-center gap-1 ${filterStatusGaransi === p.key ? p.activeClass : p.inactiveClass}`}
+                              >
+                                 {p.label} <span className="font-bold">{p.count}</span>
+                              </button>
+                           ))}
+                        </div>
+                     </div>
                      {viewMode === 'table' ? (
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
                            <table className="w-full text-sm">
                               <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
                                  <tr>
                                     <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">No</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'nomor_seri')}>No Seri {sortConfigWarranties.column === 'nomor_seri' && <span className="text-xs">{sortConfigWarranties.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'tipe_barang')}>Barang {sortConfigWarranties.column === 'tipe_barang' && <span className="text-xs">{sortConfigWarranties.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Nota / Garansi</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'status_validasi')}>Status {sortConfigWarranties.column === 'status_validasi' && <span className="text-xs">{sortConfigWarranties.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'jenis_garansi')}>Jenis {sortConfigWarranties.column === 'jenis_garansi' && <span className="text-xs">{sortConfigWarranties.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'lama_garansi')}>Sisa Garansi {sortConfigWarranties.column === 'lama_garansi' && <span className="text-xs">{sortConfigWarranties.direction === 'asc' ? '↑' : '↓'}</span>}</th>
+                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nama / WA</th>
+                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'nomor_seri')}>No Seri / Barang {sortConfigWarranties.column === 'nomor_seri' && <span>{sortConfigWarranties.direction === 'asc' ? '↑' : '↓'}</span>}</th>
+                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Tgl Beli / Toko</th>
+                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'jenis_garansi')}>Jenis / Sisa {sortConfigWarranties.column === 'jenis_garansi' && <span>{sortConfigWarranties.direction === 'asc' ? '↑' : '↓'}</span>}</th>
+                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'status_validasi')}>Status {sortConfigWarranties.column === 'status_validasi' && <span>{sortConfigWarranties.direction === 'asc' ? '↑' : '↓'}</span>}</th>
                                     <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th>
                                  </tr>
                               </thead>
@@ -4711,39 +4807,65 @@ ${kode ? `
                                     const linked = claims.find((c: ClaimPromo) => c.nomor_seri === w.nomor_seri);
                                     const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
                                     const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
-                                    const isValid = w.status_validasi === 'Valid';
+                                    const tglBeli = linked?.tanggal_pembelian || w.tanggal_pembelian;
+                                    const namaText = w.nama_pendaftar || linked?.nama_pendaftar || '-';
+                                    const waText = w.nomor_wa || linked?.nomor_wa || '-';
+                                    const tokoText = w.nama_toko || linked?.nama_toko || '-';
+                                    const statusColor: Record<string, string> = {
+                                       'Valid': 'bg-emerald-100 text-emerald-700',
+                                       'Belum': 'bg-amber-100 text-amber-700',
+                                       'Menunggu': 'bg-amber-100 text-amber-700',
+                                       'Ditolak': 'bg-red-100 text-red-700',
+                                    };
+                                    const pillClass = statusColor[w.status_validasi] ?? 'bg-gray-100 text-gray-600';
                                     return (
-                                       <tr key={w.id_garansi} className={`border-l-4 ${isValid ? 'border-l-green-500' : 'border-l-gray-300'} hover:bg-gray-50 transition-colors`}>
-                                          <td className="px-3 py-2.5 text-center font-bold text-gray-500 text-xs">{garansiNumberMap.get(w.id_garansi!)}</td>
-                                          <td className="px-3 py-2.5 font-mono font-bold text-sm">{w.nomor_seri}</td>
-                                          <td className="px-3 py-2.5 text-xs text-gray-700">{w.tipe_barang}</td>
-                                          <td className="px-3 py-2.5">
-                                             <div className="flex flex-col gap-1">
-                                                {linkNota ? (
-                                                   <button type="button" onClick={() => openImageViewer(linkNota as string)} className="text-blue-600 hover:underline text-[11px] font-bold text-left flex items-center gap-1">
-                                                      📄 Nota {typeof linkNota === 'string' && isGoogleDriveLink(linkNota) && <span className="text-[9px] bg-blue-100 text-blue-600 px-1 rounded">Drive</span>}
-                                                      {!w.link_nota_pembelian && linked?.link_nota_pembelian && <span className="text-[9px] bg-purple-100 text-purple-600 px-1 rounded">Claim</span>}
-                                                   </button>
-                                                ) : <span className="text-[11px] text-gray-400 italic">-Nota</span>}
-                                                {linkGaransi ? (
-                                                   <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="text-blue-600 hover:underline text-[11px] font-bold text-left flex items-center gap-1">
-                                                      🛡️ Garansi {typeof linkGaransi === 'string' && isGoogleDriveLink(linkGaransi) && <span className="text-[9px] bg-blue-100 text-blue-600 px-1 rounded">Drive</span>}
-                                                      {!w.link_kartu_garansi && linked?.link_kartu_garansi && <span className="text-[9px] bg-purple-100 text-purple-600 px-1 rounded">Claim</span>}
-                                                   </button>
-                                                ) : <span className="text-[11px] text-gray-400 italic">-Garansi</span>}
-                                             </div>
+                                       <tr key={w.id_garansi} className="hover:bg-gray-50 transition-colors">
+                                          <td className="px-3 py-3 text-center text-xs font-bold text-gray-400">{garansiNumberMap.get(w.id_garansi!)}</td>
+                                          <td className="px-3 py-3">
+                                             <p className="text-sm font-semibold text-gray-900 leading-tight">{namaText}</p>
+                                             <p className="text-xs text-gray-400 mt-0.5">{waText}</p>
                                           </td>
-                                          <td className="px-3 py-2.5">
-                                             <span className={`px-2 py-1 rounded text-[10px] font-extrabold ${isValid ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>{w.status_validasi}</span>
+                                          <td className="px-3 py-3">
+                                             <p className="font-mono font-bold text-sm text-gray-900">{w.nomor_seri}</p>
+                                             <p className="text-xs text-gray-500 mt-0.5">{w.tipe_barang}</p>
                                           </td>
-                                          <td className="px-3 py-2.5 text-xs text-gray-700">{w.jenis_garansi}</td>
-                                          <td className="px-3 py-2.5 text-xs font-bold text-gray-700">{calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</td>
-                                          <td className="px-3 py-2.5">
-                                             <div className="flex flex-col gap-1">
-                                                <button onClick={() => handleKirimStatusGaransi(w)} className="text-emerald-600 text-[11px] font-bold hover:underline text-left">📨 Kirim Status</button>
-                                                <div className="flex gap-2 pt-0.5 border-t border-gray-100">
-                                                   <button onClick={() => openModal('edit', 'warranty', w)} className="text-gray-700 text-[11px] font-bold hover:underline">Edit</button>
-                                                   <button onClick={() => handleDelete('warranty', w.id_garansi!)} className="text-red-500 text-[11px] font-bold hover:underline">Hapus</button>
+                                          <td className="px-3 py-3">
+                                             <p className="text-xs text-gray-700">{tglBeli || '-'}</p>
+                                             <p className="text-xs text-gray-400 mt-0.5">{tokoText}</p>
+                                          </td>
+                                          <td className="px-3 py-3">
+                                             <p className="text-xs font-semibold text-gray-700">{w.jenis_garansi || '-'}</p>
+                                             <p className="text-xs text-gray-400 mt-0.5">{calculateSisaGaransi(tglBeli ?? undefined, w.lama_garansi)}</p>
+                                          </td>
+                                          <td className="px-3 py-3">
+                                             <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${pillClass}`}>{w.status_validasi}</span>
+                                          </td>
+                                          <td className="px-3 py-3">
+                                             <div className="flex flex-col gap-1 items-start">
+                                                <div className="flex gap-2">
+                                                   {linkNota && (
+                                                      <button type="button" onClick={() => openImageViewer(linkNota as string)} className="text-[11px] text-blue-600 font-semibold hover:underline flex items-center gap-0.5">
+                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                         Nota
+                                                      </button>
+                                                   )}
+                                                   {linkGaransi && (
+                                                      <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="text-[11px] text-blue-600 font-semibold hover:underline flex items-center gap-0.5">
+                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                                         Garansi
+                                                      </button>
+                                                   )}
+                                                </div>
+                                                <div className="flex gap-2 items-center">
+                                                   <button onClick={() => handleKirimStatusGaransi(w)} title="Kirim Status WA">
+                                                      <svg className="w-3.5 h-3.5 text-emerald-600 hover:text-emerald-800" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.523 5.828L.057 23.57a.75.75 0 00.918.919l5.815-1.485A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.692-.519-5.222-1.423l-.374-.22-3.877.99.997-3.81-.24-.388A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                                                   </button>
+                                                   <button onClick={() => openModal('edit', 'warranty', w)}>
+                                                      <svg className="w-3.5 h-3.5 text-gray-500 hover:text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                   </button>
+                                                   <button onClick={() => handleDelete('warranty', w.id_garansi!)}>
+                                                      <svg className="w-3.5 h-3.5 text-red-400 hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                   </button>
                                                 </div>
                                              </div>
                                           </td>
@@ -4754,39 +4876,56 @@ ${kode ? `
                            </table>
                         </div>
                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {sortedWarranties.map((w: Garansi) => {
                               const linked = claims.find((c: ClaimPromo) => c.nomor_seri === w.nomor_seri);
                               const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
                               const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
+                              const tglBeli = linked?.tanggal_pembelian || w.tanggal_pembelian;
+                              const namaText = w.nama_pendaftar || linked?.nama_pendaftar || '-';
+                              const waText = w.nomor_wa || linked?.nomor_wa || '-';
+                              const tokoText = w.nama_toko || linked?.nama_toko || '-';
+                              const statusColor: Record<string, string> = {
+                                 'Valid': 'bg-emerald-100 text-emerald-700',
+                                 'Belum': 'bg-amber-100 text-amber-700',
+                                 'Menunggu': 'bg-amber-100 text-amber-700',
+                                 'Ditolak': 'bg-red-100 text-red-700',
+                              };
+                              const pillClass = statusColor[w.status_validasi] ?? 'bg-gray-100 text-gray-600';
                               return (
-                                 <div key={w.id_garansi} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
-                                    <div className="border-b border-gray-100 pb-3 mb-3">
-                                       <div className="flex items-center gap-2">
-                                          <span className="font-bold text-lg text-gray-600 bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center text-center">{garansiNumberMap.get(w.id_garansi!)}</span>
-                                          <div>
-                                             <h3 className="font-bold text-base text-slate-800 font-mono">{w.nomor_seri}</h3>
-                                             <p className="text-xs text-gray-500">{w.tipe_barang}</p>
-                                          </div>
+                                 <div key={w.id_garansi} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col gap-3">
+                                    {/* Header */}
+                                    <div className="flex items-start justify-between gap-2">
+                                       <div>
+                                          <p className="font-semibold text-gray-900 text-sm">{namaText}</p>
+                                          <p className="text-xs text-gray-400">{waText}</p>
                                        </div>
+                                       <span className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold ${pillClass}`}>{w.status_validasi}</span>
                                     </div>
-                                    <div className="space-y-2 text-xs flex-1">
-                                       <p><span className="font-bold w-24 inline-block">Status:</span> <span className={`px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{w.status_validasi}</span></p>
-                                       <p><span className="font-bold w-24 inline-block">Jenis:</span> {w.jenis_garansi}</p>
-                                       <p><span className="font-bold w-24 inline-block">Sisa:</span> {calculateSisaGaransi(linked?.tanggal_pembelian, w.lama_garansi)}</p>
-                                       <div className="flex flex-col gap-1 pt-1">
-                                          {linkNota && <button type="button" onClick={() => openImageViewer(linkNota as string)} className="hover:underline hover:text-blue-800 text-left font-bold flex items-center gap-1">
-                                             {typeof linkNota === 'string' && isGoogleDriveLink(linkNota) ? '🔗📂' : '🔗'} Lihat Nota {typeof linkNota === 'string' && isGoogleDriveLink(linkNota) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded whitespace-nowrap">(Drive)</span>}
-                                          </button>}
-                                          {linkGaransi && <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="hover:underline hover:text-blue-800 text-left font-bold flex items-center gap-1">
-                                             {typeof linkGaransi === 'string' && isGoogleDriveLink(linkGaransi) ? '🔗📂' : '🔗'} Lihat Garansi {typeof linkGaransi === 'string' && isGoogleDriveLink(linkGaransi) && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded whitespace-nowrap">(Drive)</span>}
-                                          </button>}
+                                    {/* No Seri + Barang */}
+                                    <div className="bg-gray-50 rounded-lg px-3 py-2">
+                                       <p className="font-mono font-bold text-sm text-gray-900">{w.nomor_seri}</p>
+                                       <p className="text-xs text-gray-500 mt-0.5">{w.tipe_barang}</p>
+                                    </div>
+                                    {/* Detail */}
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                                       <div><span className="text-gray-400 block">Tgl Beli</span><span className="font-semibold text-gray-700">{tglBeli || '-'}</span></div>
+                                       <div><span className="text-gray-400 block">Toko</span><span className="font-semibold text-gray-700">{tokoText}</span></div>
+                                       <div><span className="text-gray-400 block">Jenis</span><span className="font-semibold text-gray-700">{w.jenis_garansi || '-'}</span></div>
+                                       <div><span className="text-gray-400 block">Sisa</span><span className="font-semibold text-gray-700">{calculateSisaGaransi(tglBeli ?? undefined, w.lama_garansi)}</span></div>
+                                    </div>
+                                    {/* Lampiran */}
+                                    {(linkNota || linkGaransi) && (
+                                       <div className="flex gap-3 text-[11px]">
+                                          {linkNota && <button type="button" onClick={() => openImageViewer(linkNota as string)} className="text-blue-600 font-semibold hover:underline">📄 Nota</button>}
+                                          {linkGaransi && <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="text-blue-600 font-semibold hover:underline">🛡️ Kartu Garansi</button>}
                                        </div>
-                                    </div>
-                                    <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
-                                       <button onClick={() => handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline" title="Kirim WA Status">Kirim</button>
-                                       <button onClick={() => openModal('edit', 'warranty', w)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                       <button onClick={() => handleDelete('warranty', w.id_garansi!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                    )}
+                                    {/* Aksi */}
+                                    <div className="pt-2 border-t border-gray-100 flex gap-3 justify-end">
+                                       <button onClick={() => handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline">Kirim</button>
+                                       <button onClick={() => openModal('edit', 'warranty', w)} className="text-gray-700 text-xs font-bold hover:underline">Edit</button>
+                                       <button onClick={() => handleDelete('warranty', w.id_garansi!)} className="text-red-500 text-xs font-bold hover:underline">Hapus</button>
                                     </div>
                                  </div>
                               )
@@ -4963,29 +5102,77 @@ ${kode ? `
                {/* ======================= EVENT REGISTRATIONS ======================= */}
                {activeTab === 'eventregistrations' && (
                   <div className="space-y-4 animate-fade-in text-gray-900">
-                     {/* Stat cards */}
+                     {/* Event name filter pills + stat cards */}
                      {(() => {
-                        const confirmed = eventRegistrations.filter(r => r.status_pendaftaran === 'terdaftar' || r.status === 'Confirmed').length;
-                        const pending = eventRegistrations.filter(r => r.status_pendaftaran === 'menunggu_validasi' || (r.status !== 'Confirmed' && r.status !== 'Cancelled' && r.status !== 'Rejected')).length;
-                        const hadir = eventRegistrations.filter(r => r.is_attended).length;
+                        // Unique event names with counts
+                        const eventCounts: Record<string, number> = {};
+                        eventRegistrations.forEach(r => {
+                           const n = r.event_name || '-';
+                           eventCounts[n] = (eventCounts[n] || 0) + 1;
+                        });
+                        const eventNames = Object.keys(eventCounts).sort();
+
+                        // Filtered registrations
+                        const filtered = eventRegistrations.filter(r => {
+                           const matchEvent = filterRegEventName === 'Semua' || r.event_name === filterRegEventName;
+                           const q = searchRegistration.toLowerCase();
+                           const matchSearch = !q || (r.full_name || r.nama_lengkap || '').toLowerCase().includes(q) || (r.event_name || '').toLowerCase().includes(q);
+                           return matchEvent && matchSearch;
+                        });
+                        const confirmed = filtered.filter(r => r.status_pendaftaran === 'terdaftar').length;
+                        const pending   = filtered.filter(r => r.status_pendaftaran === 'menunggu_validasi').length;
+                        const hadir     = filtered.filter(r => r.is_attended).length;
+
                         return (
-                           <div className="grid grid-cols-4 gap-2">
-                              {([
-                                 { label: 'Total Peserta', count: eventRegistrations.length, color: 'text-gray-900', bar: 'bg-gray-400' },
-                                 { label: 'Terdaftar', count: confirmed, color: 'text-green-700', bar: 'bg-green-500' },
-                                 { label: 'Menunggu', count: pending, color: 'text-orange-700', bar: 'bg-orange-400' },
-                                 { label: 'Hadir', count: hadir, color: 'text-blue-700', bar: 'bg-blue-500' },
-                              ] as { label: string; count: number; color: string; bar: string }[]).map(s => (
-                                 <div key={s.label} className="bg-white rounded-xl p-3 border-2 border-gray-200 shadow-sm">
-                                    <div className={`w-full h-1 rounded-full mb-2 ${s.bar}`}></div>
-                                    <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
-                                    <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mt-0.5 leading-tight">{s.label}</p>
+                           <>
+                              {/* Filter dropdown + pills */}
+                              <div className="flex flex-wrap items-center gap-2">
+                                 <select
+                                    value={filterRegEventName}
+                                    onChange={e => setFilterRegEventName(e.target.value)}
+                                    aria-label="Filter nama event"
+                                    className="py-2 px-3 border border-gray-200 bg-white text-gray-700 rounded-lg outline-none focus:border-[#FFE500] text-xs font-medium max-w-xs"
+                                 >
+                                    <option value="Semua">Semua Event ({eventRegistrations.length})</option>
+                                    {eventNames.map(n => (
+                                       <option key={n} value={n}>{n} ({eventCounts[n]})</option>
+                                    ))}
+                                 </select>
+                                 <div className="flex flex-wrap gap-1.5">
+                                    {eventNames.map(n => (
+                                       <button key={n}
+                                          onClick={() => setFilterRegEventName(filterRegEventName === n ? 'Semua' : n)}
+                                          className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition whitespace-nowrap ${filterRegEventName === n ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+                                       >
+                                          {n} <span className="font-bold">{eventCounts[n]}</span>
+                                       </button>
+                                    ))}
                                  </div>
-                              ))}
-                           </div>
+                              </div>
+
+                              {/* Stat cards — reflect filtered data */}
+                              <div className="grid grid-cols-4 gap-2">
+                                 {([
+                                    { label: 'Total Peserta', count: filtered.length,  accent: '#6b7280' },
+                                    { label: 'Terdaftar',     count: confirmed,          accent: '#10b981' },
+                                    { label: 'Menunggu',      count: pending,            accent: '#f59e0b' },
+                                    { label: 'Hadir',         count: hadir,              accent: '#3b82f6' },
+                                 ] as { label: string; count: number; accent: string }[]).map(s => (
+                                    <div key={s.label} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm" style={{ borderTop: `3px solid ${s.accent}` }}>
+                                       <p className="text-xs text-gray-400 font-medium mb-1">{s.label}</p>
+                                       <p className="text-2xl font-bold text-gray-900">{s.count}</p>
+                                    </div>
+                                 ))}
+                              </div>
+
+                              {/* Search */}
+                              <div className="relative">
+                                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                 <input type="text" title="Cari Peserta" aria-label="Cari Peserta" placeholder="Cari nama peserta..." value={searchRegistration} onChange={e => setSearchRegistration(e.target.value)} className="w-full pl-8 pr-3 py-2 border border-gray-200 bg-white text-gray-800 rounded-lg outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-xs" />
+                              </div>
+                           </>
                         );
                      })()}
-                     <input type="text" title="Cari Peserta" aria-label="Cari Peserta" placeholder="🔍 Cari Nama Peserta atau Event..." value={searchRegistration} onChange={e => setSearchRegistration(e.target.value)} className="w-full p-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm" />
                      {viewMode === 'table' ? (
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
                            <table className="w-full text-sm">
@@ -5005,7 +5192,9 @@ ${kode ? `
                                     const q = searchRegistration.toLowerCase();
                                     const nama = (r.full_name || r.nama_lengkap || '').toLowerCase();
                                     const evt = (r.event_name || '').toLowerCase();
-                                    return nama.includes(q) || evt.includes(q);
+                                    const matchSearch = nama.includes(q) || evt.includes(q);
+                                    const matchEvent = filterRegEventName === 'Semua' || r.event_name === filterRegEventName;
+                                    return matchSearch && matchEvent;
                                  }).map((reg: EventRegistration) => {
                                     const isConfirmed = reg.status_pendaftaran === 'terdaftar' || reg.status === 'Confirmed';
                                     const isCancelled = reg.status_pendaftaran === 'ditolak' || reg.status === 'Cancelled';
@@ -5107,6 +5296,7 @@ ${kode ? `
                                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'date')}>Tanggal {sortConfigEvents.column === 'date' && <span className="text-xs">{sortConfigEvents.direction === 'asc' ? '↑' : '↓'}</span>}</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">Detail</th>
                                     <th className="px-3 py-3 text-left font-bold text-gray-700">Harga</th>
+                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Pendaftaran</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-700">Kuota / Status</th>
                                     <th className="px-3 py-3 text-center font-bold text-gray-700">Peserta</th>
                                     <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th>
@@ -5126,6 +5316,25 @@ ${kode ? `
                                        <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{evt.date}</td>
                                        <td className="px-3 py-2.5 text-xs text-gray-600">{evt.detail_acara || '-'}</td>
                                        <td className="px-3 py-2.5 text-xs font-bold text-gray-800 whitespace-nowrap">{evt.price}</td>
+                                       <td className="px-3 py-2.5 text-xs">
+                                          {(() => {
+                                             const today = new Date(); today.setHours(0,0,0,0);
+                                             const open  = evt.registration_open_date  ? new Date(evt.registration_open_date)  : null;
+                                             const close = evt.registration_close_date ? new Date(evt.registration_close_date) : null;
+                                             const fmt = (d: Date) => d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric', timeZone:'Asia/Jakarta' });
+                                             const isVisible = (!open || open <= today) && (!close || close >= today);
+                                             return (
+                                                <div className="space-y-0.5">
+                                                   {open  && <p className="text-gray-500"><span className="font-semibold text-gray-700">Buka:</span> {fmt(open)}</p>}
+                                                   {close && <p className="text-gray-500"><span className="font-semibold text-gray-700">Tutup:</span> {fmt(close)}</p>}
+                                                   {!open && !close && <span className="text-gray-400 italic">Tidak diatur</span>}
+                                                   <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5 ${isVisible ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                      {isVisible ? '✓ Banner Tampil' : '✗ Banner Tersembunyi'}
+                                                   </span>
+                                                </div>
+                                             );
+                                          })()}
+                                       </td>
                                        <td className="px-3 py-2.5 text-center">
                                           <p className="font-bold text-gray-700 text-xs">{eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</p>
                                           <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>
@@ -6998,7 +7207,7 @@ ${kode ? `
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
                                     <label className="label-form">Jenis Garansi *</label>
-                                    <select aria-label="Jenis garansi" required value={warrantyForm.jenis_garansi || 'Jasa 30%'} onChange={e => setWarrantyForm({ ...warrantyForm, jenis_garansi: e.target.value })} className="input-form">
+                                    <select aria-label="Jenis garansi" required value={warrantyForm.jenis_garansi || 'Jasa 30%'} onChange={e => { const j = e.target.value; setWarrantyForm({ ...warrantyForm, jenis_garansi: j, lama_garansi: JENIS_GARANSI_LAMA_MAP[j] ?? warrantyForm.lama_garansi }); }} className="input-form">
                                        {JENIS_GARANSI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                  </div>
@@ -7482,6 +7691,22 @@ ${kode ? `
                                        <div>
                                           <label className="label-form">Harga *</label>
                                           <input type="text" required aria-label="Harga" value={getVal('event_price', 'price')} onChange={e => setField('event_price', e.target.value)} className="input-form" placeholder="Contoh: Rp 50.000" />
+                                       </div>
+                                    </div>
+                                    {/* Jadwal Pendaftaran */}
+                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                       <p className="text-xs font-bold text-blue-800 mb-2 uppercase tracking-wide">🗓 Jadwal Pendaftaran</p>
+                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                          <div>
+                                             <label className="label-form">Dibuka Mulai</label>
+                                             <input type="date" aria-label="Pendaftaran Dibuka" value={getVal('registration_open_date') || ''} onChange={e => setField('registration_open_date', e.target.value || null)} className="input-form" />
+                                             <p className="form-helper">Banner tampil di halaman publik mulai tanggal ini</p>
+                                          </div>
+                                          <div>
+                                             <label className="label-form">Ditutup Pada</label>
+                                             <input type="date" aria-label="Pendaftaran Ditutup" value={getVal('registration_close_date') || ''} onChange={e => setField('registration_close_date', e.target.value || null)} className="input-form" />
+                                             <p className="form-helper">Banner disembunyikan setelah tanggal ini</p>
+                                          </div>
                                        </div>
                                     </div>
                                     <div>

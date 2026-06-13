@@ -594,7 +594,16 @@ export default function MessagesTab({
           );
         })() : (
           <div className="flex-1 flex flex-col justify-center items-center text-gray-500 bg-[#f0f2f5] p-10 text-center">
-            <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center text-6xl mb-4 shadow-sm">💬</div>
+            <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center mb-5 shadow-md">
+              <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="6" width="36" height="28" rx="6" fill="#e8edf5" stroke="#c5cfe0" strokeWidth="1.5"/>
+                <rect x="12" y="18" width="36" height="28" rx="6" fill="#d6e0f0" stroke="#adbdd8" strokeWidth="1.5"/>
+                <rect x="8" y="12" width="36" height="28" rx="6" fill="#fff" stroke="#b0bfd6" strokeWidth="1.5"/>
+                <line x1="16" y1="21" x2="36" y2="21" stroke="#b0bfda" strokeWidth="1.8" strokeLinecap="round"/>
+                <line x1="16" y1="26" x2="32" y2="26" stroke="#b0bfda" strokeWidth="1.8" strokeLinecap="round"/>
+                <line x1="16" y1="31" x2="28" y2="31" stroke="#b0bfda" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </div>
             <h3 className="text-xl font-bold text-gray-800">Pilih Percakapan</h3>
             <p className="text-sm max-w-xs mt-2 text-gray-600">Pilih salah satu konsumen di sebelah kiri untuk mulai membalas pesan, beri tag, atau pin chat penting.</p>
             <div className="mt-6 flex flex-wrap gap-2 justify-center max-w-md">

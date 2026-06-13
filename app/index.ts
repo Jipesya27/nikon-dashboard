@@ -11,7 +11,7 @@ export interface BudgetApproval { id_budget?: string; proposal_no: string; title
 export interface ExpenseClaimItem { tanggal: string; description: string; nominal: number; receipt_url?: string; }
 export interface ExpenseClaim { id?: string; created_at?: string; created_by: string; nama_pembuat: string; from_person: string; to_person: string; claim_date: string; status: 'draft' | 'submitted' | 'approved' | 'rejected'; catatan?: string; items: ExpenseClaimItem[]; receipt_urls: string[]; total_nominal: number; }
 export interface DataLog { id?: string; created_at?: string; user_name: string; action: string; table_name: string; record_id: string; old_values: Record<string, unknown>; new_values: Record<string, unknown>; }
-export interface EventData { id?: string; title: string; date: string; price: string; image: string; stock: number; status: string; detail_acara: string; created_at?: string; bank_info?: string; }
+export interface EventData { id?: string; title: string; date: string; price: string; image: string; stock: number; status: string; detail_acara: string; created_at?: string; bank_info?: string; registration_open_date?: string | null; registration_close_date?: string | null; }
 export interface EventRegistration {
    id?: string;
    event_id?: string | null;
