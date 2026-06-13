@@ -3780,7 +3780,7 @@ ${kode ? `
                      </div>
                      <div className="min-w-0">
                         <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{currentUser?.nama_karyawan}</p>
-                        <p className="text-[11px] text-gray-400 truncate leading-tight">{currentUser?.username ?? currentUser?.role}</p>
+                        <p className="text-[11px] text-gray-400 truncate leading-tight">{currentUser?.username ? `${currentUser.username}` : 'altanikindo.com'}</p>
                      </div>
                   </div>
 
