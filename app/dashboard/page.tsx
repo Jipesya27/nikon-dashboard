@@ -260,6 +260,8 @@ export default function NikonDashboard() {
 
    const [selectedClaimIds, setSelectedClaimIds] = useState<Set<string>>(new Set());
    const [resiUploadPreview, setResiUploadPreview] = useState<Array<{ id_claim: string; no_seri: string; nama: string; expedisi: string; nomor_resi: string }> | null>(null);
+   const [resiModal, setResiModal] = useState<ClaimPromo | null>(null);
+   const [resiModalForm, setResiModalForm] = useState<{ nama_jasa_pengiriman: string; nomor_resi: string }>({ nama_jasa_pengiriman: '', nomor_resi: '' });
 
    const getClaimStatusColor = useCallback((c: ClaimPromo) => {
       const mkt = (c.validasi_by_mkt || '').trim().toLowerCase();
@@ -2944,6 +2946,14 @@ ${kode ? `
       scrollToBottom();
    };
 
+   const handleSaveResiModal = async () => {
+      if (!resiModal?.id_claim) return;
+      const { nama_jasa_pengiriman, nomor_resi } = resiModalForm;
+      await sbWrite({ action: 'update', table: 'claim_promo', data: { nama_jasa_pengiriman, nomor_resi }, match: { id_claim: resiModal.id_claim } });
+      setClaims(prev => prev.map(cl => cl.id_claim === resiModal.id_claim ? { ...cl, nama_jasa_pengiriman, nomor_resi } : cl));
+      setResiModal(null);
+   };
+
    const handleKirimStatusClaim = async (c: ClaimPromo) => {
 
       if (!window.confirm('Kirim status claim ke WA konsumen?')) return;
@@ -5269,6 +5279,9 @@ ${kode ? `
                                              </button>
                                              <button onClick={() => { const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa); if (consumerObj) { setReturnTab('claims'); setActiveTab('konsumen'); openModal('edit', 'konsumen', consumerObj); } else { alert('Data konsumen tidak ditemukan.'); } }} className="text-orange-600 text-[11px] font-bold hover:underline text-left">📍 Alamat</button>
                                              <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-[11px] font-bold hover:underline text-left">📨 Status</button>
+                                             {getClaimStatusColor(c) === 'Pink' && (
+                                                <button onClick={() => { setResiModal(c); setResiModalForm({ nama_jasa_pengiriman: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '' }); }} className="text-pink-600 text-[11px] font-bold hover:underline text-left">📦 Resi</button>
+                                             )}
                                              <div className="flex gap-2 pt-0.5 border-t border-gray-100">
                                                 <button onClick={() => openModal('edit', 'claim', c)} className="text-gray-700 text-[11px] font-bold hover:underline">Edit</button>
                                                 <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-500 text-[11px] font-bold hover:underline">Hapus</button>
@@ -5352,6 +5365,9 @@ ${kode ? `
                                        }
                                     }} className="text-orange-600 text-xs font-bold hover:underline">Edit Alamat</button>
                                     <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline">Kirim Status</button>
+                                    {getClaimStatusColor(c) === 'Pink' && (
+                                       <button onClick={() => { setResiModal(c); setResiModalForm({ nama_jasa_pengiriman: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '' }); }} className="text-pink-600 text-xs font-bold hover:underline">📦 Isi Resi</button>
+                                    )}
                                     <button onClick={() => openModal('edit', 'claim', c)} className="text-black text-xs font-bold hover:underline">Edit</button>
                                     <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                                  </div>
@@ -7565,7 +7581,7 @@ ${pages.join('')}
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
                            <div className="flex items-center gap-3 mb-3">
                               <div className="w-3 h-3 rounded-full bg-blue-400" />
-                              <h3 className="text-lg font-bold text-gray-900">Synology DS223J — <span className="font-mono text-gray-600">192.168.18.145</span></h3>
+                              <h3 className="text-lg font-bold text-gray-900">Synology DS223J — <span className="font-mono text-gray-600">192.168.18.169</span></h3>
                            </div>
                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                               {[
@@ -7613,6 +7629,53 @@ ${pages.join('')}
                </main>
             </div>
          </div>
+
+         {/* MODAL QUICK RESI */}
+         {resiModal && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setResiModal(null)}>
+               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                  <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+                     <div>
+                        <h2 className="text-base font-bold text-gray-900">📦 Isi Resi Pengiriman</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">{resiModal.nomor_seri} · {resiModal.tipe_barang}</p>
+                     </div>
+                     <button onClick={() => setResiModal(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+                  </div>
+                  <div className="px-5 py-4 space-y-3">
+                     <div>
+                        <label className="label-form">Jasa Pengiriman</label>
+                        <select
+                           value={resiModalForm.nama_jasa_pengiriman}
+                           onChange={e => setResiModalForm(p => ({ ...p, nama_jasa_pengiriman: e.target.value }))}
+                           className="input-form"
+                        >
+                           <option value="">-- Pilih jasa kirim --</option>
+                           {JASA_PENGIRIMAN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                     </div>
+                     <div>
+                        <label className="label-form">Nomor Resi</label>
+                        <input
+                           type="text"
+                           value={resiModalForm.nomor_resi}
+                           onChange={e => setResiModalForm(p => ({ ...p, nomor_resi: e.target.value }))}
+                           className="input-form"
+                           placeholder="Masukkan nomor resi..."
+                           autoFocus
+                        />
+                     </div>
+                  </div>
+                  <div className="px-5 pb-5 flex gap-2 justify-end">
+                     <button onClick={() => setResiModal(null)} className="px-4 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition">Batal</button>
+                     <button
+                        onClick={handleSaveResiModal}
+                        disabled={!resiModalForm.nama_jasa_pengiriman || !resiModalForm.nomor_resi.trim()}
+                        className="px-4 py-2 text-sm font-bold bg-[#FFE500] text-black rounded-lg hover:bg-[#E5CE00] transition disabled:opacity-40 disabled:cursor-not-allowed"
+                     >Simpan Resi</button>
+                  </div>
+               </div>
+            </div>
+         )}
 
          {/* MODAL UPLOAD RESI CSV */}
          {resiUploadPreview && (
@@ -7769,7 +7832,7 @@ ${pages.join('')}
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
                      <div className="flex items-center gap-3 mb-3">
                         <div className="w-3 h-3 rounded-full bg-blue-400" />
-                        <h3 className="text-lg font-bold text-gray-900">Synology DS223J — <span className="font-mono text-gray-600">192.168.18.145</span></h3>
+                        <h3 className="text-lg font-bold text-gray-900">Synology DS223J — <span className="font-mono text-gray-600">192.168.18.169</span></h3>
                      </div>
                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                         {[
