@@ -65,57 +65,82 @@ export default function ClaimsTab({
   consumersList, setReturnTab, setActiveTab, openModal, handleKirimStatusClaim,
   setResiModal, setResiModalForm, handleDelete, getNamaPromo,
 }: ClaimsTabProps) {
+  // Stat card definitions
+  const statCards = [
+    { key: 'Semua',  label: 'Total Claim',   count: claims.length,              accent: '#6b7280', sub: 'Semua data' },
+    { key: 'Pink',   label: 'Tunggu Resi',   count: claimStatusCounts.Pink ?? 0,  accent: '#f43f5e', sub: 'Perlu aksi' },
+    { key: 'Hijau',  label: 'Selesai',       count: claimStatusCounts.Hijau ?? 0, accent: '#10b981', sub: 'Bulan ini' },
+    { key: 'Biru',   label: 'Tunggu FA',     count: claimStatusCounts.Biru ?? 0,  accent: '#3b82f6', sub: 'Dalam review' },
+  ];
+
   return (
     <div className="space-y-4 animate-fade-in text-gray-900">
-      <div className="flex flex-col md:flex-row gap-2">
-        <input type="text" title="Cari Claim" aria-label="Cari Claim" placeholder="🔍 Cari Nama / No Seri / Promo / Status..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="flex-1 p-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm" />
-        <select id="status-warna-filter" aria-label="Filter Status Warna" value={filterStatusWarna} onChange={e => setFilterStatusWarna(e.target.value)} className="p-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm md:w-48">
-          <option value="Semua">Semua Status Warna</option>
-          <option value="Putih">Belum Di Cek (Putih)</option>
-          <option value="Merah">Tidak Valid (Merah)</option>
-          <option value="Orange">Hold (Orange)</option>
-          <option value="Biru">Tunggu FA Cek (Biru)</option>
-          <option value="Pink">Tunggu Resi (Pink)</option>
-          <option value="Hijau">Selesai (Hijau)</option>
-          <option value="Teal">Resi Terkirim (Teal)</option>
-        </select>
-        <button
-          onClick={() => setFilterDuplikat(v => !v)}
-          className={`flex items-center gap-2 px-3 py-2.5 rounded-md border shadow-sm text-sm font-bold whitespace-nowrap transition ${filterDuplikat ? 'bg-red-500 text-white border-red-500' : 'bg-white text-red-600 border-red-300 hover:border-red-500'}`}
-        >
-          ⚠️ Duplikat
-          <span className={`text-xs px-1.5 py-0.5 rounded-full font-black ${filterDuplikat ? 'bg-white text-red-500' : 'bg-red-100 text-red-600'}`}>{duplicateClaimIds.size}</span>
-        </button>
-        {hasActiveColFilters && (
-          <button
-            onClick={() => setFilterColClaims({})}
-            className="flex items-center gap-1 px-3 py-2.5 rounded-md border shadow-sm text-sm font-bold whitespace-nowrap transition bg-amber-50 text-amber-700 border-amber-400 hover:bg-amber-100"
-          >
-            🔽 Reset Filter Kolom
-          </button>
-        )}
-      </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {([
-          { key: 'Semua', label: 'Semua', count: claims.length, color: 'text-gray-900', bar: 'bg-gray-400', ring: 'ring-gray-400' },
-          { key: 'Putih', label: 'Belum Dicek', count: claimStatusCounts.Putih, color: 'text-gray-700', bar: 'bg-gray-300', ring: 'ring-gray-300' },
-          { key: 'Merah', label: 'Tidak Valid', count: claimStatusCounts.Merah, color: 'text-red-700', bar: 'bg-red-500', ring: 'ring-red-400' },
-          { key: 'Orange', label: 'Hold', count: claimStatusCounts.Orange, color: 'text-orange-700', bar: 'bg-orange-400', ring: 'ring-orange-400' },
-          { key: 'Biru', label: 'Tunggu FA', count: claimStatusCounts.Biru, color: 'text-blue-700', bar: 'bg-blue-500', ring: 'ring-blue-400' },
-          { key: 'Pink', label: 'Tunggu Resi', count: claimStatusCounts.Pink, color: 'text-pink-700', bar: 'bg-pink-400', ring: 'ring-pink-400' },
-          { key: 'Hijau', label: 'Selesai', count: claimStatusCounts.Hijau, color: 'text-green-700', bar: 'bg-green-500', ring: 'ring-green-400' },
-          { key: 'Teal', label: 'Resi Terkirim', count: claimStatusCounts.Teal, color: 'text-teal-700', bar: 'bg-teal-500', ring: 'ring-teal-400' },
-        ] as { key: string; label: string; count: number; color: string; bar: string; ring: string }[]).map(s => (
+
+      {/* STAT CARDS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {statCards.map(s => (
           <button
             key={s.key}
             onClick={() => setFilterStatusWarna(s.key)}
-            className={`flex-shrink-0 bg-white rounded-xl p-3 border-2 shadow-sm text-left transition hover:shadow-md ${filterStatusWarna === s.key ? `border-current ring-2 ${s.ring} ${s.color}` : 'border-gray-200 hover:border-gray-300'}`}
+            className={`bg-white rounded-xl p-4 text-left border transition-all hover:shadow-sm ${filterStatusWarna === s.key ? 'border-gray-300 shadow-sm' : 'border-gray-200 hover:border-gray-300'}`}
+            style={{ borderTop: `3px solid ${s.accent}` }}
           >
-            <div className={`w-full h-1 rounded-full mb-2 ${s.bar}`}></div>
-            <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
-            <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mt-0.5 leading-tight">{s.label}</p>
+            <p className="text-xs text-gray-400 font-medium mb-1">{s.label}</p>
+            <p className="text-2xl font-bold text-gray-900">{s.count}</p>
+            <p className="text-xs mt-1.5 font-medium" style={{ color: s.accent }}>{s.sub}</p>
           </button>
         ))}
+      </div>
+
+      {/* SEARCH + FILTER ROW */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="text" title="Cari Claim" aria-label="Cari Claim" placeholder="Cari nama, seri, promo, status..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="w-full pl-9 pr-4 py-2.5 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm" />
+        </div>
+        <select id="status-warna-filter" aria-label="Filter Status Warna" value={filterStatusWarna} onChange={e => setFilterStatusWarna(e.target.value)} className="py-2.5 px-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm sm:w-44">
+          <option value="Semua">Semua Status</option>
+          <option value="Putih">Belum Di Cek</option>
+          <option value="Merah">Tidak Valid</option>
+          <option value="Orange">Hold</option>
+          <option value="Biru">Tunggu FA</option>
+          <option value="Pink">Tunggu Resi</option>
+          <option value="Hijau">Selesai</option>
+          <option value="Teal">Resi Terkirim</option>
+        </select>
+        <button
+          onClick={() => setFilterDuplikat(v => !v)}
+          className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg border text-sm font-semibold whitespace-nowrap transition ${filterDuplikat ? 'bg-red-500 text-white border-red-500' : 'bg-white text-red-600 border-red-200 hover:border-red-400'}`}
+        >
+          Duplikat
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${filterDuplikat ? 'bg-white/20 text-white' : 'bg-red-100 text-red-600'}`}>{duplicateClaimIds.size}</span>
+        </button>
+        {hasActiveColFilters && (
+          <button onClick={() => setFilterColClaims({})} className="flex items-center gap-1 px-3 py-2.5 rounded-lg border text-sm font-semibold bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100 whitespace-nowrap">
+            Reset Filter
+          </button>
+        )}
+      </div>
+
+      {/* TABLE SECTION HEADING + QUICK FILTER PILLS */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-800">Daftar claim</h3>
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          {[
+            { key: 'Pink',  label: 'Tunggu Resi', count: claimStatusCounts.Pink ?? 0,  activeClass: 'bg-rose-500 text-white', inactiveClass: 'bg-rose-50 text-rose-600 hover:bg-rose-100' },
+            { key: 'Biru',  label: 'Tunggu FA',   count: claimStatusCounts.Biru ?? 0,  activeClass: 'bg-blue-500 text-white', inactiveClass: 'bg-blue-50 text-blue-600 hover:bg-blue-100' },
+            { key: 'Hijau', label: 'Selesai',     count: claimStatusCounts.Hijau ?? 0, activeClass: 'bg-emerald-500 text-white', inactiveClass: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' },
+            { key: 'Teal',  label: 'Resi Terkirim', count: claimStatusCounts.Teal ?? 0, activeClass: 'bg-teal-500 text-white', inactiveClass: 'bg-teal-50 text-teal-600 hover:bg-teal-100' },
+          ].map(p => (
+            <button
+              key={p.key}
+              onClick={() => setFilterStatusWarna(filterStatusWarna === p.key ? 'Semua' : p.key)}
+              className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition flex items-center gap-1 ${filterStatusWarna === p.key ? p.activeClass : p.inactiveClass}`}
+            >
+              {p.label} <span className="font-bold">{p.count}</span>
+            </button>
+          ))}
+        </div>
       </div>
       {viewMode === 'table' ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
@@ -127,36 +152,36 @@ export default function ClaimsTab({
                     checked={sortedClaims.length > 0 && sortedClaims.every((c: ClaimPromo) => c.id_claim && selectedClaimIds.has(c.id_claim))}
                     onChange={e => { const next = new Set(selectedClaimIds); sortedClaims.forEach((c: ClaimPromo) => { if (c.id_claim) { e.target.checked ? next.add(c.id_claim) : next.delete(c.id_claim); } }); setSelectedClaimIds(next); }} />
                 </th>
-                <th className="px-3 py-3 text-center font-bold text-gray-600 w-10">No</th>
-                <th className="px-3 py-3 text-center font-bold text-gray-600 w-28">Status</th>
-                <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide w-10">No</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide w-28">Status</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_konsumen')}>
                   Nama {sortConfigClaims.column === 'nama_konsumen' && <span className="text-xs">{sortConfigClaims.direction === 'asc' ? '↑' : '↓'}</span>}
                 </th>
-                <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nomor_seri')}>
                   No Seri {sortConfigClaims.column === 'nomor_seri' && <span className="text-xs">{sortConfigClaims.direction === 'asc' ? '↑' : '↓'}</span>}
                 </th>
-                <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tipe_barang')}>
                   Barang {sortConfigClaims.column === 'tipe_barang' && <span className="text-xs">{sortConfigClaims.direction === 'asc' ? '↑' : '↓'}</span>}
                 </th>
-                <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'jenis_promosi')}>
                   Promo {sortConfigClaims.column === 'jenis_promosi' && <span className="text-xs">{sortConfigClaims.direction === 'asc' ? '↑' : '↓'}</span>}
                 </th>
-                <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'tanggal_pembelian')}>
                   Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && <span className="text-xs">{sortConfigClaims.direction === 'asc' ? '↑' : '↓'}</span>}
                 </th>
-                <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'created_at')}>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'created_at')}>
                   Tgl Submit {sortConfigClaims.column === 'created_at' && <span className="text-xs">{sortConfigClaims.direction === 'asc' ? '↑' : '↓'}</span>}
                 </th>
-                <th className="px-3 py-3 text-center font-bold text-gray-600 w-20">Durasi</th>
-                <th className="px-3 py-3 text-left font-bold text-gray-700 cursor-pointer hover:text-black" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide w-20">Durasi</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide cursor-pointer hover:text-gray-700" onClick={() => handleSort(sortConfigClaims, setSortConfigClaims, 'nama_toko')}>
                   Toko {sortConfigClaims.column === 'nama_toko' && <span className="text-xs">{sortConfigClaims.direction === 'asc' ? '↑' : '↓'}</span>}
                 </th>
-                <th className="px-3 py-3 text-center font-bold text-gray-600">Nota / Garansi</th>
-                <th className="px-3 py-3 text-left font-bold text-gray-700">MKT / FA</th>
-                <th className="px-3 py-3 text-left font-bold text-gray-700">Catatan MKT</th>
-                <th className="px-3 py-3 text-left font-bold text-gray-700">Kirim Status</th>
-                <th className="px-3 py-3 text-center font-bold text-gray-600 w-28">Cetak Label</th>
-                <th className="px-3 py-3 text-center font-bold text-gray-600">Aksi</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide">Nota / Garansi</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">MKT / FA</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Catatan MKT</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Kirim Status</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide w-28">Cetak Label</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide">Aksi</th>
               </tr>
               {/* ── Filter row per kolom ── */}
               <tr className="bg-yellow-50 border-b border-yellow-200">
