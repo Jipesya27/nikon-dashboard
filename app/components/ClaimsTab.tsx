@@ -50,6 +50,10 @@ export interface ClaimsTabProps {
   setResiModalForm: React.Dispatch<React.SetStateAction<{ nama_jasa_pengiriman: string; nomor_resi: string }>>;
   handleDelete: (type: string, id: string) => void;
   getNamaPromo: (tipeBarang: string) => string;
+  handleExportCSVClaim: () => void;
+  handleTandaTerimaCSV: () => void;
+  handleUploadResiCSV: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  resiCsvInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 export default function ClaimsTab({
@@ -64,6 +68,7 @@ export default function ClaimsTab({
   getClaimDurationDays, currentUser, sbWrite, handlePrintLabelPengiriman,
   consumersList, setReturnTab, setActiveTab, openModal, handleKirimStatusClaim,
   setResiModal, setResiModalForm, handleDelete, getNamaPromo,
+  handleExportCSVClaim, handleTandaTerimaCSV, handleUploadResiCSV, resiCsvInputRef,
 }: ClaimsTabProps) {
   // Stat card definitions
   const statCards = [
@@ -75,6 +80,31 @@ export default function ClaimsTab({
 
   return (
     <div className="space-y-4 animate-fade-in text-gray-900">
+
+      {/* CONTENT HEADER */}
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-lg font-bold text-gray-900">Claim Promo</h1>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" placeholder="Cari nama, seri..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 w-44" />
+          </div>
+          <button onClick={handleExportCSVClaim} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Export
+          </button>
+          <button onClick={handleTandaTerimaCSV} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition">
+            Tanda Terima
+          </button>
+          <button onClick={() => resiCsvInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition">
+            Upload Resi
+          </button>
+          <input ref={resiCsvInputRef} type="file" accept=".csv" className="hidden" onChange={handleUploadResiCSV} />
+          <button onClick={() => openModal('create', 'claim')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FFE500] hover:bg-[#E5CE00] text-black text-xs font-bold transition shadow-sm">
+            + Tambah
+          </button>
+        </div>
+      </div>
 
       {/* STAT CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -92,13 +122,9 @@ export default function ClaimsTab({
         ))}
       </div>
 
-      {/* SEARCH + FILTER ROW */}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-          <input type="text" title="Cari Claim" aria-label="Cari Claim" placeholder="Cari nama, seri, promo, status..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="w-full pl-9 pr-4 py-2.5 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm" />
-        </div>
-        <select id="status-warna-filter" aria-label="Filter Status Warna" value={filterStatusWarna} onChange={e => setFilterStatusWarna(e.target.value)} className="py-2.5 px-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm sm:w-44">
+      {/* FILTER ROW */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <select id="status-warna-filter" aria-label="Filter Status Warna" value={filterStatusWarna} onChange={e => setFilterStatusWarna(e.target.value)} className="py-2 px-3 border border-gray-200 bg-white text-gray-700 rounded-lg outline-none focus:border-[#FFE500] text-xs sm:w-40">
           <option value="Semua">Semua Status</option>
           <option value="Putih">Belum Di Cek</option>
           <option value="Merah">Tidak Valid</option>
@@ -110,13 +136,12 @@ export default function ClaimsTab({
         </select>
         <button
           onClick={() => setFilterDuplikat(v => !v)}
-          className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg border text-sm font-semibold whitespace-nowrap transition ${filterDuplikat ? 'bg-red-500 text-white border-red-500' : 'bg-white text-red-600 border-red-200 hover:border-red-400'}`}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold whitespace-nowrap transition ${filterDuplikat ? 'bg-red-500 text-white border-red-500' : 'bg-white text-red-600 border-red-200 hover:border-red-400'}`}
         >
-          Duplikat
-          <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${filterDuplikat ? 'bg-white/20 text-white' : 'bg-red-100 text-red-600'}`}>{duplicateClaimIds.size}</span>
+          Duplikat <span className={`font-bold px-1 py-0.5 rounded-full ${filterDuplikat ? 'bg-white/20' : 'bg-red-100'}`}>{duplicateClaimIds.size}</span>
         </button>
         {hasActiveColFilters && (
-          <button onClick={() => setFilterColClaims({})} className="flex items-center gap-1 px-3 py-2.5 rounded-lg border text-sm font-semibold bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100 whitespace-nowrap">
+          <button onClick={() => setFilterColClaims({})} className="px-3 py-2 rounded-lg border text-xs font-semibold bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100">
             Reset Filter
           </button>
         )}
