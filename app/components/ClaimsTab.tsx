@@ -152,10 +152,14 @@ export default function ClaimsTab({
         <h3 className="text-sm font-semibold text-gray-800">Daftar claim</h3>
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
           {[
-            { key: 'Pink',  label: 'Tunggu Resi', count: claimStatusCounts.Pink ?? 0,  activeClass: 'bg-rose-500 text-white', inactiveClass: 'bg-rose-50 text-rose-600 hover:bg-rose-100' },
-            { key: 'Biru',  label: 'Tunggu FA',   count: claimStatusCounts.Biru ?? 0,  activeClass: 'bg-blue-500 text-white', inactiveClass: 'bg-blue-50 text-blue-600 hover:bg-blue-100' },
-            { key: 'Hijau', label: 'Selesai',     count: claimStatusCounts.Hijau ?? 0, activeClass: 'bg-emerald-500 text-white', inactiveClass: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' },
-            { key: 'Teal',  label: 'Resi Terkirim', count: claimStatusCounts.Teal ?? 0, activeClass: 'bg-teal-500 text-white', inactiveClass: 'bg-teal-50 text-teal-600 hover:bg-teal-100' },
+            { key: 'Semua',  label: 'Semua',        count: claims.length,                    activeClass: 'bg-gray-700 text-white',     inactiveClass: 'bg-gray-100 text-gray-600 hover:bg-gray-200' },
+            { key: 'Putih',  label: 'Belum Di Cek', count: claimStatusCounts.Putih ?? 0,     activeClass: 'bg-gray-400 text-white',     inactiveClass: 'bg-gray-50 text-gray-500 hover:bg-gray-100' },
+            { key: 'Merah',  label: 'Tidak Valid',  count: claimStatusCounts.Merah ?? 0,     activeClass: 'bg-red-500 text-white',      inactiveClass: 'bg-red-50 text-red-600 hover:bg-red-100' },
+            { key: 'Orange', label: 'Hold',         count: claimStatusCounts.Orange ?? 0,    activeClass: 'bg-orange-500 text-white',   inactiveClass: 'bg-orange-50 text-orange-600 hover:bg-orange-100' },
+            { key: 'Biru',   label: 'Tunggu FA',    count: claimStatusCounts.Biru ?? 0,      activeClass: 'bg-blue-500 text-white',     inactiveClass: 'bg-blue-50 text-blue-600 hover:bg-blue-100' },
+            { key: 'Pink',   label: 'Tunggu Resi',  count: claimStatusCounts.Pink ?? 0,      activeClass: 'bg-rose-500 text-white',     inactiveClass: 'bg-rose-50 text-rose-600 hover:bg-rose-100' },
+            { key: 'Hijau',  label: 'Selesai',      count: claimStatusCounts.Hijau ?? 0,     activeClass: 'bg-emerald-500 text-white',  inactiveClass: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' },
+            { key: 'Teal',   label: 'Resi Terkirim',count: claimStatusCounts.Teal ?? 0,      activeClass: 'bg-teal-500 text-white',     inactiveClass: 'bg-teal-50 text-teal-600 hover:bg-teal-100' },
           ].map(p => (
             <button
               key={p.key}
