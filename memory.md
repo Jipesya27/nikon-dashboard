@@ -1,29 +1,29 @@
-# Memory — Nikon Dashboard
+﻿# Memory â€” Nikon Dashboard
 
 Dokumen ini merangkum semua skema, alur, dan keputusan desain yang sudah diimplementasikan. Update setiap kali ada perubahan signifikan.
 
 ---
 
-## 1. Claim Promo — Skema & Alur
+## 1. Claim Promo â€” Skema & Alur
 
 ### Alur Halaman `/claim`
 
-1. **Layar konfirmasi nomor WA** — User input nomor WA. Nomor ini **hanya untuk notifikasi**. Tidak ada API call di sini; langsung lanjut ke form.
+1. **Layar konfirmasi nomor WA** â€” User input nomor WA. Nomor ini **hanya untuk notifikasi**. Tidak ada API call di sini; langsung lanjut ke form.
 2. **Form pengisian** terdiri dari 3 bagian:
-   - **Bagian 1 — Data Diri Pendaftar**: Nomor WA (readOnly, bisa ganti), Email (wajib), Nama Lengkap (wajib), NIK (opsional)
-   - **Bagian 2 — Upload Dokumen**: Foto Kartu Garansi (+ OCR otomatis) + Foto Nota Pembelian (JPG/PNG/WEBP/GIF/PDF, maks 10 MB)
-   - **Bagian 3 — Data Produk**: Tipe Barang, Nomor Seri, Jenis Promosi, Tanggal Pembelian, Nama Toko, **Alamat Pengiriman Hadiah** (standalone, diisi bebas)
+   - **Bagian 1 â€” Data Diri Pendaftar**: Nomor WA (readOnly, bisa ganti), Email (wajib), Nama Lengkap (wajib), NIK (opsional)
+   - **Bagian 2 â€” Upload Dokumen**: Foto Kartu Garansi (+ OCR otomatis) + Foto Nota Pembelian (JPG/PNG/WEBP/GIF/PDF, maks 10 MB)
+   - **Bagian 3 â€” Data Produk**: Tipe Barang, Nomor Seri, Jenis Promosi, Tanggal Pembelian, Nama Toko, **Alamat Pengiriman Hadiah** (standalone, diisi bebas)
 
 ### Aturan Penting Claim
 
 - **Nomor WA = hanya untuk notifikasi**, tidak terikat dengan data alamat.
-- **Tidak ada skema "sendiri / orang lain"** — penerima claim selalu = pendaftar itu sendiri (`nama_penerima_claim = nama_lengkap`).
-- **Tidak ada section alamat rumah** di form publik — field `alamat_rumah`, `kelurahan`, `kecamatan`, `kabupaten_kotamadya`, `provinsi`, `kodepos` **dihapus dari form dan tidak disimpan ke konsumen** saat submit claim.
-- **Tidak ada checkbox "sama dengan alamat rumah"** — `alamat_pengiriman` diisi langsung/bebas.
+- **Tidak ada skema "sendiri / orang lain"** â€” penerima claim selalu = pendaftar itu sendiri (`nama_penerima_claim = nama_lengkap`).
+- **Tidak ada section alamat rumah** di form publik â€” field `alamat_rumah`, `kelurahan`, `kecamatan`, `kabupaten_kotamadya`, `provinsi`, `kodepos` **dihapus dari form dan tidak disimpan ke konsumen** saat submit claim.
+- **Tidak ada checkbox "sama dengan alamat rumah"** â€” `alamat_pengiriman` diisi langsung/bebas.
 - Jika nomor WA belum ada di tabel `konsumen`, record baru dibuat dengan placeholder `BELUM_DIISI` untuk field alamat.
 - Jika sudah ada, hanya `nama_lengkap`, `email`, `nik` yang diupdate (bukan alamat).
 
-### API `/api/claim` — Field yang dikirim
+### API `/api/claim` â€” Field yang dikirim
 
 | Field | Asal |
 |---|---|
@@ -34,40 +34,40 @@ Dokumen ini merangkum semua skema, alur, dan keputusan desain yang sudah diimple
 
 **Field yang TIDAK ada lagi**: `alamat_rumah`, `kelurahan`, `kecamatan`, `kabupaten_kotamadya`, `provinsi`, `kodepos`, `recipient_type`, `nama_penerima_claim` (server set sendiri = nama_lengkap), `nomor_wa_update` (server pakai `matchedPhone`).
 
-### API `/api/claim` — Yang dilakukan server
+### API `/api/claim` â€” Yang dilakukan server
 
 1. Cari konsumen via `normalizePhone` (cek varian format 62xxx / 0xxx / +62xxx)
-2. Jika tidak ada → INSERT konsumen baru dengan `status_langkah: 'START'` dan placeholder `BELUM_DIISI` untuk field alamat
-3. UPDATE tabel `konsumen` — hanya: `nama_lengkap`, `email` (jika diisi), `nik` (jika diisi), `updated_at`
+2. Jika tidak ada â†’ INSERT konsumen baru dengan `status_langkah: 'START'` dan placeholder `BELUM_DIISI` untuk field alamat
+3. UPDATE tabel `konsumen` â€” hanya: `nama_lengkap`, `email` (jika diisi), `nik` (jika diisi), `updated_at`
 4. Upload 2 file ke Google Drive (via OAuth2 refresh token)
 5. INSERT ke `claim_promo` (`nama_penerima_claim = nama_lengkap`, `nomor_wa_update = matchedPhone`)
 6. Reset `status_langkah` konsumen ke `'START'`
 7. Kirim notifikasi ke konsumen + admin (`sendNotif`)
 
-### Admin Dashboard — Tab Claim
+### Admin Dashboard â€” Tab Claim
 
 - **Tambah Claim** dan **Edit Claim** tidak lagi memiliki section "Data Konsumen (auto-sync)" (ungu) dengan field alamat.
-- Tidak ada field "Nama Penerima Hadiah" di form admin — sudah dihapus (selalu sama dengan pendaftar).
+- Tidak ada field "Nama Penerima Hadiah" di form admin â€” sudah dihapus (selalu sama dengan pendaftar).
 - WA `onBlur` di admin form hanya prefill `nama_pendaftar` dari konsumen, tidak pull seluruh data konsumen.
-- `handleSaveClaim`: konsumenPayload hanya berisi `nomor_wa`, `nama_lengkap`, `status_langkah` — tidak include address fields.
+- `handleSaveClaim`: konsumenPayload hanya berisi `nomor_wa`, `nama_lengkap`, `status_langkah` â€” tidak include address fields.
 - `nama_penerima_claim` di-default ke `nama_pendaftar` otomatis saat save.
 - `nomor_wa_update` di-default ke `nomor_wa` otomatis saat save.
 
 ---
 
-## 2. Chat / Pesan — Skema CS Aktif & Unread
+## 2. Chat / Pesan â€” Skema CS Aktif & Unread
 
 ### CS Aktif Tag
 
 - Tag "CS Aktif" (merah) muncul di sidebar jika `bicara_dengan_cs = true` di tabel `riwayat_pesan`.
-- **Hanya hilang** jika admin klik tombol **"✓ Selesai CS"** → `handleSelesaiCS()` → set `bicara_dengan_cs = false`.
+- **Hanya hilang** jika admin klik tombol **"âœ“ Selesai CS"** â†’ `handleSelesaiCS()` â†’ set `bicara_dengan_cs = false`.
 - Tombol reply admin **tidak** mengubah `bicara_dengan_cs` (sebelumnya ada bug yang set ke `false` setiap reply).
 
 ### Unread Badge
 
 - Badge unread **hanya muncul untuk kontak yang `bicara_dengan_cs = true`**.
 - Kontak lain (non-CS) tidak menampilkan badge walau ada pesan belum dibaca.
-- `countUnread(nomor_wa)` → return 0 jika kontak bukan CS aktif.
+- `countUnread(nomor_wa)` â†’ return 0 jika kontak bukan CS aktif.
 
 ### Sinkronisasi Read Status (Cross-Device)
 
@@ -76,7 +76,7 @@ Dokumen ini merangkum semua skema, alur, dan keputusan desain yang sudah diimple
 - Saat login: load dari Supabase, merge dengan localStorage (ambil yang lebih baru).
 - Saat buka chat: useEffect upsert `last_read_at` ke Supabase setiap kali pesan terbaru berubah.
 - Polling sync setiap 5 detik saat chat aktif.
-- Tombol **"✓✓ Mark All Read"** di sidebar header: batch upsert semua kontak ke Supabase.
+- Tombol **"âœ“âœ“ Mark All Read"** di sidebar header: batch upsert semua kontak ke Supabase.
 
 ### Tabel `chat_read_status` (migration `20260604000000_chat_read_status.sql`)
 
@@ -98,16 +98,16 @@ CREATE POLICY "service_role_full_access" ON chat_read_status
 
 - Menggunakan library `Html5Qrcode` (bukan `Html5QrcodeScanner`).
 - Alur:
-  1. Buka modal scanner → `Html5Qrcode.getCameras()` deteksi kamera yang tersedia.
+  1. Buka modal scanner â†’ `Html5Qrcode.getCameras()` deteksi kamera yang tersedia.
   2. Tampilkan tombol per kamera (misal: "Kamera Belakang", "Kamera Depan").
-  3. User pilih kamera → `qr.start(camId, config, onSuccess)`.
+  3. User pilih kamera â†’ `qr.start(camId, config, onSuccess)`.
   4. Reader div harus punya `minHeight: 300` agar video terlihat.
-  5. Setelah scan sukses atau modal ditutup → `qr.stop()`.
+  5. Setelah scan sukses atau modal ditutup â†’ `qr.stop()`.
 - State: `scannerCameras`, `scannerStatus` (`idle`/`loading`/`scanning`/`error`), `scannerError`, `scannerRef`.
 
 ---
 
-## 4. Dashboard Home — Stat Cards
+## 4. Dashboard Home â€” Stat Cards
 
 - Grid: `grid-cols-2 lg:grid-cols-4 gap-3` (2 kolom di mobile, 4 kolom di desktop).
 - CSS class `.stat-card`: `p-3` (bukan p-6).
@@ -127,7 +127,7 @@ CREATE POLICY "service_role_full_access" ON chat_read_status
 
 ---
 
-## 6. Peminjaman — Notifikasi Telegram Admin
+## 6. Peminjaman â€” Notifikasi Telegram Admin
 
 Saat barang **dipinjam** atau **dikembalikan**, dikirim notif Telegram ke admin melalui:
 - **Endpoint:** `POST /api/admin/notify-lending`
@@ -138,34 +138,34 @@ Saat barang **dipinjam** atau **dikembalikan**, dikirim notif Telegram ke admin 
 
 **Pinjam:**
 ```
-📦 Peminjaman Baru!
+ðŸ“¦ Peminjaman Baru!
 
-👤 Nama: {nama_peminjam}
-📱 WhatsApp: {nomor_wa}
-📅 Tgl Pinjam: {tanggal}
-📅 Est. Kembali: {tanggal_estimasi}
+ðŸ‘¤ Nama: {nama_peminjam}
+ðŸ“± WhatsApp: {nomor_wa}
+ðŸ“… Tgl Pinjam: {tanggal}
+ðŸ“… Est. Kembali: {tanggal_estimasi}
 
 Barang Dipinjam:
-1. {nama_barang} — SN: {nomor_seri}
+1. {nama_barang} â€” SN: {nomor_seri}
    Aksesori: ...
 ```
 
 **Kembali:**
 ```
-✅ Pengembalian Barang!
+âœ… Pengembalian Barang!
 
-👤 Nama: {nama_peminjam}
-📱 WhatsApp: {nomor_wa}
-📅 Tgl Kembali: {tanggal}
-📊 Status: Semua barang telah dikembalikan / Pengembalian sebagian
+ðŸ‘¤ Nama: {nama_peminjam}
+ðŸ“± WhatsApp: {nomor_wa}
+ðŸ“… Tgl Kembali: {tanggal}
+ðŸ“Š Status: Semua barang telah dikembalikan / Pengembalian sebagian
 
 Barang Dikembalikan:
-1. {nama_barang} — SN: {nomor_seri}
+1. {nama_barang} â€” SN: {nomor_seri}
    Catatan: ...
 ```
 
 - Dipanggil dari `handleSaveLending` (mode `create`) dan `handleReturnItems` di `dashboard/page.tsx`
-- **Fire-and-forget** — gagal tidak memblokir alur utama
+- **Fire-and-forget** â€” gagal tidak memblokir alur utama
 
 ---
 
@@ -182,37 +182,37 @@ Semua notifikasi ke admin (claim promo, garansi, event, CS request) dikirim via 
 
 ### `app/lib/notify.ts`
 
-- `sendTelegram(chatId, message)` — kirim via Telegram Bot API, MarkdownV2 dengan fallback plain-text
-- `sendNotif()` — admin notifications dikirim ke Telegram (bukan WA)
-- `getSettings()` — fetch `telegram_admin_chat_id` dari `pengaturan_bot`
+- `sendTelegram(chatId, message)` â€” kirim via Telegram Bot API, MarkdownV2 dengan fallback plain-text
+- `sendNotif()` â€” admin notifications dikirim ke Telegram (bukan WA)
+- `getSettings()` â€” fetch `telegram_admin_chat_id` dari `pengaturan_bot`
 
-### Dashboard — Pengaturan Telegram
+### Dashboard â€” Pengaturan Telegram
 
-- Tab: **Pengaturan** → section "Notifikasi Admin via Telegram"
+- Tab: **Pengaturan** â†’ section "Notifikasi Admin via Telegram"
 - State: `telegramChatId`, `telegramChatIdInput`, `telegramSaving`, `telegramMsg`
-- `saveTelegramChatId()` → upsert ke `pengaturan_bot` (field `url_file: ''` bukan null, karena NOT NULL constraint)
+- `saveTelegramChatId()` â†’ upsert ke `pengaturan_bot` (field `url_file: ''` bukan null, karena NOT NULL constraint)
 - Test link: `/api/test-notif?telegram=1`
 
-### `supabase/functions/fonnte-bot/index.ts` — CS Handoff
+### `supabase/functions/meta-bot/index.ts` â€” CS Handoff
 
-- `sendTelegramAdminNotif(nama, nomor, isOffHours)` — notif ke admin saat konsumen request CS (menu "9")
-- Dalam jam operasional: "🔔 *Permintaan CS Baru!*"
-- Di luar jam operasional: "⏰ *Permintaan CS (Di Luar Jam Operasional)*" — tetap dikirim agar bisa follow-up urgent
+- `sendTelegramAdminNotif(nama, nomor, isOffHours)` â€” notif ke admin saat konsumen request CS (menu "9")
+- Dalam jam operasional: "ðŸ”” *Permintaan CS Baru!*"
+- Di luar jam operasional: "â° *Permintaan CS (Di Luar Jam Operasional)*" â€” tetap dikirim agar bisa follow-up urgent
 - Dipanggil di `case "9"` untuk kedua kondisi jam operasional
 
 ---
 
-## 8. Infrastruktur Backup — STB HG680P + Synology DS223J
+## 8. Infrastruktur Backup â€” STB HG680P + Synology DS223J
 
 ### Arsitektur
 
 **Active-Passive Failover**: jika GitHub/Supabase/Vercel bermasalah, traffic dialihkan ke sistem lokal.
 
 ```
-Internet → backup.altanikindo.web.id
-         → Cloudflare Tunnel (nikon-synology)
-         → cloudflared di Synology (192.168.18.145)
-         → STB di LAN (192.168.18.63:3000)
+Internet â†’ backup.altanikindo.web.id
+         â†’ Cloudflare Tunnel (nikon-synology)
+         â†’ cloudflared di Synology (192.168.18.169)
+         â†’ STB di LAN (192.168.18.63:3000)
 ```
 
 ### Hardware
@@ -220,9 +220,9 @@ Internet → backup.altanikindo.web.id
 | Perangkat | IP | Spesifikasi |
 |---|---|---|
 | STB HG680P | 192.168.18.63 | AML S905X, Cortex-A53 (ARM64), Armbian |
-| Synology DS223J | 192.168.18.145 | Realtek RTD1619B (ARM64) |
+| Synology DS223J | 192.168.18.169 | Realtek RTD1619B (ARM64) |
 
-### Synology — Google Drive Backup
+### Synology â€” Google Drive Backup
 
 - **Tool**: Synology Cloud Sync
 - **Akun**: WebMarketingAlta (Google Drive)
@@ -230,18 +230,18 @@ Internet → backup.altanikindo.web.id
 - **Local path**: `/dashboard/backups`
 - **Status**: Up to date (sync otomatis)
 
-### Synology — Docker Containers
+### Synology â€” Docker Containers
 
 | Container | Image | Port |
 |---|---|---|
 | postgres | postgres:15 | **5433** (bukan 5432, konflik dengan Synology internal) |
 | minio | minio/minio | 9010 (API), 9011 (Console) |
 | wetty | wettyoss/wetty | 7681 |
-| cloudflared | cloudflare/cloudflared | — |
+| cloudflared | cloudflare/cloudflared | â€” |
 
 **docker-compose path**: `/volume1/docker/nikon/docker-compose.yml`
 
-### STB — Next.js via PM2
+### STB â€” Next.js via PM2
 
 - **Node.js**: v20 (install via NodeSource)
 - **Repo path**: `/opt/nikon-dashboard`
@@ -251,7 +251,7 @@ Internet → backup.altanikindo.web.id
   cp -r .next/static .next/standalone/.next/static
   cp -r public .next/standalone/public
   ```
-- **Env vars**: disimpan di `/opt/nikon-dashboard/.env.local` — wajib ada: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, dan semua env lainnya sama dengan Vercel
+- **Env vars**: disimpan di `/opt/nikon-dashboard/.env.local` â€” wajib ada: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, dan semua env lainnya sama dengan Vercel
 - **Start command** (env vars harus di-load saat start):
   ```bash
   set -a && source /opt/nikon-dashboard/.env.local && set +a
@@ -264,22 +264,22 @@ Internet → backup.altanikindo.web.id
 
 ### Monitoring Infrastruktur
 
-- **Tab**: 🖥️ Infrastruktur di dashboard (kategori Manajemen) — hanya Admin & Super Admin
-- **API**: `/api/infrastruktur/stb` — return CPU load avg, RAM, disk, uptime (Node.js `os` module + `df`)
+- **Tab**: ðŸ–¥ï¸ Infrastruktur di dashboard (kategori Manajemen) â€” hanya Admin & Super Admin
+- **API**: `/api/infrastruktur/stb` â€” return CPU load avg, RAM, disk, uptime (Node.js `os` module + `df`)
 - **Polling**: otomatis setiap 30 detik, dipanggil dari `backup.altanikindo.web.id/api/infrastruktur/stb`
 - **CSP**: `backup.altanikindo.web.id` sudah ditambahkan ke `connect-src` di `next.config.ts`
 
 ### Akses Super Admin di Sidebar
 
-- 🖥️ **Backup Dashboard** → `https://backup.altanikindo.web.id/dashboard` (buka tab baru)
-- 💻 **Terminal SSH** → `https://terminal.altanikindo.web.id` (buka tab baru)
+- ðŸ–¥ï¸ **Backup Dashboard** â†’ `https://backup.altanikindo.web.id/dashboard` (buka tab baru)
+- ðŸ’» **Terminal SSH** â†’ `https://terminal.altanikindo.web.id` (buka tab baru)
 - Hanya muncul untuk role **Super Admin** di bagian "Halaman Lain" sidebar
 
 ### Database Replication
 
 - **Script**: `/opt/nikon-backup/backup.sh` (di STB)
-- **Alur**: `pg_dump` dari Supabase → `pg_restore` ke PostgreSQL lokal (Synology port 5433)
-- **Jadwal**: setiap 6 jam — `0 */6 * * *`
+- **Alur**: `pg_dump` dari Supabase â†’ `pg_restore` ke PostgreSQL lokal (Synology port 5433)
+- **Jadwal**: setiap 6 jam â€” `0 */6 * * *`
 - **Retention**: 3 dump terakhir di `/opt/nikon-backup/dumps/`
 - **Log**: `/opt/nikon-backup/backup.log`
 
@@ -287,23 +287,23 @@ Internet → backup.altanikindo.web.id
 
 - **Nama**: `nikon-synology`
 - **Status**: HEALTHY
-- **Connector**: Latief-Family (linux_arm64) — berjalan di Synology
+- **Connector**: Latief-Family (linux_arm64) â€” berjalan di Synology
 
 | Hostname | Target | Keterangan |
 |---|---|---|
-| `terminal.altanikindo.web.id` | `http://localhost:7681` | Wetty → SSH ke STB |
+| `terminal.altanikindo.web.id` | `http://localhost:7681` | Wetty â†’ SSH ke STB |
 | `backup.altanikindo.web.id` | `http://192.168.18.63:3000` | Next.js di STB (backup site) |
 
-- Hostname diatur di tab **Published application routes** di Cloudflare Zero Trust → Networks → Tunnels → nikon-synology
+- Hostname diatur di tab **Published application routes** di Cloudflare Zero Trust â†’ Networks â†’ Tunnels â†’ nikon-synology
 - DNS record dibuat otomatis oleh Cloudflare
 
 ### `next.config.ts`
 
-- `output: 'standalone'` — wajib untuk deploy di Docker/PM2 tanpa node_modules penuh
+- `output: 'standalone'` â€” wajib untuk deploy di Docker/PM2 tanpa node_modules penuh
 
 ### `Dockerfile`
 
-- Multi-stage: `deps` → `builder` → `runner`
+- Multi-stage: `deps` â†’ `builder` â†’ `runner`
 - Base image: `node:20-alpine`
 - User: `nextjs` (non-root)
 - Port: 3000
@@ -313,10 +313,10 @@ Internet → backup.altanikindo.web.id
 
 | Phase | Keterangan | Status |
 |---|---|---|
-| Phase 1 | Synology setup (Docker containers) | ✅ Selesai |
-| Phase 2 | DB replication (pg_dump cron) | ✅ Selesai |
-| Phase 3 | Deploy Next.js di STB via PM2 | ✅ Selesai |
-| Phase 4 | Cloudflare Tunnel + failover routing | ✅ Selesai |
+| Phase 1 | Synology setup (Docker containers) | âœ… Selesai |
+| Phase 2 | DB replication (pg_dump cron) | âœ… Selesai |
+| Phase 3 | Deploy Next.js di STB via PM2 | âœ… Selesai |
+| Phase 4 | Cloudflare Tunnel + failover routing | âœ… Selesai |
 
 ---
 
@@ -324,22 +324,22 @@ Internet → backup.altanikindo.web.id
 
 - **DB access**: gunakan proxy `/api/admin/sb-read` (GET) dan `/api/admin/sb-write` (POST) via helper `sbRead` / `sbWrite`. Jangan akses Supabase langsung dari client.
 - **Branch utama**: `main`. Semua perubahan di-push ke `main`.
-- **Notifikasi konsumen**: `sendNotif()` dari `@/app/lib/notify` — kirim ke WA konsumen. Admin menerima via Telegram.
+- **Notifikasi konsumen**: `sendNotif()` dari `@/app/lib/notify` â€” kirim ke WA konsumen. Admin menerima via Telegram.
 - **Google Drive upload**: OAuth2 dengan refresh token, file disimpan di folder `GOOGLE_DRIVE_FOLDER_ID`.
 - **File upload limit**: 10 MB, tipe: JPG, PNG, WEBP, GIF, PDF.
-- **`pengaturan_bot.url_file`**: NOT NULL constraint — selalu isi dengan `''` (string kosong) bukan `null`.
-- **WhatsApp API**: sudah migrasi dari Fonnte ke Meta. `api.fonnte.com` tidak lagi ada di CSP `connect-src`.
+- **`pengaturan_bot.url_file`**: NOT NULL constraint â€” selalu isi dengan `''` (string kosong) bukan `null`.
+- **WhatsApp API**: Meta/Facebook Graph API (Meta Cloud API).
 
-### Google Drive — Struktur Folder File Event
+### Google Drive â€” Struktur Folder File Event
 
 Semua file disimpan di root `GOOGLE_DRIVE_FOLDER_ID`. Subfolder dibuat otomatis oleh sistem:
 
 | Jenis File | Folder | Format Nama File |
 |---|---|---|
 | Bukti transfer pendaftaran event | Root (`GOOGLE_DRIVE_FOLDER_ID`) | `EventReg_{EventTitle}_{FullName}_{Timestamp}.{ext}` |
-| Bukti pengembalian deposit | `Pengembalian Deposit` | — |
-| Tiket event (generated PDF) | `Tiket Event` | — |
-| Dokumen peminjaman (generated PDF) | `Dokumen Peminjaman` | — |
-| Upload foto lomba | `Upload File Lomba` | — |
-| Dokumen penerima barang | `Penerima_Barang` | — |
-| Attachment WhatsApp | `message_attachment` | — |
+| Bukti pengembalian deposit | `Pengembalian Deposit` | â€” |
+| Tiket event (generated PDF) | `Tiket Event` | â€” |
+| Dokumen peminjaman (generated PDF) | `Dokumen Peminjaman` | â€” |
+| Upload foto lomba | `Upload File Lomba` | â€” |
+| Dokumen penerima barang | `Penerima_Barang` | â€” |
+| Attachment WhatsApp | `message_attachment` | â€” |

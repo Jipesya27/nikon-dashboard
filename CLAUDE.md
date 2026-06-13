@@ -5,7 +5,7 @@
 ## Tech Stack & Deployment
 - **Framework**: Next.js 16.2.6 App Router (Turbopack) · React 19 · Tailwind CSS v4 · TypeScript
 - **Database**: Supabase (Postgres + Edge Functions)
-- **WhatsApp**: WhatsApp Business API (Meta/Facebook Graph API) — bukan Fonnte, meski nama fungsinya `sendWhatsAppMessageViaFonnte`
+- **WhatsApp**: WhatsApp Business API (Meta/Facebook Graph API)
 - **File storage**: Google Drive via `/api/upload-google-drive`
 - **Deploy frontend**: Vercel → branch **main** adalah production
 - **Deploy edge functions**: GitHub Actions → `.github/workflows/deploy-supabase-functions.yml`
@@ -34,7 +34,7 @@ Admin pages proxy through `/api/admin/sb` — jangan hardcode URL Supabase langs
 | `app/admin/events/page.tsx` | Validasi pembayaran + daftar registrasi |
 | `app/admin/events/attendance/page.tsx` | Absensi via QR code |
 | `app/admin/events/deposit/page.tsx` | Kelola refund deposit |
-| `supabase/functions/fonnte-bot/index.ts` | Logika bot WhatsApp (menu, CS, garansi, dll) |
+| `supabase/functions/meta-bot/index.ts` | Logika bot WhatsApp (menu, CS, garansi, dll) |
 | `supabase/functions/send-wa/index.ts` | Kirim pesan/media ke WhatsApp via Meta API |
 | `app/components/ExpenseClaimTab.tsx` | Tab Klaim Biaya — form, modal upload bukti, export PDF |
 | `app/components/ResiTab.tsx` | Tab Resi Pengiriman — import PDF JNE, list resi |
@@ -89,7 +89,7 @@ Pengaturan bot lain (URL file promo, dealer, dll)
 ## Access Control
 `RoleGate` di `app/components/RoleGate.tsx` — roles yang dibutuhkan untuk admin events: `['admin_events', 'admin_deposit', 'admin_attendance', 'events', 'eventregistrations']`
 
-## Bot WhatsApp (fonnte-bot)
+## Bot WhatsApp (meta-bot)
 - Menu utama: 1–10, diakses dengan ketik angka
 - Opsi 9 = Hubungi CS: cek `isOperatingHours()`, set `bicara_dengan_cs=true` jika aktif
 - Jam operasional CS: **Senin–Jumat 10.00–16.00 WIB, Sabtu 10.00–12.00 WIB**
