@@ -44,6 +44,8 @@ interface EventItem {
   event_partisipant_stock: number;
   registered_count: number;
   status?: string;
+  registration_not_open?: boolean;
+  registration_open_date?: string | null;
 }
 
 // ── SVG Icons ────────────────────────────────────────────────────────────────
@@ -675,11 +677,11 @@ function EventsSection() {
               const persen = ev.event_partisipant_stock > 0 ? (ev.registered_count || 0) / ev.event_partisipant_stock : 0;
               const tampilSisa = ev.event_partisipant_stock > 0 && slots > 0 && persen >= 0.7;
               return (
-                <a key={ev.id} href="/events/register"
-                  className="group cursor-pointer bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 hover:border-zinc-600 transition-colors flex flex-col md:flex-row">
+                <a key={ev.id} href={ev.registration_not_open ? undefined : '/events/register'}
+                  className={`group bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 transition-colors flex flex-col md:flex-row ${ev.registration_not_open ? 'opacity-80' : 'cursor-pointer hover:border-zinc-600'}`}>
                   <div className="relative md:w-2/5 h-64 md:h-auto overflow-hidden">
-                    <span className="absolute top-4 left-4 bg-[#ffe000] text-black text-[10px] font-bold px-3 py-1 z-10 uppercase tracking-widest">
-                      {ev.event_speaker_genre || 'Event'}
+                    <span className={`absolute top-4 left-4 text-[10px] font-bold px-3 py-1 z-10 uppercase tracking-widest ${ev.registration_not_open ? 'bg-zinc-600 text-zinc-200' : 'bg-[#ffe000] text-black'}`}>
+                      {ev.registration_not_open ? 'Segera' : (ev.event_speaker_genre || 'Event')}
                     </span>
                     {ev.event_image ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -702,10 +704,21 @@ function EventsSection() {
                       <p className="text-zinc-400 text-sm mb-4 line-clamp-2">{ev.event_description}</p>
                     )}
                     <div className="flex items-center justify-between mt-auto">
-                      <span className="text-[#ffe000] font-bold text-sm uppercase tracking-wider flex items-center gap-1">
-                        {isFull ? 'Kuota Penuh' : 'Daftar Sekarang'} <IconChevronRight />
-                      </span>
-                      {!isFull && tampilSisa && (
+                      {ev.registration_not_open ? (
+                        <div>
+                          <span className="text-zinc-500 font-bold text-xs uppercase tracking-wider block mb-0.5">Segera Hadir</span>
+                          {ev.registration_open_date && (
+                            <span className="text-zinc-400 text-xs">
+                              Daftar mulai {new Date(ev.registration_open_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[#ffe000] font-bold text-sm uppercase tracking-wider flex items-center gap-1">
+                          {isFull ? 'Kuota Penuh' : 'Daftar Sekarang'} <IconChevronRight />
+                        </span>
+                      )}
+                      {!isFull && !ev.registration_not_open && tampilSisa && (
                         <span className="text-xs text-zinc-500">{slots} tempat tersisa</span>
                       )}
                     </div>

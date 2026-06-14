@@ -16,6 +16,8 @@ type EventItem = {
   bank_info?: string;
   event_partisipant_stock: number;
   registered_count: number;
+  registration_not_open?: boolean;
+  registration_open_date?: string | null;
 };
 
 /** Konversi Google Drive URL ke proxy publik agar bisa ditampilkan di <img>. */
@@ -378,7 +380,12 @@ export default function EventRegisterPage() {
                     )}
                     {/* badges overlay */}
                     <div className="absolute top-2 left-2 flex flex-col gap-1.5">
-                      {isHot && (
+                      {evt.registration_not_open && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-700 text-white text-[10px] font-bold uppercase shadow-md">
+                          ⏳ Segera
+                        </span>
+                      )}
+                      {!evt.registration_not_open && isHot && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500 text-white text-[10px] font-bold uppercase shadow-md">
                           🔥 Hot
                         </span>
@@ -447,12 +454,23 @@ export default function EventRegisterPage() {
                         <p className="text-[10px] text-gray-500 font-semibold uppercase">Harga</p>
                         <p className="text-base font-black text-gray-900 leading-tight">{evt.event_price}</p>
                       </div>
-                      <button
-                        onClick={() => pilihEvent(evt)}
-                        className="bg-black text-[#FFE500] px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-gray-800 transition shadow-md whitespace-nowrap"
-                      >
-                        Daftar →
-                      </button>
+                      {evt.registration_not_open ? (
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase">Pendaftaran dibuka</p>
+                          {evt.registration_open_date && (
+                            <p className="text-[10px] text-zinc-600 font-semibold">
+                              {new Date(evt.registration_open_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => pilihEvent(evt)}
+                          className="bg-black text-[#FFE500] px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-gray-800 transition shadow-md whitespace-nowrap"
+                        >
+                          Daftar →
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -594,12 +612,20 @@ export default function EventRegisterPage() {
                 >
                   Tutup
                 </button>
-                <button
-                  onClick={() => { pilihEvent(descEvent); setDescEvent(null); }}
-                  className="flex-1 py-2.5 rounded-xl bg-black text-[#FFE500] text-sm font-bold hover:bg-gray-800 transition shadow-md"
-                >
-                  Daftar Sekarang →
-                </button>
+                {descEvent.registration_not_open ? (
+                  <div className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-500 text-sm font-bold text-center">
+                    {descEvent.registration_open_date
+                      ? `Buka ${new Date(descEvent.registration_open_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', timeZone: 'Asia/Jakarta' })}`
+                      : 'Pendaftaran belum dibuka'}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { pilihEvent(descEvent); setDescEvent(null); }}
+                    className="flex-1 py-2.5 rounded-xl bg-black text-[#FFE500] text-sm font-bold hover:bg-gray-800 transition shadow-md"
+                  >
+                    Daftar Sekarang →
+                  </button>
+                )}
               </div>
             </div>
           </div>
