@@ -45,12 +45,19 @@ Admin pages proxy through `/api/admin/sb` — jangan hardcode URL Supabase langs
 ## Tabel Database Utama
 
 ### `events`
-`id`, `event_title`, `event_date`, `event_price`, `event_image` (nullable), `event_partisipant_stock`, `event_description`, `event_payment_tipe`, `event_speaker`, `event_speaker_genre`, `bank_info`, `deposit_amount`, `proposal_event_id`
+`id`, `event_title`, `event_date`, `event_time`, `event_price`, `event_image` (nullable), `event_partisipant_stock`, `event_description`, `event_payment_tipe`, `event_speaker`, `event_speaker_genre`, `bank_info`, `deposit_amount`, `proposal_event_id`, `event_location`, `wa_group_link`, `display_start_date` (DATE), `registration_open_date` (DATE), `registration_close_date` (DATE)
 
 **CHECK constraints:**
 - `event_payment_tipe`: `NULL | 'regular' | 'deposit' | 'gratis'`
 - `event_status`: `NULL | 'In stock' | 'Out of stock' | 'close'`
 - `event_image` sudah di-DROP NOT NULL — boleh NULL
+
+**Jadwal tampil & pendaftaran (3 kolom terpisah):**
+- `display_start_date`: kartu event mulai tampil di halaman publik (sebelum ini → event tersembunyi sama sekali)
+- `registration_open_date`: form pendaftaran aktif; kartu tetap tampil tapi tombol Daftar diganti "Segera Hadir" + tanggal buka
+- `registration_close_date`: pendaftaran ditutup (event masuk pastEvents)
+- API `GET /api/events/register` mengembalikan flag `banner_hidden` dan `registration_not_open`
+- Frontend (`app/nikon/page.tsx`, `app/events/register/page.tsx`) handle state "Segera" saat `registration_not_open=true`
 
 ### `event_registrations`
 `id`, `created_at`, `nama_lengkap`, `nomor_wa`, `email`, `kabupaten_kotamadya`, `tipe_kamera`, `event_name`, `event_id`, `bukti_transfer_url`, `status_pendaftaran` (`menunggu_validasi`|`terdaftar`|`ditolak`), `payment_type` (`regular`|`deposit`), `ticket_url`, `rejection_reason`, `is_attended`, `attended_at`, `attended_by`, `nama_bank`, `no_rekening`, `nama_pemilik_rekening`, `status_pengembalian_deposit` (`requested`|`Processed`), `bukti_pengembalian_deposit`, `refund_requested_at`
@@ -176,6 +183,14 @@ Kolom: `id`, `created_at`, `created_by`, `nama_pembuat`, `tanggal_kirim`, `nama_
 
 ## Tabel `expense_claim`
 `id`, `created_at`, `created_by`, `nama_pembuat`, `from_person`, `to_person`, `claim_date`, `status` (`draft|submitted|approved|rejected`), `catatan`, `items` (JSONB array: `{tanggal, description, nominal, receipt_url?}`), `receipt_urls` (TEXT[]), `total_nominal`
+
+## Icon SVG di Dashboard
+- **Jangan pakai emoji sebagai ikon visual** di area konten utama — gunakan inline SVG
+- Sidebar navbar boleh pakai emoji (sudah konsisten, jangan diubah)
+- Pola icon box: `<div className="w-9 h-9 rounded-lg bg-{color}-100 flex items-center justify-center flex-shrink-0"><svg className="w-5 h-5 text-{color}-600" ...></div>`
+- Contoh warna per konteks: indigo=upload, slate=infrastruktur, yellow=password/key, green=WhatsApp, abu=empty state
+- WaTemplatesTab header: WhatsApp SVG hijau `#25D366` dalam box `w-10 h-10 rounded-xl`
+- File yang sudah pakai SVG: `app/components/WaTemplatesTab.tsx`, `app/dashboard/page.tsx`
 
 ## Animasi (`app/globals.css`)
 Utility classes tersedia tanpa npm tambahan:
