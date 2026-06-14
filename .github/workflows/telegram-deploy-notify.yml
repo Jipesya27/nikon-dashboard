@@ -1,0 +1,106 @@
+name: Telegram Deployment Notification
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Vercel deployment & get status
+        id: vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: |
+          echo "⏳ Waiting 20s for Vercel to start deployment..."
+          sleep 20
+
+          MAX_ATTEMPTS=40
+          ATTEMPT=0
+          STATE=""
+          DEPLOYMENT_URL=""
+          DEPLOYMENT_ID=""
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+
+            if [ -n "$VERCEL_TEAM_ID" ]; then
+              RESPONSE=$(curl -s \
+                "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&teamId=${VERCEL_TEAM_ID}&limit=1&target=production" \
+                -H "Authorization: Bearer ${VERCEL_TOKEN}")
+            else
+              RESPONSE=$(curl -s \
+                "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&limit=1&target=production" \
+                -H "Authorization: Bearer ${VERCEL_TOKEN}")
+            fi
+
+            STATE=$(echo "$RESPONSE" | jq -r '.deployments[0].state // empty')
+            DEPLOYMENT_URL=$(echo "$RESPONSE" | jq -r '.deployments[0].url // empty')
+            DEPLOYMENT_ID=$(echo "$RESPONSE" | jq -r '.deployments[0].uid // empty')
+
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS — State: $STATE"
+
+            if [ "$STATE" = "READY" ] || [ "$STATE" = "ERROR" ] || [ "$STATE" = "CANCELED" ]; then
+              break
+            fi
+
+            sleep 15
+          done
+
+          echo "state=$STATE" >> $GITHUB_OUTPUT
+          echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+
+      - name: Send Telegram notification
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STATE: ${{ steps.vercel.outputs.state }}
+          DEPLOYMENT_URL: ${{ steps.vercel.outputs.url }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          PUSHER: ${{ github.event.pusher.name }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          if [ "$STATE" = "READY" ]; then
+            EMOJI="✅"
+            STATUS_TEXT="BERHASIL"
+          elif [ "$STATE" = "ERROR" ]; then
+            EMOJI="❌"
+            STATUS_TEXT="GAGAL"
+          elif [ "$STATE" = "CANCELED" ]; then
+            EMOJI="⏹️"
+            STATUS_TEXT="DIBATALKAN"
+          else
+            EMOJI="⚠️"
+            STATUS_TEXT="TIMEOUT"
+          fi
+
+          TIMESTAMP=$(TZ='Asia/Jakarta' date '+%d %b %Y, %H:%M:%S WIB')
+          SHORT_SHA=${COMMIT_SHA:0:7}
+
+          MESSAGE="${EMOJI} <b>Vercel Deployment ${STATUS_TEXT}</b>
+
+<b>Project:</b> nikon-dashboard
+<b>Environment:</b> production
+<b>Commit:</b> <code>${SHORT_SHA}</code> ${COMMIT_MSG}
+<b>By:</b> ${PUSHER}
+<b>Waktu:</b> ${TIMESTAMP}"
+
+          if [ -n "$DEPLOYMENT_URL" ]; then
+            MESSAGE="${MESSAGE}
+<b>URL:</b> <a href=\"https://${DEPLOYMENT_URL}\">https://${DEPLOYMENT_URL}</a>"
+          fi
+
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"chat_id\": \"${TELEGRAM_CHAT_ID}\",
+              \"text\": $(echo "$MESSAGE" | jq -Rs .),
+              \"parse_mode\": \"HTML\",
+              \"disable_web_page_preview\": true
+            }"
+
+          echo "✅ Telegram notification sent: $STATUS_TEXT"
