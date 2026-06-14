@@ -283,12 +283,19 @@ export default function AdminAttendancePage() {
             <h3 className="font-bold text-lg mb-1 text-gray-900">📷 Scanner QR Code</h3>
             <p className="text-gray-500 text-xs mb-4">Buka kamera HP/laptop untuk scan QR pada tiket peserta.</p>
             {!scannerOpen ? (
-              <button
-                onClick={() => { setScannerOpen(true); setScanResult(null); }}
-                className="w-full bg-[#FFE800] hover:bg-yellow-400 text-black font-bold py-3 rounded-lg transition-all shadow-sm"
-              >
-                🎥 Mulai Scan QR
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={() => { setScannerOpen(true); setScanResult(null); }}
+                  className="w-full bg-[#FFE800] hover:bg-yellow-400 text-black font-bold py-3 rounded-lg transition-all shadow-sm text-base"
+                >
+                  🎥 Mulai Scan QR
+                </button>
+                <button
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-lg border border-gray-300 transition-all text-sm"
+                >
+                  🖼️ Scan dari Gambar File
+                </button>
+              </div>
             ) : (
               <div>
                 <div id="qr-scanner" className="rounded-lg overflow-hidden border border-gray-200"></div>
