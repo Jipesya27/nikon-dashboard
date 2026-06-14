@@ -2718,6 +2718,7 @@ ${kode ? `
             event_time: ef.event_time ?? null,
             event_location: ef.event_location ?? null,
             wa_group_link: ef.wa_group_link ?? null,
+            display_start_date: ef.display_start_date ?? null,
             registration_open_date: ef.registration_open_date ?? null,
             registration_close_date: ef.registration_close_date ?? null,
          };
@@ -5319,17 +5320,23 @@ ${kode ? `
                                        <td className="px-3 py-2.5 text-xs">
                                           {(() => {
                                              const today = new Date(); today.setHours(0,0,0,0);
-                                             const open  = evt.registration_open_date  ? new Date(evt.registration_open_date)  : null;
-                                             const close = evt.registration_close_date ? new Date(evt.registration_close_date) : null;
+                                             const todayStr = today.toISOString().slice(0,10);
+                                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                             const ef = evt as any;
+                                             const display = ef.display_start_date  ? new Date(ef.display_start_date)  : null;
+                                             const open    = ef.registration_open_date  ? new Date(ef.registration_open_date)  : null;
+                                             const close   = ef.registration_close_date ? new Date(ef.registration_close_date) : null;
                                              const fmt = (d: Date) => d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric', timeZone:'Asia/Jakarta' });
-                                             const isVisible = (!open || open <= today) && (!close || close >= today);
+                                             const bannerVisible = (!display || display <= today) && (!close || close >= today);
+                                             const regOpen = bannerVisible && (!open || todayStr >= ef.registration_open_date);
                                              return (
                                                 <div className="space-y-0.5">
-                                                   {open  && <p className="text-gray-500"><span className="font-semibold text-gray-700">Buka:</span> {fmt(open)}</p>}
-                                                   {close && <p className="text-gray-500"><span className="font-semibold text-gray-700">Tutup:</span> {fmt(close)}</p>}
-                                                   {!open && !close && <span className="text-gray-400 italic">Tidak diatur</span>}
-                                                   <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5 ${isVisible ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                      {isVisible ? '✓ Banner Tampil' : '✗ Banner Tersembunyi'}
+                                                   {display && <p className="text-gray-500"><span className="font-semibold text-gray-700">Tampil:</span> {fmt(display)}</p>}
+                                                   {open    && <p className="text-gray-500"><span className="font-semibold text-gray-700">Daftar:</span> {fmt(open)}</p>}
+                                                   {close   && <p className="text-gray-500"><span className="font-semibold text-gray-700">Tutup:</span> {fmt(close)}</p>}
+                                                   {!display && !open && !close && <span className="text-gray-400 italic">Tidak diatur</span>}
+                                                   <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5 ${bannerVisible ? (regOpen ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700') : 'bg-gray-100 text-gray-500'}`}>
+                                                      {bannerVisible ? (regOpen ? '✓ Daftar Terbuka' : '⏳ Segera Daftar') : '✗ Tersembunyi'}
                                                    </span>
                                                 </div>
                                              );
@@ -7693,19 +7700,24 @@ ${kode ? `
                                           <input type="text" required aria-label="Harga" value={getVal('event_price', 'price')} onChange={e => setField('event_price', e.target.value)} className="input-form" placeholder="Contoh: Rp 50.000" />
                                        </div>
                                     </div>
-                                    {/* Jadwal Pendaftaran */}
-                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                       <p className="text-xs font-bold text-blue-800 mb-2 uppercase tracking-wide">🗓 Jadwal Pendaftaran</p>
+                                    {/* Jadwal Tampil & Pendaftaran */}
+                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                                       <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">🗓 Jadwal Tampil &amp; Pendaftaran</p>
+                                       <div>
+                                          <label className="label-form">Tampil Mulai</label>
+                                          <input type="date" aria-label="Tampil Mulai" value={getVal('display_start_date') || ''} onChange={e => setField('display_start_date', e.target.value || null)} className="input-form" />
+                                          <p className="form-helper">Kartu event muncul di halaman publik mulai tanggal ini (kosongkan = langsung tampil)</p>
+                                       </div>
                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                           <div>
-                                             <label className="label-form">Dibuka Mulai</label>
+                                             <label className="label-form">Pendaftaran Dibuka</label>
                                              <input type="date" aria-label="Pendaftaran Dibuka" value={getVal('registration_open_date') || ''} onChange={e => setField('registration_open_date', e.target.value || null)} className="input-form" />
-                                             <p className="form-helper">Banner tampil di halaman publik mulai tanggal ini</p>
+                                             <p className="form-helper">Form daftar aktif mulai tanggal ini (boleh berbeda dari Tampil Mulai)</p>
                                           </div>
                                           <div>
-                                             <label className="label-form">Ditutup Pada</label>
+                                             <label className="label-form">Pendaftaran Ditutup</label>
                                              <input type="date" aria-label="Pendaftaran Ditutup" value={getVal('registration_close_date') || ''} onChange={e => setField('registration_close_date', e.target.value || null)} className="input-form" />
-                                             <p className="form-helper">Banner disembunyikan setelah tanggal ini</p>
+                                             <p className="form-helper">Pendaftaran ditutup setelah tanggal ini</p>
                                           </div>
                                        </div>
                                     </div>

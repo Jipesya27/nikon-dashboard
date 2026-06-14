@@ -120,9 +120,11 @@ export async function GET() {
       const isFull = e.event_partisipant_stock > 0 && (counts[e.id] || 0) >= e.event_partisipant_stock;
       const isClosed = e.event_status === 'close' || e.event_status === 'Out of stock';
 
-      // Jika belum dibuka (registration_open_date belum tiba), sembunyikan banner
-      const notOpenYet = !!(e.registration_open_date && todayStr < e.registration_open_date);
-      // Jika pendaftaran sudah ditutup (registration_close_date terlewat), anggap selesai
+      // display_start_date: kartu event disembunyikan sebelum tanggal ini
+      const notVisibleYet = !!(e.display_start_date && todayStr < e.display_start_date);
+      // registration_open_date: form pendaftaran belum aktif (kartu tetap tampil)
+      const registrationNotOpen = !!(e.registration_open_date && todayStr < e.registration_open_date);
+      // registration_close_date: pendaftaran sudah ditutup
       const regClosed = !!(e.registration_close_date && todayStr > e.registration_close_date);
 
       return {
@@ -138,11 +140,13 @@ export async function GET() {
         deposit_amount: e.deposit_amount,
         bank_info: e.bank_info,
         event_partisipant_stock: e.event_partisipant_stock,
+        display_start_date: e.display_start_date ?? null,
         registration_open_date: e.registration_open_date ?? null,
         registration_close_date: e.registration_close_date ?? null,
         registered_count: counts[e.id] || 0,
         is_past: isPast || isFull || isClosed || regClosed,
-        banner_hidden: notOpenYet,
+        banner_hidden: notVisibleYet,
+        registration_not_open: registrationNotOpen && !notVisibleYet,
       };
     });
 
