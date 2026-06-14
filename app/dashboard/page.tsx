@@ -4291,7 +4291,12 @@ ${kode ? `
                {activeTab === 'import' && (
                   <div className="space-y-8 animate-fade-in text-gray-900">
                      <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-md">
-                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">📤 Pusat Upload & Update Database</h2>
+                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-3">
+                           <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                              <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                           </div>
+                           Pusat Upload &amp; Update Database
+                        </h2>
                         <p className="text-gray-600 mb-6 text-sm">Pilih tabel target, unduh template untuk menyesuaikan kolom, lalu unggah file CSV Anda. Sistem akan melakukan *Upsert* (Update jika data sudah ada, Insert jika data baru).</p>
                         <p className="font-semibold text-gray-800 mb-3">Urutan template yang diupload :</p>
                         <ul className="list-disc list-inside text-gray-600 text-sm mb-6">
@@ -4314,13 +4319,15 @@ ${kode ? `
                            </div>
                            <div>
                               <button onClick={downloadTemplate} className="w-full bg-gray-800 text-white p-3 rounded-md font-bold hover:bg-gray-700 transition">
-                                 📥 Unduh Template CSV
+                                 <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>Unduh Template CSV
                               </button>
                            </div>
                         </div>
 
                         <div className="mt-10 p-10 border-2 border-dashed border-gray-300 rounded-xl text-center bg-gray-50">
-                           <div className="mb-4 text-4xl">📄</div>
+                           <div className="mb-4 w-14 h-14 mx-auto rounded-xl bg-gray-100 flex items-center justify-center">
+                              <svg className="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+                           </div>
                            <h3 className="font-bold text-lg mb-1">Upload File CSV</h3>
                            <p className="text-gray-500 text-sm mb-6">Pastikan file bertipe .csv dan mengikuti format template.</p>
                            <button onClick={() => fileInputRef.current?.click()} disabled={isSubmitting} className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 disabled:bg-slate-300 transition shadow-md">
@@ -4331,7 +4338,10 @@ ${kode ? `
                      </div>
 
                      <div className="bg-blue-50 p-6 rounded-lg border border-blue-100">
-                        <h4 className="font-bold text-blue-800 mb-2">💡 Tips Penting:</h4>
+                        <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-1.5">
+                           <svg className="w-4 h-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                           Tips Penting:
+                        </h4>
                         <ul className="text-sm text-black list-disc ml-5 space-y-1 font-medium">
                            <li>Kolom ID adalah kunci utama. Jika ingin mengupdate data lama, sertakan ID aslinya.</li>
                            <li>Sistem secara otomatis akan mengisi <b>created_at</b>, <b>updated_at</b>, dan men-generate ID unik jika tidak diisi.</li>
@@ -4500,7 +4510,13 @@ ${kode ? `
                      {/* Empty state */}
                      {sortedConsumers.length === 0 && (
                         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                           <div className="text-5xl mb-3">{searchKonsumen ? '🔍' : '👥'}</div>
+                           <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gray-100 flex items-center justify-center">
+                              {searchKonsumen ? (
+                                 <svg className="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803 7.5 7.5 0 0015.803 15.803z"/></svg>
+                              ) : (
+                                 <svg className="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+                              )}
+                           </div>
                            <p className="text-gray-900 font-bold mb-1">{searchKonsumen ? 'Tidak ada konsumen ditemukan' : 'Belum ada konsumen'}</p>
                            <p className="text-sm text-gray-700">{searchKonsumen ? 'Coba ubah kata kunci pencarian.' : 'Klik tombol "+ Tambah Konsumen" untuk menambah konsumen baru.'}</p>
                         </div>
@@ -5269,15 +5285,15 @@ ${kode ? `
                      })()}
                      {/* Quick links event */}
                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {[
-                           { href: '/events/register', icon: '🎟️', label: 'Daftar Event', sub: 'Halaman publik' },
-                           { href: '/nikon/upload-lomba', icon: '📸', label: 'Upload Foto Lomba', sub: 'Halaman publik' },
-                           { href: '/admin/events', icon: '🗂️', label: 'Validasi Pembayaran', sub: 'Admin panel' },
-                           { href: '/admin/events/attendance', icon: '📋', label: 'Absensi Event', sub: 'Scan QR' },
-                        ].map(link => (
+                        {([
+                           { href: '/events/register', label: 'Daftar Event', sub: 'Halaman publik', bg: 'bg-yellow-50', ic: 'bg-yellow-100', svg: <svg className="w-4 h-4 text-yellow-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg> },
+                           { href: '/nikon/upload-lomba', label: 'Upload Foto Lomba', sub: 'Halaman publik', bg: 'bg-blue-50', ic: 'bg-blue-100', svg: <svg className="w-4 h-4 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg> },
+                           { href: '/admin/events', label: 'Validasi Pembayaran', sub: 'Admin panel', bg: 'bg-green-50', ic: 'bg-green-100', svg: <svg className="w-4 h-4 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> },
+                           { href: '/admin/events/attendance', label: 'Absensi Event', sub: 'Scan QR', bg: 'bg-purple-50', ic: 'bg-purple-100', svg: <svg className="w-4 h-4 text-purple-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg> },
+                        ] as { href: string; label: string; sub: string; bg: string; ic: string; svg: React.ReactNode }[]).map(link => (
                            <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer"
-                              className="flex items-center gap-2.5 bg-white border border-gray-200 hover:border-[#FFE500] hover:shadow-sm rounded-xl px-3 py-2.5 transition-all group">
-                              <span className="text-xl shrink-0">{link.icon}</span>
+                              className={`flex items-center gap-2.5 ${link.bg} border border-transparent hover:border-[#FFE500] hover:shadow-sm rounded-xl px-3 py-2.5 transition-all group`}>
+                              <div className={`${link.ic} w-7 h-7 rounded-lg flex items-center justify-center shrink-0`}>{link.svg}</div>
                               <div className="min-w-0">
                                  <p className="text-xs font-bold text-gray-800 group-hover:text-black truncate leading-tight">{link.label}</p>
                                  <p className="text-[10px] text-gray-400 truncate">{link.sub}</p>
@@ -5782,14 +5798,19 @@ ${kode ? `
                   return (
                      <div className="space-y-6 animate-fade-in">
                         <div className="flex items-center justify-between">
-                           <h2 className="text-2xl font-bold text-gray-900">🖥️ Monitoring Infrastruktur</h2>
+                           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                 <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                              </div>
+                              Monitoring Infrastruktur
+                           </h2>
                            <div className="flex items-center gap-3">
                               {stbLastUpdated && <span className="text-xs text-gray-400">Update: {stbLastUpdated.toLocaleTimeString('id-ID')}</span>}
                               <button
                                  onClick={() => { setStbMetrics(null); setStbLastUpdated(null); setActiveTab('dashboard'); setTimeout(() => setActiveTab('infrastruktur'), 50); }}
                                  className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-bold hover:bg-gray-700 transition"
                               >
-                                 🔄 Refresh
+                                 <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Refresh
                               </button>
                            </div>
                         </div>
@@ -8383,7 +8404,9 @@ ${kode ? `
 
                      {!['userrole', 'events', 'lending', 'claims', 'konsumen', 'warranties', 'promos', 'botsettings', 'budgets', 'eventregistrations', 'services', 'assets', 'eventreport'].includes(activeTab) && (
                         <div className="text-center py-12">
-                           <div className="text-5xl mb-3">🚧</div>
+                           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 flex items-center justify-center">
+                              <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z"/></svg>
+                           </div>
                            <p className="text-gray-700 font-semibold mb-1">Form untuk tab ini belum tersedia</p>
                            <p className="text-sm text-gray-600 mb-4">Hubungi developer untuk implementasi form Create/Edit tab <span className="font-bold">{activeTab}</span>.</p>
                            <button onClick={closeModal} className="btn-secondary">Tutup</button>
@@ -8865,7 +8888,12 @@ ${kode ? `
          <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm border-t-4 border-[#FFE500]">
                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <h2 className="font-bold text-gray-900">🔑 Ganti Password</h2>
+                  <h2 className="font-bold text-gray-900 flex items-center gap-2">
+                     <div className="w-7 h-7 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                     </div>
+                     Ganti Password
+                  </h2>
                   <button onClick={() => setIsChangePwOpen(false)} className="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">✕</button>
                </div>
                <form onSubmit={handleChangePassword} className="px-6 py-5 space-y-4">
