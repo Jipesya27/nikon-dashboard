@@ -218,7 +218,7 @@ export default function ClaimsTab({
                   Teal:   'bg-teal-100 text-teal-700',
                 };
                 return (
-                  <tr key={c.id_claim} className={`hover:bg-gray-50/70 transition-colors ${isDuplicate ? 'bg-red-50' : ''} ${isSelected ? '!bg-yellow-50' : ''}`}>
+                  <tr key={c.id_claim} onClick={e => { if ((e.target as HTMLElement).closest('td:first-child,button,a,input,select,textarea')) return; if (c.id_claim) { const next = new Set(selectedClaimIds); isSelected ? next.delete(c.id_claim!) : next.add(c.id_claim!); setSelectedClaimIds(next); } }} className={`cursor-pointer hover:bg-blue-50/60 transition-colors ${isDuplicate ? 'bg-red-50' : ''} ${isSelected ? '!bg-blue-100 ring-1 ring-inset ring-blue-300' : ''}`}>
                     <td className="px-3 py-3 text-center">
                       <input type="checkbox" title="Pilih baris ini" aria-label="Pilih baris ini" className="w-4 h-4 cursor-pointer"
                         checked={isSelected}
