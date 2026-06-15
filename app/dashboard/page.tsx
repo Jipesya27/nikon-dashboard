@@ -3846,7 +3846,7 @@ ${kode ? `
       );
    }
 
-   if (loading) return <div className="flex justify-center items-center h-screen bg-white"><div className="animate-spin rounded-md h-12 w-12 border-b-2 border-blue-500"></div></div>;
+   if (loading) return <div className="flex flex-col justify-center items-center h-screen bg-white gap-4"><div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-[#FFE500]"></div><span className="text-sm text-gray-400 font-medium">Memuat...</span></div>;
 
    return (
       <>
