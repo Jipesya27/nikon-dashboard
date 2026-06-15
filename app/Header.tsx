@@ -63,9 +63,12 @@ export default function Header({ sidebarOpen, setSidebarOpen, currentUser, handl
                onClick={() => setMenuOpen(o => !o)}
                aria-label="Menu pengguna"
                aria-expanded={menuOpen}
-               className="w-8 h-8 rounded-full bg-[#FFE500] text-black font-semibold flex items-center justify-center text-xs hover:ring-2 hover:ring-[#FFE500]/50 transition-all"
+               className="flex flex-col items-center gap-0.5 hover:opacity-80 transition-opacity"
             >
-               {initials}
+               <div className="w-8 h-8 rounded-full bg-[#FFE500] text-black font-semibold flex items-center justify-center text-xs hover:ring-2 hover:ring-[#FFE500]/50 transition-all">
+                  {initials}
+               </div>
+               <span className="text-[9px] font-medium text-gray-500 leading-none">Profil</span>
             </button>
 
             {menuOpen && (
