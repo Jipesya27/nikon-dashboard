@@ -200,6 +200,7 @@ export default function ClaimsTab({
                   Tgl Beli {sortConfigClaims.column === 'tanggal_pembelian' && <span>{sortConfigClaims.direction === 'asc' ? '↑' : '↓'}</span>}
                 </th>
                 <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Durasi</th>
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide w-20">Aksi</th>
               </tr>
             </thead>
@@ -241,6 +242,7 @@ export default function ClaimsTab({
                         {getBadgeLabel(statusColor)}
                       </span>
                     </td>
+                    <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{getClaimDurationDays(c.created_at)}</td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-center gap-1 flex-wrap">
                         <button onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} title="Print Label" className="p-1.5 rounded-lg text-blue-400 hover:text-blue-700 hover:bg-blue-50 transition">
