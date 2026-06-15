@@ -392,7 +392,7 @@ export default function MessagesTab({
                 </div>
               </div>
 
-              <div ref={chatContainerRef} className="flex-1 px-4 py-5 overflow-y-auto space-y-1.5 relative scroll-smooth bg-white">
+              <div ref={chatContainerRef} className="flex-1 px-4 py-5 overflow-y-auto space-y-1.5 relative scroll-smooth bg-[#f5f4ed]">
                 {selectedWa && chatHasMore[selectedWa] && (
                   <div className="flex justify-center mb-1">
                     <button
