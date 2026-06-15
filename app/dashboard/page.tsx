@@ -396,6 +396,7 @@ export default function NikonDashboard() {
    // MODAL STATES
    const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
    const [modalAction, setModalAction] = useState<'create' | 'edit' | 'reset_pw' | 'return'>('create'); // Type of action for the modal
+   const [validasiMode, setValidasiMode] = useState(false);
    const [editingId, setEditingId] = useState<string | null>(null);
    const [selectedWa, setSelectedWa] = useState<string | null>(null);
    const [replyText, setReplyText] = useState('');
@@ -2071,8 +2072,14 @@ ${kode ? `
       setIsModalOpen(true);
    };
 
+   const openValidasiModal = (c: ClaimPromo) => {
+      setValidasiMode(true);
+      openModal('edit', 'claim', c);
+   };
+
    const closeModal = () => {
       setIsModalOpen(false);
+      setValidasiMode(false);
       setClaimForm({});
       setWarrantyForm({});
       setPromoForm({ tipe_produk: [] });
@@ -4748,6 +4755,7 @@ ${kode ? `
                      handleTandaTerimaCSV={handleTandaTerimaCSV}
                      handleUploadResiCSV={handleUploadResiCSV}
                      resiCsvInputRef={resiCsvInputRef}
+                     openValidasiModal={openValidasiModal}
                   />
                )}
 
@@ -6281,8 +6289,13 @@ ${kode ? `
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/></svg>
                      </button>
                      <h2 className="text-lg font-bold text-gray-900 flex-1">
-                        {modalAction === 'create' ? 'Tambah' : modalAction === 'edit' ? 'Edit' : modalAction === 'reset_pw' ? 'Reset Password' : 'Pengembalian'} Data
+                        {validasiMode && activeTab === 'claims' ? 'Validasi Claim' : `${modalAction === 'create' ? 'Tambah' : modalAction === 'edit' ? 'Edit' : modalAction === 'reset_pw' ? 'Reset Password' : 'Pengembalian'} Data`}
                      </h2>
+                     {validasiMode && activeTab === 'claims' && (
+                        <button type="submit" form="claim-validasi-form" disabled={isSubmitting} className="flex items-center gap-1.5 px-4 py-2 bg-[#FFE500] hover:bg-[#E5CE00] text-black text-sm font-bold rounded-lg transition shadow-sm">
+                           {isSubmitting ? 'Menyimpan...' : 'Simpan Claim'}
+                        </button>
+                     )}
                   </div>
                   <div className="p-6 space-y-4 overflow-y-auto">
                      {/* Karyawan Form */}
@@ -7457,16 +7470,16 @@ ${kode ? `
 
                      {/* ============ CLAIM FORM ============ */}
                      {activeTab === 'claims' && (
-                        <form onSubmit={handleSaveClaim} className="space-y-4">
+                        <form id="claim-validasi-form" onSubmit={handleSaveClaim} className="space-y-4">
                            {/* Banner info combined form */}
-                           <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+                           {!validasiMode && <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
                               <p className="text-xs text-gray-900 font-medium">
                                  💡 Form ini akan otomatis <strong>menambah/update konsumen</strong> di tabel konsumen sekaligus membuat claim baru. Cukup isi nomor WA — kalau sudah ada di sistem, data konsumen akan otomatis terisi.
                               </p>
-                           </div>
+                           </div>}
 
                            {/* Section: Identitas Pendaftar */}
-                           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                           {!validasiMode && <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                               <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Identitas Pendaftar & Penerima</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
@@ -7521,7 +7534,7 @@ ${kode ? `
                                     }))}
                                  />
                               </div>
-                           </div>
+                           </div>}
 
                            {/* Section: Data Produk */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
@@ -7586,7 +7599,7 @@ ${kode ? `
                            </div>
 
                            {/* Section: Pengiriman Hadiah */}
-                           <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                           {!validasiMode && <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                               <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Pengiriman Hadiah</h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                  <div>
@@ -7601,7 +7614,7 @@ ${kode ? `
                                     <input type="text" aria-label="Nomor Resi" value={claimForm.nomor_resi || ''} onChange={e => setClaimForm({ ...claimForm, nomor_resi: e.target.value })} className="input-form" />
                                  </div>
                               </div>
-                           </div>
+                           </div>}
 
                            {/* Section: Dokumen */}
                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
@@ -7646,10 +7659,12 @@ ${kode ? `
                               </div>
                            </div>
 
+                           {!validasiMode && (
                            <div className="mt-6 flex justify-end gap-3">
                               <button type="button" onClick={closeModal} className="btn-secondary">Batal</button>
                               <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Menyimpan...' : 'Simpan Claim'}</button>
                            </div>
+                           )}
                         </form>
                      )}
 

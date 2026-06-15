@@ -55,6 +55,7 @@ export interface ClaimsTabProps {
   handleTandaTerimaCSV: () => void;
   handleUploadResiCSV: (e: React.ChangeEvent<HTMLInputElement>) => void;
   resiCsvInputRef: React.RefObject<HTMLInputElement | null>;
+  openValidasiModal: (c: ClaimPromo) => void;
 }
 
 export default function ClaimsTab({
@@ -70,6 +71,7 @@ export default function ClaimsTab({
   consumersList, setReturnTab, setActiveTab, openModal, handleKirimStatusClaim,
   setResiModal, setResiModalForm, handleDelete, getNamaPromo,
   handleExportCSVClaim, handleTandaTerimaCSV, handleUploadResiCSV, resiCsvInputRef,
+  openValidasiModal,
 }: ClaimsTabProps) {
   const [expandedClaimIds, setExpandedClaimIds] = React.useState<Set<string>>(new Set());
   const toggleExpand = (id: string) => setExpandedClaimIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -311,6 +313,7 @@ export default function ClaimsTab({
                           <button onClick={() => { setResiModal(c); setResiModalForm({ nama_jasa_pengiriman: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '' }); }} className="text-pink-600 text-[11px] font-bold hover:underline text-left">📦 Resi</button>
                         )}
                         <div className="flex gap-2 pt-0.5 border-t border-gray-100">
+                          <button onClick={() => openValidasiModal(c)} className="text-indigo-600 text-[11px] font-bold hover:underline">✓ Validasi</button>
                           <button onClick={() => openModal('edit', 'claim', c)} className="text-gray-700 text-[11px] font-bold hover:underline">Edit</button>
                           <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-500 text-[11px] font-bold hover:underline">Hapus</button>
                         </div>
@@ -400,6 +403,7 @@ export default function ClaimsTab({
                   {getClaimStatusColor(c) === 'Pink' && (
                     <button onClick={() => { setResiModal(c); setResiModalForm({ nama_jasa_pengiriman: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '' }); }} className="text-pink-600 text-xs font-bold hover:underline">📦 Isi Resi</button>
                   )}
+                  <button onClick={() => openValidasiModal(c)} className="text-indigo-600 text-xs font-bold hover:underline">✓ Validasi</button>
                   <button onClick={() => openModal('edit', 'claim', c)} className="text-black text-xs font-bold hover:underline">Edit</button>
                   <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
                 </div>
