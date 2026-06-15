@@ -8,17 +8,20 @@ export function GradientActionBtn({
   gradientFrom: string; gradientTo: string; disabled?: boolean;
 }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{ ['--gf' as string]: gradientFrom, ['--gt' as string]: gradientTo }}
-      className="relative h-7 w-7 hover:w-[90px] rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center transition-all duration-300 overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed"
-    >
-      <span className="absolute inset-0 rounded-full bg-[linear-gradient(135deg,var(--gf),var(--gt))] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      <span className="absolute top-[6px] inset-x-0 h-full rounded-full bg-[linear-gradient(135deg,var(--gf),var(--gt))] blur-[8px] opacity-0 -z-10 group-hover:opacity-40 transition-opacity duration-300" />
-      <span className="relative z-10 text-gray-500 group-hover:scale-0 group-hover:opacity-0 transition-all duration-200 flex items-center justify-center">{icon}</span>
-      <span className="absolute z-10 text-white text-[10px] font-bold uppercase tracking-wide opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 delay-100 whitespace-nowrap">{label}</span>
-    </button>
+    // Wrapper fixed w-7 agar tidak menggeser kolom lain saat tombol expand
+    <div className="relative w-7 h-7 flex-shrink-0">
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        style={{ ['--gf' as string]: gradientFrom, ['--gt' as string]: gradientTo }}
+        className="absolute right-0 top-0 h-7 w-7 hover:w-[90px] rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center transition-all duration-300 overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed z-10"
+      >
+        <span className="absolute inset-0 rounded-full bg-[linear-gradient(135deg,var(--gf),var(--gt))] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <span className="absolute top-[6px] inset-x-0 h-full rounded-full bg-[linear-gradient(135deg,var(--gf),var(--gt))] blur-[8px] opacity-0 -z-10 group-hover:opacity-40 transition-opacity duration-300" />
+        <span className="relative z-10 text-gray-500 group-hover:scale-0 group-hover:opacity-0 transition-all duration-200 flex items-center justify-center">{icon}</span>
+        <span className="absolute z-10 text-white text-[10px] font-bold uppercase tracking-wide opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 delay-100 whitespace-nowrap">{label}</span>
+      </button>
+    </div>
   );
 }
 
