@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Karyawan, ExpenseClaim, ExpenseClaimItem } from '@/app/index';
+import { GradientActionBtn, IconCheck, IconTrash, IconEdit } from '@/app/components/GradientActionBtn';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1280,18 +1281,15 @@ function ClaimCard({ claim, isAdmin, currentUsername, onEdit, onDelete, onStatus
           )}
           {isAdmin && claim.status === 'submitted' && (
             <>
-              <button onClick={e => { e.stopPropagation(); onStatus(claim.id!, 'approved'); }} className="text-xs bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded transition">✓ Setujui</button>
-              <button onClick={e => { e.stopPropagation(); onStatus(claim.id!, 'rejected'); }} className="text-xs bg-red-400 hover:bg-red-500 text-white px-2 py-1 rounded transition">✕ Tolak</button>
+              <GradientActionBtn onClick={() => onStatus(claim.id!, 'approved')} label="Setujui" gradientFrom="#10B981" gradientTo="#34D399" icon={IconCheck} />
+              <GradientActionBtn onClick={() => onStatus(claim.id!, 'rejected')} label="Tolak" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
             </>
           )}
           {isAdmin && claim.status === 'approved' && (
-            <button onClick={e => { e.stopPropagation(); onStatus(claim.id!, 'submitted'); }} className="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded transition">↩ Buka Kembali</button>
+            <GradientActionBtn onClick={() => onStatus(claim.id!, 'submitted')} label="Buka" gradientFrom="#F59E0B" gradientTo="#FBBF24" icon={IconEdit} />
           )}
           {canDelete && (
-            <button
-              onClick={e => { e.stopPropagation(); onDelete(claim.id!); }}
-              className="text-xs text-red-400 hover:text-red-600 px-1 py-1 transition"
-            >🗑</button>
+            <GradientActionBtn onClick={() => onDelete(claim.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
           )}
           <span className="text-gray-300 text-xs">{expanded ? '▲' : '▼'}</span>
         </div>

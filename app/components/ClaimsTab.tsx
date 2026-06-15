@@ -1,6 +1,8 @@
 'use client';
 import React from 'react';
 import { ClaimPromo, KonsumenData, Karyawan } from '@/app/index';
+import { GradientActionBtn, IconLabel, IconPin, IconSend, IconBox, IconCheck, IconEdit, IconTrash } from '@/app/components/GradientActionBtn';
+import { GlassButton } from '@/app/components/GlassButton';
 
 type SortDirection = 'asc' | 'desc' | null;
 interface SortConfig { column: string; direction: SortDirection; }
@@ -75,6 +77,8 @@ export default function ClaimsTab({
 }: ClaimsTabProps) {
   const [expandedClaimIds, setExpandedClaimIds] = React.useState<Set<string>>(new Set());
   const toggleExpand = (id: string) => setExpandedClaimIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const tableScrollRef = React.useRef<HTMLDivElement>(null);
+  const scrollTable = (dir: 'left' | 'right') => { tableScrollRef.current?.scrollBy({ left: dir === 'right' ? 300 : -300, behavior: 'smooth' }); };
 
   // Stat card definitions
   const statCards = [
@@ -96,24 +100,18 @@ export default function ClaimsTab({
             <input type="text" placeholder="Cari nama, seri..." value={searchClaim} onChange={e => setSearchClaim(e.target.value)} className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 w-44" />
           </div>
           {/* View toggle */}
-          <div className="flex items-center rounded-lg border border-gray-200 bg-white overflow-hidden">
-            <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 text-xs font-semibold transition ${viewMode === 'table' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>Baris</button>
-            <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 text-xs font-semibold transition ${viewMode === 'card' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>Kartu</button>
+          <div className="flex items-center gap-1">
+            <GlassButton size="xs" active={viewMode === 'table'} onClick={() => setViewMode('table')}>Baris</GlassButton>
+            <GlassButton size="xs" active={viewMode === 'card'} onClick={() => setViewMode('card')}>Kartu</GlassButton>
           </div>
-          <button onClick={handleExportCSVClaim} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition">
+          <GlassButton size="xs" onClick={handleExportCSVClaim} contentClassName="flex items-center gap-1.5">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             Export
-          </button>
-          <button onClick={handleTandaTerimaCSV} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition">
-            Tanda Terima
-          </button>
-          <button onClick={() => resiCsvInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition">
-            Upload Resi
-          </button>
+          </GlassButton>
+          <GlassButton size="xs" onClick={handleTandaTerimaCSV}>Tanda Terima</GlassButton>
+          <GlassButton size="xs" onClick={() => resiCsvInputRef.current?.click()}>Upload Resi</GlassButton>
           <input ref={resiCsvInputRef} type="file" accept=".csv" className="hidden" onChange={handleUploadResiCSV} />
-          <button onClick={() => openModal('create', 'claim')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FFE500] hover:bg-[#E5CE00] text-black text-xs font-bold transition shadow-sm">
-            + Tambah
-          </button>
+          <GlassButton size="xs" onClick={() => openModal('create', 'claim')} className="glass-button-yellow">+ Tambah</GlassButton>
         </div>
       </div>
 
@@ -163,27 +161,38 @@ export default function ClaimsTab({
         <h3 className="text-sm font-semibold text-gray-800">Daftar claim</h3>
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
           {[
-            { key: 'Semua',  label: 'Semua',        count: claims.length,                    activeClass: 'bg-gray-700 text-white',     inactiveClass: 'bg-gray-100 text-gray-600 hover:bg-gray-200' },
-            { key: 'Putih',  label: 'Belum Di Cek', count: claimStatusCounts.Putih ?? 0,     activeClass: 'bg-gray-400 text-white',     inactiveClass: 'bg-gray-50 text-gray-500 hover:bg-gray-100' },
-            { key: 'Merah',  label: 'Tidak Valid',  count: claimStatusCounts.Merah ?? 0,     activeClass: 'bg-red-500 text-white',      inactiveClass: 'bg-red-50 text-red-600 hover:bg-red-100' },
-            { key: 'Orange', label: 'Hold',         count: claimStatusCounts.Orange ?? 0,    activeClass: 'bg-orange-500 text-white',   inactiveClass: 'bg-orange-50 text-orange-600 hover:bg-orange-100' },
-            { key: 'Biru',   label: 'Tunggu FA',    count: claimStatusCounts.Biru ?? 0,      activeClass: 'bg-blue-500 text-white',     inactiveClass: 'bg-blue-50 text-blue-600 hover:bg-blue-100' },
-            { key: 'Pink',   label: 'Tunggu Resi',  count: claimStatusCounts.Pink ?? 0,      activeClass: 'bg-rose-500 text-white',     inactiveClass: 'bg-rose-50 text-rose-600 hover:bg-rose-100' },
-            { key: 'Hijau',  label: 'Selesai',      count: claimStatusCounts.Hijau ?? 0,     activeClass: 'bg-emerald-500 text-white',  inactiveClass: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' },
-            { key: 'Teal',   label: 'Resi Terkirim',count: claimStatusCounts.Teal ?? 0,      activeClass: 'bg-teal-500 text-white',     inactiveClass: 'bg-teal-50 text-teal-600 hover:bg-teal-100' },
+            { key: 'Semua',  label: 'Semua',         count: claims.length,                  from: '#374151', to: '#111827' },
+            { key: 'Putih',  label: 'Belum Di Cek',  count: claimStatusCounts.Putih ?? 0,   from: '#9CA3AF', to: '#6B7280' },
+            { key: 'Merah',  label: 'Tidak Valid',   count: claimStatusCounts.Merah ?? 0,   from: '#EF4444', to: '#DC2626' },
+            { key: 'Orange', label: 'Hold',           count: claimStatusCounts.Orange ?? 0,  from: '#F97316', to: '#EA580C' },
+            { key: 'Biru',   label: 'Tunggu FA',      count: claimStatusCounts.Biru ?? 0,    from: '#3B82F6', to: '#2563EB' },
+            { key: 'Pink',   label: 'Tunggu Resi',    count: claimStatusCounts.Pink ?? 0,    from: '#F43F5E', to: '#E11D48' },
+            { key: 'Hijau',  label: 'Selesai',        count: claimStatusCounts.Hijau ?? 0,   from: '#10B981', to: '#059669' },
+            { key: 'Teal',   label: 'Resi Terkirim',  count: claimStatusCounts.Teal ?? 0,    from: '#14B8A6', to: '#0D9488' },
           ].map(p => (
-            <button
+            <GlassButton
               key={p.key}
+              size="xs"
+              active={filterStatusWarna === p.key}
+              activeFrom={p.from}
+              activeTo={p.to}
               onClick={() => setFilterStatusWarna(filterStatusWarna === p.key ? 'Semua' : p.key)}
-              className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition flex items-center gap-1 ${filterStatusWarna === p.key ? p.activeClass : p.inactiveClass}`}
+              contentClassName="flex items-center gap-1"
             >
               {p.label} <span className="font-bold">{p.count}</span>
-            </button>
+            </GlassButton>
           ))}
         </div>
       </div>
       {viewMode === 'table' ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
+        <div className="relative">
+          <button onClick={() => scrollTable('left')} className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:text-gray-800 hover:shadow-lg transition -translate-x-3">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <button onClick={() => scrollTable('right')} className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:text-gray-800 hover:shadow-lg transition translate-x-3">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+          </button>
+        <div ref={tableScrollRef} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
           <table className="w-full text-sm min-w-[1200px]">
             <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
               <tr>
@@ -305,17 +314,26 @@ export default function ClaimsTab({
                       )}
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="flex flex-col gap-1 min-w-[80px]">
-                        <button onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="text-[11px] font-bold hover:underline text-left text-blue-600">🏷️ Label</button>
-                        <button onClick={() => { const obj = consumersList.find(k => k.nomor_wa === c.nomor_wa); if (obj) { setReturnTab('claims'); setActiveTab('konsumen'); openModal('edit', 'konsumen', obj); } else alert('Data konsumen tidak ditemukan.'); }} className="text-orange-600 text-[11px] font-bold hover:underline text-left">📍 Alamat</button>
-                        <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-[11px] font-bold hover:underline text-left">📨 Status</button>
-                        {statusColor === 'Pink' && (
-                          <button onClick={() => { setResiModal(c); setResiModalForm({ nama_jasa_pengiriman: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '' }); }} className="text-pink-600 text-[11px] font-bold hover:underline text-left">📦 Resi</button>
-                        )}
-                        <div className="flex gap-2 pt-0.5 border-t border-gray-100">
-                          <button onClick={() => openValidasiModal(c)} className="text-indigo-600 text-[11px] font-bold hover:underline">✓ Validasi</button>
-                          <button onClick={() => openModal('edit', 'claim', c)} className="text-gray-700 text-[11px] font-bold hover:underline">Edit</button>
-                          <button onClick={() => handleDelete('claim', c.id_claim!)} className="text-red-500 text-[11px] font-bold hover:underline">Hapus</button>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex gap-1.5 items-center">
+                          <GradientActionBtn onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} label="Label" gradientFrom="#3B82F6" gradientTo="#06B6D4"
+                            icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" /></svg>} />
+                          <GradientActionBtn onClick={() => { const obj = consumersList.find(k => k.nomor_wa === c.nomor_wa); if (obj) { setReturnTab('claims'); setActiveTab('konsumen'); openModal('edit', 'konsumen', obj); } else alert('Data konsumen tidak ditemukan.'); }} label="Alamat" gradientFrom="#F97316" gradientTo="#FBBF24"
+                            icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />
+                          <GradientActionBtn onClick={() => handleKirimStatusClaim(c)} label="Status" gradientFrom="#10B981" gradientTo="#34D399"
+                            icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>} />
+                          {statusColor === 'Pink' && (
+                            <GradientActionBtn onClick={() => { setResiModal(c); setResiModalForm({ nama_jasa_pengiriman: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '' }); }} label="Resi" gradientFrom="#EC4899" gradientTo="#F472B6"
+                              icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>} />
+                          )}
+                        </div>
+                        <div className="flex gap-1.5 items-center">
+                          <GradientActionBtn onClick={() => openValidasiModal(c)} label="Validasi" gradientFrom="#6366F1" gradientTo="#8B5CF6"
+                            icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
+                          <GradientActionBtn onClick={() => openModal('edit', 'claim', c)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8"
+                            icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>} />
+                          <GradientActionBtn onClick={() => handleDelete('claim', c.id_claim!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171"
+                            icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>} />
                         </div>
                       </div>
                     </td>
@@ -324,6 +342,7 @@ export default function ClaimsTab({
               })}
             </tbody>
           </table>
+        </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

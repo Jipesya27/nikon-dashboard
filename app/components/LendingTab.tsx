@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { PeminjamanBarang } from '@/app/index';
+import { GradientActionBtn, IconEdit, IconTrash, IconPrint } from '@/app/components/GradientActionBtn';
 
 type SortDirection = 'asc' | 'desc' | null;
 interface SortConfig { column: string; direction: SortDirection; }
@@ -178,12 +179,14 @@ export default function LendingTab({
                     })()}
                   </td>
                   <td className="px-3 py-2.5">
-                    <div className="flex flex-col gap-1 min-w-[80px]">
-                      {(l.status_peminjaman === 'aktif' || l.status_peminjaman === 'partial') && <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-[11px] font-bold hover:underline text-left">↩ Pengembalian</button>}
-                      <button onClick={() => handlePrintPeminjamanPDF(l)} className="text-purple-600 text-[11px] font-bold hover:underline text-left">🖨️ PDF</button>
-                      <div className="flex gap-2 pt-0.5 border-t border-gray-100">
-                        <button onClick={() => openModal('edit', 'lending', l)} className="text-gray-700 text-[11px] font-bold hover:underline">Edit</button>
-                        <button onClick={() => handleDelete('lending', l.id_peminjaman!)} className="text-red-500 text-[11px] font-bold hover:underline">Hapus</button>
+                    <div className="flex flex-col gap-1.5 min-w-[80px]">
+                      <div className="flex gap-1.5">
+                        {(l.status_peminjaman === 'aktif' || l.status_peminjaman === 'partial') && <GradientActionBtn onClick={() => openModal('return', 'lending', l)} label="Kembali" gradientFrom="#3B82F6" gradientTo="#06B6D4" icon={IconEdit} />}
+                        <GradientActionBtn onClick={() => handlePrintPeminjamanPDF(l)} label="PDF" gradientFrom="#8B5CF6" gradientTo="#A78BFA" icon={IconPrint} />
+                      </div>
+                      <div className="flex gap-1.5 pt-0.5 border-t border-gray-100">
+                        <GradientActionBtn onClick={() => openModal('edit', 'lending', l)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                        <GradientActionBtn onClick={() => handleDelete('lending', l.id_peminjaman!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                       </div>
                     </div>
                   </td>
@@ -227,11 +230,11 @@ export default function LendingTab({
                   })}
                 </ul>
               </div>
-              <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end flex-wrap">
-                {(l.status_peminjaman === 'aktif' || l.status_peminjaman === 'partial') && <button onClick={() => openModal('return', 'lending', l)} className="text-blue-600 text-xs font-bold hover:underline">Pengembalian</button>}
-                <button onClick={() => handlePrintPeminjamanPDF(l)} className="text-purple-600 text-xs font-bold hover:underline">🖨️ PDF</button>
-                <button onClick={() => openModal('edit', 'lending', l)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                <button onClick={() => handleDelete('lending', l.id_peminjaman!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+              <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end flex-wrap">
+                {(l.status_peminjaman === 'aktif' || l.status_peminjaman === 'partial') && <GradientActionBtn onClick={() => openModal('return', 'lending', l)} label="Kembali" gradientFrom="#3B82F6" gradientTo="#06B6D4" icon={IconEdit} />}
+                <GradientActionBtn onClick={() => handlePrintPeminjamanPDF(l)} label="PDF" gradientFrom="#8B5CF6" gradientTo="#A78BFA" icon={IconPrint} />
+                <GradientActionBtn onClick={() => openModal('edit', 'lending', l)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                <GradientActionBtn onClick={() => handleDelete('lending', l.id_peminjaman!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
               </div>
             </div>
           ))}

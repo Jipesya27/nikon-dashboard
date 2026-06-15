@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Affiliate, AffiliateSkema, AffiliatePenjualan } from '@/app/index';
+import { GradientActionBtn, IconTrash, IconEdit } from '@/app/components/GradientActionBtn';
 
 export interface AffiliateTabProps {
   affiliates: Affiliate[];
@@ -247,7 +248,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                     <td className="px-3 py-2 text-right font-mono text-orange-600">{fmtRp(pot)}</td>
                     <td className="px-3 py-2 text-right font-mono font-bold text-green-700">{fmtRp(sisa)}</td>
                     <td className="px-3 py-2 text-center">
-                      <button onClick={() => deleteSkema(s.id)} className="text-red-500 hover:text-red-700 text-xs font-semibold">Hapus</button>
+                      <GradientActionBtn onClick={() => deleteSkema(s.id)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                     </td>
                   </tr>
                 );
@@ -346,7 +347,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                     ) : <span className="text-gray-300 text-xs">-</span>}
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <button onClick={() => deletePenjualan(p.id)} className="text-red-500 hover:text-red-700 text-xs font-semibold">Hapus</button>
+                    <GradientActionBtn onClick={() => deletePenjualan(p.id)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                   </td>
                 </tr>
               ))}
@@ -507,14 +508,8 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                         style={{ background: pal.btn }}>
                         Detail
                       </button>
-                      <button onClick={() => { setAffiliateFormData(a); setEditingAffiliateId(a.id); setAffiliateFotoProfilFile(null); setAffiliateFormOpen(true); }}
-                        className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-xs transition">
-                        ✏️
-                      </button>
-                      <button onClick={() => deleteAffiliate(a.id)}
-                        className="px-3 py-1.5 text-red-400 hover:text-red-700 hover:bg-red-50 border border-red-100 rounded-lg text-xs transition">
-                        🗑️
-                      </button>
+                      <GradientActionBtn onClick={() => { setAffiliateFormData(a); setEditingAffiliateId(a.id); setAffiliateFotoProfilFile(null); setAffiliateFormOpen(true); }} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                      <GradientActionBtn onClick={() => deleteAffiliate(a.id)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                     </div>
                   </div>
                 </div>

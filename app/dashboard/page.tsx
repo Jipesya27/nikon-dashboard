@@ -26,6 +26,7 @@ import DealerTab from '@/app/components/DealerTab';
 import LendingTab from '@/app/components/LendingTab';
 import BotSettingsTab from '@/app/components/BotSettingsTab';
 import ClaimsTab from '@/app/components/ClaimsTab';
+import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield, IconCheck, IconPrint } from '@/app/components/GradientActionBtn';
 
 /** Konversi Google Drive URL ke proxy lokal agar gambar bisa tampil di dashboard.
  *  drive.google.com tidak bisa di-load langsung karena CORS + domain whitelist Next.js. */
@@ -4577,9 +4578,9 @@ ${kode ? `
                                              )}
                                           </td>
                                           <td className="px-4 py-3">
-                                             <div className="flex gap-3 items-center">
-                                                <button onClick={() => openModal('edit', 'konsumen', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                                <button onClick={() => handleDelete('konsumen', k.nomor_wa)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                             <div className="flex gap-1.5 items-center">
+                                                <GradientActionBtn onClick={() => openModal('edit', 'konsumen', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                                <GradientActionBtn onClick={() => handleDelete('konsumen', k.nomor_wa)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                              </div>
                                           </td>
                                        </tr>
@@ -4630,9 +4631,9 @@ ${kode ? `
                                                 <span className="text-gray-500 italic text-[11px]">Belum ada claim</span>
                                              )}
                                           </div>
-                                          <div className="flex gap-2">
-                                             <button onClick={() => openModal('edit', 'konsumen', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                             <button onClick={() => handleDelete('konsumen', k.nomor_wa)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                          <div className="flex gap-1.5">
+                                             <GradientActionBtn onClick={() => openModal('edit', 'konsumen', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                             <GradientActionBtn onClick={() => handleDelete('konsumen', k.nomor_wa)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                           </div>
                                        </div>
                                     </div>
@@ -4675,9 +4676,9 @@ ${kode ? `
                                        )}
                                     </div>
                                     {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                       <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
-                                          <button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit Promo</button>
-                                          <button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
+                                          <GradientActionBtn onClick={() => openModal('edit', 'promo', p)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                          <GradientActionBtn onClick={() => handleDelete('promo', p.id_promo!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                        </div>
                                     )}
                                  </div>
@@ -4698,7 +4699,7 @@ ${kode ? `
                                        <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span></td>
                                        <td className="px-4 py-3 text-xs whitespace-normal">{(p.tipe_produk || []).map(tp => tp.nama_produk).join(', ')}</td>
                                        {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                          <td className="px-4 py-3"><div className="flex gap-3 items-center"><button onClick={() => openModal('edit', 'promo', p)} className="text-black text-xs font-bold hover:underline">Edit</button><button onClick={() => handleDelete('promo', p.id_promo!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button></div></td>
+                                          <td className="px-4 py-3"><div className="flex gap-1.5 items-center"><GradientActionBtn onClick={() => openModal('edit', 'promo', p)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} /><GradientActionBtn onClick={() => handleDelete('promo', p.id_promo!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} /></div></td>
                                        )}
                                     </tr>
                                  ))}
@@ -4866,31 +4867,18 @@ ${kode ? `
                                              <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold ${pillClass}`}>{w.status_validasi}</span>
                                           </td>
                                           <td className="px-3 py-3">
-                                             <div className="flex flex-col gap-1 items-start">
-                                                <div className="flex gap-2">
+                                             <div className="flex flex-col gap-1.5">
+                                                <div className="flex gap-1.5">
                                                    {linkNota && (
-                                                      <button type="button" onClick={() => openImageViewer(linkNota as string)} className="text-[11px] text-blue-600 font-semibold hover:underline flex items-center gap-0.5">
-                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                                         Nota
-                                                      </button>
+                                                      <GradientActionBtn onClick={() => openImageViewer(linkNota as string)} label="Nota" gradientFrom="#3B82F6" gradientTo="#06B6D4" icon={IconDoc} />
                                                    )}
                                                    {linkGaransi && (
-                                                      <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="text-[11px] text-blue-600 font-semibold hover:underline flex items-center gap-0.5">
-                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                                                         Garansi
-                                                      </button>
+                                                      <GradientActionBtn onClick={() => openImageViewer(linkGaransi as string)} label="Garansi" gradientFrom="#8B5CF6" gradientTo="#A78BFA" icon={IconShield} />
                                                    )}
                                                 </div>
-                                                <div className="flex gap-2 items-center">
-                                                   <button onClick={() => handleKirimStatusGaransi(w)} title="Kirim Status WA">
-                                                      <svg className="w-3.5 h-3.5 text-emerald-600 hover:text-emerald-800" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.523 5.828L.057 23.57a.75.75 0 00.918.919l5.815-1.485A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.692-.519-5.222-1.423l-.374-.22-3.877.99.997-3.81-.24-.388A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-                                                   </button>
-                                                   <button onClick={() => openModal('edit', 'warranty', w)}>
-                                                      <svg className="w-3.5 h-3.5 text-gray-500 hover:text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                                   </button>
-                                                   <button onClick={() => handleDelete('warranty', w.id_garansi!)}>
-                                                      <svg className="w-3.5 h-3.5 text-red-400 hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                   </button>
+                                                <div className="flex gap-1.5">
+                                                   <GradientActionBtn onClick={() => handleKirimStatusGaransi(w)} label="Kirim" gradientFrom="#10B981" gradientTo="#34D399" icon={IconSend} />
+                                                   <GradientActionBtn onClick={() => handleDelete('warranty', w.id_garansi!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                                 </div>
                                              </div>
                                           </td>
@@ -4941,16 +4929,15 @@ ${kode ? `
                                     </div>
                                     {/* Lampiran */}
                                     {(linkNota || linkGaransi) && (
-                                       <div className="flex gap-3 text-[11px]">
-                                          {linkNota && <button type="button" onClick={() => openImageViewer(linkNota as string)} className="text-blue-600 font-semibold hover:underline">📄 Nota</button>}
-                                          {linkGaransi && <button type="button" onClick={() => openImageViewer(linkGaransi as string)} className="text-blue-600 font-semibold hover:underline">🛡️ Kartu Garansi</button>}
+                                       <div className="flex gap-1.5">
+                                          {linkNota && <GradientActionBtn onClick={() => openImageViewer(linkNota as string)} label="Nota" gradientFrom="#3B82F6" gradientTo="#06B6D4" icon={IconDoc} />}
+                                          {linkGaransi && <GradientActionBtn onClick={() => openImageViewer(linkGaransi as string)} label="Garansi" gradientFrom="#8B5CF6" gradientTo="#A78BFA" icon={IconShield} />}
                                        </div>
                                     )}
                                     {/* Aksi */}
-                                    <div className="pt-2 border-t border-gray-100 flex gap-3 justify-end">
-                                       <button onClick={() => handleKirimStatusGaransi(w)} className="text-emerald-600 text-xs font-bold hover:underline">Kirim</button>
-                                       <button onClick={() => openModal('edit', 'warranty', w)} className="text-gray-700 text-xs font-bold hover:underline">Edit</button>
-                                       <button onClick={() => handleDelete('warranty', w.id_garansi!)} className="text-red-500 text-xs font-bold hover:underline">Hapus</button>
+                                    <div className="pt-2 border-t border-gray-100 flex gap-1.5 justify-end">
+                                       <GradientActionBtn onClick={() => handleKirimStatusGaransi(w)} label="Kirim" gradientFrom="#10B981" gradientTo="#34D399" icon={IconSend} />
+                                       <GradientActionBtn onClick={() => handleDelete('warranty', w.id_garansi!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                     </div>
                                  </div>
                               )
@@ -4979,9 +4966,11 @@ ${kode ? `
                                           <span className="px-2 py-1 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span>
                                        </td>
                                        <td className="px-3 py-2.5font-bold text-gray-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</td>
-                                       <td className="px-3 py-2.5flex gap-3">
-                                          <button onClick={() => openModal('edit', 'service', s)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                          <button onClick={() => handleDelete('service', s.id_service!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       <td className="px-3 py-2.5">
+                                          <div className="flex gap-1.5">
+                                             <GradientActionBtn onClick={() => openModal('edit', 'service', s)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                             <GradientActionBtn onClick={() => handleDelete('service', s.id_service!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                          </div>
                                        </td>
                                     </tr>
                                  ))}
@@ -5000,9 +4989,9 @@ ${kode ? `
                                     <p><span className="font-bold w-20 inline-block">Status:</span> <span className="px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span></p>
                                     <p><span className="font-bold w-20 inline-block">Update:</span> {s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</p>
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
-                                    <button onClick={() => openModal('edit', 'service', s)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                    <button onClick={() => handleDelete('service', s.id_service!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
+                                    <GradientActionBtn onClick={() => openModal('edit', 'service', s)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                    <GradientActionBtn onClick={() => handleDelete('service', s.id_service!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                  </div>
                               </div>
                            ))}
@@ -5049,11 +5038,10 @@ ${kode ? `
                                        <td className="px-3 py-2.5 text-xs text-gray-700">{b.period}</td>
                                        <td className="px-3 py-2.5 text-xs font-bold text-gray-800">Rp {Number(b.total_cost).toLocaleString('id-ID')}</td>
                                        <td className="px-3 py-2.5">
-                                          <div className="flex flex-col gap-1">
-                                             <button onClick={() => setPrintData(b)} className="text-emerald-600 text-[11px] font-bold hover:underline text-left">🖨️ Print PDF</button>
-                                             <div className="flex gap-2 pt-0.5 border-t border-gray-100">
-                                                <button onClick={() => openModal('edit', 'budget', b)} className="text-gray-700 text-[11px] font-bold hover:underline">Edit</button>
-                                                <button onClick={() => handleDelete('budget', b.id_budget!)} className="text-red-500 text-[11px] font-bold hover:underline">Hapus</button>
+                                          <div className="flex flex-col gap-1.5">
+                                             <div className="flex gap-1.5">
+                                                <GradientActionBtn onClick={() => setPrintData(b)} label="Print" gradientFrom="#10B981" gradientTo="#34D399" icon={IconPrint} />
+                                                <GradientActionBtn onClick={() => handleDelete('budget', b.id_budget!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                              </div>
                                           </div>
                                        </td>
@@ -5074,10 +5062,9 @@ ${kode ? `
                                     <p><span className="font-bold w-20 inline-block">Periode:</span> {b.period}</p>
                                     <p><span className="font-bold w-20 inline-block">Total:</span> Rp {Number(b.total_cost).toLocaleString('id-ID')}</p>
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
-                                    <button onClick={() => setPrintData(b)} className="text-emerald-600 text-xs font-bold hover:underline">🖨️ Print</button>
-                                    <button onClick={() => openModal('edit', 'budget', b)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                    <button onClick={() => handleDelete('budget', b.id_budget!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
+                                    <GradientActionBtn onClick={() => setPrintData(b)} label="Print" gradientFrom="#10B981" gradientTo="#34D399" icon={IconPrint} />
+                                    <GradientActionBtn onClick={() => handleDelete('budget', b.id_budget!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                  </div>
                               </div>
                            ))}
@@ -5242,7 +5229,7 @@ ${kode ? `
                                        <td className="px-3 py-2.5 text-center">
                                           {reg.is_attended
                                              ? <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-1 rounded">HADIR ✅</span>
-                                             : <button onClick={() => handleMarkAttendance(reg.id!)} className="text-[10px] bg-gray-100 text-gray-700 hover:bg-gray-200 font-bold px-2 py-1 rounded border border-gray-300">Set Hadir</button>}
+                                             : <GradientActionBtn onClick={() => handleMarkAttendance(reg.id!)} label="Hadir" gradientFrom="#10B981" gradientTo="#34D399" icon={IconCheck} />}
                                        </td>
                                        <td className="px-3 py-2.5 text-center">
                                           {reg.bukti_transfer_url
@@ -5250,11 +5237,10 @@ ${kode ? `
                                              : <span className="text-gray-400 text-[11px]">-</span>}
                                        </td>
                                        <td className="px-3 py-2.5">
-                                          <div className="flex flex-col gap-1">
-                                             {isConfirmed && <button onClick={() => handleSendEventSuccessWA(reg)} className="text-green-600 text-[11px] font-bold hover:underline text-left">📨 Kirim WA</button>}
-                                             <div className="flex gap-2 pt-0.5 border-t border-gray-100">
-                                                <button onClick={() => openModal('edit', 'eventregistration', reg)} className="text-gray-700 text-[11px] font-bold hover:underline">Edit</button>
-                                                <button onClick={() => handleDelete('eventregistration', reg.id!)} className="text-red-500 text-[11px] font-bold hover:underline">Hapus</button>
+                                          <div className="flex flex-col gap-1.5">
+                                             <div className="flex gap-1.5">
+                                                {isConfirmed && <GradientActionBtn onClick={() => handleSendEventSuccessWA(reg)} label="Kirim WA" gradientFrom="#25D366" gradientTo="#128C7E" icon={IconSend} />}
+                                                <GradientActionBtn onClick={() => handleDelete('eventregistration', reg.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                              </div>
                                           </div>
                                        </td>
@@ -5372,9 +5358,9 @@ ${kode ? `
                                        </td>
                                        <td className="px-3 py-2.5 text-center font-bold text-blue-600 text-sm">{eventRegistrationsCount[evt.title] || 0}</td>
                                        <td className="px-3 py-2.5">
-                                          <div className="flex gap-2">
-                                             <button onClick={() => openModal('edit', 'event', evt)} className="text-gray-700 text-[11px] font-bold hover:underline">Edit</button>
-                                             <button onClick={() => handleDelete('events', evt.id!)} className="text-red-500 text-[11px] font-bold hover:underline">Hapus</button>
+                                          <div className="flex gap-1.5">
+                                             <GradientActionBtn onClick={() => openModal('edit', 'event', evt)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                             <GradientActionBtn onClick={() => handleDelete('events', evt.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                           </div>
                                        </td>
                                     </tr>
@@ -5409,9 +5395,9 @@ ${kode ? `
                                     <p><span className="font-bold w-20 inline-block">Peserta:</span> {eventRegistrationsCount[evt.title] || 0} orang</p>
                                     {evt.bank_info && <p className="bg-blue-50 border border-blue-100 rounded p-2 mt-2"><span className="font-bold">Rekening:</span> {evt.bank_info}</p>}
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2 justify-end">
-                                    <button onClick={() => openModal('edit', 'event', evt)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                    <button onClick={() => handleDelete('events', evt.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
+                                    <GradientActionBtn onClick={() => openModal('edit', 'event', evt)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                    <GradientActionBtn onClick={() => handleDelete('events', evt.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                  </div>
                                  </div>{/* end p-4 inner */}
                               </div>
@@ -5464,9 +5450,9 @@ ${kode ? `
                                              <td className="px-4 py-3 text-xs text-gray-600">{accs.length > 0 ? accs.join(', ') : '-'}</td>
                                              <td className="px-4 py-3 text-xs text-gray-600">{a.catatan || '-'}</td>
                                              <td className="px-4 py-3">
-                                                <div className="flex gap-3">
-                                                   <button onClick={() => openModal('edit', 'asset', a)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                                   <button onClick={() => handleDelete('asset', a.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                                <div className="flex gap-1.5">
+                                                   <GradientActionBtn onClick={() => openModal('edit', 'asset', a)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                                   <GradientActionBtn onClick={() => handleDelete('asset', a.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                                 </div>
                                              </td>
                                           </tr>
@@ -5498,9 +5484,9 @@ ${kode ? `
                                           </div>
                                        )}
                                        {a.catatan && <p className="text-xs text-gray-500 italic">{a.catatan}</p>}
-                                       <div className="mt-auto pt-2 border-t border-gray-100 flex gap-3">
-                                          <button onClick={() => openModal('edit', 'asset', a)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                          <button onClick={() => handleDelete('asset', a.id!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       <div className="mt-auto pt-2 border-t border-gray-100 flex gap-1.5">
+                                          <GradientActionBtn onClick={() => openModal('edit', 'asset', a)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                          <GradientActionBtn onClick={() => handleDelete('asset', a.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                        </div>
                                     </div>
                                  );
@@ -5563,10 +5549,11 @@ ${kode ? `
                                           <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
                                        </td>
                                        <td className="px-3 py-2.5font-mono text-xs text-gray-600">{(k.role === 'Admin' || k.role === 'Super Admin') ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</td>
-                                       <td className="px-3 py-2.5flex gap-3">
-                                          <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                          <button onClick={() => openModal('reset_pw', 'karyawan', k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
-                                          <button onClick={() => handleDelete('karyawan', k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                       <td className="px-3 py-2.5">
+                                          <div className="flex gap-1.5">
+                                             <GradientActionBtn onClick={() => openModal('edit', 'karyawan', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                             <GradientActionBtn onClick={() => handleDelete('karyawan', k.id_karyawan!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                          </div>
                                        </td>
                                     </tr>
                                  ))}
@@ -5586,10 +5573,9 @@ ${kode ? `
                                     <p><span className="font-bold w-20 inline-block">Status:</span> <span className={`px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span></p>
                                     <p><span className="font-bold w-20 inline-block">Akses:</span> {(k.role === 'Admin' || k.role === 'Super Admin') ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</p>
                                  </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end">
-                                    <button onClick={() => openModal('edit', 'karyawan', k)} className="text-black text-xs font-bold hover:underline">Edit</button>
-                                    <button onClick={() => openModal('reset_pw', 'karyawan', k)} className="text-amber-600 text-xs font-bold hover:underline">Reset PW</button>
-                                    <button onClick={() => handleDelete('karyawan', k.id_karyawan!)} className="text-red-600 text-xs font-bold hover:underline">Hapus</button>
+                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
+                                    <GradientActionBtn onClick={() => openModal('edit', 'karyawan', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                    <GradientActionBtn onClick={() => handleDelete('karyawan', k.id_karyawan!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                  </div>
                               </div>
                            ))}

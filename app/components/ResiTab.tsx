@@ -1,5 +1,6 @@
 'use client';
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { GradientActionBtn, IconEdit, IconTrash } from '@/app/components/GradientActionBtn';
 
 interface Karyawan { username: string; nama_karyawan: string; role: string; }
 
@@ -346,9 +347,9 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
                   </td>
                   {isAdmin && <td className="px-3 py-2.5 text-gray-400">{r.nama_pembuat}</td>}
                   <td className="px-3 py-2.5">
-                    <div className="flex gap-1 justify-end">
-                      <button onClick={() => openEdit(r)} className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded">✏️</button>
-                      <button onClick={() => handleDelete(r.id!)} className="text-red-400 hover:text-red-600 px-2 py-1 rounded">🗑</button>
+                    <div className="flex gap-1.5 justify-end">
+                      <GradientActionBtn onClick={() => openEdit(r)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                      <GradientActionBtn onClick={() => handleDelete(r.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                     </div>
                   </td>
                 </tr>

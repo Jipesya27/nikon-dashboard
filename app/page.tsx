@@ -18,17 +18,17 @@ const MILESTONES = [
 ];
 
 const SERVICES = [
-  { no: '01', title: 'Distribusi Resmi Produk Nikon', desc: 'Official distribution of Nikon products — kamera, lensa, dan aksesoris original bergaransi resmi.', icon: '📦' },
-  { no: '02', title: 'Penjualan Produk Fotografi', desc: 'Penjualan produk fotografi dan pendukungnya dari berbagai brand ternama untuk semua kebutuhan Anda.', icon: '📷' },
-  { no: '03', title: 'Service Center Resmi', desc: 'Layanan purna jual dan perbaikan melalui Nikon Service Center resmi berstandar global.', icon: '🔧' },
-  { no: '04', title: 'Konsultasi & Dukungan Teknis', desc: 'Dukungan teknis dan konsultasi produk oleh tim berpengalaman dan tersertifikasi Nikon.', icon: '💬' },
+  { no: '01', title: 'Distribusi Resmi Produk Nikon', desc: 'Official distribution of Nikon products — kamera, lensa, dan aksesoris original bergaransi resmi.' },
+  { no: '02', title: 'Penjualan Produk Fotografi', desc: 'Penjualan produk fotografi dan pendukungnya dari berbagai brand ternama untuk semua kebutuhan Anda.' },
+  { no: '03', title: 'Service Center Resmi', desc: 'Layanan purna jual dan perbaikan melalui Nikon Service Center resmi berstandar global.' },
+  { no: '04', title: 'Konsultasi & Dukungan Teknis', desc: 'Dukungan teknis dan konsultasi produk oleh tim berpengalaman dan tersertifikasi Nikon.' },
 ];
 
 const ADVANTAGES = [
-  { icon: '🏆', title: 'Distributor Resmi & Berpengalaman', desc: 'Lebih dari 20 tahun dipercaya sebagai mitra resmi Nikon di Indonesia sejak 2002.' },
-  { icon: '📚', title: 'Portofolio Produk yang Lengkap', desc: 'Berbagai pilihan produk untuk kebutuhan fotografi profesional maupun personal.' },
-  { icon: '⚙️', title: 'Service Center Resmi Nikon', desc: 'Dedikasi layanan purna jual melalui jaringan layanan global Nikon dengan teknisi bersertifikat.' },
-  { icon: '✅', title: 'Komitmen terhadap Kualitas', desc: 'Menjamin keaslian produk, standar kualitas, dan pelayanan yang konsisten.' },
+  { no: '01', title: 'Distributor Resmi & Berpengalaman', desc: 'Lebih dari 20 tahun dipercaya sebagai mitra resmi Nikon di Indonesia sejak 2002.' },
+  { no: '02', title: 'Portofolio Produk yang Lengkap', desc: 'Berbagai pilihan produk untuk kebutuhan fotografi profesional maupun personal.' },
+  { no: '03', title: 'Service Center Resmi Nikon', desc: 'Dedikasi layanan purna jual melalui jaringan layanan global Nikon dengan teknisi bersertifikat.' },
+  { no: '04', title: 'Komitmen terhadap Kualitas', desc: 'Menjamin keaslian produk, standar kualitas, dan pelayanan yang konsisten.' },
 ];
 
 const BRANDS = [
@@ -45,7 +45,7 @@ function useInView(threshold = 0.12) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setInView(true); }, { threshold });
+    const obs = new IntersectionObserver(([e]) => { setInView(e.isIntersecting); }, { threshold });
     obs.observe(el);
     return () => obs.disconnect();
   }, [threshold]);
@@ -255,7 +255,6 @@ export default function HomePage() {
             {SERVICES.map((s, i) => (
               <FadeIn key={s.no} delay={i * 80}>
                 <div className="bg-white/5 border border-white/8 rounded-2xl p-6 hover:border-[#FFE500]/40 hover:bg-white/8 transition-all h-full">
-                  <div className="text-3xl mb-4">{s.icon}</div>
                   <div className="text-[#FFE500] text-xs font-black tracking-widest mb-2">{s.no}</div>
                   <h3 className="text-white font-black text-base mb-3 leading-tight">{s.title}</h3>
                   <p className="text-gray-500 text-xs leading-relaxed">{s.desc}</p>
@@ -299,7 +298,7 @@ export default function HomePage() {
             {ADVANTAGES.map((a, i) => (
               <FadeIn key={a.title} delay={i * 80}>
                 <div className="text-center p-7 border border-gray-100 rounded-2xl hover:border-[#FFE500] hover:shadow-md transition-all group">
-                  <div className="w-14 h-14 bg-[#FFE500]/10 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-5 group-hover:bg-[#FFE500]/20 transition-colors">{a.icon}</div>
+                  <div className="text-[#FFE500] text-xs font-black tracking-widest mb-3">{a.no}</div>
                   <h3 className="font-black text-zinc-900 text-base mb-3 leading-tight">{a.title}</h3>
                   <p className="text-gray-500 text-xs leading-relaxed">{a.desc}</p>
                 </div>

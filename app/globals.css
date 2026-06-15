@@ -422,3 +422,148 @@ input[type="file"].input-form {
 #html5qr-code-full-region__dashboard_section_swaplink {
   display: none !important;
 }
+
+/* ── Glass Button ── */
+.glass-button-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.glass-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  outline: none;
+  isolation: isolate;
+}
+.glass-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.55) 0%,
+    rgba(255,255,255,0.18) 50%,
+    rgba(255,255,255,0.06) 100%
+  );
+  border: 1px solid rgba(255,255,255,0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.7),
+    inset 0 -1px 0 rgba(0,0,0,0.06),
+    0 1px 3px rgba(0,0,0,0.08);
+  transition: all 0.2s ease;
+  z-index: 0;
+}
+.glass-button:hover::before {
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.72) 0%,
+    rgba(255,255,255,0.28) 50%,
+    rgba(255,255,255,0.1) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    inset 0 -1px 0 rgba(0,0,0,0.04),
+    0 4px 12px rgba(0,0,0,0.12);
+}
+.glass-button:active::before {
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.35) 0%,
+    rgba(255,255,255,0.12) 100%
+  );
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.1),
+    0 1px 2px rgba(0,0,0,0.06);
+}
+.glass-button-text {
+  position: relative;
+  z-index: 1;
+  color: #1f2937;
+  font-weight: 600;
+}
+.glass-button-shadow {
+  position: absolute;
+  bottom: -3px;
+  left: 6px;
+  right: 6px;
+  height: 100%;
+  background: rgba(0,0,0,0.10);
+  filter: blur(6px);
+  border-radius: 9999px;
+  z-index: -1;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+.glass-button-wrap:hover .glass-button-shadow {
+  bottom: -5px;
+  background: rgba(0,0,0,0.15);
+  filter: blur(10px);
+}
+.glass-button-active .glass-button::before {
+  background: linear-gradient(135deg,
+    rgba(17,24,39,0.92) 0%,
+    rgba(17,24,39,0.82) 100%
+  );
+  border-color: rgba(255,255,255,0.15);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    0 2px 8px rgba(0,0,0,0.25);
+}
+.glass-button-active .glass-button-text {
+  color: #ffffff;
+}
+.glass-button-active .glass-button-shadow {
+  background: rgba(0,0,0,0.2);
+}
+
+/* Glass Button — Yellow variant (+ Tambah) */
+.glass-button-yellow .glass-button::before {
+  background: linear-gradient(135deg,
+    rgba(255,229,0,0.95) 0%,
+    rgba(255,210,0,0.85) 100%
+  );
+  border-color: rgba(255,255,255,0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    0 2px 8px rgba(255,200,0,0.3);
+}
+.glass-button-yellow .glass-button:hover::before {
+  background: linear-gradient(135deg,
+    rgba(255,229,0,1) 0%,
+    rgba(230,188,0,0.95) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.7),
+    0 4px 14px rgba(255,200,0,0.4);
+}
+.glass-button-yellow .glass-button-text {
+  color: #1a1a00;
+  font-weight: 700;
+}
+.glass-button-yellow .glass-button-shadow {
+  background: rgba(200,160,0,0.25);
+}
+
+/* Glass Button — custom color active state */
+.glass-button-active-color .glass-button::before {
+  background: linear-gradient(135deg, var(--gb-from), var(--gb-to));
+  border-color: rgba(255,255,255,0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.25),
+    0 2px 10px color-mix(in srgb, var(--gb-from) 40%, transparent);
+}
+.glass-button-active-color .glass-button:hover::before {
+  filter: brightness(1.08);
+}
+.glass-button-active-color .glass-button-text {
+  color: #ffffff;
+}
+.glass-button-active-color .glass-button-shadow {
+  background: color-mix(in srgb, var(--gb-from) 30%, transparent);
+}
