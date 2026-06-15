@@ -305,13 +305,13 @@ export default function NikonDashboard() {
 
    const getBadgeStyle = (color: string) => {
       switch(color) {
-         case 'Teal': return 'bg-teal-100 text-teal-800 border border-teal-300 rounded-full';
-         case 'Hijau': return 'bg-green-100 text-green-800 border border-green-300 rounded-full';
-         case 'Pink': return 'bg-pink-100 text-pink-800 border border-pink-200 rounded-full';
-         case 'Biru': return 'bg-blue-100 text-blue-800 border border-blue-200 rounded-full';
-         case 'Orange': return 'bg-orange-100 text-orange-800 border border-orange-200 rounded-full';
-         case 'Merah': return 'bg-red-100 text-red-800 border border-red-200 rounded-full';
-         case 'Putih': default: return 'bg-white text-slate-800 border border-gray-300 rounded-full';
+         case 'Teal': return 'bg-teal-100 text-teal-800 border border-teal-300 rounded-md';
+         case 'Hijau': return 'bg-green-100 text-green-800 border border-green-300 rounded-md';
+         case 'Pink': return 'bg-pink-100 text-pink-800 border border-pink-200 rounded-md';
+         case 'Biru': return 'bg-blue-100 text-blue-800 border border-blue-200 rounded-md';
+         case 'Orange': return 'bg-orange-100 text-orange-800 border border-orange-200 rounded-md';
+         case 'Merah': return 'bg-red-100 text-red-800 border border-red-200 rounded-md';
+         case 'Putih': default: return 'bg-white text-slate-800 border border-gray-300 rounded-md';
       }
    };
 
@@ -3797,7 +3797,7 @@ ${kode ? `
       );
    }
 
-   if (loading) return <div className="flex justify-center items-center h-screen bg-white"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div>;
+   if (loading) return <div className="flex justify-center items-center h-screen bg-white"><div className="animate-spin rounded-md h-12 w-12 border-b-2 border-blue-500"></div></div>;
 
    return (
       <>
@@ -3838,7 +3838,7 @@ ${kode ? `
 
                   {/* User info */}
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 shrink-0">
-                     <div className="w-8 h-8 rounded-full bg-[#FFE500] flex items-center justify-center text-black font-bold text-xs shrink-0 shadow-sm">
+                     <div className="w-8 h-8 rounded-md bg-[#FFE500] flex items-center justify-center text-black font-bold text-xs shrink-0 shadow-sm">
                         {currentUser?.nama_karyawan?.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase() ?? '??'}
                      </div>
                      <div className="min-w-0">
@@ -4145,14 +4145,14 @@ ${kode ? `
                                  <div className="space-y-2.5">
                                     {recentRegs.map(r => (
                                        <div key={r.id} className="flex items-center gap-3">
-                                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: avatarColor(r.nama_lengkap || '?') }}>
+                                          <div className="w-8 h-8 rounded-md flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: avatarColor(r.nama_lengkap || '?') }}>
                                              {initials2(r.nama_lengkap || '?')}
                                           </div>
                                           <div className="flex-1 min-w-0">
                                              <p className="text-sm font-semibold text-gray-800 truncate">{r.nama_lengkap}</p>
                                              <p className="text-xs text-gray-400 truncate">{r.event_name} · {r.tipe_kamera || '-'}</p>
                                           </div>
-                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${regStatusStyle(r.status_pendaftaran || '')}`}>
+                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${regStatusStyle(r.status_pendaftaran || '')}`}>
                                              {regStatusLabel(r.status_pendaftaran || '')}
                                           </span>
                                        </div>
@@ -4216,8 +4216,8 @@ ${kode ? `
                                                 <p className="text-sm font-semibold text-gray-800">{evt.title}</p>
                                                 <span className="text-xs text-gray-500 font-medium">{count}/{evt.stock}</span>
                                              </div>
-                                             <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
+                                             <div className="w-full h-1.5 bg-gray-100 rounded-md overflow-hidden">
+                                                <div className="h-full rounded-md bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
                                              </div>
                                              <p className="text-[11px] text-gray-400 mt-1">{evtDate}</p>
                                           </div>
@@ -4238,7 +4238,7 @@ ${kode ? `
                                  ].map(s => (
                                     <div key={s.label} className="flex items-center justify-between">
                                        <span className="text-sm text-gray-600 flex items-center gap-2">
-                                          <span className={`w-2 h-2 rounded-full ${s.ok ? 'bg-green-400' : 'bg-red-400'}`} />
+                                          <span className={`w-2 h-2 rounded-md ${s.ok ? 'bg-green-400' : 'bg-red-400'}`} />
                                           {s.label}
                                        </span>
                                        <span className={`text-xs font-semibold ${s.ok ? 'text-green-600' : 'text-red-500'}`}>{s.ok ? 'Online' : 'Offline'}</span>
@@ -4546,7 +4546,7 @@ ${kode ? `
                                           <td className="px-4 py-3 text-center text-xs font-bold text-gray-700">{konsumenNumberMap.get(k.nomor_wa)}</td>
                                           <td className="px-4 py-3">
                                              <div className="flex items-center gap-2.5">
-                                                <div className={`w-9 h-9 rounded-full ${colorFor(k.nama_lengkap || '?')} text-white font-bold text-sm flex items-center justify-center shrink-0`}>{initials(k.nama_lengkap || '?')}</div>
+                                                <div className={`w-9 h-9 rounded-md ${colorFor(k.nama_lengkap || '?')} text-white font-bold text-sm flex items-center justify-center shrink-0`}>{initials(k.nama_lengkap || '?')}</div>
                                                 <div className="min-w-0">
                                                    <p className="font-bold text-gray-900 truncate">{k.nama_lengkap || '-'}</p>
                                                    <p className="text-[10px] font-mono text-gray-700">{k.id_konsumen || '—'}</p>
@@ -4562,7 +4562,7 @@ ${kode ? `
                                           <td className="px-4 py-3 text-xs text-gray-800 font-mono">{k.nik && k.nik !== 'BELUM_DIISI' ? k.nik : <span className="text-gray-500 italic font-sans">-</span>}</td>
                                           <td className="px-4 py-3">
                                              {userClaims.length > 0 ? (
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-bold">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-green-100 text-green-800 text-xs font-bold">
                                                    {userClaims.length} claim
                                                 </span>
                                              ) : (
@@ -4593,7 +4593,7 @@ ${kode ? `
                                  <div key={k.nomor_wa} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden">
                                     <div className={`${colorFor(k.nama_lengkap || '?')} p-4 text-white`}>
                                        <div className="flex items-center gap-3">
-                                          <div className="w-12 h-12 rounded-full bg-white/30 backdrop-blur text-white font-bold flex items-center justify-center text-lg shrink-0">{initials(k.nama_lengkap || '?')}</div>
+                                          <div className="w-12 h-12 rounded-md bg-white/30 backdrop-blur text-white font-bold flex items-center justify-center text-lg shrink-0">{initials(k.nama_lengkap || '?')}</div>
                                           <div className="min-w-0 flex-1">
                                              <p className="font-bold text-base truncate">{k.nama_lengkap || '-'}</p>
                                              <p className="text-[11px] font-mono opacity-90">{k.id_konsumen || '—'}</p>
@@ -4616,7 +4616,7 @@ ${kode ? `
                                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
                                           <div>
                                              {userClaims.length > 0 ? (
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[11px] font-bold">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-green-100 text-green-800 text-[11px] font-bold">
                                                    ✓ {userClaims.length} claim
                                                 </span>
                                              ) : (
@@ -4661,7 +4661,7 @@ ${kode ? `
                                           <div className="space-y-2 max-h-37.5 overflow-y-auto pr-2">
                                              {p.tipe_produk.map((prod, idx) => (
                                                 <div key={idx} className="text-xs p-2 bg-gray-50 border border-gray-100 rounded-md font-bold text-gray-700 flex items-center gap-2">
-                                                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 block"></span>{prod.nama_produk}
+                                                   <span className="w-1.5 h-1.5 rounded-md bg-blue-500 block"></span>{prod.nama_produk}
                                                 </div>
                                              ))}
                                           </div>
@@ -4798,7 +4798,7 @@ ${kode ? `
                            ].map(p => (
                               <button key={p.key}
                                  onClick={() => setFilterStatusGaransi(filterStatusGaransi === p.key ? 'Semua' : p.key)}
-                                 className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition flex items-center gap-1 ${filterStatusGaransi === p.key ? p.activeClass : p.inactiveClass}`}
+                                 className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition flex items-center gap-1 ${filterStatusGaransi === p.key ? p.activeClass : p.inactiveClass}`}
                               >
                                  {p.label} <span className="font-bold">{p.count}</span>
                               </button>
@@ -4855,7 +4855,7 @@ ${kode ? `
                                              <p className="text-xs text-gray-400 mt-0.5">{calculateSisaGaransi(tglBeli ?? undefined, w.lama_garansi)}</p>
                                           </td>
                                           <td className="px-3 py-3">
-                                             <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${pillClass}`}>{w.status_validasi}</span>
+                                             <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold ${pillClass}`}>{w.status_validasi}</span>
                                           </td>
                                           <td className="px-3 py-3">
                                              <div className="flex flex-col gap-1 items-start">
@@ -4917,7 +4917,7 @@ ${kode ? `
                                           <p className="font-semibold text-gray-900 text-sm">{namaText}</p>
                                           <p className="text-xs text-gray-400">{waText}</p>
                                        </div>
-                                       <span className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold ${pillClass}`}>{w.status_validasi}</span>
+                                       <span className={`shrink-0 px-2.5 py-1 rounded-md text-[11px] font-bold ${pillClass}`}>{w.status_validasi}</span>
                                     </div>
                                     {/* No Seri + Barang */}
                                     <div className="bg-gray-50 rounded-lg px-3 py-2">
@@ -5014,7 +5014,7 @@ ${kode ? `
                            { label: 'Rerata / Proposal', count: budgets.length ? `Rp ${Math.round(budgets.reduce((s,b) => s + Number(b.total_cost||0), 0) / budgets.length).toLocaleString('id-ID')}` : 'Rp 0', color: 'text-amber-700', bar: 'bg-amber-400', isText: true },
                         ] as { label: string; count: number | string; color: string; bar: string; isText?: boolean }[]).map(s => (
                            <div key={s.label} className="bg-white rounded-xl p-3 border-2 border-gray-200 shadow-sm">
-                              <div className={`w-full h-1 rounded-full mb-2 ${s.bar}`}></div>
+                              <div className={`w-full h-1 rounded-md mb-2 ${s.bar}`}></div>
                               <p className={`${s.isText ? 'text-base' : 'text-2xl'} font-black ${s.color}`}>{s.count}</p>
                               <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mt-0.5">{s.label}</p>
                            </div>
@@ -5159,7 +5159,7 @@ ${kode ? `
                                     {eventNames.map(n => (
                                        <button key={n}
                                           onClick={() => setFilterRegEventName(filterRegEventName === n ? 'Semua' : n)}
-                                          className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition whitespace-nowrap ${filterRegEventName === n ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+                                          className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition whitespace-nowrap ${filterRegEventName === n ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
                                        >
                                           {n} <span className="font-bold">{eventCounts[n]}</span>
                                        </button>
@@ -5275,7 +5275,7 @@ ${kode ? `
                                  { label: 'Total Peserta', count: totalPeserta, color: 'text-blue-700', bar: 'bg-blue-500' },
                               ] as { label: string; count: number; color: string; bar: string }[]).map(s => (
                                  <div key={s.label} className="bg-white rounded-xl p-3 border-2 border-gray-200 shadow-sm">
-                                    <div className={`w-full h-1 rounded-full mb-2 ${s.bar}`}></div>
+                                    <div className={`w-full h-1 rounded-md mb-2 ${s.bar}`}></div>
                                     <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
                                     <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mt-0.5">{s.label}</p>
                                  </div>
@@ -5386,7 +5386,7 @@ ${kode ? `
                                  <div className="relative w-full h-52 bg-gray-100 shrink-0">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={driveImgSrc(evt.image)} alt="poster" className="w-full h-full object-cover" />
-                                    <span className="absolute top-2 left-2 font-bold text-sm text-gray-700 bg-white/90 rounded-full w-7 h-7 flex items-center justify-center shadow-sm">{eventNumberMap.get(evt.id!)}</span>
+                                    <span className="absolute top-2 left-2 font-bold text-sm text-gray-700 bg-white/90 rounded-md w-7 h-7 flex items-center justify-center shadow-sm">{eventNumberMap.get(evt.id!)}</span>
                                     <span className={`absolute top-2 right-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded ${evtClosed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evtClosed ? evtReason : 'Aktif'}</span>
                                  </div>
                                  <div className="p-4 flex flex-col flex-1">
@@ -5625,7 +5625,7 @@ ${kode ? `
                            <div className="flex flex-wrap gap-2">
                               {AC_FIELDS.map(f => (
                                  <button key={f.key} onClick={() => { setAcFieldTab(f.key); setAcNewValue(''); }}
-                                    className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition ${acFieldTab === f.key ? 'bg-[#FFE500] border-yellow-400 text-black' : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}>
+                                    className={`px-4 py-1.5 rounded-md text-sm font-semibold border transition ${acFieldTab === f.key ? 'bg-[#FFE500] border-yellow-400 text-black' : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}>
                                     {f.label}
                                  </button>
                               ))}
@@ -5790,8 +5790,8 @@ ${kode ? `
                            <span className="font-semibold text-gray-700">{label}</span>
                            <span className="text-gray-500">{used}{unitUsed} / {total}{unitTotal} <span className="font-bold text-gray-800">({pct}%)</span></span>
                         </div>
-                        <div className="w-full bg-gray-100 rounded-full h-2.5">
-                           <div className={`h-2.5 rounded-full transition-all ${barColor(pct)}`} style={{ width: `${pct}%` }} />
+                        <div className="w-full bg-gray-100 rounded-md h-2.5">
+                           <div className={`h-2.5 rounded-md transition-all ${barColor(pct)}`} style={{ width: `${pct}%` }} />
                         </div>
                      </div>
                   );
@@ -5816,7 +5816,7 @@ ${kode ? `
                         </div>
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
                            <div className="flex items-center gap-3 mb-5">
-                              <div className={`w-3 h-3 rounded-full ${stbLoading ? 'bg-yellow-400 animate-pulse' : stbError ? 'bg-red-500' : 'bg-green-500'}`} />
+                              <div className={`w-3 h-3 rounded-md ${stbLoading ? 'bg-yellow-400 animate-pulse' : stbError ? 'bg-red-500' : 'bg-green-500'}`} />
                               <h3 className="text-lg font-bold text-gray-900">STB HG680P — <span className="font-mono text-gray-600">192.168.18.63</span></h3>
                               <span className="ml-auto text-xs text-gray-400">Armbian · ARM64</span>
                            </div>
@@ -5867,7 +5867,7 @@ ${kode ? `
                         </div>
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
                            <div className="flex items-center gap-3 mb-3">
-                              <div className="w-3 h-3 rounded-full bg-blue-400" />
+                              <div className="w-3 h-3 rounded-md bg-blue-400" />
                               <h3 className="text-lg font-bold text-gray-900">Synology DS223J — <span className="font-mono text-gray-600">192.168.18.169</span></h3>
                            </div>
                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
@@ -5882,7 +5882,7 @@ ${kode ? `
                                     <div className="font-bold text-gray-800">{s.label}</div>
                                     <div className="text-gray-500 text-xs mt-0.5">{s.detail}</div>
                                     <div className="mt-2 inline-flex items-center gap-1 text-xs text-green-700 font-semibold">
-                                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />{s.status}
+                                       <div className="w-1.5 h-1.5 bg-green-500 rounded-md" />{s.status}
                                     </div>
                                  </div>
                               ))}
@@ -5890,7 +5890,7 @@ ${kode ? `
                         </div>
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
                            <div className="flex items-center gap-3 mb-3">
-                              <div className="w-3 h-3 rounded-full bg-orange-400" />
+                              <div className="w-3 h-3 rounded-md bg-orange-400" />
                               <h3 className="text-lg font-bold text-gray-900">Cloudflare Tunnel</h3>
                            </div>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -5899,7 +5899,7 @@ ${kode ? `
                                  { hostname: 'terminal.altanikindo.web.id', target: 'localhost:7681', desc: 'Wetty SSH ke STB' },
                               ].map(r => (
                                  <div key={r.hostname} className="bg-gray-50 rounded-xl p-3 flex items-start gap-3">
-                                    <div className="w-1.5 h-1.5 bg-orange-400 rounded-full mt-1.5 shrink-0" />
+                                    <div className="w-1.5 h-1.5 bg-orange-400 rounded-md mt-1.5 shrink-0" />
                                     <div>
                                        <div className="font-mono font-bold text-gray-800 text-xs">{r.hostname}</div>
                                        <div className="text-gray-500 text-xs">→ {r.target}</div>
@@ -6020,8 +6020,8 @@ ${kode ? `
                      <span className="font-semibold text-gray-700">{label}</span>
                      <span className="text-gray-500">{used}{unitUsed} / {total}{unitTotal} <span className="font-bold text-gray-800">({pct}%)</span></span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2.5">
-                     <div className={`h-2.5 rounded-full transition-all ${barColor(pct)}`} style={{ width: `${pct}%` }} />
+                  <div className="w-full bg-gray-100 rounded-md h-2.5">
+                     <div className={`h-2.5 rounded-md transition-all ${barColor(pct)}`} style={{ width: `${pct}%` }} />
                   </div>
                </div>
             );
@@ -6043,7 +6043,7 @@ ${kode ? `
                   {/* STB Card */}
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
                      <div className="flex items-center gap-3 mb-5">
-                        <div className={`w-3 h-3 rounded-full ${stbLoading ? 'bg-yellow-400 animate-pulse' : stbError ? 'bg-red-500' : 'bg-green-500'}`} />
+                        <div className={`w-3 h-3 rounded-md ${stbLoading ? 'bg-yellow-400 animate-pulse' : stbError ? 'bg-red-500' : 'bg-green-500'}`} />
                         <h3 className="text-lg font-bold text-gray-900">STB HG680P — <span className="font-mono text-gray-600">192.168.18.63</span></h3>
                         <span className="ml-auto text-xs text-gray-400">Armbian · ARM64</span>
                      </div>
@@ -6118,7 +6118,7 @@ ${kode ? `
                   {/* Synology Card */}
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-3 h-3 rounded-full bg-blue-400" />
+                        <div className="w-3 h-3 rounded-md bg-blue-400" />
                         <h3 className="text-lg font-bold text-gray-900">Synology DS223J — <span className="font-mono text-gray-600">192.168.18.169</span></h3>
                      </div>
                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
@@ -6133,7 +6133,7 @@ ${kode ? `
                               <div className="font-bold text-gray-800">{s.label}</div>
                               <div className="text-gray-500 text-xs mt-0.5">{s.detail}</div>
                               <div className="mt-2 inline-flex items-center gap-1 text-xs text-green-700 font-semibold">
-                                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />{s.status}
+                                 <div className="w-1.5 h-1.5 bg-green-500 rounded-md" />{s.status}
                               </div>
                            </div>
                         ))}
@@ -6143,7 +6143,7 @@ ${kode ? `
                   {/* Cloudflare Card */}
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-3 h-3 rounded-full bg-orange-400" />
+                        <div className="w-3 h-3 rounded-md bg-orange-400" />
                         <h3 className="text-lg font-bold text-gray-900">Cloudflare Tunnel</h3>
                      </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -6152,7 +6152,7 @@ ${kode ? `
                            { hostname: 'terminal.altanikindo.web.id', target: 'localhost:7681', desc: 'Wetty SSH ke STB' },
                         ].map(r => (
                            <div key={r.hostname} className="bg-gray-50 rounded-xl p-3 flex items-start gap-3">
-                              <div className="w-1.5 h-1.5 bg-orange-400 rounded-full mt-1.5 shrink-0" />
+                              <div className="w-1.5 h-1.5 bg-orange-400 rounded-md mt-1.5 shrink-0" />
                               <div>
                                  <div className="font-mono font-bold text-gray-800 text-xs">{r.hostname}</div>
                                  <div className="text-gray-500 text-xs">→ {r.target}</div>
@@ -6276,7 +6276,7 @@ ${kode ? `
                         onClick={closeModal}
                         aria-label="Tutup modal"
                         title="Tutup (Esc)"
-                        className="shrink-0 w-9 h-9 rounded-full bg-gray-100 hover:bg-red-100 text-gray-700 hover:text-red-700 flex items-center justify-center transition-all"
+                        className="shrink-0 w-9 h-9 rounded-md bg-gray-100 hover:bg-red-100 text-gray-700 hover:text-red-700 flex items-center justify-center transition-all"
                      >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/></svg>
                      </button>
@@ -7980,7 +7980,7 @@ ${kode ? `
                                           {/* eslint-disable-next-line @next/next/no-img-element */}
                                           <img src={URL.createObjectURL(f)} alt="" className="w-16 h-16 object-cover rounded-lg border-2 border-green-300" />
                                           <button type="button" onClick={() => setLendingFotoPengembalianFiles(prev => prev.filter((_, j) => j !== fi))}
-                                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center leading-none">×</button>
+                                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-md w-4 h-4 text-[10px] flex items-center justify-center leading-none">×</button>
                                        </div>
                                     ))}
                                  </div>
@@ -8330,7 +8330,7 @@ ${kode ? `
                                              {/* eslint-disable-next-line @next/next/no-img-element */}
                                              <img src={src} alt={`bukti ${fi + 1}`} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
                                              <button type="button" onClick={() => setLendingForm(prev => ({ ...prev, foto_penerimaan: (prev.foto_penerimaan as string[]).filter((_, j) => j !== fi) }))}
-                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center leading-none">×</button>
+                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-md w-4 h-4 text-[10px] flex items-center justify-center leading-none">×</button>
                                           </div>
                                        );
                                     })}
@@ -8344,7 +8344,7 @@ ${kode ? `
                                           {/* eslint-disable-next-line @next/next/no-img-element */}
                                           <img src={URL.createObjectURL(f)} alt="" className="w-16 h-16 object-cover rounded-lg border-2 border-blue-300" />
                                           <button type="button" onClick={() => setLendingFotoPenerimaanFiles(prev => prev.filter((_, j) => j !== fi))}
-                                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center leading-none">×</button>
+                                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-md w-4 h-4 text-[10px] flex items-center justify-center leading-none">×</button>
                                        </div>
                                     ))}
                                  </div>
@@ -8470,7 +8470,7 @@ ${kode ? `
 
          {isImageViewerOpen && (
             <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center animate-fade-in" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-               <button onClick={closeImageViewer} aria-label="Tutup" className="fixed top-4 right-4 z-[60] w-11 h-11 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all border border-gray-200">
+               <button onClick={closeImageViewer} aria-label="Tutup" className="fixed top-4 right-4 z-[60] w-11 h-11 bg-white rounded-md shadow-xl flex items-center justify-center text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all border border-gray-200">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                </button>
                <div className="absolute inset-0 flex items-center justify-center overflow-hidden" onWheel={handleWheel} onMouseMove={handleMouseMove} onMouseDown={handleMouseDown}>
@@ -8524,7 +8524,7 @@ ${kode ? `
                         <h2 className="text-base font-bold text-gray-900">📷 Scanner QR Code</h2>
                         <p className="text-xs text-gray-500 mt-0.5">Buka kamera HP/laptop untuk scan QR pada tiket peserta.</p>
                      </div>
-                     <button onClick={() => setIsScannerOpen(false)} aria-label="Tutup" className="p-1.5 rounded-full hover:bg-gray-100 transition">
+                     <button onClick={() => setIsScannerOpen(false)} aria-label="Tutup" className="p-1.5 rounded-md hover:bg-gray-100 transition">
                         <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
                      </button>
                   </div>
