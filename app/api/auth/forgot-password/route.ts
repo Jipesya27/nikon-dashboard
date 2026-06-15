@@ -2,22 +2,23 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import { sendWAOtpTemplate } from '@/app/lib/notify';
+import { checkRateLimit } from '@/app/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
-const attempts = new Map<string, { count: number; resetAt: number }>();
-function checkRate(ip: string): boolean {
-  const now = Date.now();
-  const e = attempts.get(ip);
-  if (!e || now > e.resetAt) { attempts.set(ip, { count: 1, resetAt: now + 15 * 60 * 1000 }); return true; }
-  if (e.count >= 3) return false; // strict: 3x per 15 menit
-  e.count++;
-  return true;
+/** Generate password sementara yang cryptographically secure (8 karakter alphanumeric bersih) */
+function generateSecureTempPassword(): string {
+  const charset = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => charset[b % charset.length]).join('');
 }
 
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (!checkRate(ip)) {
+
+  // Strict: hanya 3x per 15 menit per IP
+  if (!(await checkRateLimit(`fp:${ip}`, 3))) {
     return NextResponse.json({ error: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' }, { status: 429 });
   }
 
@@ -35,22 +36,20 @@ export async function POST(req: Request) {
     .eq('nomor_wa', nomor_wa)
     .single();
 
-  // Always return success to prevent WA enumeration
+  // Selalu return success untuk mencegah WA enumeration
   if (!karyawan) return NextResponse.json({ success: true });
 
-  // Generate temp password, hash before storing
-  const tempPw = Math.random().toString(36).substring(2, 10);
+  const tempPw = generateSecureTempPassword();
   const hash = await bcrypt.hash(tempPw, 12);
 
   await supabase.from('karyawan').update({ password: hash }).eq('id_karyawan', karyawan.id_karyawan);
 
-  // Kirim via Meta WA AUTHENTICATION template (bekerja tanpa 24h window)
-  // notif_kode_akun = AUTHENTICATION template dengan COPY_CODE button
+  // Kirim via Meta WA AUTHENTICATION template (COPY_CODE button)
   await sendWAOtpTemplate(
     karyawan.nomor_wa,
     'notif_kode_akun',
     tempPw,
-  ).catch(() => null); // fire-and-forget, jangan gagalkan request utama
+  ).catch(() => null);
 
   return NextResponse.json({ success: true });
 }

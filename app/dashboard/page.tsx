@@ -26,7 +26,7 @@ import DealerTab from '@/app/components/DealerTab';
 import LendingTab from '@/app/components/LendingTab';
 import BotSettingsTab from '@/app/components/BotSettingsTab';
 import ClaimsTab from '@/app/components/ClaimsTab';
-import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield, IconCheck, IconPrint } from '@/app/components/GradientActionBtn';
+import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield, IconCheck, IconPrint, IconKey } from '@/app/components/GradientActionBtn';
 
 /** Konversi Google Drive URL ke proxy lokal agar gambar bisa tampil di dashboard.
  *  drive.google.com tidak bisa di-load langsung karena CORS + domain whitelist Next.js. */
@@ -478,6 +478,7 @@ export default function NikonDashboard() {
    const [chatbotEditValues, setChatbotEditValues] = useState<Record<string, string>>({});
    const [chatbotSaving, setChatbotSaving] = useState<Record<string, boolean>>({});
    const [isSubmitting, setIsSubmitting] = useState(false);
+   const [resetPwLoadingId, setResetPwLoadingId] = useState<string | null>(null);
 
    // NOTIFICATION CHANNEL
    const [notifChannel, setNotifChannel] = useState<'wa_only' | 'email_only' | 'wa_and_email'>('wa_only');
@@ -2525,6 +2526,46 @@ ${kode ? `
          alert('Gagal: ' + message);
       } finally {
          setIsSubmitting(false); }
+   };
+
+   const handleQuickResetPassword = async (k: Karyawan) => {
+      if (!k.id_karyawan || !k.nomor_wa) {
+         alert('Karyawan tidak memiliki nomor WA — tidak bisa mengirim password otomatis.');
+         return;
+      }
+      if (!confirm(`Reset password ${k.nama_karyawan} (${k.username}) dan kirim via WhatsApp?`)) return;
+
+      setResetPwLoadingId(String(k.id_karyawan));
+      try {
+         // Generate password acak yang cryptographically secure di sisi client
+         const charset = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+         const bytes = new Uint8Array(10);
+         crypto.getRandomValues(bytes);
+         const newPassword = Array.from(bytes, b => charset[b % charset.length]).join('');
+
+         // Simpan ke DB (di-hash oleh API)
+         const res = await fetch('/api/admin/karyawan/password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_karyawan: k.id_karyawan, password: newPassword }),
+         });
+         const json = await res.json();
+         if (!res.ok) throw new Error(json.error || 'Gagal menyimpan password');
+
+         // Kirim WA dengan username + password baru + peringatan ganti segera
+         const msg = getText('quickResetPassword', {
+            nama: k.nama_karyawan ?? '',
+            user: k.username ?? '',
+            pass: newPassword,
+         });
+         await sendWhatsAppMessage(k.nomor_wa, msg);
+
+         alert(`✅ Password ${k.nama_karyawan} berhasil di-reset dan dikirim ke WhatsApp ${k.nomor_wa}`);
+      } catch (err: unknown) {
+         alert('Gagal: ' + (err instanceof Error ? err.message : String(err)));
+      } finally {
+         setResetPwLoadingId(null);
+      }
    };
 
    // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -5552,6 +5593,16 @@ ${kode ? `
                                        <td className="px-3 py-2.5">
                                           <div className="flex gap-1.5">
                                              <GradientActionBtn onClick={() => openModal('edit', 'karyawan', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                             {currentUser?.role === 'Super Admin' && (
+                                                <GradientActionBtn
+                                                   onClick={() => handleQuickResetPassword(k)}
+                                                   label="Reset PW"
+                                                   gradientFrom="#F59E0B"
+                                                   gradientTo="#FBBF24"
+                                                   icon={IconKey}
+                                                   disabled={resetPwLoadingId === String(k.id_karyawan)}
+                                                />
+                                             )}
                                              <GradientActionBtn onClick={() => handleDelete('karyawan', k.id_karyawan!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                           </div>
                                        </td>
@@ -5575,6 +5626,16 @@ ${kode ? `
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
                                     <GradientActionBtn onClick={() => openModal('edit', 'karyawan', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                    {currentUser?.role === 'Super Admin' && (
+                                       <GradientActionBtn
+                                          onClick={() => handleQuickResetPassword(k)}
+                                          label="Reset PW"
+                                          gradientFrom="#F59E0B"
+                                          gradientTo="#FBBF24"
+                                          icon={IconKey}
+                                          disabled={resetPwLoadingId === String(k.id_karyawan)}
+                                       />
+                                    )}
                                     <GradientActionBtn onClick={() => handleDelete('karyawan', k.id_karyawan!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                  </div>
                               </div>

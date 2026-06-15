@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { verifyAdminSession } from '@/app/lib/session';
+import { verifyAdminSession, parseIdentityCookieUnsafe } from '@/app/lib/session';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
@@ -15,10 +15,8 @@ function getSupabase() {
 }
 
 function getCurrentUser(req: NextRequest) {
-  const identity = req.cookies.get('karyawan_identity')?.value;
-  if (!identity) return null;
-  const [nama, username, role = ''] = identity.split('|');
-  return { nama: nama || '', username: username || '', role };
+  const raw = req.cookies.get('karyawan_identity')?.value ?? '';
+  return parseIdentityCookieUnsafe(raw);
 }
 
 export async function GET(req: NextRequest) {

@@ -36,6 +36,12 @@ export const DEFAULT_TEMPLATES: Record<string, TemplateInfo> = {
       vars: ['nama', 'pass'],
       template: 'Halo *{nama}*,\n\nPassword Anda telah di-reset oleh Admin.\n\n*Password Baru:* `{pass}`',
    },
+   quickResetPassword: {
+      label: 'Reset Password Cepat (Super Admin)',
+      category: 'Karyawan',
+      vars: ['nama', 'user', 'pass'],
+      template: 'Halo *{nama}*,\n\nPassword akun dashboard Anda telah di-reset oleh Super Admin.\n\n*Username:* `{user}`\n*Password Baru:* `{pass}`\n\n⚠️ *Segera ganti password Anda* setelah berhasil login melalui menu Profil → Ganti Password.\n\nJangan bagikan password ini kepada siapapun.',
+   },
    lendingInitHeader: {
       label: 'Peminjaman — Header Notifikasi',
       category: 'Peminjaman',

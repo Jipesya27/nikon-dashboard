@@ -1,23 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
-import { buildSessionToken, SESSION_MAX_AGE_SECONDS } from '@/app/lib/session';
+import { buildSessionToken, buildIdentityToken, SESSION_MAX_AGE_SECONDS } from '@/app/lib/session';
+import { checkRateLimit, resetRateLimit } from '@/app/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
-const attempts = new Map<string, { count: number; resetAt: number }>();
-function checkRate(ip: string): boolean {
-  const now = Date.now();
-  const e = attempts.get(ip);
-  if (!e || now > e.resetAt) { attempts.set(ip, { count: 1, resetAt: now + 15 * 60 * 1000 }); return true; }
-  if (e.count >= 10) return false;
-  e.count++;
-  return true;
-}
-
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
-  if (!checkRate(ip)) {
+
+  if (!(await checkRateLimit(ip, 10))) {
     return NextResponse.json({ error: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' }, { status: 429 });
   }
 
@@ -44,7 +36,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Akun dinonaktifkan. Silakan hubungi Admin.' }, { status: 403 });
   }
 
-  // Verify password — support both bcrypt hashes and legacy plaintext (auto-migrate)
   const storedPw: string = karyawan.password || '';
   const isHashed = storedPw.startsWith('$2');
   let valid = false;
@@ -52,13 +43,11 @@ export async function POST(req: Request) {
   if (isHashed) {
     valid = await bcrypt.compare(password, storedPw);
   } else {
-    // Legacy plaintext
+    // Legacy plaintext — auto-migrate ke bcrypt saat login berhasil
     valid = storedPw === password;
     if (valid) {
-      // Auto-migrate: hash and update silently
       const hash = await bcrypt.hash(password, 12);
       await supabase.from('karyawan').update({ password: hash }).eq('id_karyawan', karyawan.id_karyawan);
-      karyawan.password = hash;
     }
   }
 
@@ -66,22 +55,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
   }
 
-  // Remove password from response
+  // Login berhasil — reset hitungan rate limit untuk IP ini
+  await resetRateLimit(ip);
+
   const { password: _pw, ...safeKaryawan } = karyawan;
   void _pw;
 
   const secret = process.env.ADMIN_PASSWORD || process.env.SESSION_SECRET!;
-  const token = await buildSessionToken(secret);
+  const sessionToken = await buildSessionToken(secret);
+  const identityToken = await buildIdentityToken({
+    nama: karyawan.nama_karyawan,
+    username: karyawan.username,
+    role: karyawan.role,
+  });
 
   const res = NextResponse.json({ success: true, karyawan: safeKaryawan });
-  res.cookies.set('admin_session', token, {
+  res.cookies.set('admin_session', sessionToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: SESSION_MAX_AGE_SECONDS,
     path: '/',
   });
-  res.cookies.set('karyawan_identity', `${karyawan.nama_karyawan}|${karyawan.username}|${karyawan.role}`, {
+  res.cookies.set('karyawan_identity', identityToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',

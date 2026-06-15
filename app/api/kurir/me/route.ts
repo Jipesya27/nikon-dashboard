@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
-import { verifyAdminSession } from '@/app/lib/session';
+import { verifyAdminSession, parseIdentityCookieUnsafe } from '@/app/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,15 +11,12 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const identity = cookieStore.get('karyawan_identity')?.value;
-  if (!identity) {
-    return NextResponse.json({ error: 'Identity tidak ditemukan' }, { status: 401 });
-  }
-
-  const [, username] = identity.split('|');
-  if (!username) {
+  const raw = cookieStore.get('karyawan_identity')?.value ?? '';
+  const identity = parseIdentityCookieUnsafe(raw);
+  if (!identity?.username) {
     return NextResponse.json({ error: 'Identity tidak valid' }, { status: 401 });
   }
+  const { username } = identity;
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

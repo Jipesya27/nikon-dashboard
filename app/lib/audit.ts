@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { parseIdentityCookieUnsafe } from '@/app/lib/session';
 
 const sbAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,12 +9,9 @@ const sbAdmin = createClient(
 export function getAuditUser(
   cookieStore: { get: (name: string) => { value: string } | undefined }
 ): string {
-  const identity = cookieStore.get('karyawan_identity')?.value;
-  if (identity) {
-    const [nama] = identity.split('|');
-    if (nama) return nama;
-  }
-  return 'Admin';
+  const raw = cookieStore.get('karyawan_identity')?.value ?? '';
+  const identity = parseIdentityCookieUnsafe(raw);
+  return identity?.nama || 'Admin';
 }
 
 export async function writeAuditLog(opts: {
