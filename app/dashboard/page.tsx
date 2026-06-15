@@ -5593,7 +5593,7 @@ ${kode ? `
                                        <td className="px-3 py-2.5">
                                           <div className="flex gap-1.5">
                                              <GradientActionBtn onClick={() => openModal('edit', 'karyawan', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                             {currentUser?.role === 'Super Admin' && (
+                                             {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                                                 <GradientActionBtn
                                                    onClick={() => handleQuickResetPassword(k)}
                                                    label="Reset PW"
@@ -5626,7 +5626,7 @@ ${kode ? `
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
                                     <GradientActionBtn onClick={() => openModal('edit', 'karyawan', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                    {currentUser?.role === 'Super Admin' && (
+                                    {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                                        <GradientActionBtn
                                           onClick={() => handleQuickResetPassword(k)}
                                           label="Reset PW"
