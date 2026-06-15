@@ -292,23 +292,27 @@ export default function ClaimsTab({
                             <div><span className="text-gray-400 font-semibold uppercase tracking-wide">Toko</span><p className="text-gray-800 mt-0.5">{c.nama_toko || '-'}</p></div>
                             <div><span className="text-gray-400 font-semibold uppercase tracking-wide">MKT / FA</span><p className="text-gray-800 mt-0.5">{c.validasi_by_mkt || '-'} / {c.validasi_by_fa || '-'}</p></div>
                             {c.nomor_resi && <div><span className="text-gray-400 font-semibold uppercase tracking-wide">No Resi</span><p className="text-gray-800 mt-0.5 font-mono">{c.nomor_resi} {c.nama_jasa_pengiriman && <span className="text-gray-500">({c.nama_jasa_pengiriman})</span>}</p></div>}
-                            {(c.tanggal_cetak?.length ?? 0) > 0 && (
-                              <div>
-                                <span className="text-gray-400 font-semibold uppercase tracking-wide">Tgl Cetak Label</span>
-                                <div className="flex flex-col gap-0.5 mt-0.5">
-                                  {c.tanggal_cetak!.map((d, i) => (
-                                    <span key={i} className="text-[10px] bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded inline-block w-fit">✓ {d}</span>
-                                  ))}
-                                  {currentUser?.role === 'Super Admin' && (
-                                    <button onClick={async () => {
-                                      if (!c.id_claim) return;
-                                      setClaims(prev => prev.map(cl => cl.id_claim === c.id_claim ? { ...cl, tanggal_cetak: [] } : cl));
-                                      await sbWrite({ action: 'update', table: 'claim_promo', data: { tanggal_cetak: [] }, match: { id_claim: c.id_claim } });
-                                    }} className="text-[10px] text-red-400 hover:underline text-left mt-0.5">Reset</button>
-                                  )}
-                                </div>
+                            <div>
+                              <span className="text-gray-400 font-semibold uppercase tracking-wide">Tgl Cetak Label</span>
+                              <div className="flex flex-col gap-0.5 mt-0.5">
+                                {(c.tanggal_cetak?.length ?? 0) === 0 ? (
+                                  <span className="text-[10px] text-gray-400 italic">Belum dicetak</span>
+                                ) : (
+                                  <>
+                                    {c.tanggal_cetak!.map((d, i) => (
+                                      <span key={i} className="text-[10px] bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded inline-block w-fit">✓ {d}</span>
+                                    ))}
+                                    {currentUser?.role === 'Super Admin' && (
+                                      <button onClick={async () => {
+                                        if (!c.id_claim) return;
+                                        setClaims(prev => prev.map(cl => cl.id_claim === c.id_claim ? { ...cl, tanggal_cetak: [] } : cl));
+                                        await sbWrite({ action: 'update', table: 'claim_promo', data: { tanggal_cetak: [] }, match: { id_claim: c.id_claim } });
+                                      }} className="text-[10px] text-red-400 hover:underline text-left mt-0.5">Reset</button>
+                                    )}
+                                  </>
+                                )}
                               </div>
-                            )}
+                            </div>
                             {c.catatan_mkt && (
                               <div className="col-span-2">
                                 <span className="text-gray-400 font-semibold uppercase tracking-wide">Catatan MKT</span>
@@ -386,20 +390,24 @@ export default function ClaimsTab({
                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-3 justify-end flex-wrap">
                   <div className="flex flex-col gap-1">
                     <button onClick={() => handlePrintLabelPengiriman(c, claimNumberMap.get(c.id_claim!))} className="text-blue-600 text-xs font-bold hover:underline">🏷️ Print Label</button>
-                    {(c.tanggal_cetak?.length ?? 0) > 0 && (
-                      <div className="flex flex-col gap-0.5">
-                        {c.tanggal_cetak!.map((d, i) => (
-                          <span key={i} className="text-[10px] bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded">✓ {d}</span>
-                        ))}
-                        {currentUser?.role === 'Super Admin' && (
-                          <button onClick={async () => {
-                            if (!c.id_claim) return;
-                            setClaims(prev => prev.map(cl => cl.id_claim === c.id_claim ? { ...cl, tanggal_cetak: [] } : cl));
-                            await sbWrite({ action: 'update', table: 'claim_promo', data: { tanggal_cetak: [] }, match: { id_claim: c.id_claim } });
-                          }} className="text-[10px] text-red-400 hover:underline text-left">Reset</button>
-                        )}
-                      </div>
-                    )}
+                    <div className="flex flex-col gap-0.5">
+                      {(c.tanggal_cetak?.length ?? 0) === 0 ? (
+                        <span className="text-[10px] text-gray-400 italic">Belum dicetak</span>
+                      ) : (
+                        <>
+                          {c.tanggal_cetak!.map((d, i) => (
+                            <span key={i} className="text-[10px] bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded">✓ {d}</span>
+                          ))}
+                          {currentUser?.role === 'Super Admin' && (
+                            <button onClick={async () => {
+                              if (!c.id_claim) return;
+                              setClaims(prev => prev.map(cl => cl.id_claim === c.id_claim ? { ...cl, tanggal_cetak: [] } : cl));
+                              await sbWrite({ action: 'update', table: 'claim_promo', data: { tanggal_cetak: [] }, match: { id_claim: c.id_claim } });
+                            }} className="text-[10px] text-red-400 hover:underline text-left">Reset</button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                   <button onClick={() => {
                     const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
