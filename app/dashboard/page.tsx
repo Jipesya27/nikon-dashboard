@@ -305,13 +305,13 @@ export default function NikonDashboard() {
 
    const getBadgeStyle = (color: string) => {
       switch(color) {
-         case 'Teal': return 'bg-teal-100 text-teal-800 border border-teal-300';
-         case 'Hijau': return 'bg-green-100 text-green-800 border border-green-300';
-         case 'Pink': return 'bg-pink-100 text-pink-800 border border-pink-200';
-         case 'Biru': return 'bg-blue-100 text-blue-800 border border-blue-200';
-         case 'Orange': return 'bg-orange-100 text-orange-800 border border-orange-200';
-         case 'Merah': return 'bg-red-100 text-red-800 border border-red-200';
-         case 'Putih': default: return 'bg-white text-slate-800 border border-gray-300';
+         case 'Teal': return 'bg-teal-100 text-teal-800 border border-teal-300 rounded-full';
+         case 'Hijau': return 'bg-green-100 text-green-800 border border-green-300 rounded-full';
+         case 'Pink': return 'bg-pink-100 text-pink-800 border border-pink-200 rounded-full';
+         case 'Biru': return 'bg-blue-100 text-blue-800 border border-blue-200 rounded-full';
+         case 'Orange': return 'bg-orange-100 text-orange-800 border border-orange-200 rounded-full';
+         case 'Merah': return 'bg-red-100 text-red-800 border border-red-200 rounded-full';
+         case 'Putih': default: return 'bg-white text-slate-800 border border-gray-300 rounded-full';
       }
    };
 
