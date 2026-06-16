@@ -117,7 +117,7 @@ const REQUIRED_TEMPLATES = [
   { name: 'notif_event_attendance',  cat: 'UTILITY',        params: 2, desc: 'Kehadiran dikonfirmasi — nama, event',                                  urlInParam: false },
   { name: 'notif_deposit_refund',    cat: 'UTILITY',        params: 3, desc: 'Deposit dikembalikan — nama, event, URL bukti (⚠️ gunakan tombol URL)', urlInParam: true  },
   { name: 'notif_kode_akun',         cat: 'AUTHENTICATION', params: 0, desc: 'Kode akses / reset password karyawan (AUTHENTICATION, OTP button)',     urlInParam: false },
-  { name: 'notif_akun_karyawan',     cat: 'UTILITY',        params: 3, desc: 'Notifikasi profil diperbarui Admin — {{1}}nama, {{2}}nama pengguna, {{3}}kata kunci', urlInParam: false },
+  { name: 'akun_diperbarui',         cat: 'UTILITY',        params: 3, desc: 'Notifikasi profil diperbarui Admin — {{1}}nama, {{2}}nama pengguna, {{3}}kata kunci', urlInParam: false },
   { name: 'notif_lending_init_v2',   cat: 'UTILITY',        params: 4, desc: 'Peminjaman dibuat — {{1}}nama, {{2}}estimasi kembali, {{3}}daftar barang, {{4}}link Drive', urlInParam: false },
   { name: 'notif_lending_return_v2',      cat: 'UTILITY', params: 4, desc: 'Semua barang dikembalikan — {{1}}nama, {{2}}tgl kembali, {{3}}daftar barang, {{4}}link Drive', urlInParam: false },
   { name: 'notif_lending_return_partial', cat: 'UTILITY', params: 4, desc: 'Pengembalian sebagian — {{1}}nama, {{2}}tgl kembali, {{3}}daftar barang, {{4}}link Drive',         urlInParam: false },
@@ -173,7 +173,7 @@ export default function WaTemplatesTab() {
     try {
       const payload = {
         name,
-        language: 'id',
+        language: 'en_US',
         category: 'UTILITY',
         components: [
           {
@@ -599,7 +599,7 @@ export default function WaTemplatesTab() {
             <div className="space-y-1.5">
               {REQUIRED_TEMPLATES.map(t => {
                 const exists = templates.some(mt => mt.name === t.name);
-                const isInstallable = t.name === 'notif_akun_karyawan';
+                const isInstallable = t.name === 'akun_diperbarui';
                 return (
                   <div key={t.name} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg ${exists ? 'bg-green-50' : 'bg-red-50'}`}>
                     <span className="mt-0.5 shrink-0 text-sm">{exists ? '✅' : '❌'}</span>
