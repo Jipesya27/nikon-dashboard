@@ -495,6 +495,7 @@ export default function NikonDashboard() {
    const [dealerSheet, setDealerSheet] = useState<{ headers: string[]; rows: string[][]; sheetName: string } | null>(null);
    const [dealerLoading, setDealerLoading] = useState(false);
    const [dealerError, setDealerError] = useState('');
+   const [dealerUnsyncedCount, setDealerUnsyncedCount] = useState(0);
    const [dealerSearch, setDealerSearch] = useState('');
    const [dealerSelected, setDealerSelected] = useState<Set<number>>(new Set());
    const [dealerSortCol, setDealerSortCol] = useState<number>(-1);
@@ -818,11 +819,17 @@ export default function NikonDashboard() {
       if (activeTab !== 'dealer' || dealerSheet !== null || dealerLoading) return;
       setDealerLoading(true);
       setDealerError('');
-      fetch('/api/transaksi-dealer')
+      // Muat dari Supabase, lalu cek unsynced di background
+      fetch('/api/transaksi-dealer/sync')
          .then(r => r.json())
-         .then((json: { error?: string; headers: string[]; rows: string[][]; sheetName: string }) => {
+         .then((json: { error?: string; headers: string[]; rows: string[][]; total: number; source?: string }) => {
             if (json.error) throw new Error(json.error);
-            setDealerSheet(json);
+            setDealerSheet({ headers: json.headers, rows: json.rows, sheetName: 'Supabase' });
+            // Cek unsynced di background (tidak block loading)
+            fetch('/api/transaksi-dealer/check')
+               .then(r => r.json())
+               .then((chk: { unsynced_count?: number }) => { if (chk.unsynced_count) setDealerUnsyncedCount(chk.unsynced_count); })
+               .catch(() => {/* silent */});
          })
          .catch((e: Error) => setDealerError(e.message))
          .finally(() => setDealerLoading(false));
@@ -3981,13 +3988,21 @@ ${kode ? `
                         <h3 className="px-2.5 pt-2 pb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Halaman Lain</h3>
                         <div className="space-y-px">
                            {[
+                              { href: '/nikon', label: 'Website Nikon' },
                               { href: '/claim', label: 'Form Claim' },
                               { href: '/garansi', label: 'Form Garansi' },
                               { href: '/events/register', label: 'Daftar Event' },
                               { href: '/nikon/upload-lomba', label: 'Upload Foto Lomba' },
-                              ...((currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') ? [{ href: '/admin/google-auth', label: 'Google Drive Auth' }] : []),
-                              ...(currentUser?.role === 'Super Admin' ? [
+                              ...((currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin' || currentUser?.akses_halaman?.includes('admin_events')) ? [{ href: '/admin/events', label: 'Admin Events' }] : []),
+                              ...((currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin' || currentUser?.akses_halaman?.includes('admin_attendance')) ? [{ href: '/admin/events/attendance', label: 'Absensi Event' }] : []),
+                              ...((currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin' || currentUser?.akses_halaman?.includes('admin_deposit')) ? [{ href: '/admin/events/deposit', label: 'Refund Deposit' }] : []),
+                              ...((currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') ? [
+                                 { href: '/admin/monitoring', label: 'System Monitoring' },
+                                 { href: '/admin/google-auth', label: 'Google Drive Auth' },
+                                 { href: 'https://photos.altanikindo.web.id', label: 'Galeri Foto' },
                                  { href: 'https://backup.altanikindo.web.id/dashboard', label: 'Backup Dashboard' },
+                              ] : []),
+                              ...(currentUser?.role === 'Super Admin' ? [
                                  { href: 'https://terminal.altanikindo.web.id', label: 'Terminal SSH' },
                               ] : []),
                            ].map(link => (
@@ -5829,6 +5844,8 @@ ${kode ? `
                      setDealerSortDir={setDealerSortDir}
                      dealerColFilters={dealerColFilters}
                      setDealerColFilters={setDealerColFilters}
+                     dealerUnsyncedCount={dealerUnsyncedCount}
+                     setDealerUnsyncedCount={setDealerUnsyncedCount}
                   />
                )}
 

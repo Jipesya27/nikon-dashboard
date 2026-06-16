@@ -20,6 +20,8 @@ export interface DealerTabProps {
   setDealerSortDir: React.Dispatch<React.SetStateAction<'asc' | 'desc'>>;
   dealerColFilters: Record<number, string>;
   setDealerColFilters: React.Dispatch<React.SetStateAction<Record<number, string>>>;
+  dealerUnsyncedCount?: number;
+  setDealerUnsyncedCount?: React.Dispatch<React.SetStateAction<number>>;
 }
 
 export default function DealerTab({
@@ -30,6 +32,8 @@ export default function DealerTab({
   dealerSortCol, setDealerSortCol,
   dealerSortDir, setDealerSortDir,
   dealerColFilters, setDealerColFilters,
+  dealerUnsyncedCount = 0,
+  setDealerUnsyncedCount,
 }: DealerTabProps) {
   const _findCol = (hdrs: string[], cands: string[]) => {
     for (const c of cands) {
@@ -126,6 +130,13 @@ export default function DealerTab({
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Gagal sync');
       setSyncMsg(`✓ ${json.message}`);
+      // Reload data dari Supabase setelah sync
+      const getRes = await fetch('/api/transaksi-dealer/sync');
+      const getData = await getRes.json();
+      if (!getData.error) {
+        setDealerSheet({ headers: getData.headers, rows: getData.rows, sheetName: 'Supabase' });
+        setDealerUnsyncedCount?.(0);
+      }
     } catch (e: unknown) {
       setSyncMsg(`✗ ${e instanceof Error ? e.message : 'Error'}`);
     } finally {
@@ -188,7 +199,7 @@ ${pages.join('')}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-bold text-gray-800">🏪 Transaksi Dealer</h2>
-          {dealerSheet && <span className="text-xs text-gray-500">Sheet: {dealerSheet.sheetName} · {dealerSheet.rows.length} baris</span>}
+          {dealerSheet && <span className="text-xs text-gray-500">Sumber: {dealerSheet.sheetName} · {dealerSheet.rows.length} baris</span>}
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -218,10 +229,22 @@ ${pages.join('')}
         </div>
       </div>
 
+      {dealerUnsyncedCount > 0 && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 text-sm text-amber-800">
+          <svg className="w-5 h-5 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+          <span><b>{dealerUnsyncedCount} baris</b> di Google Sheets belum tersync ke Supabase.</span>
+          <button
+            onClick={doSync}
+            disabled={syncLoading}
+            className="ml-auto px-3 py-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white rounded-lg text-xs font-bold transition"
+          >{syncLoading ? '⏳ Sync...' : '☁️ Sync Sekarang'}</button>
+        </div>
+      )}
+
       {dealerLoading && (
         <div className="text-center py-20 text-gray-400">
           <div className="text-4xl mb-3 animate-pulse">⏳</div>
-          <p>Memuat data dari Google Sheets...</p>
+          <p>Memuat data dari Supabase...</p>
         </div>
       )}
 
