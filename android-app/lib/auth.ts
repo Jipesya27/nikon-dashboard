@@ -3,25 +3,13 @@ import { API_BASE_URL } from '@/constants/config';
 import { saveSession, clearSession, getSession } from './storage';
 import { Karyawan, SessionData } from './types';
 
-function parseCookies(setCookieHeaders: string[]): Record<string, string> {
-  const cookies: Record<string, string> = {};
-  for (const header of setCookieHeaders) {
-    const [pair] = header.split(';');
-    const [name, ...rest] = pair.split('=');
-    cookies[name.trim()] = rest.join('=').trim();
-  }
-  return cookies;
-}
-
 export async function login(username: string, password: string): Promise<Karyawan> {
   const res = await axios.post(
-    `${API_BASE_URL}/api/auth/karyawan-login`,
+    `${API_BASE_URL}/api/auth/mobile-login`,
     { username, password },
     {
       timeout: 15000,
       headers: { 'Content-Type': 'application/json' },
-      // Don't follow redirects; we handle the raw response
-      maxRedirects: 0,
       validateStatus: (s) => s < 500,
     }
   );
@@ -36,15 +24,9 @@ export async function login(username: string, password: string): Promise<Karyawa
     throw new Error(res.data?.error || 'Login gagal');
   }
 
-  // Extract Set-Cookie headers — axios normalizes to array
-  const rawHeaders = res.headers['set-cookie'] || [];
-  const cookies = parseCookies(Array.isArray(rawHeaders) ? rawHeaders : [rawHeaders]);
-
-  const adminSession = cookies['admin_session'];
-  const karyawanIdentity = cookies['karyawan_identity'];
-
+  const { adminSession, karyawanIdentity } = res.data.tokens || {};
   if (!adminSession || !karyawanIdentity) {
-    throw new Error('Session tidak diterima. Coba lagi.');
+    throw new Error('Session tidak diterima dari server. Coba lagi.');
   }
 
   const karyawan: Karyawan = res.data.karyawan;
