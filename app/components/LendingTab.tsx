@@ -37,23 +37,47 @@ export default function LendingTab({
   const selesai  = lendingRecords.filter(l => l.status_peminjaman === 'selesai').length;
   const totalBarang = lendingRecords.reduce((s, l) => s + l.items_dipinjam.length, 0);
 
+  const [filterStatus, setFilterStatus] = React.useState<string>('semua');
+  const [tableVisible, setTableVisible] = React.useState(true);
+
+  const handleFilterStatus = (key: string) => {
+    setTableVisible(false);
+    setTimeout(() => { setFilterStatus(key); setTableVisible(true); }, 180);
+  };
+
+  const filteredRecords = filterStatus === 'semua'
+    ? sortedLendingRecords
+    : sortedLendingRecords.filter(l => l.status_peminjaman === filterStatus);
+
+  const statCards = [
+    { key: 'semua',   label: 'Total Peminjaman', count: lendingRecords.length, color: 'text-gray-900',   bar: 'bg-gray-400',   barActive: 'bg-gray-600',   border: 'border-gray-400'   },
+    { key: 'aktif',   label: 'Aktif',            count: aktif,                 color: 'text-orange-700', bar: 'bg-orange-400', barActive: 'bg-orange-500',  border: 'border-orange-400' },
+    { key: 'partial', label: 'Partial',           count: partial,               color: 'text-yellow-700', bar: 'bg-yellow-400', barActive: 'bg-yellow-500',  border: 'border-yellow-400' },
+    { key: 'selesai', label: 'Selesai',           count: selesai,               color: 'text-green-700',  bar: 'bg-green-500',  barActive: 'bg-green-600',   border: 'border-green-500'  },
+    { key: 'barang',  label: 'Total Barang',      count: totalBarang,           color: 'text-blue-700',   bar: 'bg-blue-500',   barActive: 'bg-blue-600',    border: 'border-blue-500'   },
+  ];
+
   return (
     <div className="space-y-4 animate-fade-in text-gray-900">
-      {/* Stat cards */}
+      {/* Stat cards sebagai filter */}
       <div className="grid grid-cols-5 gap-2">
-        {([
-          { label: 'Total Peminjaman', count: lendingRecords.length, color: 'text-gray-900', bar: 'bg-gray-400' },
-          { label: 'Aktif', count: aktif, color: 'text-orange-700', bar: 'bg-orange-400' },
-          { label: 'Partial', count: partial, color: 'text-yellow-700', bar: 'bg-yellow-400' },
-          { label: 'Selesai', count: selesai, color: 'text-green-700', bar: 'bg-green-500' },
-          { label: 'Total Barang', count: totalBarang, color: 'text-blue-700', bar: 'bg-blue-500' },
-        ] as { label: string; count: number; color: string; bar: string }[]).map(s => (
-          <div key={s.label} className="bg-white rounded-xl p-3 border-2 border-gray-200 shadow-sm">
-            <div className={`w-full h-1 rounded-full mb-2 ${s.bar}`}></div>
-            <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
-            <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mt-0.5 leading-tight">{s.label}</p>
-          </div>
-        ))}
+        {statCards.map(s => {
+          const isActive = filterStatus === s.key;
+          const isClickable = s.key !== 'barang';
+          return (
+            <button
+              key={s.key}
+              onClick={() => isClickable && handleFilterStatus(isActive ? 'semua' : s.key)}
+              disabled={!isClickable}
+              className={`bg-white rounded-xl p-3 text-left border-2 shadow-sm transition-all duration-300 ${isClickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : 'cursor-default'} ${isActive ? `${s.border} shadow-md -translate-y-0.5` : 'border-gray-200'}`}
+            >
+              <div className={`w-full h-1 rounded-full mb-2 transition-all duration-300 ${isActive ? s.barActive : s.bar}`} />
+              <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mt-0.5 leading-tight">{s.label}</p>
+              {isActive && isClickable && <p className="text-[9px] text-gray-400 mt-1">Klik untuk reset</p>}
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
@@ -65,6 +89,7 @@ export default function LendingTab({
         <button onClick={() => openModal('create', 'lending')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2 rounded-md font-bold text-sm transition shadow-sm">+ Pinjam Barang</button>
       </div>
 
+      <div style={{ opacity: tableVisible ? 1 : 0, transform: tableVisible ? 'translateY(0)' : 'translateY(6px)', transition: 'opacity 0.22s cubic-bezier(0.4,0,0.2,1), transform 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
       {viewMode === 'table' ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
           <table className="w-full text-sm">
@@ -84,7 +109,7 @@ export default function LendingTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {sortedLendingRecords.map((l: PeminjamanBarang) => (
+              {filteredRecords.map((l: PeminjamanBarang) => (
                 <tr key={l.id_peminjaman} className={`border-l-4 ${l.status_peminjaman === 'aktif' ? 'border-l-orange-400' : l.status_peminjaman === 'partial' ? 'border-l-yellow-400' : 'border-l-green-500'} hover:bg-gray-50 transition-colors`}>
                   <td className="px-3 py-2.5">
                     <p className="font-bold text-slate-800">{l.nama_peminjam}</p>
@@ -197,7 +222,7 @@ export default function LendingTab({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedLendingRecords.map((l: PeminjamanBarang) => (
+          {filteredRecords.map((l: PeminjamanBarang) => (
             <div key={l.id_peminjaman} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
               <div className="border-b border-gray-100 pb-3 mb-3">
                 <h3 className="font-bold text-base text-slate-800">{l.nama_peminjam}</h3>
@@ -240,6 +265,7 @@ export default function LendingTab({
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
