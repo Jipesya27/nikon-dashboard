@@ -171,15 +171,27 @@ export default function WaTemplatesTab() {
     setInstalling(name);
     setInstallMsg('');
     try {
-      const res = await fetch('/api/admin/create-wa-template', {
+      const payload = {
+        name,
+        language: 'id',
+        category: 'UTILITY',
+        components: [
+          {
+            type: 'BODY',
+            text: 'Halo {{1}},\n\nPassword akun Nikon Dashboard Anda telah diubah oleh Admin.\n\nUsername Anda: {{2}}\n\nSilakan hubungi Admin untuk mendapatkan password baru Anda secara langsung.\n\naltanikindo.com',
+            example: { body_text: [['Budi Santoso', 'budi.santoso']] },
+          },
+        ],
+      };
+      const res = await fetch('/api/admin/wa-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Gagal membuat template');
-      setInstallMsg(`✅ Template "${name}" berhasil dibuat dan sedang direview Meta.`);
+      if (!res.ok) throw new Error(json.error || JSON.stringify(json));
+      setInstallMsg(`✅ Template "${name}" berhasil dikirim ke Meta untuk review.`);
       await fetchTemplates();
     } catch (e) {
       setInstallMsg(`❌ ${e instanceof Error ? e.message : String(e)}`);
