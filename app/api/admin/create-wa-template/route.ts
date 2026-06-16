@@ -37,7 +37,7 @@ export async function POST() {
 
   // Buat template
   const templateBody = {
-    name: 'reset_password_karyawan',
+    name: 'notif_password_karyawan',
     language: 'id',
     category: 'UTILITY',
     components: [
