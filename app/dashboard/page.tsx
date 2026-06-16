@@ -2477,14 +2477,12 @@ ${kode ? `
             if (insertErr) throw new Error(insertErr.message);
             const newKaryawan = newKaryawanArr?.[0];
             if (!newKaryawan) throw new Error('Gagal mendapat id_karyawan baru');
-            // Hash password via dedicated endpoint
+            // Hash password via dedicated endpoint — API juga kirim WA template otomatis
             await fetch('/api/admin/karyawan/password', {
                method: 'POST',
                headers: { 'Content-Type': 'application/json' },
                body: JSON.stringify({ id_karyawan: newKaryawan.id_karyawan, password: passwordToUse }),
             });
-            const msg = getText('newKaryawan', { nama: karyawanForm.nama_karyawan!, user: karyawanForm.username!, pass: passwordToUse });
-            await sendWhatsAppMessage(karyawanForm.nomor_wa, msg);
          } else {
             const updateData = { ...karyawanForm };
             const plainPw = updateData.password;
@@ -2492,14 +2490,13 @@ ${kode ? `
             const { error: updErr } = await sbWrite({ action: 'update', table: 'karyawan', data: updateData, match: { id_karyawan: editingId } });
             if (updErr) throw new Error(updErr.message);
 
-            if (plainPw && karyawanForm.nomor_wa) {
+            if (plainPw) {
+               // API juga kirim WA template otomatis
                await fetch('/api/admin/karyawan/password', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ id_karyawan: editingId, password: plainPw }),
                });
-               const msg = getText('updatePasswordAdmin', { nama: karyawanForm.nama_karyawan!, pass: plainPw });
-               await sendWhatsAppMessage(karyawanForm.nomor_wa, msg);
             }
          }
          fetchKaryawans(); closeModal();
@@ -2521,12 +2518,7 @@ ${kode ? `
          });
          if (!resetRes.ok) throw new Error('Gagal menyimpan password');
 
-         if (karyawanForm.nomor_wa) {
-            const msg = getText('resetPasswordAdmin', { nama: karyawanForm.nama_karyawan!, pass: karyawanForm.password! });
-            await sendWhatsAppMessage(karyawanForm.nomor_wa, msg);
-         }
-
-         alert(`Password untuk ${karyawanForm.username} berhasil di-reset dan dikirim via WA!`);
+         alert(`Password untuk ${karyawanForm.username} berhasil di-reset${karyawanForm.nomor_wa ? ' — notifikasi WA terkirim otomatis' : ''}.`);
          fetchKaryawans(); closeModal();
       } catch (err: unknown) {
          const message = err instanceof Error ? err.message : String(err);
@@ -2559,15 +2551,7 @@ ${kode ? `
          const json = await res.json();
          if (!res.ok) throw new Error(json.error || 'Gagal menyimpan password');
 
-         // Kirim WA dengan username + password baru + peringatan ganti segera
-         const msg = getText('quickResetPassword', {
-            nama: k.nama_karyawan ?? '',
-            user: k.username ?? '',
-            pass: newPassword,
-         });
-         await sendWhatsAppMessage(k.nomor_wa, msg);
-
-         alert(`✅ Password ${k.nama_karyawan} berhasil di-reset dan dikirim ke WhatsApp ${k.nomor_wa}`);
+         alert(`✅ Password ${k.nama_karyawan} berhasil di-reset — notifikasi WA terkirim ke ${k.nomor_wa}`);
       } catch (err: unknown) {
          alert('Gagal: ' + (err instanceof Error ? err.message : String(err)));
       } finally {
