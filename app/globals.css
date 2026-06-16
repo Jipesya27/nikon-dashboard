@@ -458,7 +458,10 @@ input[type="file"].input-form {
     inset 0 1px 0 rgba(255,255,255,0.7),
     inset 0 -1px 0 rgba(0,0,0,0.06),
     0 1px 3px rgba(0,0,0,0.08);
-  transition: all 0.2s ease;
+  transition: background 0.4s cubic-bezier(0.4,0,0.2,1),
+              box-shadow 0.4s cubic-bezier(0.4,0,0.2,1),
+              border-color 0.4s cubic-bezier(0.4,0,0.2,1),
+              filter 0.4s cubic-bezier(0.4,0,0.2,1);
   z-index: 0;
 }
 .glass-button:hover::before {
@@ -497,7 +500,9 @@ input[type="file"].input-form {
   filter: blur(6px);
   border-radius: 9999px;
   z-index: -1;
-  transition: all 0.2s ease;
+  transition: bottom 0.4s cubic-bezier(0.4,0,0.2,1),
+              background 0.4s cubic-bezier(0.4,0,0.2,1),
+              filter 0.4s cubic-bezier(0.4,0,0.2,1);
   pointer-events: none;
 }
 .glass-button-wrap:hover .glass-button-shadow {

@@ -79,6 +79,11 @@ export default function ClaimsTab({
   const toggleExpand = (id: string) => setExpandedClaimIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const tableScrollRef = React.useRef<HTMLDivElement>(null);
   const scrollTable = (dir: 'left' | 'right') => { tableScrollRef.current?.scrollBy({ left: dir === 'right' ? 300 : -300, behavior: 'smooth' }); };
+  const [tableVisible, setTableVisible] = React.useState(true);
+  const handleFilterChange = (key: string) => {
+    setTableVisible(false);
+    setTimeout(() => { setFilterStatusWarna(key); setTableVisible(true); }, 180);
+  };
 
   // Stat card definitions
   const statCards = [
@@ -176,7 +181,7 @@ export default function ClaimsTab({
               active={filterStatusWarna === p.key}
               activeFrom={p.from}
               activeTo={p.to}
-              onClick={() => setFilterStatusWarna(filterStatusWarna === p.key ? 'Semua' : p.key)}
+              onClick={() => handleFilterChange(filterStatusWarna === p.key ? 'Semua' : p.key)}
               contentClassName="flex items-center gap-1"
             >
               {p.label} <span className="font-bold">{p.count}</span>
@@ -184,6 +189,7 @@ export default function ClaimsTab({
           ))}
         </div>
       </div>
+      <div style={{ opacity: tableVisible ? 1 : 0, transform: tableVisible ? 'translateY(0)' : 'translateY(6px)', transition: 'opacity 0.22s cubic-bezier(0.4,0,0.2,1), transform 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
       {viewMode === 'table' ? (
         <div className="relative">
           <button onClick={() => scrollTable('left')} className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center text-gray-500 hover:text-gray-800 hover:shadow-lg transition -translate-x-3">
@@ -431,6 +437,7 @@ export default function ClaimsTab({
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }
