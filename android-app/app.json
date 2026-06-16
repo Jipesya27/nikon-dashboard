@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Nikon Dashboard",
+    "slug": "nikon-dashboard",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "nikondashboard",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFE500"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nikondashboard.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Digunakan untuk scan QR absensi event"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFE500"
+      },
+      "package": "com.nikondashboard.app",
+      "permissions": ["android.permission.CAMERA"]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Digunakan untuk scan QR absensi event Nikon"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
