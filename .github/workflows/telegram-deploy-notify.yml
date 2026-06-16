@@ -83,15 +83,15 @@ jobs:
 
           MESSAGE="${EMOJI} <b>Vercel Deployment ${STATUS_TEXT}</b>
 
-<b>Project:</b> nikon-dashboard
-<b>Environment:</b> production
-<b>Commit:</b> <code>${SHORT_SHA}</code> ${COMMIT_MSG}
-<b>By:</b> ${PUSHER}
-<b>Waktu:</b> ${TIMESTAMP}"
+          <b>Project:</b> nikon-dashboard
+          <b>Environment:</b> production
+          <b>Commit:</b> <code>${SHORT_SHA}</code> ${COMMIT_MSG}
+          <b>By:</b> ${PUSHER}
+          <b>Waktu:</b> ${TIMESTAMP}"
 
           if [ -n "$DEPLOYMENT_URL" ]; then
             MESSAGE="${MESSAGE}
-<b>URL:</b> <a href=\"https://${DEPLOYMENT_URL}\">https://${DEPLOYMENT_URL}</a>"
+          <b>URL:</b> <a href=\"https://${DEPLOYMENT_URL}\">https://${DEPLOYMENT_URL}</a>"
           fi
 
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
