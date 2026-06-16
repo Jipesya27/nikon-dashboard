@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   if (existing.nomor_wa) {
     void sendWATemplate(
       existing.nomor_wa,
-      'notif_akun_karyawan',
+      'akun_diperbarui',
       [existing.nama_karyawan ?? existing.username ?? 'Karyawan', existing.username ?? '', password],
     ).catch((e) => console.error('[password/route] Gagal kirim WA template:', e));
   }
