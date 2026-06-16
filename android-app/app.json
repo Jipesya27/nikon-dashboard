@@ -26,7 +26,8 @@
         "backgroundColor": "#FFE500"
       },
       "package": "com.nikondashboard.app",
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": ["android.permission.CAMERA"],
+      "minSdkVersion": 24
     },
     "plugins": [
       "expo-router",
