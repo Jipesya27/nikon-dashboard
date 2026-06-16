@@ -36,8 +36,9 @@ export default function DealerTab({
   setDealerUnsyncedCount,
 }: DealerTabProps) {
   const _findCol = (hdrs: string[], cands: string[]) => {
+    const norm = (s: string) => s.toLowerCase().replace(/_/g, ' ');
     for (const c of cands) {
-      const i = hdrs.findIndex(h => h.toLowerCase().includes(c.toLowerCase()));
+      const i = hdrs.findIndex(h => norm(h).includes(norm(c)));
       if (i >= 0) return i;
     }
     return -1;
