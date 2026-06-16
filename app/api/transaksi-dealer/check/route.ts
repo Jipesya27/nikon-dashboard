@@ -63,10 +63,9 @@ export async function GET(req: NextRequest) {
       .select('row_hash');
 
     if (error) throw new Error(error.message);
-
     const sbHashes = new Set((sbData ?? []).map((r: { row_hash: string }) => r.row_hash));
 
-    // 2. Hitung row di Google Sheets
+    // 2. Ambil data Google Sheets
     const accessToken = await getGoogleAccessToken();
     const exportUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
     const res = await fetch(exportUrl, {
@@ -76,20 +75,21 @@ export async function GET(req: NextRequest) {
     if (!res.ok) throw new Error(`Sheets error HTTP ${res.status}`);
     const csvText = await res.text();
     const allRows = parseCsv(csvText);
-    if (allRows.length < 2) return NextResponse.json({ sheets_count: 0, supabase_count: sbHashes.size, unsynced_count: 0 });
+    if (allRows.length < 2) {
+      return NextResponse.json({ sheets_count: 0, supabase_count: sbHashes.size, unsynced_count: 0 });
+    }
 
     const headers = allRows[0].map(h => h.trim());
     const dataRows = allRows.slice(1)
       .map(row => { const p = [...row]; while (p.length < headers.length) p.push(''); return p.map(c => c.trim()); })
       .filter(row => row.some(c => c !== ''));
 
-    // 3. Bandingkan hash
-    const unsyncedHashes = dataRows.filter(row => !sbHashes.has(rowHash(headers, row)));
+    const unsynced = dataRows.filter(row => !sbHashes.has(rowHash(headers, row)));
 
     return NextResponse.json({
       sheets_count: dataRows.length,
       supabase_count: sbHashes.size,
-      unsynced_count: unsyncedHashes.length,
+      unsynced_count: unsynced.length,
     });
   } catch (err: unknown) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Error' }, { status: 500 });
