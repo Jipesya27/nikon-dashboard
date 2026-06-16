@@ -1,0 +1,89 @@
+/**
+ * POST /api/auth/mobile-login
+ * Login khusus Android/iOS app — mengembalikan token di response body
+ * karena React Native (OkHttp/NSURLSession) memblokir akses ke Set-Cookie header.
+ */
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
+import { buildSessionToken, buildIdentityToken, SESSION_MAX_AGE_SECONDS } from '@/app/lib/session';
+import { checkRateLimit, resetRateLimit } from '@/app/lib/rateLimit';
+
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: Request) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+
+  try {
+    if (!(await checkRateLimit(ip, 10))) {
+      return NextResponse.json({ error: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' }, { status: 429 });
+    }
+  } catch {
+    // Tabel login_attempts belum dibuat atau error DB — abaikan, jangan blokir login
+  }
+
+  let username: string, password: string;
+  try { ({ username, password } = await req.json()); }
+  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }); }
+
+  if (!username || !password) {
+    return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
+  }
+
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+  const { data: karyawan } = await supabase
+    .from('karyawan')
+    .select('*')
+    .eq('username', username)
+    .single();
+
+  if (!karyawan) {
+    return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
+  }
+  if (karyawan.status_aktif === false) {
+    return NextResponse.json({ error: 'Akun dinonaktifkan. Silakan hubungi Admin.' }, { status: 403 });
+  }
+
+  const storedPw: string = karyawan.password || '';
+  const isHashed = storedPw.startsWith('$2');
+  let valid = false;
+
+  if (isHashed) {
+    valid = await bcrypt.compare(password, storedPw);
+  } else {
+    valid = storedPw === password;
+    if (valid) {
+      const hash = await bcrypt.hash(password, 12);
+      await supabase.from('karyawan').update({ password: hash }).eq('id_karyawan', karyawan.id_karyawan);
+    }
+  }
+
+  if (!valid) {
+    return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
+  }
+
+  try { await resetRateLimit(ip); } catch { /* abaikan */ }
+
+  const { password: _pw, ...safeKaryawan } = karyawan;
+  void _pw;
+
+  const secret = process.env.ADMIN_PASSWORD || process.env.SESSION_SECRET!;
+  const adminSession = await buildSessionToken(secret);
+  const karyawanIdentity = await buildIdentityToken({
+    nama: karyawan.nama_karyawan,
+    username: karyawan.username,
+    role: karyawan.role,
+  });
+
+  // Kembalikan token di body (bukan cookie) agar bisa dibaca React Native
+  return NextResponse.json({
+    success: true,
+    karyawan: safeKaryawan,
+    tokens: {
+      adminSession,
+      karyawanIdentity,
+      maxAge: SESSION_MAX_AGE_SECONDS,
+    },
+  });
+}
