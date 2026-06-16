@@ -117,7 +117,7 @@ const REQUIRED_TEMPLATES = [
   { name: 'notif_event_attendance',  cat: 'UTILITY',        params: 2, desc: 'Kehadiran dikonfirmasi — nama, event',                                  urlInParam: false },
   { name: 'notif_deposit_refund',    cat: 'UTILITY',        params: 3, desc: 'Deposit dikembalikan — nama, event, URL bukti (⚠️ gunakan tombol URL)', urlInParam: true  },
   { name: 'notif_kode_akun',         cat: 'AUTHENTICATION', params: 0, desc: 'Kode akses / reset password karyawan (AUTHENTICATION, OTP button)',     urlInParam: false },
-  { name: 'notif_password_karyawan', cat: 'UTILITY',        params: 2, desc: 'Notifikasi password diubah Admin — {{1}}nama, {{2}}username',             urlInParam: false },
+  { name: 'notif_akun_karyawan',     cat: 'UTILITY',        params: 2, desc: 'Notifikasi profil diperbarui Admin — {{1}}nama, {{2}}nama pengguna',    urlInParam: false },
   { name: 'notif_lending_init_v2',   cat: 'UTILITY',        params: 4, desc: 'Peminjaman dibuat — {{1}}nama, {{2}}estimasi kembali, {{3}}daftar barang, {{4}}link Drive', urlInParam: false },
   { name: 'notif_lending_return_v2',      cat: 'UTILITY', params: 4, desc: 'Semua barang dikembalikan — {{1}}nama, {{2}}tgl kembali, {{3}}daftar barang, {{4}}link Drive', urlInParam: false },
   { name: 'notif_lending_return_partial', cat: 'UTILITY', params: 4, desc: 'Pengembalian sebagian — {{1}}nama, {{2}}tgl kembali, {{3}}daftar barang, {{4}}link Drive',         urlInParam: false },
@@ -178,7 +178,7 @@ export default function WaTemplatesTab() {
         components: [
           {
             type: 'BODY',
-            text: 'Halo {{1}},\n\nPassword akun Nikon Dashboard Anda telah diubah oleh Admin.\n\nUsername Anda: {{2}}\n\nSilakan hubungi Admin untuk mendapatkan password baru Anda secara langsung.\n\naltanikindo.com',
+            text: 'Halo {{1}},\n\nAda pembaruan pada profil Nikon Dashboard Anda yang dilakukan oleh Admin.\n\nNama pengguna: {{2}}\n\nSilakan hubungi Admin untuk informasi lebih lanjut.\n\naltanikindo.com',
             example: { body_text: [['Budi Santoso', 'budi.santoso']] },
           },
         ],
@@ -599,7 +599,7 @@ export default function WaTemplatesTab() {
             <div className="space-y-1.5">
               {REQUIRED_TEMPLATES.map(t => {
                 const exists = templates.some(mt => mt.name === t.name);
-                const isInstallable = t.name === 'notif_password_karyawan';
+                const isInstallable = t.name === 'notif_akun_karyawan';
                 return (
                   <div key={t.name} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg ${exists ? 'bg-green-50' : 'bg-red-50'}`}>
                     <span className="mt-0.5 shrink-0 text-sm">{exists ? '✅' : '❌'}</span>
