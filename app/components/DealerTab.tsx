@@ -88,33 +88,6 @@ export default function DealerTab({
   const [dateFrom, setDateFrom] = React.useState('');
   const [dateTo, setDateTo] = React.useState('');
 
-  // Kumpulkan semua bulan unik dari data untuk quick-pick
-  const monthOptions = React.useMemo(() => {
-    if (colDate < 0 || !dealerSheet) return [];
-    const seen = new Set<string>();
-    dealerSheet.rows.forEach(row => {
-      const v = row[colDate] || '';
-      if (!v) return;
-      const ts = parseDate(v);
-      if (!ts) return;
-      const d = new Date(ts);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      seen.add(key);
-    });
-    return Array.from(seen).sort().reverse();
-  }, [dealerSheet, colDate]);
-
-  const [activeMonth, setActiveMonth] = React.useState<string | null>(null);
-
-  const handleMonthPick = (m: string | null) => {
-    if (m === null) { setActiveMonth(null); setDateFrom(''); setDateTo(''); return; }
-    setActiveMonth(m);
-    const [y, mo] = m.split('-').map(Number);
-    const first = new Date(y, mo - 1, 1);
-    const last  = new Date(y, mo, 0);
-    setDateFrom(first.toISOString().slice(0, 10));
-    setDateTo(last.toISOString().slice(0, 10));
-  };
 
   const tsFrom = dateFrom ? new Date(dateFrom).getTime() : 0;
   const tsTo   = dateTo   ? new Date(dateTo + 'T23:59:59').getTime() : Infinity;
@@ -253,7 +226,7 @@ ${pages.join('')}
             className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-52 focus:outline-none focus:ring-2 focus:ring-yellow-400"
           />
           <button
-            onClick={() => { setDealerSheet(null); setDealerSelected(new Set()); setDealerSearch(''); setDealerSortCol(-1); setDealerSortDir('asc'); setDealerColFilters({}); setDateFrom(''); setDateTo(''); setActiveMonth(null); }}
+            onClick={() => { setDealerSheet(null); setDealerSelected(new Set()); setDealerSearch(''); setDealerSortCol(-1); setDealerSortDir('asc'); setDealerColFilters({}); setDateFrom(''); setDateTo(''); }}
             className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-sm transition"
           >🔄 Refresh</button>
           <button
@@ -286,7 +259,7 @@ ${pages.join('')}
                 <input
                   type="date"
                   value={dateFrom}
-                  onChange={e => { setDateFrom(e.target.value); setActiveMonth(null); }}
+                  onChange={e => { setDateFrom(e.target.value); }}
                   className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 />
               </div>
@@ -295,40 +268,19 @@ ${pages.join('')}
                 <input
                   type="date"
                   value={dateTo}
-                  onChange={e => { setDateTo(e.target.value); setActiveMonth(null); }}
+                  onChange={e => { setDateTo(e.target.value); }}
                   className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 />
               </div>
               {(dateFrom || dateTo) && (
                 <button
-                  onClick={() => { setDateFrom(''); setDateTo(''); setActiveMonth(null); }}
+                  onClick={() => { setDateFrom(''); setDateTo(''); }}
                   className="text-xs text-red-500 hover:text-red-700 font-semibold px-2 py-1 rounded hover:bg-red-50 transition"
                 >✕ Reset</button>
               )}
             </div>
           </div>
 
-          {/* Quick-pick bulan */}
-          {monthOptions.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => handleMonthPick(null)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold border transition ${activeMonth === null && !dateFrom && !dateTo ? 'bg-yellow-400 border-yellow-400 text-gray-900' : 'bg-white border-gray-300 text-gray-600 hover:border-yellow-400 hover:text-yellow-700'}`}
-              >Semua</button>
-              {monthOptions.slice(0, 18).map(m => {
-                const [y, mo] = m.split('-');
-                const label = new Date(+y, +mo - 1, 1).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
-                const isActive = activeMonth === m;
-                return (
-                  <button
-                    key={m}
-                    onClick={() => handleMonthPick(isActive ? null : m)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition ${isActive ? 'bg-yellow-400 border-yellow-400 text-gray-900' : 'bg-white border-gray-300 text-gray-600 hover:border-yellow-400 hover:text-yellow-700'}`}
-                  >{label}</button>
-                );
-              })}
-            </div>
-          )}
 
           {(dateFrom || dateTo) && (
             <p className="text-xs text-gray-400">
