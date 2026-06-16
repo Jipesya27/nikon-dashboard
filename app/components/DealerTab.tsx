@@ -63,11 +63,35 @@ export default function DealerTab({
       }
       return true;
     });
+  // Parse tanggal dari berbagai format ke timestamp (ms)
+  const parseDate = (s: string): number => {
+    if (!s) return 0;
+    // ISO: 2026-06-11
+    if (/^\d{4}-\d{1,2}-\d{1,2}/.test(s)) return new Date(s).getTime();
+    // D/M/YYYY atau M/D/YYYY — coba D/M/YYYY dulu (format Indonesia)
+    const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (slash) return new Date(+slash[3], +slash[2] - 1, +slash[1]).getTime();
+    // "11 Jun 2026" atau "Jun 11, 2026"
+    const dt = Date.parse(s);
+    if (!isNaN(dt)) return dt;
+    return 0;
+  };
+  const isDateCol = (colIdx: number) => {
+    if (colIdx < 0) return false;
+    const h = (hdrs[colIdx] || '').toLowerCase();
+    if (/tanggal|tgl|date|waktu/.test(h)) return true;
+    // cek sample value
+    const sample = (dealerSheet?.rows ?? []).slice(0, 5).map(r => r[colIdx] || '').find(v => v);
+    return !!sample && /\d{1,4}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(sample);
+  };
   if (dealerSortCol >= 0) {
+    const dateSort = isDateCol(dealerSortCol);
     filteredDealer = [...filteredDealer].sort((a, b) => {
-      const av = (a.row[dealerSortCol] || '').toLowerCase();
-      const bv = (b.row[dealerSortCol] || '').toLowerCase();
-      const cmp = av.localeCompare(bv, 'id', { numeric: true });
+      const av = a.row[dealerSortCol] || '';
+      const bv = b.row[dealerSortCol] || '';
+      const cmp = dateSort
+        ? parseDate(av) - parseDate(bv)
+        : av.toLowerCase().localeCompare(bv.toLowerCase(), 'id', { numeric: true });
       return dealerSortDir === 'asc' ? cmp : -cmp;
     });
   }
@@ -90,6 +114,24 @@ export default function DealerTab({
       next.has(idx) ? next.delete(idx) : next.add(idx);
       return next;
     });
+  };
+
+  const [syncLoading, setSyncLoading] = React.useState(false);
+  const [syncMsg, setSyncMsg] = React.useState('');
+  const doSync = async () => {
+    setSyncLoading(true);
+    setSyncMsg('');
+    try {
+      const res = await fetch('/api/transaksi-dealer/sync', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal sync');
+      setSyncMsg(`✓ ${json.message}`);
+    } catch (e: unknown) {
+      setSyncMsg(`✗ ${e instanceof Error ? e.message : 'Error'}`);
+    } finally {
+      setSyncLoading(false);
+      setTimeout(() => setSyncMsg(''), 5000);
+    }
   };
 
   const doPrint = () => {
@@ -165,6 +207,14 @@ ${pages.join('')}
             disabled={dealerSelected.size === 0}
             className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold transition shadow"
           >🖨️ Print Terpilih ({dealerSelected.size})</button>
+          <button
+            onClick={doSync}
+            disabled={syncLoading}
+            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-lg text-sm font-bold transition shadow flex items-center gap-1.5"
+          >
+            {syncLoading ? <span className="animate-spin">⏳</span> : '☁️'} Sync ke Supabase
+          </button>
+          {syncMsg && <span className={`text-xs font-semibold ${syncMsg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>{syncMsg}</span>}
         </div>
       </div>
 
