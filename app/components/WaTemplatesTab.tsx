@@ -178,7 +178,7 @@ export default function WaTemplatesTab() {
         components: [
           {
             type: 'BODY',
-            text: 'Halo {{1}},\n\nAda pembaruan pada profil Nikon Dashboard Anda yang dilakukan oleh Admin.\n\nNama pengguna: {{2}}\n\nSilakan hubungi Admin untuk informasi lebih lanjut.\n\naltanikindo.com',
+            text: 'Halo {{1}},\n\nKata kunci akun Nikon Dashboard Anda telah diperbarui oleh Admin.\n\nNama pengguna: {{2}}\n\nHubungi Admin untuk mendapatkan kata kunci terbaru Anda.\n\naltanikindo.com',
             example: { body_text: [['Budi Santoso', 'budi.santoso']] },
           },
         ],
