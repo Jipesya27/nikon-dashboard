@@ -9,8 +9,13 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
 
-  if (!(await checkRateLimit(ip, 10))) {
-    return NextResponse.json({ error: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' }, { status: 429 });
+  // Rate limit — fail-safe: kalau tabel belum ada atau error, login tetap dilanjutkan
+  try {
+    if (!(await checkRateLimit(ip, 10))) {
+      return NextResponse.json({ error: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' }, { status: 429 });
+    }
+  } catch {
+    // Tabel login_attempts belum dibuat atau error DB — abaikan, jangan blokir login
   }
 
   let username: string, password: string;
@@ -55,8 +60,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
   }
 
-  // Login berhasil — reset hitungan rate limit untuk IP ini
-  await resetRateLimit(ip);
+  // Reset rate limit — fail-safe
+  try { await resetRateLimit(ip); } catch { /* abaikan */ }
 
   const { password: _pw, ...safeKaryawan } = karyawan;
   void _pw;
