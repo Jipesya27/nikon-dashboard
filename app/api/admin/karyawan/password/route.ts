@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     void sendWATemplate(
       existing.nomor_wa,
       'reset_password_karyawan',
-      [existing.nama_karyawan ?? existing.username ?? 'Karyawan', existing.username ?? '', password],
+      [existing.nama_karyawan ?? existing.username ?? 'Karyawan', existing.username ?? ''],
     ).catch((e) => console.error('[password/route] Gagal kirim WA template:', e));
   }
 
