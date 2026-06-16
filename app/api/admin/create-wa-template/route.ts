@@ -8,7 +8,7 @@ import { verifyAdminSession, verifyIdentityToken } from '@/app/lib/session';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST() {
+export async function POST(req: Request) {
   const cookieStore = await cookies();
   if (!(await verifyAdminSession(cookieStore))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,6 +18,9 @@ export async function POST() {
   if (!identity || !['Admin', 'Super Admin'].includes(identity.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
+
+  let reqName = 'notif_password_karyawan';
+  try { const b = await req.json(); if (b?.name) reqName = b.name; } catch { /* gunakan default */ }
 
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -37,7 +40,7 @@ export async function POST() {
 
   // Buat template
   const templateBody = {
-    name: 'notif_password_karyawan',
+    name: reqName,
     language: 'id',
     category: 'UTILITY',
     components: [
