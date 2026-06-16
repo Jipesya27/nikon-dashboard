@@ -56,17 +56,9 @@ export default function DealerTab({
   const colType = _findCol(hdrs, ['type barang', 'tipe barang', 'type', 'tipe', 'model', 'nama barang', 'barang']);
   const colSN   = _findCol(hdrs, ['serial number', 'serial', 'nomor seri', 's/n', 'sn', 'no seri']);
   const colFoto = _findCol(hdrs, ['foto kartu garansi', 'foto garansi', 'foto', 'image', 'gambar', 'link foto', 'url foto', 'link', 'url']);
+  const colDate = _findCol(hdrs, ['tanggal pembelian', 'tanggal penjualan', 'tgl pembelian', 'tgl penjualan', 'tanggal', 'tgl', 'date']);
 
   const q = dealerSearch.toLowerCase();
-  let filteredDealer = (dealerSheet?.rows ?? [])
-    .map((row, idx) => ({ row, idx }))
-    .filter(({ row }) => {
-      if (q && !row.some(c => c.toLowerCase().includes(q))) return false;
-      for (const [ci, fv] of Object.entries(dealerColFilters)) {
-        if (fv && !(row[Number(ci)] || '').toLowerCase().includes(fv.toLowerCase())) return false;
-      }
-      return true;
-    });
   // Parse tanggal dari berbagai format ke timestamp (ms)
   const parseDate = (s: string): number => {
     if (!s) return 0;
@@ -88,6 +80,58 @@ export default function DealerTab({
     const sample = (dealerSheet?.rows ?? []).slice(0, 5).map(r => r[colIdx] || '').find(v => v);
     return !!sample && /\d{1,4}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(sample);
   };
+  const [syncLoading, setSyncLoading] = React.useState(false);
+  const [syncMsg, setSyncMsg] = React.useState('');
+
+  // Filter tanggal pembelian
+  const [dateFrom, setDateFrom] = React.useState('');
+  const [dateTo, setDateTo] = React.useState('');
+
+  // Kumpulkan semua bulan unik dari data untuk quick-pick
+  const monthOptions = React.useMemo(() => {
+    if (colDate < 0 || !dealerSheet) return [];
+    const seen = new Set<string>();
+    dealerSheet.rows.forEach(row => {
+      const v = row[colDate] || '';
+      if (!v) return;
+      const ts = parseDate(v);
+      if (!ts) return;
+      const d = new Date(ts);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      seen.add(key);
+    });
+    return Array.from(seen).sort().reverse();
+  }, [dealerSheet, colDate]);
+
+  const [activeMonth, setActiveMonth] = React.useState<string | null>(null);
+
+  const handleMonthPick = (m: string | null) => {
+    if (m === null) { setActiveMonth(null); setDateFrom(''); setDateTo(''); return; }
+    setActiveMonth(m);
+    const [y, mo] = m.split('-').map(Number);
+    const first = new Date(y, mo - 1, 1);
+    const last  = new Date(y, mo, 0);
+    setDateFrom(first.toISOString().slice(0, 10));
+    setDateTo(last.toISOString().slice(0, 10));
+  };
+
+  const tsFrom = dateFrom ? new Date(dateFrom).getTime() : 0;
+  const tsTo   = dateTo   ? new Date(dateTo + 'T23:59:59').getTime() : Infinity;
+
+  let filteredDealer = (dealerSheet?.rows ?? [])
+    .map((row, idx) => ({ row, idx }))
+    .filter(({ row }) => {
+      if (q && !row.some(c => c.toLowerCase().includes(q))) return false;
+      for (const [ci, fv] of Object.entries(dealerColFilters)) {
+        if (fv && !(row[Number(ci)] || '').toLowerCase().includes(fv.toLowerCase())) return false;
+      }
+      if ((dateFrom || dateTo) && colDate >= 0) {
+        const ts = parseDate(row[colDate] || '');
+        if (!ts || ts < tsFrom || ts > tsTo) return false;
+      }
+      return true;
+    });
+
   if (dealerSortCol >= 0) {
     const dateSort = isDateCol(dealerSortCol);
     filteredDealer = [...filteredDealer].sort((a, b) => {
@@ -120,8 +164,6 @@ export default function DealerTab({
     });
   };
 
-  const [syncLoading, setSyncLoading] = React.useState(false);
-  const [syncMsg, setSyncMsg] = React.useState('');
   const doSync = async () => {
     setSyncLoading(true);
     setSyncMsg('');
@@ -210,7 +252,7 @@ ${pages.join('')}
             className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-52 focus:outline-none focus:ring-2 focus:ring-yellow-400"
           />
           <button
-            onClick={() => { setDealerSheet(null); setDealerSelected(new Set()); setDealerSearch(''); setDealerSortCol(-1); setDealerSortDir('asc'); setDealerColFilters({}); }}
+            onClick={() => { setDealerSheet(null); setDealerSelected(new Set()); setDealerSearch(''); setDealerSortCol(-1); setDealerSortDir('asc'); setDealerColFilters({}); setDateFrom(''); setDateTo(''); setActiveMonth(null); }}
             className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-sm transition"
           >🔄 Refresh</button>
           <button
@@ -228,6 +270,73 @@ ${pages.join('')}
           {syncMsg && <span className={`text-xs font-semibold ${syncMsg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>{syncMsg}</span>}
         </div>
       </div>
+
+      {/* ===== FILTER TANGGAL PEMBELIAN ===== */}
+      {dealerSheet && colDate >= 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              Tanggal Pembelian
+            </span>
+            <div className="flex items-center gap-2 ml-auto">
+              <div className="flex items-center gap-1.5 text-sm">
+                <label className="text-xs text-gray-500">Dari</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={e => { setDateFrom(e.target.value); setActiveMonth(null); }}
+                  className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 text-sm">
+                <label className="text-xs text-gray-500">Sampai</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={e => { setDateTo(e.target.value); setActiveMonth(null); }}
+                  className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                />
+              </div>
+              {(dateFrom || dateTo) && (
+                <button
+                  onClick={() => { setDateFrom(''); setDateTo(''); setActiveMonth(null); }}
+                  className="text-xs text-red-500 hover:text-red-700 font-semibold px-2 py-1 rounded hover:bg-red-50 transition"
+                >✕ Reset</button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick-pick bulan */}
+          {monthOptions.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => handleMonthPick(null)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition ${activeMonth === null && !dateFrom && !dateTo ? 'bg-yellow-400 border-yellow-400 text-gray-900' : 'bg-white border-gray-300 text-gray-600 hover:border-yellow-400 hover:text-yellow-700'}`}
+              >Semua</button>
+              {monthOptions.slice(0, 18).map(m => {
+                const [y, mo] = m.split('-');
+                const label = new Date(+y, +mo - 1, 1).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+                const isActive = activeMonth === m;
+                return (
+                  <button
+                    key={m}
+                    onClick={() => handleMonthPick(isActive ? null : m)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition ${isActive ? 'bg-yellow-400 border-yellow-400 text-gray-900' : 'bg-white border-gray-300 text-gray-600 hover:border-yellow-400 hover:text-yellow-700'}`}
+                  >{label}</button>
+                );
+              })}
+            </div>
+          )}
+
+          {(dateFrom || dateTo) && (
+            <p className="text-xs text-gray-400">
+              Menampilkan <b className="text-gray-700">{filteredDealer.length}</b> baris
+              {dateFrom && dateTo ? ` dari ${new Date(dateFrom).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} s/d ${new Date(dateTo).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
+            </p>
+          )}
+        </div>
+      )}
 
       {dealerUnsyncedCount > 0 && (
         <div className="flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 text-sm text-amber-800">
