@@ -1,0 +1,4 @@
+# Place the following asset files here before building:
+# - icon.png (1024x1024, background #FFE500)
+# - splash.png (1242x2436, background #FFE500)
+# - adaptive-icon.png (1024x1024, Android adaptive icon foreground)
