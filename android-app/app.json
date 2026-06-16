@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "Nikon Dashboard",
-    "slug": "nikon-dashboard",
+    "slug": "jipesyaalta",
+    "owner": "jipesya",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -38,6 +39,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "92ceb354-ea33-4b35-a0ae-eef1f52685c7"
+      }
     }
   }
 }
