@@ -145,6 +145,26 @@ export default function WaTemplatesTab() {
   const [installMsg, setInstallMsg] = useState('');
   const prevParamCount = useRef(0);
 
+  // ── Fetch ──────────────────────────────────────────────────────────────────
+
+  const fetchTemplates = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/wa-templates', { credentials: 'include' });
+      const json = await res.json();
+      if (!res.ok) { setError(json.error || 'Gagal memuat template'); return; }
+      const sorted = [...(json.data || [])].sort((a: WaTemplate, b: WaTemplate) => a.name.localeCompare(b.name));
+      setTemplates(sorted);
+    } catch {
+      setError('Gagal terhubung ke server');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
+
   // ── Install required template ──────────────────────────────────────────────
 
   const handleInstall = async (name: string) => {
@@ -167,26 +187,6 @@ export default function WaTemplatesTab() {
       setInstalling(null);
     }
   };
-
-  // ── Fetch ──────────────────────────────────────────────────────────────────
-
-  const fetchTemplates = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('/api/admin/wa-templates', { credentials: 'include' });
-      const json = await res.json();
-      if (!res.ok) { setError(json.error || 'Gagal memuat template'); return; }
-      const sorted = [...(json.data || [])].sort((a: WaTemplate, b: WaTemplate) => a.name.localeCompare(b.name));
-      setTemplates(sorted);
-    } catch {
-      setError('Gagal terhubung ke server');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
 
   // ── Auto-update param examples when body changes ──────────────────────────
 
