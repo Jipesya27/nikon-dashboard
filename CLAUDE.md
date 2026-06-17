@@ -41,6 +41,7 @@ Admin pages proxy through `/api/admin/sb` — jangan hardcode URL Supabase langs
 | `app/api/resi/parse-jne/route.ts` | Parser PDF "Laporan Penjualan Agen" JNE |
 | `app/api/expense-claim/route.ts` | CRUD klaim biaya |
 | `app/api/expense-claim/[id]/route.ts` | Update status / delete klaim |
+| `app/api/auth/mobile-login/route.ts` | Login endpoint untuk Android app — return token di JSON body (bukan Set-Cookie) |
 
 ## Tabel Database Utama
 
@@ -93,6 +94,16 @@ Pengaturan bot lain (URL file promo, dealer, dll)
 - Tiket PDF: `generateTicket` dari `app/lib/generate-ticket.ts`
 - Google Drive proxy: `/api/drive-file?id=<id>` dan `/api/events/image`
 
+## Notifikasi Reset Password Karyawan
+- **TIDAK menggunakan Meta WA template** — Meta konsisten menolak template UTILITY yang mengandung pola username+password dengan alasan INCORRECT_CATEGORY (diarahkan ke AUTHENTICATION)
+- Alur saat ini: setelah admin reset password (via modal atau quick-reset di list), muncul **modal copy-paste** di frontend
+- Modal menampilkan pesan WA terformat dalam textarea + tombol "Salin Pesan" (berubah hijau "Tersalin!" 3 detik setelah diklik)
+- Admin salin pesan lalu kirim ke karyawan via WA pribadi
+- State di `dashboard/page.tsx`: `waPasswordMsg: {nama, username, password} | null`, `waPasswordMsgCopied: boolean`
+- Handler: `handleResetPwAdmin` (modal form) dan `handleQuickResetPassword` (tombol cepat di list) — keduanya set `waPasswordMsg` setelah berhasil
+- `handleQuickResetPassword` tidak lagi mewajibkan karyawan punya `nomor_wa`
+- API route `app/api/admin/karyawan/password/route.ts` hanya hash & simpan password — tidak ada WA send
+
 ## Access Control
 `RoleGate` di `app/components/RoleGate.tsx` — roles yang dibutuhkan untuk admin events: `['admin_events', 'admin_deposit', 'admin_attendance', 'events', 'eventregistrations']`
 
@@ -117,6 +128,15 @@ Pengaturan bot lain (URL file promo, dealer, dll)
 - `verifyAdminSession(cookieStore)` — terima objek cookie getter `{ get: (name) => {value} | undefined }`, bukan string session mentah. Kembalikan `boolean`.
 - Contoh benar: `const cookieStore = await cookies(); return verifyAdminSession(cookieStore);`
 - `RoleGate` di `app/components/RoleGate.tsx` — roles admin events: `['admin_events', 'admin_deposit', 'admin_attendance', 'events', 'eventregistrations']`
+- Rate limiting login: tabel `login_attempts` di DB. Fail-safe — jika tabel belum ada, login tetap jalan (try-catch di route)
+- **Mobile login** (`/api/auth/mobile-login`): token dikembalikan di JSON body (`tokens.adminSession`, `tokens.karyawanIdentity`, `tokens.maxAge`) bukan Set-Cookie, agar bisa disimpan di Android SharedPreferences
+
+## Android App (`android-app/`)
+- Direktori Expo/React Native untuk aplikasi Android
+- **Dikecualikan dari kompilasi Next.js** — sudah masuk `"exclude"` di `tsconfig.json` dan `android-app/node_modules` di `.gitignore`
+- Build via EAS (Expo Application Services): GitHub Actions `.github/workflows/build-android.yml` di branch `android-app` atau feature branch
+- Workflow trigger: push ke branch yang mengandung perubahan di `android-app/**`
+- **Jangan tambahkan** `android-app/` ke `tsconfig.json` include — akan menyebabkan error `expo-router` tidak ditemukan saat Next.js build
 
 ## Image Proxy (Google Drive)
 - URL Google Drive tidak bisa langsung di-render browser (CORS)
