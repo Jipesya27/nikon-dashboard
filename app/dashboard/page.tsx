@@ -479,6 +479,8 @@ export default function NikonDashboard() {
    const [chatbotSaving, setChatbotSaving] = useState<Record<string, boolean>>({});
    const [isSubmitting, setIsSubmitting] = useState(false);
    const [resetPwLoadingId, setResetPwLoadingId] = useState<string | null>(null);
+   const [waPasswordMsg, setWaPasswordMsg] = useState<{ nama: string; username: string; password: string } | null>(null);
+   const [waPasswordMsgCopied, setWaPasswordMsgCopied] = useState(false);
 
    // NOTIFICATION CHANNEL
    const [notifChannel, setNotifChannel] = useState<'wa_only' | 'email_only' | 'wa_and_email'>('wa_only');
@@ -2518,8 +2520,12 @@ ${kode ? `
          });
          if (!resetRes.ok) throw new Error('Gagal menyimpan password');
 
-         alert(`Password untuk ${karyawanForm.username} berhasil di-reset${karyawanForm.nomor_wa ? ' — notifikasi WA terkirim otomatis' : ''}.`);
          fetchKaryawans(); closeModal();
+         setWaPasswordMsg({
+            nama: karyawanForm.nama_karyawan || karyawanForm.username || 'Karyawan',
+            username: karyawanForm.username || '',
+            password: karyawanForm.password,
+         });
       } catch (err: unknown) {
          const message = err instanceof Error ? err.message : String(err);
          alert('Gagal: ' + message);
@@ -2528,21 +2534,16 @@ ${kode ? `
    };
 
    const handleQuickResetPassword = async (k: Karyawan) => {
-      if (!k.id_karyawan || !k.nomor_wa) {
-         alert('Karyawan tidak memiliki nomor WA — tidak bisa mengirim password otomatis.');
-         return;
-      }
-      if (!confirm(`Reset password ${k.nama_karyawan} (${k.username}) dan kirim via WhatsApp?`)) return;
+      if (!k.id_karyawan) return;
+      if (!confirm(`Reset password ${k.nama_karyawan} (${k.username})?`)) return;
 
       setResetPwLoadingId(String(k.id_karyawan));
       try {
-         // Generate password acak yang cryptographically secure di sisi client
          const charset = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
          const bytes = new Uint8Array(10);
          crypto.getRandomValues(bytes);
          const newPassword = Array.from(bytes, b => charset[b % charset.length]).join('');
 
-         // Simpan ke DB (di-hash oleh API)
          const res = await fetch('/api/admin/karyawan/password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2551,7 +2552,11 @@ ${kode ? `
          const json = await res.json();
          if (!res.ok) throw new Error(json.error || 'Gagal menyimpan password');
 
-         alert(`✅ Password ${k.nama_karyawan} berhasil di-reset — notifikasi WA terkirim ke ${k.nomor_wa}`);
+         setWaPasswordMsg({
+            nama: k.nama_karyawan || k.username || 'Karyawan',
+            username: k.username || '',
+            password: newPassword,
+         });
       } catch (err: unknown) {
          alert('Gagal: ' + (err instanceof Error ? err.message : String(err)));
       } finally {
@@ -8976,6 +8981,45 @@ ${kode ? `
                   </div>
                   <button type="submit" className="btn-primary w-full mt-2">Simpan Password Baru</button>
                </form>
+            </div>
+         </div>
+      )}
+      {waPasswordMsg && (
+         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[500]" onClick={() => { setWaPasswordMsg(null); setWaPasswordMsgCopied(false); }}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                  <div className="flex items-center gap-2.5">
+                     <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+                        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                     </div>
+                     <div>
+                        <p className="font-bold text-gray-900 text-sm">Pesan untuk Karyawan</p>
+                        <p className="text-xs text-gray-500">Salin dan kirim via WA pribadi Anda</p>
+                     </div>
+                  </div>
+                  <button onClick={() => { setWaPasswordMsg(null); setWaPasswordMsgCopied(false); }} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">✕</button>
+               </div>
+               <div className="px-5 py-4 space-y-3">
+                  <textarea
+                     readOnly
+                     className="w-full h-44 text-sm border border-gray-200 rounded-xl p-3 bg-gray-50 resize-none focus:outline-none font-mono leading-relaxed"
+                     value={`Halo ${waPasswordMsg.nama},\n\nPassword akun Nikon Dashboard Anda telah diperbarui oleh Admin.\n\nUsername: ${waPasswordMsg.username}\nPassword: ${waPasswordMsg.password}\n\nSegera ganti password setelah berhasil masuk.\n\naltanikindo.com`}
+                  />
+                  <button
+                     onClick={() => {
+                        navigator.clipboard.writeText(`Halo ${waPasswordMsg.nama},\n\nPassword akun Nikon Dashboard Anda telah diperbarui oleh Admin.\n\nUsername: ${waPasswordMsg.username}\nPassword: ${waPasswordMsg.password}\n\nSegera ganti password setelah berhasil masuk.\n\naltanikindo.com`);
+                        setWaPasswordMsgCopied(true);
+                        setTimeout(() => setWaPasswordMsgCopied(false), 3000);
+                     }}
+                     className={`w-full py-2.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 ${waPasswordMsgCopied ? 'bg-green-500 text-white' : 'bg-[#FFE500] hover:bg-[#E5CE00] text-black'}`}
+                  >
+                     {waPasswordMsgCopied ? (
+                        <><svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg> Tersalin!</>
+                     ) : (
+                        <><svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/></svg> Salin Pesan</>
+                     )}
+                  </button>
+               </div>
             </div>
          </div>
       )}
