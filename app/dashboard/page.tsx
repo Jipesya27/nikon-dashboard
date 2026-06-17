@@ -1666,42 +1666,62 @@ export default function NikonDashboard() {
          return;
       }
       const selected = sortedClaims.filter((c: ClaimPromo) => c.id_claim && selectedClaimIds.has(c.id_claim));
-      const headers = ['id_claim', 'No', 'Nama (No. WA)', 'Alamat', 'No. Seri', 'Barang', 'Promo', 'Kodepos', 'No Claim', 'Nama Expedisi', 'Nomor Resi'];
-      const csvRows = [headers.join(',')];
-      selected.forEach((c: ClaimPromo, idx: number) => {
+      const tglFormatted = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
+
+      const rows = selected.map((c: ClaimPromo, idx: number) => {
          const konsumen = consumersList.find(k => k.nomor_wa === c.nomor_wa);
-         const nama = konsumen?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa;
-         const namaWa = `${nama} (${c.nomor_wa})`;
+         const nama = c.nama_pendaftar || konsumen?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa;
+         const namaWa = `${nama}<br/><span style="font-size:10px;color:#555">(${c.nomor_wa})</span>`;
+
+         // Gunakan alamat pengiriman dari claim (diisi konsumen saat submit form)
+         const clean = (v: string | null | undefined) => (!v || v === 'BELUM_DIISI') ? '' : v;
          const parts: string[] = [];
-         if (konsumen?.alamat_rumah) parts.push(konsumen.alamat_rumah.toUpperCase());
-         if (konsumen?.kelurahan) parts.push(`KEL. ${konsumen.kelurahan.toUpperCase()}`);
-         if (konsumen?.kecamatan) parts.push(`KEC. ${konsumen.kecamatan.toUpperCase()}`);
-         if (konsumen?.kabupaten_kotamadya) parts.push(`KAB/KOTA. ${konsumen.kabupaten_kotamadya.toUpperCase()}`);
-         if (konsumen?.provinsi) parts.push(`PROV. ${konsumen.provinsi.toUpperCase()}`);
-         const kodepos = (konsumen?.kodepos && konsumen.kodepos !== 'BELUM_DIISI') ? konsumen.kodepos : '';
-         const alamat = kodepos ? `${parts.join(', ')} - ${kodepos}` : parts.join(', ');
-         const promo = c.jenis_promosi || getNamaPromo(c.tipe_barang);
-         const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
-         csvRows.push([
-            esc(c.id_claim || ''),
-            String(idx + 1),
-            esc(namaWa),
-            esc(alamat),
-            esc(c.nomor_seri || ''),
-            esc(c.tipe_barang || ''),
-            esc(promo || ''),
-            esc(kodepos),
-            String(claimNumberMap.get(c.id_claim!) ?? ''),
-            esc(c.nama_jasa_pengiriman || ''),
-            esc(c.nomor_resi || ''),
-         ].join(','));
-      });
+         if (clean(c.alamat_pengiriman)) parts.push(clean(c.alamat_pengiriman).toUpperCase());
+         if (clean(c.kelurahan_pengiriman)) parts.push(`KEL. ${clean(c.kelurahan_pengiriman).toUpperCase()}`);
+         if (clean(c.kecamatan_pengiriman)) parts.push(`KEC. ${clean(c.kecamatan_pengiriman).toUpperCase()}`);
+         if (clean(c.kabupaten_pengiriman)) parts.push(`KAB/KOTA. ${clean(c.kabupaten_pengiriman).toUpperCase()}`);
+         if (clean(c.provinsi_pengiriman)) parts.push(`PROV. ${clean(c.provinsi_pengiriman).toUpperCase()}`);
+         const kodepos = clean(c.kodepos_pengiriman);
+         const alamat = parts.join(', ') || '-';
+         const promo = c.jenis_promosi || getNamaPromo(c.tipe_barang) || '-';
+         const noClaimNum = claimNumberMap.get(c.id_claim!) ?? '';
+
+         return `<tr>
+           <td style="text-align:center">${idx + 1}</td>
+           <td>${namaWa}</td>
+           <td style="font-size:11px">${alamat}</td>
+           <td style="font-family:monospace;text-align:center">${c.nomor_seri || '-'}</td>
+           <td>${c.tipe_barang || '-'}</td>
+           <td style="font-size:11px">${promo}</td>
+           <td style="text-align:center">${kodepos || '-'}</td>
+           <td style="text-align:center;font-weight:bold">${noClaimNum}</td>
+         </tr>`;
+      }).join('');
+
+      const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Tanda Terima</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
+<body>
+<table>
+  <thead><tr>
+    <th>No</th>
+    <th>Nama (No. WA)</th>
+    <th>Alamat</th>
+    <th>No. Seri</th>
+    <th>Barang</th>
+    <th>Promo</th>
+    <th>Kodepos</th>
+    <th>No Claim</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+</body></html>`;
+
       const BOM = '﻿';
-      const blob = new Blob([BOM + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([BOM + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.setAttribute('href', url);
-      a.setAttribute('download', `Tanda_Terima_${new Date().toISOString().split('T')[0]}.csv`);
+      a.href = url;
+      a.download = `Tanda_Terima_${new Date().toISOString().split('T')[0]}.xls`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
