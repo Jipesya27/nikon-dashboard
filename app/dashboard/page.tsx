@@ -3317,7 +3317,7 @@ ${kode ? `
       ctx.font = '14px Arial';
       ctx.fillText('Kepada :', 40, 94);
       ctx.font = 'bold 15px Arial';
-      ctx.fillText(`${nama} (${noWa})`, 130, 94);
+      ctx.fillText(`${rowNumber ? rowNumber + '. ' : ''}${nama} (${noWa})`, 130, 94);
       ctx.font = '15px Arial';
       let currentY = 122;
       if (c.alamat_pengiriman) {
