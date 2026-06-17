@@ -8,7 +8,6 @@ import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { verifyAdminSession, verifyIdentityToken } from '@/app/lib/session';
-import { sendWATemplate } from '@/app/lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +44,7 @@ export async function POST(req: Request) {
 
   const { data: existing } = await supabase
     .from('karyawan')
-    .select('id_karyawan, nama_karyawan, username, nomor_wa')
+    .select('id_karyawan')
     .eq('id_karyawan', id_karyawan)
     .single();
 
@@ -61,15 +60,6 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ error: 'Gagal menyimpan password' }, { status: 500 });
   if (!updated || updated.length === 0) return NextResponse.json({ error: 'Gagal menyimpan password (0 baris ter-update)' }, { status: 500 });
-
-  // Kirim WA template ke karyawan — fire-and-forget, tidak memblokir response
-  if (existing.nomor_wa) {
-    void sendWATemplate(
-      existing.nomor_wa,
-      'info_karyawan',
-      [existing.nama_karyawan ?? existing.username ?? 'Karyawan', existing.username ?? '', password],
-    ).catch((e) => console.error('[password/route] Gagal kirim WA template:', e));
-  }
 
   return NextResponse.json({ success: true });
 }
