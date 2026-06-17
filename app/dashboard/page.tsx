@@ -403,7 +403,7 @@ export default function NikonDashboard() {
    const [replyText, setReplyText] = useState('');
    const [quickReplyOpen, setQuickReplyOpen] = useState(false);
    const [quickReplyFilter, setQuickReplyFilter] = useState('');
-   const replyInputRef = useRef<HTMLInputElement>(null);
+   const replyInputRef = useRef<HTMLTextAreaElement>(null);
    const chatFileInputRef = useRef<HTMLInputElement>(null);
    const [replyToMessage, setReplyToMessage] = useState<RiwayatPesan | null>(null);
    const [mediaFile, setMediaFile] = useState<File | null>(null);
