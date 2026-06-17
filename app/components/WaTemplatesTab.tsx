@@ -117,7 +117,6 @@ const REQUIRED_TEMPLATES = [
   { name: 'notif_event_attendance',  cat: 'UTILITY',        params: 2, desc: 'Kehadiran dikonfirmasi — nama, event',                                  urlInParam: false },
   { name: 'notif_deposit_refund',    cat: 'UTILITY',        params: 3, desc: 'Deposit dikembalikan — nama, event, URL bukti (⚠️ gunakan tombol URL)', urlInParam: true  },
   { name: 'notif_kode_akun',         cat: 'AUTHENTICATION', params: 0, desc: 'Kode akses / reset password karyawan (AUTHENTICATION, OTP button)',     urlInParam: false },
-  { name: 'info_karyawan',           cat: 'UTILITY',        params: 3, desc: 'Notifikasi profil diperbarui Admin — {{1}}nama, {{2}}nama pengguna, {{3}}kata khusus', urlInParam: false },
   { name: 'notif_lending_init_v2',   cat: 'UTILITY',        params: 4, desc: 'Peminjaman dibuat — {{1}}nama, {{2}}estimasi kembali, {{3}}daftar barang, {{4}}link Drive', urlInParam: false },
   { name: 'notif_lending_return_v2',      cat: 'UTILITY', params: 4, desc: 'Semua barang dikembalikan — {{1}}nama, {{2}}tgl kembali, {{3}}daftar barang, {{4}}link Drive', urlInParam: false },
   { name: 'notif_lending_return_partial', cat: 'UTILITY', params: 4, desc: 'Pengembalian sebagian — {{1}}nama, {{2}}tgl kembali, {{3}}daftar barang, {{4}}link Drive',         urlInParam: false },
@@ -141,8 +140,6 @@ export default function WaTemplatesTab() {
   const [confirmDel, setConfirmDel] = useState<string | null>(null); // template name to confirm
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showRequired, setShowRequired] = useState(false);
-  const [installing, setInstalling] = useState<string | null>(null);
-  const [installMsg, setInstallMsg] = useState('');
   const prevParamCount = useRef(0);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -164,41 +161,6 @@ export default function WaTemplatesTab() {
   }, []);
 
   useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
-
-  // ── Install required template ──────────────────────────────────────────────
-
-  const handleInstall = async (name: string) => {
-    setInstalling(name);
-    setInstallMsg('');
-    try {
-      const payload = {
-        name,
-        language: 'en_US',
-        category: 'UTILITY',
-        components: [
-          {
-            type: 'BODY',
-            text: 'Halo {{1}},\n\nInformasi masuk Nikon Dashboard Anda telah diperbarui oleh Admin.\n\nPengguna: {{2}}\nKata khusus: {{3}}\n\nSegera perbarui setelah berhasil masuk.\n\naltanikindo.com',
-            example: { body_text: [['Budi Santoso', 'budi.santoso', 'Temp@1234']] },
-          },
-        ],
-      };
-      const res = await fetch('/api/admin/wa-templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || JSON.stringify(json));
-      setInstallMsg(`✅ Template "${name}" berhasil dikirim ke Meta untuk review.`);
-      await fetchTemplates();
-    } catch (e) {
-      setInstallMsg(`❌ ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setInstalling(null);
-    }
-  };
 
   // ── Auto-update param examples when body changes ──────────────────────────
 
@@ -593,13 +555,9 @@ export default function WaTemplatesTab() {
               Template ini harus dibuat di Meta agar notifikasi sistem berjalan.
               <span className="text-green-600 font-semibold"> ✅ = sudah ada</span>, <span className="text-red-500 font-semibold">❌ = belum dibuat</span>.
             </p>
-            {installMsg && (
-              <p className={`text-xs font-semibold mb-3 ${installMsg.startsWith('✅') ? 'text-green-700' : 'text-red-600'}`}>{installMsg}</p>
-            )}
             <div className="space-y-1.5">
               {REQUIRED_TEMPLATES.map(t => {
                 const exists = templates.some(mt => mt.name === t.name);
-                const isInstallable = t.name === 'info_karyawan';
                 return (
                   <div key={t.name} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg ${exists ? 'bg-green-50' : 'bg-red-50'}`}>
                     <span className="mt-0.5 shrink-0 text-sm">{exists ? '✅' : '❌'}</span>
@@ -618,15 +576,6 @@ export default function WaTemplatesTab() {
                       </div>
                       <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{t.desc}</p>
                     </div>
-                    {!exists && isInstallable && (
-                      <button
-                        onClick={() => handleInstall(t.name)}
-                        disabled={installing === t.name}
-                        className="shrink-0 px-3 py-1.5 rounded-lg bg-[#FFE500] hover:bg-[#E5CE00] text-black text-[11px] font-bold shadow-sm disabled:opacity-50 transition whitespace-nowrap"
-                      >
-                        {installing === t.name ? '⏳ Membuat...' : '⚡ Pasang'}
-                      </button>
-                    )}
                   </div>
                 );
               })}
