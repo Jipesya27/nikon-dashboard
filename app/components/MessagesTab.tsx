@@ -580,7 +580,7 @@ export default function MessagesTab({
                         className="w-full border-none bg-white text-gray-900 rounded-full px-5 py-2.5 text-sm outline-none shadow-inner focus:ring-2 focus:ring-[#FFE500]"
                       />
                     </div>
-                    <button type="submit" disabled={(!replyText.trim() && !mediaFile) || isUploadingMedia} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 transition shadow-md shrink-0" aria-label="Kirim">
+                    <button type="submit" disabled={(!replyText.trim() && !mediaFile) || isUploadingMedia} className="bg-[#25D366] hover:bg-[#1DA851] text-white w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 transition shadow-md shrink-0" aria-label="Kirim">
                       {isUploadingMedia ? (
                         <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
                       ) : (

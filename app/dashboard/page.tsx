@@ -3360,11 +3360,11 @@ ${kode ? `
       ctx.fillText('From :', 40, 265);
       ctx.fillText('Alta Nikindo', 160, 265);
       ctx.fillText('Komp. Mangga Dua Square Blok H No.1-2, Jakarta - 14430', 160, 295);
-      ctx.fillText('Whatsapp : 08111877781', 160, 325);
+      ctx.fillText('Whatsapp : 0851-7827-0172', 160, 325);
       ctx.textAlign = 'right';
       const sn = c.nomor_seri || '-';
       const promoName = c.jenis_promosi || getNamaPromo(c.tipe_barang);
-      ctx.fillText(`${sn} - ${promoName}`, canvas.width - 30, 325);
+      ctx.fillText(`${sn} - ${promoName}`, canvas.width - 30, canvas.height - 20);
       const imgURL = canvas.toDataURL('image/png');
       const a = document.createElement('a');
       a.href = imgURL;
