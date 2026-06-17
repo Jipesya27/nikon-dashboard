@@ -1666,12 +1666,14 @@ export default function NikonDashboard() {
          return;
       }
       const selected = sortedClaims.filter((c: ClaimPromo) => c.id_claim && selectedClaimIds.has(c.id_claim));
-      const tglFormatted = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
+      const tglFormatted = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit', timeZone: 'Asia/Jakarta' }).replace(/ /g, '-');
 
       const rows = selected.map((c: ClaimPromo, idx: number) => {
          const konsumen = consumersList.find(k => k.nomor_wa === c.nomor_wa);
          const nama = c.nama_pendaftar || konsumen?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa;
-         const namaWa = `${nama}<br/><span style="font-size:10px;color:#555">(${c.nomor_wa})</span>`;
+         const noClaimNum = claimNumberMap.get(c.id_claim!) ?? '';
+         // Format: "207. Arifah Hariadi (6285743219900)"
+         const namaWa = `${noClaimNum ? noClaimNum + '. ' : ''}${nama} (${c.nomor_wa})`;
 
          // Gunakan alamat pengiriman dari claim (diisi konsumen saat submit form)
          const clean = (v: string | null | undefined) => (!v || v === 'BELUM_DIISI') ? '' : v;
@@ -1684,17 +1686,16 @@ export default function NikonDashboard() {
          const kodepos = clean(c.kodepos_pengiriman);
          const alamat = parts.join(', ') || '-';
          const promo = c.jenis_promosi || getNamaPromo(c.tipe_barang) || '-';
-         const noClaimNum = claimNumberMap.get(c.id_claim!) ?? '';
 
          return `<tr>
            <td style="text-align:center">${idx + 1}</td>
            <td>${namaWa}</td>
-           <td style="font-size:11px">${alamat}</td>
-           <td style="font-family:monospace;text-align:center">${c.nomor_seri || '-'}</td>
+           <td>${alamat}</td>
+           <td style="mso-number-format:'@'">${c.nomor_seri || '-'}</td>
            <td>${c.tipe_barang || '-'}</td>
-           <td style="font-size:11px">${promo}</td>
-           <td style="text-align:center">${kodepos || '-'}</td>
-           <td style="text-align:center;font-weight:bold">${noClaimNum}</td>
+           <td>${promo}</td>
+           <td style="mso-number-format:'@';text-align:center">${kodepos || '-'}</td>
+           <td style="text-align:center">${noClaimNum}</td>
          </tr>`;
       }).join('');
 
@@ -1702,6 +1703,9 @@ export default function NikonDashboard() {
 <head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Tanda Terima</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
 <body>
 <table>
+  <tr><td><b>TANDA TERIMA</b></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>${tglFormatted}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
   <thead><tr>
     <th>No</th>
     <th>Nama (No. WA)</th>
