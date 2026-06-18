@@ -4944,8 +4944,11 @@ ${kode ? `
                                                    )}
                                                 </div>
                                                 <div className="flex gap-1.5">
+                                                   <GradientActionBtn onClick={() => openModal('edit', 'warranty', w)} label="Edit" gradientFrom="#3B82F6" gradientTo="#60A5FA" icon={IconEdit} />
                                                    <GradientActionBtn onClick={() => handleKirimStatusGaransi(w)} label="Kirim" gradientFrom="#10B981" gradientTo="#34D399" icon={IconSend} />
-                                                   <GradientActionBtn onClick={() => handleDelete('warranty', w.id_garansi!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                                   {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                                      <GradientActionBtn onClick={() => handleDelete('warranty', w.id_garansi!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                                   )}
                                                 </div>
                                              </div>
                                           </td>
@@ -5003,8 +5006,11 @@ ${kode ? `
                                     )}
                                     {/* Aksi */}
                                     <div className="pt-2 border-t border-gray-100 flex gap-1.5 justify-end">
+                                       <GradientActionBtn onClick={() => openModal('edit', 'warranty', w)} label="Edit" gradientFrom="#3B82F6" gradientTo="#60A5FA" icon={IconEdit} />
                                        <GradientActionBtn onClick={() => handleKirimStatusGaransi(w)} label="Kirim" gradientFrom="#10B981" gradientTo="#34D399" icon={IconSend} />
-                                       <GradientActionBtn onClick={() => handleDelete('warranty', w.id_garansi!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                       {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                          <GradientActionBtn onClick={() => handleDelete('warranty', w.id_garansi!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                       )}
                                     </div>
                                  </div>
                               )
