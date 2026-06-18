@@ -5109,8 +5109,11 @@ ${kode ? `
                                        <td className="px-3 py-2.5">
                                           <div className="flex flex-col gap-1.5">
                                              <div className="flex gap-1.5">
+                                                <GradientActionBtn onClick={() => openModal('edit', 'budget', b)} label="Edit" gradientFrom="#3B82F6" gradientTo="#60A5FA" icon={IconEdit} />
                                                 <GradientActionBtn onClick={() => setPrintData(b)} label="Print" gradientFrom="#10B981" gradientTo="#34D399" icon={IconPrint} />
-                                                <GradientActionBtn onClick={() => handleDelete('budget', b.id_budget!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                                {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                                   <GradientActionBtn onClick={() => handleDelete('budget', b.id_budget!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                                )}
                                              </div>
                                           </div>
                                        </td>
@@ -5132,8 +5135,11 @@ ${kode ? `
                                     <p><span className="font-bold w-20 inline-block">Total:</span> Rp {Number(b.total_cost).toLocaleString('id-ID')}</p>
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
+                                    <GradientActionBtn onClick={() => openModal('edit', 'budget', b)} label="Edit" gradientFrom="#3B82F6" gradientTo="#60A5FA" icon={IconEdit} />
                                     <GradientActionBtn onClick={() => setPrintData(b)} label="Print" gradientFrom="#10B981" gradientTo="#34D399" icon={IconPrint} />
-                                    <GradientActionBtn onClick={() => handleDelete('budget', b.id_budget!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                    {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                       <GradientActionBtn onClick={() => handleDelete('budget', b.id_budget!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                    )}
                                  </div>
                               </div>
                            ))}
