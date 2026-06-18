@@ -4649,7 +4649,9 @@ ${kode ? `
                                           <td className="px-4 py-3">
                                              <div className="flex gap-1.5 items-center">
                                                 <GradientActionBtn onClick={() => openModal('edit', 'konsumen', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                                <GradientActionBtn onClick={() => handleDelete('konsumen', k.nomor_wa)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                                {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                                   <GradientActionBtn onClick={() => handleDelete('konsumen', k.nomor_wa)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                                )}
                                              </div>
                                           </td>
                                        </tr>
@@ -4702,7 +4704,9 @@ ${kode ? `
                                           </div>
                                           <div className="flex gap-1.5">
                                              <GradientActionBtn onClick={() => openModal('edit', 'konsumen', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                             <GradientActionBtn onClick={() => handleDelete('konsumen', k.nomor_wa)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                             {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                                <GradientActionBtn onClick={() => handleDelete('konsumen', k.nomor_wa)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                             )}
                                           </div>
                                        </div>
                                     </div>
@@ -5042,7 +5046,9 @@ ${kode ? `
                                        <td className="px-3 py-2.5">
                                           <div className="flex gap-1.5">
                                              <GradientActionBtn onClick={() => openModal('edit', 'service', s)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                             <GradientActionBtn onClick={() => handleDelete('service', s.id_service!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                             {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                                <GradientActionBtn onClick={() => handleDelete('service', s.id_service!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                             )}
                                           </div>
                                        </td>
                                     </tr>
@@ -5064,7 +5070,9 @@ ${kode ? `
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
                                     <GradientActionBtn onClick={() => openModal('edit', 'service', s)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                    <GradientActionBtn onClick={() => handleDelete('service', s.id_service!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                    {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                       <GradientActionBtn onClick={() => handleDelete('service', s.id_service!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                    )}
                                  </div>
                               </div>
                            ))}
@@ -5319,7 +5327,9 @@ ${kode ? `
                                           <div className="flex flex-col gap-1.5">
                                              <div className="flex gap-1.5">
                                                 {isConfirmed && <GradientActionBtn onClick={() => handleSendEventSuccessWA(reg)} label="Kirim WA" gradientFrom="#25D366" gradientTo="#128C7E" icon={IconSend} />}
-                                                <GradientActionBtn onClick={() => handleDelete('eventregistration', reg.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                                {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                                   <GradientActionBtn onClick={() => handleDelete('eventregistration', reg.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                                )}
                                              </div>
                                           </div>
                                        </td>
@@ -5439,7 +5449,9 @@ ${kode ? `
                                        <td className="px-3 py-2.5">
                                           <div className="flex gap-1.5">
                                              <GradientActionBtn onClick={() => openModal('edit', 'event', evt)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                             <GradientActionBtn onClick={() => handleDelete('events', evt.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                             {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                                <GradientActionBtn onClick={() => handleDelete('events', evt.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                             )}
                                           </div>
                                        </td>
                                     </tr>
@@ -5476,7 +5488,9 @@ ${kode ? `
                                  </div>
                                  <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
                                     <GradientActionBtn onClick={() => openModal('edit', 'event', evt)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                    <GradientActionBtn onClick={() => handleDelete('events', evt.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                    {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                       <GradientActionBtn onClick={() => handleDelete('events', evt.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                    )}
                                  </div>
                                  </div>{/* end p-4 inner */}
                               </div>
@@ -5531,7 +5545,9 @@ ${kode ? `
                                              <td className="px-4 py-3">
                                                 <div className="flex gap-1.5">
                                                    <GradientActionBtn onClick={() => openModal('edit', 'asset', a)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                                   <GradientActionBtn onClick={() => handleDelete('asset', a.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                                   {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                                      <GradientActionBtn onClick={() => handleDelete('asset', a.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                                   )}
                                                 </div>
                                              </td>
                                           </tr>
@@ -5565,7 +5581,9 @@ ${kode ? `
                                        {a.catatan && <p className="text-xs text-gray-500 italic">{a.catatan}</p>}
                                        <div className="mt-auto pt-2 border-t border-gray-100 flex gap-1.5">
                                           <GradientActionBtn onClick={() => openModal('edit', 'asset', a)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                          <GradientActionBtn onClick={() => handleDelete('asset', a.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                          {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                                             <GradientActionBtn onClick={() => handleDelete('asset', a.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                                          )}
                                        </div>
                                     </div>
                                  );
