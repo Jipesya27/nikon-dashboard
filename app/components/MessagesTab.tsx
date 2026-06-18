@@ -429,23 +429,45 @@ export default function MessagesTab({
                         >
                           <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v6M3 10l6 6M3 10l6-6" /></svg>
                         </button>
-                        {msg.url_media ? (
-                          <div>
-                            <div className="cursor-pointer rounded-md overflow-hidden max-w-[260px]" onClick={() => openImageViewer(msg.url_media!)}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={isGoogleDriveLink(msg.url_media) ? toDriveProxy(msg.url_media) : msg.url_media}
-                                alt="Media"
-                                className="w-full max-h-64 object-cover rounded-md"
-                                onLoad={scrollToBottom}
-                                onError={e => { (e.target as HTMLImageElement).style.display='none'; }}
-                              />
+                        {msg.url_media ? (() => {
+                          const mediaType = msg.jenis_pesan === 'image' || msg.jenis_pesan === 'video' || msg.jenis_pesan === 'document' || msg.jenis_pesan === 'audio'
+                            ? msg.jenis_pesan
+                            : msg.isi_pesan === '[document]' ? 'document'
+                            : msg.isi_pesan === '[video]' ? 'video'
+                            : msg.isi_pesan === '[audio]' ? 'audio'
+                            : 'image';
+                          const src = isGoogleDriveLink(msg.url_media) ? toDriveProxy(msg.url_media) : msg.url_media;
+                          const caption = !['[image]','[document]','[video]','[audio]'].includes(msg.isi_pesan) ? msg.isi_pesan : '';
+                          return (
+                            <div>
+                              {mediaType === 'image' && (
+                                <div className="cursor-pointer rounded-md overflow-hidden max-w-[260px]" onClick={() => openImageViewer(msg.url_media!)}>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={src} alt="Gambar" className="w-full max-h-64 object-cover rounded-md" onLoad={scrollToBottom} onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
+                                </div>
+                              )}
+                              {mediaType === 'video' && (
+                                <video src={src} controls className="max-w-[260px] rounded-md" style={{ maxHeight: 220 }} onLoadedData={scrollToBottom} />
+                              )}
+                              {mediaType === 'audio' && (
+                                <audio src={src} controls className="w-full min-w-[200px]" />
+                              )}
+                              {mediaType === 'document' && (
+                                <a href={src} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-white/70 border border-gray-200 rounded-xl px-3 py-2.5 hover:bg-white transition min-w-[200px] max-w-[260px]">
+                                  <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
+                                    <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-gray-800 truncate">Dokumen</p>
+                                    <p className="text-[10px] text-gray-500">Klik untuk buka</p>
+                                  </div>
+                                  <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                </a>
+                              )}
+                              {caption && <p className="text-xs mt-1 text-gray-600 italic">{caption}</p>}
                             </div>
-                            {msg.isi_pesan && !['[image]','[document]','[video]','[audio]'].includes(msg.isi_pesan) && (
-                              <p className="text-xs mt-1 text-gray-600 italic">{msg.isi_pesan}</p>
-                            )}
-                          </div>
-                        ) : isImageUrl(msg.isi_pesan) ? (
+                          );
+                        })() : isImageUrl(msg.isi_pesan) ? (
                           <div className="cursor-pointer rounded-md overflow-hidden max-w-[260px]" onClick={() => openImageViewer(msg.isi_pesan)}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={isGoogleDriveLink(msg.isi_pesan) ? toDriveProxy(msg.isi_pesan) : msg.isi_pesan} alt="Media" className="w-full max-h-64 object-cover rounded-md" onLoad={scrollToBottom} />
@@ -537,9 +559,17 @@ export default function MessagesTab({
                       <div className="flex-1 bg-white rounded-xl border border-gray-200 p-2.5 flex items-center gap-3 shadow-sm">
                         {mediaPreview ? (
                           <img src={mediaPreview} alt="preview" className="w-14 h-14 object-cover rounded-lg shrink-0" />
+                        ) : mediaFile?.type.startsWith('video/') ? (
+                          <div className="w-14 h-14 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                            <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+                          </div>
+                        ) : mediaFile?.type.startsWith('audio/') ? (
+                          <div className="w-14 h-14 bg-purple-50 rounded-lg flex items-center justify-center shrink-0">
+                            <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+                          </div>
                         ) : (
-                          <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
-                            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          <div className="w-14 h-14 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
+                            <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
