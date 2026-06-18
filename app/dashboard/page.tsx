@@ -4744,12 +4744,12 @@ ${kode ? `
                                           </div>
                                        )}
                                     </div>
-                                    {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                       <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
-                                          <GradientActionBtn onClick={() => openModal('edit', 'promo', p)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                    <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
+                                       <GradientActionBtn onClick={() => openModal('edit', 'promo', p)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                                       {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                                           <GradientActionBtn onClick={() => handleDelete('promo', p.id_promo!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                       </div>
-                                    )}
+                                       )}
+                                    </div>
                                  </div>
                               );
                            })}
@@ -4758,7 +4758,7 @@ ${kode ? `
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
                            <table className="w-full text-sm whitespace-normal wrap-break-word">
                               <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                                 <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'status_aktif')}>Status {sortConfigPromos.column === 'status_aktif' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Produk Berlaku</th>{(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && <th className="px-4 py-3 text-left font-bold">Aksi</th>}</tr>
+                                 <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'status_aktif')}>Status {sortConfigPromos.column === 'status_aktif' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Produk Berlaku</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
                               </thead>
                               <tbody className="divide-y divide-gray-100">
                                  {sortedPromos.map((p: Promosi) => (
@@ -4767,9 +4767,7 @@ ${kode ? `
                                        <td className="px-4 py-3">{p.tanggal_mulai} s/d {p.tanggal_selesai}</td>
                                        <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span></td>
                                        <td className="px-4 py-3 text-xs whitespace-normal">{(p.tipe_produk || []).map(tp => tp.nama_produk).join(', ')}</td>
-                                       {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                          <td className="px-4 py-3"><div className="flex gap-1.5 items-center"><GradientActionBtn onClick={() => openModal('edit', 'promo', p)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} /><GradientActionBtn onClick={() => handleDelete('promo', p.id_promo!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} /></div></td>
-                                       )}
+                                       <td className="px-4 py-3"><div className="flex gap-1.5 items-center"><GradientActionBtn onClick={() => openModal('edit', 'promo', p)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />{(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && <GradientActionBtn onClick={() => handleDelete('promo', p.id_promo!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />}</div></td>
                                     </tr>
                                  ))}
                               </tbody>
