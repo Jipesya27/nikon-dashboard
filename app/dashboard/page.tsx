@@ -8747,10 +8747,7 @@ ${kode ? `
             const eventCostItems = items.filter(it => !isPettyCashItem(it));
             const pettyCashItems = items.filter(it => isPettyCashItem(it));
             const subtotalEventCost = eventCostItems.reduce((s, it) => s + (Number(it.value) || 0), 0);
-            const subtotalPettyCash = pettyCashItems.reduce((s, it) => {
-               const v = parseFloat(String(it.petty_cash || '0').replace(/[^0-9.-]/g, ''));
-               return s + (isNaN(v) ? 0 : v);
-            }, 0);
+            const subtotalPettyCash = pettyCashItems.reduce((s, it) => s + (Number(it.value) || 0), 0);
             const grandTotal = subtotalEventCost + subtotalPettyCash;
             const MGT_NAMES = {
                col1: printData.mgt_name_1 || 'Jamal',
@@ -8924,12 +8921,7 @@ ${kode ? `
                                           ))}
                                           <tr>
                                              <td colSpan={3}></td>
-                                             <td className="border border-black px-2 py-1.5 text-right font-bold bg-gray-50 text-[10px] tracking-wider">SUBTOTAL</td>
-                                             <td className="border border-black px-2 py-1.5 text-right font-bold font-mono">{fmtNum(subtotalVal)}</td>
-                                          </tr>
-                                          <tr>
-                                             <td colSpan={3}></td>
-                                             <td className="border border-black px-2 py-2.5 text-right font-black text-[11px] bg-black text-white tracking-wider">GRAND TOTAL</td>
+                                             <td className="border border-black px-2 py-2.5 text-right font-black text-[11px] bg-black text-white tracking-wider">TOTAL</td>
                                              <td className="border border-black px-2 py-2.5 text-right font-black font-mono text-[11px] bg-black text-white">Rp {fmtNum(isGrandTotal ? grandTotal : subtotalVal)}</td>
                                           </tr>
                                        </tbody>
