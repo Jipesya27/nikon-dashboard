@@ -8882,7 +8882,7 @@ ${kode ? `
                               return (
                                  <>
                                     {renderItemsTable('EVENT COST', eventCostItems, subtotalEventCost, pettyCashItems.length === 0)}
-                                    {pettyCashItems.length > 0 && renderItemsTable('PETTY CASH', pettyCashItems, subtotalPettyCash, true)}
+                                    {pettyCashItems.length > 0 && renderItemsTable('PETTY CASH', pettyCashItems, subtotalPettyCash, false)}
                                  </>
                               );
                            })()}
