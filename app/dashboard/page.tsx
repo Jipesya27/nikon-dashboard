@@ -5190,7 +5190,15 @@ ${kode ? `
                      ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {sortedBudgets.map((b: BudgetApproval) => (
-                              <div key={b.id_budget} className="bg-white p-4 rounded-lg shadow-sm border-2 border-gray-100 flex flex-col hover:border-[#FFE500] transition">
+                              <div key={b.id_budget} className="bg-white rounded-lg shadow-sm border-2 border-gray-100 flex flex-col hover:border-[#FFE500] transition overflow-hidden">
+                                 {b.event_image
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    ? <img src={driveImgSrc(b.event_image)} alt="poster" className="w-full h-32 object-cover" />
+                                    : <div className="w-full h-32 bg-gray-100 flex items-center justify-center text-gray-300">
+                                         <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                      </div>
+                                 }
+                                 <div className="p-4 flex flex-col flex-1">
                                  <div className="border-b border-gray-100 pb-3 mb-3">
                                     <h3 className="font-bold text-base text-slate-800">{b.title}</h3>
                                     <p className="text-xs text-gray-500 font-mono">{b.proposal_no}</p>
@@ -5206,6 +5214,7 @@ ${kode ? `
                                        <GradientActionBtn onClick={() => handleDelete('budget', b.id_budget!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                                     )}
                                  </div>
+                                 </div>{/* /p-4 */}
                               </div>
                            ))}
                         </div>
@@ -6851,7 +6860,7 @@ ${kode ? `
                                              {budgetForm.event_image && !budgetEventImageFile && (
                                                 <div className="mb-2 flex items-center gap-2">
                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                   <img src={budgetForm.event_image} alt="Poster" className="h-14 w-auto rounded border object-contain" />
+                                                   <img src={driveImgSrc(budgetForm.event_image)} alt="Poster" className="h-14 w-auto rounded border object-contain" />
                                                    <button type="button" onClick={() => setBudgetForm({ ...budgetForm, event_image: '' })} className="text-xs text-red-500 hover:underline">Hapus</button>
                                                 </div>
                                              )}
