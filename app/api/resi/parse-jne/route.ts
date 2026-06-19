@@ -16,9 +16,29 @@ export interface JneRow {
   goods: string;
 }
 
+const JNE_MONTHS: Record<string, string> = {
+  JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', MEI: '05',
+  JUN: '06', JUL: '07', AUG: '08', AGU: '08', SEP: '09',
+  OCT: '10', OKT: '10', NOV: '11', DEC: '12', DES: '12',
+};
+
+function parsePeriodeDate(lines: string[]): string | null {
+  for (const line of lines) {
+    const m = line.match(/Periode\s*:\s*(\d{1,2})-([A-Z]{3})-(\d{4})/i);
+    if (m) {
+      const dd = m[1].padStart(2, '0');
+      const mon = JNE_MONTHS[m[2].toUpperCase()] ?? '01';
+      return `${m[3]}-${mon}-${dd}`;
+    }
+  }
+  return null;
+}
+
 function parseJneText(text: string): JneRow[] {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const rows: JneRow[] = [];
+
+  const periodeDate = parsePeriodeDate(lines);
 
   // Tiap block dimulai baris: <no 1-3 digit><cnote 15 digit mulai 0>
   const starts: { idx: number; no: number; cnote: string }[] = [];
@@ -33,32 +53,29 @@ function parseJneText(text: string): JneRow[] {
     const bl = lines.slice(s, e);
 
     // ── Tanggal & waktu ────────────────────────────────────────────────────
-    // Format bl[1] bisa:
-    //   "DD-MM-"   → tahun di bl[2] (trailing dash)
-    //   "DD-MM"    → tahun di bl[2] (tanpa trailing dash)
-    //   "DD-MM-YY" → tanggal lengkap 2-digit tahun
-    // Format bl[2] jika tahun terpisah: "YY" saja ATAU "YY HH:MM" (menyatu)
-    let dateStr = bl[1];
+    // Utama: ambil dari header "Periode : DD-MON-YYYY" — andal & konsisten.
+    // Fallback: parse bl[1] jika header tidak ditemukan.
+    let isoDate = periodeDate ?? '';
     let timeIdx = 2;
-    const dateNoYear = /^\d{2}-\d{2}-?$/.test(bl[1]); // "DD-MM-" atau "DD-MM"
-    if (dateNoYear) {
-      const part2 = bl[2];
-      const mergedYT = part2.match(/^(\d{2,4})\s+(\d{2}:\d{2})$/);
-      if (mergedYT) {
-        // "26 19:43" atau "2026 19:43" — tahun & jam di baris yang sama
+    if (!periodeDate) {
+      let dateStr = bl[1];
+      const dateNoYear = /^\d{2}-\d{2}-?$/.test(bl[1]);
+      if (dateNoYear) {
+        const part2 = bl[2];
+        const mergedYT = part2.match(/^(\d{2,4})\s+(\d{2}:\d{2})$/);
         const base = bl[1].endsWith('-') ? bl[1] : bl[1] + '-';
-        dateStr = base + mergedYT[1];
-        // timeIdx tetap 2, time di-extract dari part2
-      } else {
-        const base = bl[1].endsWith('-') ? bl[1] : bl[1] + '-';
-        dateStr = base + part2;
-        timeIdx = 3;
+        if (mergedYT) {
+          dateStr = base + mergedYT[1];
+        } else {
+          dateStr = base + part2;
+          timeIdx = 3;
+        }
       }
+      const [dd, mm, yy] = dateStr.split('-');
+      const yearNum = yy && yy.length === 4 ? parseInt(yy) : 2000 + parseInt(yy);
+      isoDate = `${yearNum}-${mm}-${dd}`;
     }
-    const [dd, mm, yy] = dateStr.split('-');
-    const yearNum = yy && yy.length === 4 ? parseInt(yy) : 2000 + parseInt(yy);
-    const isoDate = `${yearNum}-${mm}-${dd}`;
-    // Ekstrak HH:MM dari baris timeIdx — bisa "19:43" atau "26 19:43"
+    // Ekstrak HH:MM dari baris timeIdx
     const timeRaw = bl[timeIdx] ?? '';
     const timeM = timeRaw.match(/(\d{2}:\d{2})/);
     const time = timeM ? timeM[1] : timeRaw;
