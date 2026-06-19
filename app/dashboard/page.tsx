@@ -351,7 +351,7 @@ export default function NikonDashboard() {
    const [sortConfigKaryawans, setSortConfigKaryawans] = useState<SortConfig>({ column: '', direction: null });
    // UI STATES
    const [sidebarOpen, setSidebarOpen] = useState(false);
-   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
+   const [viewMode, setViewMode] = useState<'table' | 'card'>('card');
    const getReadStatusKey = (userId?: string) => userId ? `nikon_chat_read_status_${userId}` : 'nikon_chat_read_status';
    const [readStatus, setReadStatus] = useState<Record<string, string>>(() => {
       if (typeof window !== 'undefined') {
