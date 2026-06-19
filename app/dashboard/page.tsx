@@ -2075,34 +2075,8 @@ ${kode ? `
          setEditingId((item as PengaturanBot)?.id ? String((item as PengaturanBot).id) : null);
       }
       else if (type === 'konsumen') {
-         const kon = (item as KonsumenData) || { status_langkah: 'START', nik: 'BELUM_DIISI', alamat_rumah: 'BELUM_DIISI', kelurahan: 'BELUM_DIISI', kecamatan: 'BELUM_DIISI', kabupaten_kotamadya: 'BELUM_DIISI', provinsi: 'BELUM_DIISI', kodepos: 'BELUM_DIISI' };
-         setKonsumenForm(kon);
+         setKonsumenForm((item as KonsumenData) || { status_langkah: 'START' });
          setEditingId((item as KonsumenData)?.nomor_wa || null);
-         // Jika alamat_rumah kosong, pre-fill dari alamat_pengiriman claim terbaru
-         const noAlamat = !kon.alamat_rumah || kon.alamat_rumah === 'BELUM_DIISI';
-         if (noAlamat && kon.nomor_wa) {
-            supabase
-               .from('claim_promo')
-               .select('alamat_pengiriman, provinsi_pengiriman, kabupaten_pengiriman, kecamatan_pengiriman, kelurahan_pengiriman, kodepos_pengiriman')
-               .eq('nomor_wa', kon.nomor_wa)
-               .not('alamat_pengiriman', 'is', null)
-               .order('created_at', { ascending: false })
-               .limit(1)
-               .maybeSingle()
-               .then(({ data: cl }) => {
-                  if (cl?.alamat_pengiriman) {
-                     setKonsumenForm(prev => ({
-                        ...prev,
-                        alamat_rumah:         cl.alamat_pengiriman  || prev.alamat_rumah,
-                        provinsi:             cl.provinsi_pengiriman   || prev.provinsi,
-                        kabupaten_kotamadya:  cl.kabupaten_pengiriman  || prev.kabupaten_kotamadya,
-                        kecamatan:            cl.kecamatan_pengiriman  || prev.kecamatan,
-                        kelurahan:            cl.kelurahan_pengiriman  || prev.kelurahan,
-                        kodepos:              cl.kodepos_pengiriman    || prev.kodepos,
-                     }));
-                  }
-               });
-         }
       }
       else if (type === 'karyawan') {
          if (action === 'reset_pw') {
@@ -2226,12 +2200,6 @@ ${kode ? `
                   ...konsumenPayload,
                   id_konsumen: newID,
                   nik: konsumenPayload.nik || 'BELUM_DIISI',
-                  alamat_rumah: konsumenPayload.alamat_rumah || 'BELUM_DIISI',
-                  kelurahan: konsumenPayload.kelurahan || 'BELUM_DIISI',
-                  kecamatan: konsumenPayload.kecamatan || 'BELUM_DIISI',
-                  kabupaten_kotamadya: konsumenPayload.kabupaten_kotamadya || 'BELUM_DIISI',
-                  provinsi: konsumenPayload.provinsi || 'BELUM_DIISI',
-                  kodepos: konsumenPayload.kodepos || 'BELUM_DIISI',
                };
                await sbWrite({ action: 'insert', table: 'konsumen', data: fullPayload });
             }
@@ -2637,8 +2605,6 @@ ${kode ? `
                nomor_wa: waNumber,
                nama_lengkap: lendingForm.nama_peminjam!,
                status_langkah: 'START',
-               alamat_rumah: 'BELUM_DIISI', kelurahan: 'BELUM_DIISI', kecamatan: 'BELUM_DIISI',
-               kabupaten_kotamadya: 'BELUM_DIISI', provinsi: 'BELUM_DIISI', kodepos: 'BELUM_DIISI'
             }});
          } else if (consumerError) {
             throw consumerError;
@@ -7530,34 +7496,6 @@ ${kode ? `
                               </div>
                            </div>
 
-                           {/* Section: Alamat */}
-                           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Alamat</h3>
-                              <div className="space-y-3">
-                                 <div>
-                                    <label className="label-form">Alamat Rumah</label>
-                                    <textarea
-                                       rows={2}
-                                       aria-label="Alamat Rumah"
-                                       value={konsumenForm.alamat_rumah || ''}
-                                       onChange={e => setKonsumenForm({ ...konsumenForm, alamat_rumah: e.target.value })}
-                                       className="input-form resize-none"
-                                       placeholder="Jalan, nomor rumah, RT/RW"
-                                    />
-                                 </div>
-                                 <AddressFields
-                                    values={{
-                                       kelurahan: konsumenForm.kelurahan || '',
-                                       kecamatan: konsumenForm.kecamatan || '',
-                                       kabupaten_kotamadya: konsumenForm.kabupaten_kotamadya || '',
-                                       provinsi: konsumenForm.provinsi || '',
-                                       kodepos: konsumenForm.kodepos || '',
-                                    }}
-                                    onChange={partial => setKonsumenForm(prev => ({ ...prev, ...partial }))}
-                                 />
-                              </div>
-                           </div>
-
                            {/* Section: Status Bot */}
                            <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
                               <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Status Chatbot</h3>
@@ -8250,12 +8188,6 @@ ${kode ? `
                                                                nama_lengkap: addContactForm.nama.trim(),
                                                                status_langkah: 'START',
                                                                nik: 'BELUM_DIISI',
-                                                               alamat_rumah: 'BELUM_DIISI',
-                                                               kelurahan: 'BELUM_DIISI',
-                                                               kecamatan: 'BELUM_DIISI',
-                                                               kabupaten_kotamadya: 'BELUM_DIISI',
-                                                               provinsi: 'BELUM_DIISI',
-                                                               kodepos: 'BELUM_DIISI',
                                                             },
                                                          });
                                                          if (error) { setAddContactError(error.message || 'Gagal menyimpan kontak'); return; }

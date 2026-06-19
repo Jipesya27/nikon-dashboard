@@ -5,30 +5,66 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") ?? "";
 const WHATSAPP_ACCESS_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN") ?? "";
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+const TELEGRAM_CS_BOT_TOKEN = Deno.env.get("TELEGRAM_CS_BOT_TOKEN") ?? "";
+const TELEGRAM_CS_CHAT_ID = Deno.env.get("TELEGRAM_CS_CHAT_ID") ?? "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function sendTelegramAdminNotif(nama: string, nomor: string, isOffHours = false): Promise<void> {
-  if (!TELEGRAM_BOT_TOKEN) return;
-  try {
-    const { data: tgRow } = await supabase
-      .from('pengaturan_bot')
-      .select('description')
-      .eq('nama_pengaturan', 'telegram_admin_chat_id')
-      .maybeSingle();
-    const chatId = tgRow?.description || Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") || "";
-    if (!chatId) return;
+  const namaEsc = nama.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
+  const text = isOffHours
+    ? `⏰ *Permintaan CS \\(Di Luar Jam Operasional\\)*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomor}\n\nKonsumen menghubungi di luar jam kerja\\. Follow up jika urgent\\.`
+    : `🔔 *Permintaan CS Baru\\!*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomor}\n\nKonsumen meminta berbicara dengan CS\\. Silakan balas via dashboard\\.`;
 
+  // Kirim ke akun admin utama (chat ID dari DB / env lama)
+  if (TELEGRAM_BOT_TOKEN) {
+    try {
+      const { data: tgRow } = await supabase
+        .from('pengaturan_bot')
+        .select('description')
+        .eq('nama_pengaturan', 'telegram_admin_chat_id')
+        .maybeSingle();
+      const chatId = tgRow?.description || Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") || "";
+      if (chatId) {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text, parse_mode: "MarkdownV2" }),
+        });
+      }
+    } catch (e) {
+      console.error("[TELEGRAM] Gagal kirim notif CS akun 1:", e);
+    }
+  }
+
+  // Kirim ke akun CS khusus
+  if (TELEGRAM_CS_BOT_TOKEN && TELEGRAM_CS_CHAT_ID) {
+    try {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_CS_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: TELEGRAM_CS_CHAT_ID, text, parse_mode: "MarkdownV2" }),
+      });
+    } catch (e) {
+      console.error("[TELEGRAM] Gagal kirim notif CS akun 2:", e);
+    }
+  }
+}
+
+async function sendTelegramServiceNotif(nama: string, nomor: string, nomorTandaTerima?: string): Promise<void> {
+  if (!TELEGRAM_CS_BOT_TOKEN || !TELEGRAM_CS_CHAT_ID) return;
+  try {
     const namaEsc = nama.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
-    const text = isOffHours
-      ? `⏰ *Permintaan CS \\(Di Luar Jam Operasional\\)*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomor}\n\nKonsumen menghubungi di luar jam kerja\\. Follow up jika urgent\\.`
-      : `🔔 *Permintaan CS Baru\\!*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomor}\n\nKonsumen meminta berbicara dengan CS\\. Silakan balas via dashboard\\.`;
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    const ttEsc = nomorTandaTerima ? nomorTandaTerima.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&') : null;
+    const text = ttEsc
+      ? `🔧 *Cek Status Service*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomor}\n🧾 *No\\. Tanda Terima:* ${ttEsc}`
+      : `🔧 *Permintaan Cek Status Service*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomor}\n\nKonsumen meminta status service\\. Menunggu input nomor tanda terima\\.`;
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_CS_BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "MarkdownV2" }),
+      body: JSON.stringify({ chat_id: TELEGRAM_CS_CHAT_ID, text, parse_mode: "MarkdownV2" }),
     });
   } catch (e) {
-    console.error("[TELEGRAM] Gagal kirim notif CS:", e);
+    console.error("[TELEGRAM] Gagal kirim notif service:", e);
   }
 }
 // Fungsi Generate ID (AN + 6 Digit Random)
@@ -180,12 +216,6 @@ serve(async (req)=>{
         status_langkah: 'START',
         nama_lengkap: namaProfil,
         nik: "BELUM_DIISI",
-        alamat_rumah: "BELUM_DIISI",
-        kelurahan: "BELUM_DIISI",
-        kecamatan: "BELUM_DIISI",
-        kabupaten_kotamadya: "BELUM_DIISI",
-        provinsi: "BELUM_DIISI",
-        kodepos: "BELUM_DIISI"
       });
       if (createErr) {
         createErr_global = createErr;
@@ -194,7 +224,6 @@ serve(async (req)=>{
         user = {
           status_langkah: 'START',
           id_konsumen: newID,
-          alamat_rumah: null,
           nama_lengkap: namaProfil,
           nik: null
         };
@@ -316,6 +345,7 @@ serve(async (req)=>{
               await supabase.from('konsumen').update({
                 status_langkah: 'MENUNGGU_RESI_SERVICE'
               }).eq('nomor_wa', nomorPengirim);
+              await sendTelegramServiceNotif(user.nama_lengkap || namaProfil, nomorPengirim);
               break;
             case "6":
               const { data: pengaturanPromo } = await supabase.from('pengaturan_bot').select('url_file').eq('nama_pengaturan', 'promo_nikon').single();
@@ -502,6 +532,14 @@ serve(async (req)=>{
           } else {
             balasanBot = `Maaf, kami tidak menemukan data garansi dengan Nomor Seri *${nomorSeriInput}*.\n\nPastikan nomor seri yang Anda masukkan sudah benar, atau daftarkan garansi Anda terlebih dahulu via menu *3*.\n\nKetik *MENU* untuk kembali ke menu utama.`;
           }
+          await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomorPengirim);
+          break;
+        }
+
+        case 'MENUNGGU_RESI_SERVICE': {
+          const nomorTT = isiPesanWA.trim();
+          await sendTelegramServiceNotif(user.nama_lengkap || namaProfil, nomorPengirim, nomorTT);
+          balasanBot = `Terima kasih! Nomor Tanda Terima *${nomorTT}* telah kami catat.\n\nTim kami akan segera mengecek status service Anda dan menghubungi kembali melalui WhatsApp ini.\n\nKetik *MENU* untuk kembali ke menu utama.`;
           await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomorPengirim);
           break;
         }
