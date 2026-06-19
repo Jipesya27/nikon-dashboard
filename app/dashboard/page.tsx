@@ -3860,10 +3860,10 @@ ${kode ? `
             handleKirimStatusClaim={handleKirimStatusClaim}
             handlePrintLabelPengiriman={handlePrintLabelPengiriman}
             openModal={openModal as (mode: string, type: string, data?: unknown) => void}
-            handleDelete={handleDelete}
+            handleDelete={handleDelete as (type: string, id: string) => void}
             openImageViewer={openImageViewer}
             isGoogleDriveLink={isGoogleDriveLink}
-            sbWrite={sbWrite}
+            sbWrite={sbWrite as (opts: { action: string; table: string; data?: Record<string, unknown>; match?: Record<string, unknown> }) => Promise<unknown>}
          />
       );
    }
