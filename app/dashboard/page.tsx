@@ -3859,7 +3859,7 @@ ${kode ? `
             formatSubmitDate={formatSubmitDate}
             handleKirimStatusClaim={handleKirimStatusClaim}
             handlePrintLabelPengiriman={handlePrintLabelPengiriman}
-            openModal={openModal}
+            openModal={openModal as (mode: string, type: string, data?: unknown) => void}
             handleDelete={handleDelete}
             openImageViewer={openImageViewer}
             isGoogleDriveLink={isGoogleDriveLink}
