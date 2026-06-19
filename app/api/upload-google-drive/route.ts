@@ -82,6 +82,13 @@ async function uploadToGoogleDrive(file: File, fileName: string, accessToken: st
     throw new Error(`Google Drive upload failed: ${JSON.stringify(data)}`);
   }
 
+  // Jadikan file public agar bisa diakses server Meta/WhatsApp saat kirim media
+  await fetch(`https://www.googleapis.com/drive/v3/files/${data.id}/permissions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+  });
+
   return `https://drive.google.com/uc?id=${data.id}&export=view`;
 }
 
