@@ -27,8 +27,6 @@ import LendingTab from '@/app/components/LendingTab';
 import BotSettingsTab from '@/app/components/BotSettingsTab';
 import ClaimsTab from '@/app/components/ClaimsTab';
 import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield, IconCheck, IconPrint, IconKey } from '@/app/components/GradientActionBtn';
-import { useIsMobile } from '@/app/hooks/useIsMobile';
-import MobileApp from '@/app/components/mobile/MobileApp';
 
 /** Konversi Google Drive URL ke proxy lokal agar gambar bisa tampil di dashboard.
  *  drive.google.com tidak bisa di-load langsung karena CORS + domain whitelist Next.js. */
@@ -225,7 +223,6 @@ const sendWhatsAppMessage = async (
 };
 
 export default function NikonDashboard() {
-   const isMobile = useIsMobile();
 
    // LOGIN & FORGOT PASSWORD STATES
    const [currentUser, setCurrentUser] = useState<Karyawan | null>(null);
@@ -3821,52 +3818,6 @@ ${kode ? `
 
    // --- UI RENDER ---
 
-   if (isMobile) {
-      return (
-         <MobileApp
-            // Auth
-            currentUser={currentUser}
-            isLoggedIn={isLoggedIn}
-            loginForm={loginForm}
-            setLoginForm={setLoginForm}
-            loginError={loginError}
-            handleLogin={handleLogin}
-            handleLogout={() => {
-               setCurrentUser(null);
-               setIsLoggedIn(false);
-               document.cookie = 'admin_session=; Max-Age=0; path=/';
-            }}
-            // Data
-            claims={claims}
-            setClaims={setClaims}
-            warranties={warranties}
-            setWarranties={setWarranties}
-            promos={promos}
-            setPromos={setPromos}
-            services={services}
-            setServices={setServices}
-            lendingRecords={lendingRecords}
-            setLendingRecords={setLendingRecords}
-            consumersList={consumersList}
-            messages={messages}
-            events={events}
-            budgets={budgets}
-            consumers={consumers}
-            // Helpers
-            getClaimStatusColor={getClaimStatusColor}
-            getBadgeLabel={getBadgeLabel}
-            formatTglBeli={formatTglBeli}
-            formatSubmitDate={formatSubmitDate}
-            handleKirimStatusClaim={handleKirimStatusClaim}
-            handlePrintLabelPengiriman={handlePrintLabelPengiriman}
-            openModal={openModal as (mode: string, type: string, data?: unknown) => void}
-            handleDelete={handleDelete as (type: string, id: string) => void}
-            openImageViewer={openImageViewer}
-            isGoogleDriveLink={isGoogleDriveLink}
-            sbWrite={sbWrite as (opts: { action: string; table: string; data?: Record<string, unknown>; match?: Record<string, unknown> }) => Promise<unknown>}
-         />
-      );
-   }
 
    if (!isLoggedIn) {
       return (
