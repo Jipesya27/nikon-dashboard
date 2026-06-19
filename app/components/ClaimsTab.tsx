@@ -414,16 +414,6 @@ export default function ClaimsTab({
                       )}
                     </div>
                   </div>
-                  <button onClick={() => {
-                    const consumerObj = consumersList.find(k => k.nomor_wa === c.nomor_wa);
-                    if (consumerObj) {
-                      setReturnTab('claims');
-                      setActiveTab('konsumen');
-                      openModal('edit', 'konsumen', consumerObj);
-                    } else {
-                      alert('Data konsumen tidak ditemukan di database.');
-                    }
-                  }} className="text-orange-600 text-xs font-bold hover:underline">Edit Alamat</button>
                   <button onClick={() => handleKirimStatusClaim(c)} className="text-emerald-600 text-xs font-bold hover:underline">Kirim Status</button>
                   {getClaimStatusColor(c) === 'Pink' && (
                     <button onClick={() => { setResiModal(c); setResiModalForm({ nama_jasa_pengiriman: c.nama_jasa_pengiriman || '', nomor_resi: c.nomor_resi || '' }); }} className="text-pink-600 text-xs font-bold hover:underline">📦 Isi Resi</button>
