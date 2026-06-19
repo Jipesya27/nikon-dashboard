@@ -25,11 +25,7 @@
         "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
-    "plugins": [
-      [
-        "react-native-reanimated"
-      ]
-    ],
+    "plugins": [],
     "extra": {
       "apiBaseUrl": "https://altanikindo.com"
     }
