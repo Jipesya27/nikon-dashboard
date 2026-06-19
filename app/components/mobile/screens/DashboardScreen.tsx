@@ -79,12 +79,12 @@ export default function DashboardScreen({
     { label: 'Total Chat',      value: messages.length,      icon: 'forum',         bg: '#E3F2FD', fg: '#1976D2', screen: 'pesan' },
   ];
 
-  const reminders: { icon: string; color: string; bg: string; title: string; sub: string; screen: MobileScreen }[] = [
-    { icon: 'pending_actions',    color: '#3B82F6', bg: '#EFF6FF', title: `${pendingClaims} klaim belum divalidasi`,   sub: 'Perlu tinjauan marketing',          screen: 'klaim' },
-    { icon: 'verified_user',      color: '#16A34A', bg: '#F0FDF4', title: `${garansiBelum} garansi menunggu`,          sub: 'Verifikasi pendaftaran garansi',    screen: 'garansi' },
-    { icon: 'build_circle',       color: '#7C3AED', bg: '#F5F3FF', title: `${serviceAktif} unit dalam service`,        sub: 'Cek status perbaikan produk',       screen: 'service' },
-    { icon: 'inventory_2',        color: '#EA580C', bg: '#FFF7ED', title: `${aktifLending} peminjaman aktif`,           sub: 'Barang aset yang sedang dipinjam',  screen: 'peminjaman' },
-  ].filter(r => {
+  const reminders = ([
+    { icon: 'pending_actions',    color: '#3B82F6', bg: '#EFF6FF', title: `${pendingClaims} klaim belum divalidasi`,   sub: 'Perlu tinjauan marketing',          screen: 'klaim' as MobileScreen },
+    { icon: 'verified_user',      color: '#16A34A', bg: '#F0FDF4', title: `${garansiBelum} garansi menunggu`,          sub: 'Verifikasi pendaftaran garansi',    screen: 'garansi' as MobileScreen },
+    { icon: 'build_circle',       color: '#7C3AED', bg: '#F5F3FF', title: `${serviceAktif} unit dalam service`,        sub: 'Cek status perbaikan produk',       screen: 'service' as MobileScreen },
+    { icon: 'inventory_2',        color: '#EA580C', bg: '#FFF7ED', title: `${aktifLending} peminjaman aktif`,           sub: 'Barang aset yang sedang dipinjam',  screen: 'peminjaman' as MobileScreen },
+  ] as const).filter(r => {
     const n = parseInt(r.title);
     return !isNaN(n) && n > 0;
   });
