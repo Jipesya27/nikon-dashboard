@@ -8,7 +8,10 @@ const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function sendTelegramAdminNotif(nama: string, nomor: string, isOffHours = false): Promise<void> {
-  if (!TELEGRAM_BOT_TOKEN) return;
+  if (!TELEGRAM_BOT_TOKEN) {
+    console.warn("[TELEGRAM] TELEGRAM_BOT_TOKEN tidak di-set, skip notif CS.");
+    return;
+  }
   try {
     const { data: tgRow } = await supabase
       .from('pengaturan_bot')
@@ -16,17 +19,27 @@ async function sendTelegramAdminNotif(nama: string, nomor: string, isOffHours = 
       .eq('nama_pengaturan', 'telegram_admin_chat_id')
       .maybeSingle();
     const chatId = tgRow?.description || Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") || "";
-    if (!chatId) return;
+    if (!chatId) {
+      console.warn("[TELEGRAM] telegram_admin_chat_id tidak dikonfigurasi, skip notif CS.");
+      return;
+    }
 
     const namaEsc = nama.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
+    const nomorEsc = nomor.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
     const text = isOffHours
-      ? `⏰ *Permintaan CS \\(Di Luar Jam Operasional\\)*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomor}\n\nKonsumen menghubungi di luar jam kerja\\. Follow up jika urgent\\.`
-      : `🔔 *Permintaan CS Baru\\!*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomor}\n\nKonsumen meminta berbicara dengan CS\\. Silakan balas via dashboard\\.`;
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      ? `⏰ *Permintaan CS \\(Di Luar Jam Operasional\\)*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomorEsc}\n\nKonsumen menghubungi di luar jam kerja\\. Follow up jika urgent\\.`
+      : `🔔 *Permintaan CS Baru\\!*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomorEsc}\n\nKonsumen meminta berbicara dengan CS\\. Silakan balas via dashboard\\.`;
+    const tgRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: "MarkdownV2" }),
     });
+    if (!tgRes.ok) {
+      const errBody = await tgRes.text();
+      console.error("[TELEGRAM] API error:", tgRes.status, errBody);
+    } else {
+      console.log("[TELEGRAM] Notif CS terkirim ke chat_id:", chatId);
+    }
   } catch (e) {
     console.error("[TELEGRAM] Gagal kirim notif CS:", e);
   }
@@ -421,6 +434,34 @@ serve(async (req)=>{
             balasanBot = `Mohon balas dengan *YA* atau *TIDAK*.`;
           }
           break;
+        case 'MENUNGGU_RESI_SERVICE': {
+          const nomorResi = isiPesanWA.trim();
+          console.log(`[SERVICE_STATUS] Cari nomor tanda terima: "${nomorResi}"`);
+
+          const { data: serviceFound } = await supabase
+            .from('status_service')
+            .select('nomor_tanda_terima, nomor_seri, status_service')
+            .ilike('nomor_tanda_terima', nomorResi)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          console.log(`[SERVICE_STATUS] Hasil:`, JSON.stringify(serviceFound));
+
+          if (serviceFound) {
+            const s = serviceFound;
+            let msg = `Status Service Nikon Anda:\n\n`;
+            msg += `*No Tanda Terima:* ${s.nomor_tanda_terima || nomorResi}\n`;
+            if (s.nomor_seri) msg += `*No Seri:* ${s.nomor_seri}\n`;
+            msg += `*Status:* ${s.status_service || '-'}\n`;
+            msg += `\nUntuk informasi lebih lanjut, hubungi Nikon Pusat Service:\n📞 Senin–Jumat 09.00–17.00 WIB\n\nKetik *MENU* untuk kembali ke menu utama.`;
+            balasanBot = msg;
+          } else {
+            balasanBot = `Maaf, kami tidak menemukan data service dengan Nomor Tanda Terima *${nomorResi}*.\n\nPastikan nomor yang Anda masukkan sudah benar, atau hubungi langsung:\n📍 Nikon Pusat Service, Komplek Mangga Dua Square Blok H No.1-2, Jakarta Utara\n\nKetik *MENU* untuk kembali ke menu utama.`;
+          }
+          await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomorPengirim);
+          break;
+        }
         case 'MENUNGGU_SERI_CLAIM': {
           const nomorSeriInput = isiPesanWA.trim();
           console.log(`[CLAIM_STATUS] Cari nomor seri: "${nomorSeriInput}"`);
