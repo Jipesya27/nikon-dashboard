@@ -173,34 +173,51 @@ Barang Dikembalikan:
 
 Semua notifikasi ke admin (claim promo, garansi, event, CS request) dikirim via **Telegram**, bukan WhatsApp.
 
-### Konfigurasi
+### Dua Bot Telegram di Sistem
+
+| Bot | Token Env Var | Chat ID | Dipakai untuk |
+|---|---|---|---|
+| Bot Admin | `TELEGRAM_BOT_TOKEN` | `8491326460` (DB `telegram_admin_chat_id` / env `TELEGRAM_ADMIN_CHAT_ID`) | Claim promo, garansi, event, peminjaman, deploy |
+| Bot CS | `TELEGRAM_CS_BOT_TOKEN` | env `TELEGRAM_CS_CHAT_ID` | Request CS (menu 9) + cek status service (menu 5) |
+
+### Bot Admin — Konfigurasi
 
 - **Env vars**: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`
 - **DB**: `telegram_admin_chat_id` di tabel `pengaturan_bot` (override env var)
 - **Bot**: `@JipesyaMonitoring_bot`
 - **Chat ID admin**: `8491326460`
 
-### `app/lib/notify.ts`
+### Bot Admin — `app/lib/notify.ts`
 
-- `sendTelegram(chatId, message)` â€” kirim via Telegram Bot API, MarkdownV2 dengan fallback plain-text
-- `sendNotif()` â€” admin notifications dikirim ke Telegram (bukan WA)
-- `getSettings()` â€” fetch `telegram_admin_chat_id` dari `pengaturan_bot`
+- `sendTelegram(chatId, message)` — kirim via Telegram Bot API, MarkdownV2 dengan fallback plain-text
+- `sendNotif()` — admin notifications dikirim ke Telegram (bukan WA)
+- `getSettings()` — fetch `telegram_admin_chat_id` dari `pengaturan_bot`
 
-### Dashboard â€” Pengaturan Telegram
+### Dashboard — Pengaturan Telegram
 
-- Tab: **Pengaturan** â†’ section "Notifikasi Admin via Telegram"
+- Tab: **Pengaturan** → section "Notifikasi Admin via Telegram"
 - State: `telegramChatId`, `telegramChatIdInput`, `telegramSaving`, `telegramMsg`
-- `saveTelegramChatId()` â†’ upsert ke `pengaturan_bot` (field `url_file: ''` bukan null, karena NOT NULL constraint)
+- `saveTelegramChatId()` → upsert ke `pengaturan_bot` (field `url_file: ''` bukan null, karena NOT NULL constraint)
 - Test link: `/api/test-notif?telegram=1`
 
-### `supabase/functions/meta-bot/index.ts` â€” CS Handoff
+### Bot CS — `supabase/functions/meta-bot/index.ts`
 
-- `sendTelegramAdminNotif(nama, nomor, isOffHours)` â€” notif ke admin saat konsumen request CS (menu "9")
-- Dalam jam operasional: "ðŸ”” *Permintaan CS Baru!*"
-- Di luar jam operasional: "â° *Permintaan CS (Di Luar Jam Operasional)*" â€” tetap dikirim agar bisa follow-up urgent
-- Dipanggil di `case "9"` untuk kedua kondisi jam operasional
+- **Env vars** (Supabase secrets): `TELEGRAM_CS_BOT_TOKEN`, `TELEGRAM_CS_CHAT_ID`
+- Chat ID langsung dari env — tidak pakai DB
+- `sendTelegramCS(text)` — pengirim generik MarkdownV2 ke bot CS
+- `sendTelegramAdminNotif(nama, nomor, isOffHours)` — wrapper untuk request CS (menu 9)
+  - Dalam jam operasional: "🔔 *Permintaan CS Baru!*"
+  - Di luar jam operasional: "⏰ *Permintaan CS (Di Luar Jam Operasional)*"
+- `sendTelegramServiceNotif(nama, nomor, nomorResi, statusService)` — notif saat konsumen cek status service (menu 5)
+  - Ditemukan: tampilkan no tanda terima + status
+  - Tidak ditemukan: info bahwa data tidak ada di sistem
 
----
+### Bot CS — Handler `MENUNGGU_RESI_SERVICE`
+
+- Dipanggil saat konsumen pilih menu **5 (Cek Status Service)** lalu kirim nomor tanda terima
+- Query tabel `status_service` by `nomor_tanda_terima` (case-insensitive)
+- Balas ke konsumen dengan status, lalu kirim notif ke bot CS
+- Reset `status_langkah` ke `START` setelah selesai
 
 ## 8. Infrastruktur Backup â€” STB HG680P + Synology DS223J
 
