@@ -127,14 +127,14 @@ export default function DashboardScreen({
         {/* Quick links */}
         <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1A1A', margin: '16px 0 8px' }}>Menu Cepat</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-          {[
-            { icon: 'sell',       label: 'Promo',      screen: 'promo',      color: '#A88600' },
-            { icon: 'build',      label: 'Service',    screen: 'service',    color: '#7C3AED' },
-            { icon: 'payments',   label: 'Bayar',      screen: 'bayar',      color: '#1976D2' },
-            { icon: 'qr_code_scanner', label: 'Absensi', screen: 'absensi', color: '#0F766E' },
-            { icon: 'monitor_heart',   label: 'Infra',    screen: 'infra',    color: '#DC2626' },
-            { icon: 'inventory_2',label: 'Pinjam',     screen: 'peminjaman', color: '#EA580C' },
-          ].map(q => (
+          {([
+            { icon: 'sell',       label: 'Promo',      screen: 'promo' as MobileScreen,      color: '#A88600' },
+            { icon: 'build',      label: 'Service',    screen: 'service' as MobileScreen,    color: '#7C3AED' },
+            { icon: 'payments',   label: 'Bayar',      screen: 'bayar' as MobileScreen,      color: '#1976D2' },
+            { icon: 'qr_code_scanner', label: 'Absensi', screen: 'absensi' as MobileScreen, color: '#0F766E' },
+            { icon: 'monitor_heart',   label: 'Infra',    screen: 'infra' as MobileScreen,    color: '#DC2626' },
+            { icon: 'inventory_2',label: 'Pinjam',     screen: 'peminjaman' as MobileScreen, color: '#EA580C' },
+          ] as const).map(q => (
             <button key={q.screen} onClick={() => onNavigate(q.screen)} style={{
               background: '#fff', borderRadius: 12, padding: '14px 8px',
               border: '1px solid #EEF0F2', display: 'flex', flexDirection: 'column',
