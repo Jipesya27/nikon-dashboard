@@ -14,11 +14,11 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https://drive.google.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
       // wss:// diperlukan untuk Supabase Realtime (WebSocket)
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://oauth2.googleapis.com https://www.googleapis.com https://docs.google.com https://backup.altanikindo.web.id",
-      "font-src 'self'",
+      "font-src 'self' https://fonts.gstatic.com",
       "frame-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",
