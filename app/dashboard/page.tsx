@@ -8914,7 +8914,7 @@ ${kode ? `
                            )}
 
                            <div className="text-[9px] text-gray-600 mt-4 flex justify-between">
-                              <span>https://nikonindonesia-altanikindo.vercel.app</span>
+                              <span>https://altanikindo.com</span>
                               <span>Dokumen Budget Approval</span>
                            </div>
                         </div>
