@@ -27,6 +27,8 @@ import LendingTab from '@/app/components/LendingTab';
 import BotSettingsTab from '@/app/components/BotSettingsTab';
 import ClaimsTab from '@/app/components/ClaimsTab';
 import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield, IconCheck, IconPrint, IconKey } from '@/app/components/GradientActionBtn';
+import { useIsMobile } from '@/app/hooks/useIsMobile';
+import MobileApp from '@/app/components/mobile/MobileApp';
 
 /** Konversi Google Drive URL ke proxy lokal agar gambar bisa tampil di dashboard.
  *  drive.google.com tidak bisa di-load langsung karena CORS + domain whitelist Next.js. */
@@ -223,6 +225,8 @@ const sendWhatsAppMessage = async (
 };
 
 export default function NikonDashboard() {
+   const isMobile = useIsMobile();
+
    // LOGIN & FORGOT PASSWORD STATES
    const [currentUser, setCurrentUser] = useState<Karyawan | null>(null);
    const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -2407,7 +2411,9 @@ ${kode ? `
             finalEventImage = await uploadFileToStorage(budgetEventImageFile, 'EventPoster', String(budgetForm.title || 'poster').replace(/\s+/g, '_'));
          }
 
-         const dataToSave = { ...budgetForm, attachment_urls: finalUrls, event_image: finalEventImage };
+         // event_time tidak ada di kolom budget_approval — hanya dipakai saat sync ke tabel events
+         const { event_time: _evTime, ...budgetFormRest } = budgetForm;
+         const dataToSave = { ...budgetFormRest, attachment_urls: finalUrls, event_image: finalEventImage };
 
          if (modalAction === 'create') {
             // 1. Simpan proposal
@@ -3814,6 +3820,53 @@ ${kode ? `
    }, [currentUser, activeTab, groupedVisibleTabs]);
 
    // --- UI RENDER ---
+
+   if (isMobile) {
+      return (
+         <MobileApp
+            // Auth
+            currentUser={currentUser}
+            isLoggedIn={isLoggedIn}
+            loginForm={loginForm}
+            setLoginForm={setLoginForm}
+            loginError={loginError}
+            handleLogin={handleLogin}
+            handleLogout={() => {
+               setCurrentUser(null);
+               setIsLoggedIn(false);
+               document.cookie = 'admin_session=; Max-Age=0; path=/';
+            }}
+            // Data
+            claims={claims}
+            setClaims={setClaims}
+            warranties={warranties}
+            setWarranties={setWarranties}
+            promos={promos}
+            setPromos={setPromos}
+            services={services}
+            setServices={setServices}
+            lendingRecords={lendingRecords}
+            setLendingRecords={setLendingRecords}
+            consumersList={consumersList}
+            messages={messages}
+            events={events}
+            budgets={budgets}
+            consumers={consumers}
+            // Helpers
+            getClaimStatusColor={getClaimStatusColor}
+            getBadgeLabel={getBadgeLabel}
+            formatTglBeli={formatTglBeli}
+            formatSubmitDate={formatSubmitDate}
+            handleKirimStatusClaim={handleKirimStatusClaim}
+            handlePrintLabelPengiriman={handlePrintLabelPengiriman}
+            openModal={openModal}
+            handleDelete={handleDelete}
+            openImageViewer={openImageViewer}
+            isGoogleDriveLink={isGoogleDriveLink}
+            sbWrite={sbWrite}
+         />
+      );
+   }
 
    if (!isLoggedIn) {
       return (
@@ -6935,15 +6988,12 @@ ${kode ? `
                                                    <div>
                                                       <label className="text-[10px] font-bold text-orange-800 uppercase block mb-1">Jumlah Petty Cash</label>
                                                       <input
-                                                         type="number"
-                                                         min={0}
-                                                         step={1000}
-                                                         placeholder="0"
+                                                         type="text"
+                                                         readOnly
                                                          aria-label="Jumlah petty cash"
-                                                         title="Jumlah petty cash"
-                                                         value={item.petty_cash || ''}
-                                                         onChange={e => updateItem(idx, { petty_cash: e.target.value })}
-                                                         className="input-form border-orange-300 focus:border-orange-500"
+                                                         title="Jumlah petty cash (otomatis)"
+                                                         value={fmtRp(Number(item.value) || 0)}
+                                                         className="input-form border-orange-300 bg-orange-50 cursor-default"
                                                       />
                                                    </div>
                                                 </div>
@@ -6996,33 +7046,6 @@ ${kode ? `
                                           <div className="md:col-span-2">
                                              <label className="label-form">Finance & Accounting Approver</label>
                                              <input type="text" value={budgetForm.finance_name || ''} onChange={e => setBudgetForm({ ...budgetForm, finance_name: e.target.value })} className="input-form" placeholder="Default: Merry" />
-                                          </div>
-                                       </div>
-                                    </div>
-
-                                    {/* Section: Approval & Comments */}
-                                    <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-                                       <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Komentar Management & Persetujuan</h3>
-                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                          <div>
-                                             <label className="label-form">Comment dari {budgetForm.mgt_name_1 || 'Manager 1'}</label>
-                                             <textarea rows={2} aria-label="Comment Manager 1" value={budgetForm.mgt_comment_1 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_1: e.target.value })} className="input-form resize-none" />
-                                          </div>
-                                          <div>
-                                             <label className="label-form">Comment dari {budgetForm.mgt_name_2 || 'Manager 2'}</label>
-                                             <textarea rows={2} aria-label="Comment Manager 2" value={budgetForm.mgt_comment_2 || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_comment_2: e.target.value })} className="input-form resize-none" />
-                                          </div>
-                                          <div>
-                                             <label className="label-form">Persetujuan Management</label>
-                                             <select aria-label="Persetujuan management" value={budgetForm.mgt_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, mgt_consent: e.target.value })} className="input-form">
-                                                {CONSENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                             </select>
-                                          </div>
-                                          <div>
-                                             <label className="label-form">Persetujuan Finance</label>
-                                             <select aria-label="Persetujuan finance" value={budgetForm.finance_consent || ''} onChange={e => setBudgetForm({ ...budgetForm, finance_consent: e.target.value })} className="input-form">
-                                                {CONSENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                             </select>
                                           </div>
                                        </div>
                                     </div>
