@@ -33,14 +33,7 @@ export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
 
 ### 2. Set URL backend
 
-Buka file `src/api/client.ts` dan ganti:
-```ts
-export const API_BASE_URL = 'https://YOUR_VERCEL_DOMAIN.vercel.app';
-```
-dengan URL Vercel production Anda, contoh:
-```ts
-export const API_BASE_URL = 'https://nikon-dashboard.vercel.app';
-```
+API Base URL sudah diset ke `https://altanikindo.com`. Tidak perlu diubah lagi.
 
 ### 3. Install dependencies
 

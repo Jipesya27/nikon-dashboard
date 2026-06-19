@@ -1,8 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SbReadPayload, SbWritePayload } from './types';
 
-// Ganti dengan domain Vercel production Anda
-export const API_BASE_URL = 'https://YOUR_VERCEL_DOMAIN.vercel.app';
+export const API_BASE_URL = 'https://altanikindo.com';
 
 async function getAuthCookie(): Promise<string> {
   const [adminSession, karyawanIdentity] = await Promise.all([
