@@ -33,24 +33,31 @@ function parseJneText(text: string): JneRow[] {
     const bl = lines.slice(s, e);
 
     // ── Tanggal & waktu ────────────────────────────────────────────────────
-    // Format bl[1]: "DD-MM-" (split, lanjut ke bl[2]) atau "DD-MM-YY" (lengkap)
-    // Format bl[2] jika split: "YY" saja ATAU "YY HH:MM" (tahun+jam menyatu 1 baris)
+    // Format bl[1] bisa:
+    //   "DD-MM-"   → tahun di bl[2] (trailing dash)
+    //   "DD-MM"    → tahun di bl[2] (tanpa trailing dash)
+    //   "DD-MM-YY" → tanggal lengkap 2-digit tahun
+    // Format bl[2] jika tahun terpisah: "YY" saja ATAU "YY HH:MM" (menyatu)
     let dateStr = bl[1];
     let timeIdx = 2;
-    if (bl[1].endsWith('-')) {
+    const dateNoYear = /^\d{2}-\d{2}-?$/.test(bl[1]); // "DD-MM-" atau "DD-MM"
+    if (dateNoYear) {
       const part2 = bl[2];
-      const mergedYT = part2.match(/^(\d{2})\s+(\d{2}:\d{2})$/);
+      const mergedYT = part2.match(/^(\d{2,4})\s+(\d{2}:\d{2})$/);
       if (mergedYT) {
-        // "26 19:43" — tahun & jam di baris yang sama
-        dateStr = bl[1] + mergedYT[1];
-        // timeIdx tetap 2, time di-extract dari part2 (bukan bl[2] mentah)
+        // "26 19:43" atau "2026 19:43" — tahun & jam di baris yang sama
+        const base = bl[1].endsWith('-') ? bl[1] : bl[1] + '-';
+        dateStr = base + mergedYT[1];
+        // timeIdx tetap 2, time di-extract dari part2
       } else {
-        dateStr = bl[1] + part2;
+        const base = bl[1].endsWith('-') ? bl[1] : bl[1] + '-';
+        dateStr = base + part2;
         timeIdx = 3;
       }
     }
     const [dd, mm, yy] = dateStr.split('-');
-    const isoDate = `${2000 + parseInt(yy)}-${mm}-${dd}`;
+    const yearNum = yy && yy.length === 4 ? parseInt(yy) : 2000 + parseInt(yy);
+    const isoDate = `${yearNum}-${mm}-${dd}`;
     // Ekstrak HH:MM dari baris timeIdx — bisa "19:43" atau "26 19:43"
     const timeRaw = bl[timeIdx] ?? '';
     const timeM = timeRaw.match(/(\d{2}:\d{2})/);
