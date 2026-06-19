@@ -2,10 +2,11 @@
 import React from 'react';
 import type { ClaimPromo, Garansi, StatusService, PeminjamanBarang, KonsumenData } from '@/app/index';
 import { MobileHeader } from '../MobileShell';
+import type { MobileScreen } from '../types';
 
 interface DashboardScreenProps {
   onDrawerOpen: () => void;
-  onNavigate: (s: string) => void;
+  onNavigate: (s: MobileScreen) => void;
   claims: ClaimPromo[];
   warranties: Garansi[];
   services: StatusService[];
