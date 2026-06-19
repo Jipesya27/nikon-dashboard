@@ -188,7 +188,7 @@ export default function ClaimsScreen({
               <div style={{ height: 1, background: '#EEF0F2', margin: '12px 0' }} />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <IconBtn icon="receipt_long" color="#2563EB" border="#BFDBFE" onClick={() => selectedClaim?.link_nota_pembelian && openImageViewer(selectedClaim.link_nota_pembelian as string)} />
+                  <IconBtn icon="receipt_long" color="#2563EB" border="#BFDBFE" onClick={() => c.link_nota_pembelian && openImageViewer(c.link_nota_pembelian as string)} />
                   <IconBtn icon="send" color="#16A34A" border="#BBF7D0" onClick={() => handleKirimStatusClaim(c)} />
                   <IconBtn icon="label" color="#7C3AED" border="#DDD6FE" onClick={() => handlePrintLabelPengiriman(c)} />
                 </div>
