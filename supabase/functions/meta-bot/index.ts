@@ -8,21 +8,20 @@ const TELEGRAM_CS_BOT_TOKEN = Deno.env.get("TELEGRAM_CS_BOT_TOKEN") ?? "";
 const TELEGRAM_CS_CHAT_ID = Deno.env.get("TELEGRAM_CS_CHAT_ID") ?? "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-async function sendTelegramAdminNotif(nama: string, nomor: string, isOffHours = false): Promise<void> {
+function escMd(s: string): string {
+  return s.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
+}
+
+async function sendTelegramCS(text: string): Promise<void> {
   if (!TELEGRAM_CS_BOT_TOKEN) {
-    console.warn("[TELEGRAM_CS] TELEGRAM_CS_BOT_TOKEN tidak di-set, skip notif CS.");
+    console.warn("[TELEGRAM_CS] TELEGRAM_CS_BOT_TOKEN tidak di-set, skip.");
     return;
   }
   if (!TELEGRAM_CS_CHAT_ID) {
-    console.warn("[TELEGRAM_CS] TELEGRAM_CS_CHAT_ID tidak di-set, skip notif CS.");
+    console.warn("[TELEGRAM_CS] TELEGRAM_CS_CHAT_ID tidak di-set, skip.");
     return;
   }
   try {
-    const namaEsc = nama.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
-    const nomorEsc = nomor.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
-    const text = isOffHours
-      ? `⏰ *Permintaan CS \\(Di Luar Jam Operasional\\)*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomorEsc}\n\nKonsumen menghubungi di luar jam kerja\\. Follow up jika urgent\\.`
-      : `🔔 *Permintaan CS Baru\\!*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomorEsc}\n\nKonsumen meminta berbicara dengan CS\\. Silakan balas via dashboard\\.`;
     const tgRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_CS_BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -32,11 +31,31 @@ async function sendTelegramAdminNotif(nama: string, nomor: string, isOffHours = 
       const errBody = await tgRes.text();
       console.error("[TELEGRAM_CS] API error:", tgRes.status, errBody);
     } else {
-      console.log("[TELEGRAM_CS] Notif CS terkirim ke chat_id:", TELEGRAM_CS_CHAT_ID);
+      console.log("[TELEGRAM_CS] Pesan terkirim ke chat_id:", TELEGRAM_CS_CHAT_ID);
     }
   } catch (e) {
-    console.error("[TELEGRAM_CS] Gagal kirim notif CS:", e);
+    console.error("[TELEGRAM_CS] Gagal kirim:", e);
   }
+}
+
+async function sendTelegramAdminNotif(nama: string, nomor: string, isOffHours = false): Promise<void> {
+  const namaEsc = escMd(nama);
+  const nomorEsc = escMd(nomor);
+  const text = isOffHours
+    ? `⏰ *Permintaan CS \\(Di Luar Jam Operasional\\)*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomorEsc}\n\nKonsumen menghubungi di luar jam kerja\\. Follow up jika urgent\\.`
+    : `🔔 *Permintaan CS Baru\\!*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomorEsc}\n\nKonsumen meminta berbicara dengan CS\\. Silakan balas via dashboard\\.`;
+  await sendTelegramCS(text);
+}
+
+async function sendTelegramServiceNotif(nama: string, nomor: string, nomorResi: string, statusService: string | null): Promise<void> {
+  const namaEsc = escMd(nama);
+  const nomorEsc = escMd(nomor);
+  const resiEsc = escMd(nomorResi);
+  const statusEsc = escMd(statusService || 'Tidak ditemukan');
+  const text = statusService
+    ? `🔧 *Cek Status Service*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomorEsc}\n📋 *No Tanda Terima:* ${resiEsc}\n📊 *Status:* ${statusEsc}`
+    : `🔧 *Cek Status Service \\(Tidak Ditemukan\\)*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomorEsc}\n📋 *No Tanda Terima:* ${resiEsc}\n\nData tidak ditemukan di sistem\\.`;
+  await sendTelegramCS(text);
 }
 // Fungsi Generate ID (AN + 6 Digit Random)
 function generateKonsumenID() {
@@ -450,8 +469,10 @@ serve(async (req)=>{
             msg += `*Status:* ${s.status_service || '-'}\n`;
             msg += `\nUntuk informasi lebih lanjut, hubungi Nikon Pusat Service:\n📞 Senin–Jumat 09.00–17.00 WIB\n\nKetik *MENU* untuk kembali ke menu utama.`;
             balasanBot = msg;
+            await sendTelegramServiceNotif(user.nama_lengkap || namaProfil, nomorPengirim, s.nomor_tanda_terima || nomorResi, s.status_service);
           } else {
             balasanBot = `Maaf, kami tidak menemukan data service dengan Nomor Tanda Terima *${nomorResi}*.\n\nPastikan nomor yang Anda masukkan sudah benar, atau hubungi langsung:\n📍 Nikon Pusat Service, Komplek Mangga Dua Square Blok H No.1-2, Jakarta Utara\n\nKetik *MENU* untuk kembali ke menu utama.`;
+            await sendTelegramServiceNotif(user.nama_lengkap || namaProfil, nomorPengirim, nomorResi, null);
           }
           await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomorPengirim);
           break;
