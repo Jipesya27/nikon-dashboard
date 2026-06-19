@@ -2075,8 +2075,34 @@ ${kode ? `
          setEditingId((item as PengaturanBot)?.id ? String((item as PengaturanBot).id) : null);
       }
       else if (type === 'konsumen') {
-         setKonsumenForm((item as KonsumenData) || { status_langkah: 'START', nik: 'BELUM_DIISI', alamat_rumah: 'BELUM_DIISI', kelurahan: 'BELUM_DIISI', kecamatan: 'BELUM_DIISI', kabupaten_kotamadya: 'BELUM_DIISI', provinsi: 'BELUM_DIISI', kodepos: 'BELUM_DIISI' });
+         const kon = (item as KonsumenData) || { status_langkah: 'START', nik: 'BELUM_DIISI', alamat_rumah: 'BELUM_DIISI', kelurahan: 'BELUM_DIISI', kecamatan: 'BELUM_DIISI', kabupaten_kotamadya: 'BELUM_DIISI', provinsi: 'BELUM_DIISI', kodepos: 'BELUM_DIISI' };
+         setKonsumenForm(kon);
          setEditingId((item as KonsumenData)?.nomor_wa || null);
+         // Jika alamat_rumah kosong, pre-fill dari alamat_pengiriman claim terbaru
+         const noAlamat = !kon.alamat_rumah || kon.alamat_rumah === 'BELUM_DIISI';
+         if (noAlamat && kon.nomor_wa) {
+            supabase
+               .from('claim_promo')
+               .select('alamat_pengiriman, provinsi_pengiriman, kabupaten_pengiriman, kecamatan_pengiriman, kelurahan_pengiriman, kodepos_pengiriman')
+               .eq('nomor_wa', kon.nomor_wa)
+               .not('alamat_pengiriman', 'is', null)
+               .order('created_at', { ascending: false })
+               .limit(1)
+               .maybeSingle()
+               .then(({ data: cl }) => {
+                  if (cl?.alamat_pengiriman) {
+                     setKonsumenForm(prev => ({
+                        ...prev,
+                        alamat_rumah:         cl.alamat_pengiriman  || prev.alamat_rumah,
+                        provinsi:             cl.provinsi_pengiriman   || prev.provinsi,
+                        kabupaten_kotamadya:  cl.kabupaten_pengiriman  || prev.kabupaten_kotamadya,
+                        kecamatan:            cl.kecamatan_pengiriman  || prev.kecamatan,
+                        kelurahan:            cl.kelurahan_pengiriman  || prev.kelurahan,
+                        kodepos:              cl.kodepos_pengiriman    || prev.kodepos,
+                     }));
+                  }
+               });
+         }
       }
       else if (type === 'karyawan') {
          if (action === 'reset_pw') {
