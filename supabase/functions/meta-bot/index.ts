@@ -4,44 +4,38 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://hfqnlttxxrqarmpvtn
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") ?? "";
 const WHATSAPP_ACCESS_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN") ?? "";
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
-const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+const TELEGRAM_CS_BOT_TOKEN = Deno.env.get("TELEGRAM_CS_BOT_TOKEN") ?? "";
+const TELEGRAM_CS_CHAT_ID = Deno.env.get("TELEGRAM_CS_CHAT_ID") ?? "";
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function sendTelegramAdminNotif(nama: string, nomor: string, isOffHours = false): Promise<void> {
-  if (!TELEGRAM_BOT_TOKEN) {
-    console.warn("[TELEGRAM] TELEGRAM_BOT_TOKEN tidak di-set, skip notif CS.");
+  if (!TELEGRAM_CS_BOT_TOKEN) {
+    console.warn("[TELEGRAM_CS] TELEGRAM_CS_BOT_TOKEN tidak di-set, skip notif CS.");
+    return;
+  }
+  if (!TELEGRAM_CS_CHAT_ID) {
+    console.warn("[TELEGRAM_CS] TELEGRAM_CS_CHAT_ID tidak di-set, skip notif CS.");
     return;
   }
   try {
-    const { data: tgRow } = await supabase
-      .from('pengaturan_bot')
-      .select('description')
-      .eq('nama_pengaturan', 'telegram_admin_chat_id')
-      .maybeSingle();
-    const chatId = tgRow?.description || Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") || "";
-    if (!chatId) {
-      console.warn("[TELEGRAM] telegram_admin_chat_id tidak dikonfigurasi, skip notif CS.");
-      return;
-    }
-
     const namaEsc = nama.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
     const nomorEsc = nomor.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
     const text = isOffHours
       ? `⏰ *Permintaan CS \\(Di Luar Jam Operasional\\)*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomorEsc}\n\nKonsumen menghubungi di luar jam kerja\\. Follow up jika urgent\\.`
       : `🔔 *Permintaan CS Baru\\!*\n\n👤 *Nama:* ${namaEsc}\n📱 *WhatsApp:* ${nomorEsc}\n\nKonsumen meminta berbicara dengan CS\\. Silakan balas via dashboard\\.`;
-    const tgRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    const tgRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_CS_BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "MarkdownV2" }),
+      body: JSON.stringify({ chat_id: TELEGRAM_CS_CHAT_ID, text, parse_mode: "MarkdownV2" }),
     });
     if (!tgRes.ok) {
       const errBody = await tgRes.text();
-      console.error("[TELEGRAM] API error:", tgRes.status, errBody);
+      console.error("[TELEGRAM_CS] API error:", tgRes.status, errBody);
     } else {
-      console.log("[TELEGRAM] Notif CS terkirim ke chat_id:", chatId);
+      console.log("[TELEGRAM_CS] Notif CS terkirim ke chat_id:", TELEGRAM_CS_CHAT_ID);
     }
   } catch (e) {
-    console.error("[TELEGRAM] Gagal kirim notif CS:", e);
+    console.error("[TELEGRAM_CS] Gagal kirim notif CS:", e);
   }
 }
 // Fungsi Generate ID (AN + 6 Digit Random)
