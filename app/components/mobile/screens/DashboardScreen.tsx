@@ -72,14 +72,14 @@ export default function DashboardScreen({
   const serviceAktif    = services.filter(s => !['Selesai','Tidak Bisa Diperbaiki','Dibatalkan'].includes(s.status_service)).length;
   const garansiBelum    = warranties.filter(w => w.status_validasi === 'Menunggu').length;
 
-  const kpis = [
+  const kpis: { label: string; value: number; icon: string; bg: string; fg: string; screen: MobileScreen }[] = [
     { label: 'Total Konsumen',  value: consumersList.length, icon: 'group',         bg: '#FFF9D6', fg: '#A88600', screen: 'konsumen' },
     { label: 'Total Klaim',     value: claims.length,        icon: 'fact_check',    bg: '#FCE4EC', fg: '#C2185B', screen: 'klaim' },
     { label: 'Total Garansi',   value: warranties.length,    icon: 'verified_user', bg: '#E8F5E9', fg: '#16A34A', screen: 'garansi' },
     { label: 'Total Chat',      value: messages.length,      icon: 'forum',         bg: '#E3F2FD', fg: '#1976D2', screen: 'pesan' },
   ];
 
-  const reminders = [
+  const reminders: { icon: string; color: string; bg: string; title: string; sub: string; screen: MobileScreen }[] = [
     { icon: 'pending_actions',    color: '#3B82F6', bg: '#EFF6FF', title: `${pendingClaims} klaim belum divalidasi`,   sub: 'Perlu tinjauan marketing',          screen: 'klaim' },
     { icon: 'verified_user',      color: '#16A34A', bg: '#F0FDF4', title: `${garansiBelum} garansi menunggu`,          sub: 'Verifikasi pendaftaran garansi',    screen: 'garansi' },
     { icon: 'build_circle',       color: '#7C3AED', bg: '#F5F3FF', title: `${serviceAktif} unit dalam service`,        sub: 'Cek status perbaikan produk',       screen: 'service' },
