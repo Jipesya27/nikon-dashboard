@@ -474,7 +474,6 @@ export default function NikonDashboard() {
 
    // SPECIAL STATES
    const [printData, setPrintData] = useState<BudgetApproval | null>(null);
-   const [printDownloading, setPrintDownloading] = useState(false);
    const [chatbotTemplates, setChatbotTemplates] = useState<Record<string, string>>({});
    const [chatbotEditValues, setChatbotEditValues] = useState<Record<string, string>>({});
    const [chatbotSaving, setChatbotSaving] = useState<Record<string, boolean>>({});
@@ -1495,20 +1494,41 @@ export default function NikonDashboard() {
       return () => clearInterval(id);
    }, [isLoggedIn]);
 
-   // eslint-disable-next-line @typescript-eslint/no-unused-vars
    const handleDownloadPDF = () => {
       if (!printData) return;
-      const originalTitle = document.title;
-      document.title = `${printData.proposal_no}-${printData.title}`;
-      setPrintDownloading(true);
-      setTimeout(() => {
-         window.print();
-         setTimeout(() => {
-            setPrintDownloading(false);
-            setPrintData(null);
-            document.title = originalTitle;
-         }, 600);
-      }, 150);
+      const docEl = document.getElementById('proposal-print-doc');
+      if (!docEl) return;
+      const docHtml = docEl.outerHTML;
+      const fileName = `${printData.proposal_no || 'Proposal'}-${printData.title || 'Budget'}`;
+      const html = `<!DOCTYPE html><html lang="id"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${fileName}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@media print {
+  @page { size: A4; margin: 0; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; }
+  thead { display: table-row-group; }
+  tbody tr { page-break-inside: avoid; }
+  .attachments-section { page-break-inside: avoid; }
+  .no-print { display: none !important; }
+}
+body { font-family: system-ui, -apple-system, sans-serif; background: white; }
+</style>
+</head><body>
+${docHtml}
+<div class="no-print" style="text-align:center;padding:16px">
+  <button onclick="window.print()" style="padding:8px 24px;background:#FFE500;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:11pt">🖨️ Print / Simpan PDF</button>
+</div>
+<script>
+  window.addEventListener('load', function() {
+    setTimeout(function() { window.print(); }, 300);
+  });
+</script>
+</body></html>`;
+      const w = window.open('', '_blank', 'width=900,height=700');
+      if (w) { w.document.write(html); w.document.close(); }
    };
 
    const getText = (key: string, vars: Record<string, string | number>): string => {
@@ -3877,7 +3897,7 @@ ${kode ? `
                <button onClick={() => setDataLoadError(null)} className="font-bold hover:opacity-75 px-1">✕</button>
             </div>
          )}
-         <div className={`h-screen bg-gray-50 flex flex-col relative text-gray-900 ${printData ? 'hidden print:hidden' : 'print:hidden'}`} style={{fontFamily:'system-ui,-apple-system,sans-serif'}}>
+         <div className="h-screen bg-gray-50 flex flex-col relative text-gray-900 print:hidden" style={{fontFamily:'system-ui,-apple-system,sans-serif'}}>
 
                <Header
                   sidebarOpen={sidebarOpen}
@@ -8669,7 +8689,7 @@ ${kode ? `
             const attachments = (printData.attachment_urls || []).filter((u): u is string => typeof u === 'string' && Boolean(u)).slice(0, 3);
 
             const docEl = (
-               <div className="p-8 print:p-6">
+               <div id="proposal-print-doc" className="p-8 print:p-6">
                            {/* HEADER */}
                            <div className="flex items-start justify-between mb-5">
                               <div className="flex items-center gap-4">
@@ -8880,8 +8900,8 @@ ${kode ? `
 
             return (
                <>
-                  {/* PREVIEW MODAL — ditampilkan sebelum download */}
-                  {!printDownloading && (
+                  {/* PREVIEW MODAL */}
+                  {(
                      <div className="fixed inset-0 bg-black/60 z-[60] overflow-y-auto">
                         <div className="min-h-full flex flex-col items-center py-8 px-4">
                            <div className="w-full max-w-4xl">
@@ -8915,23 +8935,6 @@ ${kode ? `
                      </div>
                   )}
 
-                  {/* PRINT TEMPLATE — hanya aktif saat window.print() dipanggil */}
-                  {printDownloading && (
-                     <div className="hidden print:block font-sans text-black bg-white text-[11px]">
-                        {docEl}
-                     </div>
-                  )}
-
-                  {/* Print CSS */}
-                  <style jsx global>{`
-                     @media print {
-                        @page { size: A4; margin: 0; }
-                        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        thead { display: table-row-group; }
-                        tbody tr { page-break-inside: avoid; }
-                        .attachments-section { page-break-inside: avoid; }
-                     }
-                  `}</style>
                </>
             );
          })()}

@@ -23,6 +23,7 @@ const JNE_MONTHS: Record<string, string> = {
 };
 
 function parsePeriodeDate(lines: string[]): string | null {
+  // Cari baris "Periode : DD-MON-YYYY s/d ..." atau "Periode: DD-MON-YYYY"
   for (const line of lines) {
     const m = line.match(/Periode\s*:\s*(\d{1,2})-([A-Z]{3})-(\d{4})/i);
     if (m) {
@@ -38,6 +39,7 @@ function parseJneText(text: string): JneRow[] {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const rows: JneRow[] = [];
 
+  // Ambil tanggal dari header Periode — lebih andal dari format tanggal per-baris
   const periodeDate = parsePeriodeDate(lines);
 
   // Tiap block dimulai baris: <no 1-3 digit><cnote 15 digit mulai 0>
@@ -53,8 +55,8 @@ function parseJneText(text: string): JneRow[] {
     const bl = lines.slice(s, e);
 
     // ── Tanggal & waktu ────────────────────────────────────────────────────
-    // Utama: ambil dari header "Periode : DD-MON-YYYY" — andal & konsisten.
-    // Fallback: parse bl[1] jika header tidak ditemukan.
+    // Gunakan tanggal dari header Periode jika tersedia.
+    // Fallback: parse dari bl[1] (format bisa bervariasi antar versi PDF JNE)
     let isoDate = periodeDate ?? '';
     let timeIdx = 2;
     if (!periodeDate) {
@@ -75,7 +77,7 @@ function parseJneText(text: string): JneRow[] {
       const yearNum = yy && yy.length === 4 ? parseInt(yy) : 2000 + parseInt(yy);
       isoDate = `${yearNum}-${mm}-${dd}`;
     }
-    // Ekstrak HH:MM dari baris timeIdx
+    // Ekstrak HH:MM dari baris timeIdx — bisa "19:43" atau "26 19:43"
     const timeRaw = bl[timeIdx] ?? '';
     const timeM = timeRaw.match(/(\d{2}:\d{2})/);
     const time = timeM ? timeM[1] : timeRaw;
