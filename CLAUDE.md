@@ -2,6 +2,16 @@
 
 # Nikon Dashboard — Project Memory
 
+## Info Lingkungan
+- **Windows path**: `C:\nikon-dashboard`
+- **Domain production**: `https://altanikindo.com` (bukan lagi `nikonindonesia-altanikindo.vercel.app`)
+
+## Budget Approval PDF (`app/dashboard/page.tsx`)
+- Footer PDF: `https://altanikindo.com` (sudah diubah dari vercel.app)
+- `renderItemsTable(label, rows, subtotalVal, isGrandTotal)` — saat `isGrandTotal=true`, kolom TOTAL menampilkan `grandTotal` (gabungan event+petty), bukan `subtotalVal`
+- **Bug lama**: PETTY CASH dipanggil dengan `isGrandTotal=true` → tampil grandTotal (salah). Sudah diperbaiki ke `false` → tampil subtotalPettyCash (benar)
+- EVENT COST: `isGrandTotal = pettyCashItems.length === 0` (benar — saat tidak ada petty cash, grandTotal = subtotalEventCost)
+
 ## Tech Stack & Deployment
 - **Framework**: Next.js 16.2.6 App Router (Turbopack) · React 19 · Tailwind CSS v4 · TypeScript
 - **Database**: Supabase (Postgres + Edge Functions)
