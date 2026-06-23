@@ -118,7 +118,7 @@ serve(async (req) => {
 
         const namaKonsumen = user.nama_lengkap || 'Anda';
         const warningMsg = responses['CS_SESSION_WARNING'] ||
-          `Halo *${namaKonsumen}* 👋\n\nKami perhatikan sudah cukup lama tidak ada pesan dari Anda dalam sesi ini.\n\nJika memang sudah tidak ada lagi yang ingin disampaikan dan percakapan ini telah membantu, sesi ini akan *otomatis ditutup dalam 10 menit* ke depan.\n\nNamun jika masih ada yang ingin Anda tanyakan atau sampaikan, silakan kirim pesan sekarang — kami siap membantu. 🙏\n\n_Nikon Indonesia Customer Service_`;
+          `Halo *${namaKonsumen}* 👋\n\nApakah ada lagi yang ingin disampaikan? Jika penjelasan kami sudah cukup maka percakapan kita akan *ditutup otomatis dalam 10 menit*. 🙏`;
 
         await balasKeWA(user.nomor_wa, warningMsg);
         await supabase.from('riwayat_pesan').insert({
