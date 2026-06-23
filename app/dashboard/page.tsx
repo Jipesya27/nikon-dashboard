@@ -9100,6 +9100,18 @@ ${kode ? `
                            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Status Chatbot</p>
                               <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-800 text-xs font-bold">{vk.status_langkah || 'START'}</span>
+                              <p className="text-[10px] text-gray-500 mt-1.5 leading-relaxed">
+                                 {(vk.status_langkah || 'START') === 'START' && 'Konsumen berada di menu utama — belum memulai alur apapun.'}
+                                 {vk.status_langkah === 'TALKING_TO_CS' && 'Konsumen sedang aktif bicara dengan CS. Bot tidak membalas hingga CS selesai.'}
+                                 {vk.status_langkah === 'MENUNGGU_UPLOAD_WEB' && 'Konsumen sudah memilih Claim Promo dan menunggu mengisi form di website.'}
+                                 {vk.status_langkah === 'MENUNGGU_UPLOAD_GARANSI_WEB' && 'Konsumen sudah memilih Daftar Garansi dan menunggu mengisi form di website.'}
+                                 {vk.status_langkah === 'TANYA_UPDATE_WA' && 'Bot sedang menanyakan apakah konsumen mau memperbarui nomor WA.'}
+                                 {vk.status_langkah === 'TANYA_UPDATE_WA_INPUT' && 'Bot menunggu konsumen mengetikkan nomor WA baru.'}
+                                 {vk.status_langkah === 'OFFER_GARANSI_AFTER_CLAIM' && 'Bot menawarkan daftar garansi setelah claim berhasil dikirim.'}
+                                 {vk.status_langkah === 'MENUNGGU_SERI_CLAIM' && 'Bot menunggu konsumen mengetikkan nomor seri untuk cek status claim.'}
+                                 {vk.status_langkah === 'MENUNGGU_SERI_GARANSI' && 'Bot menunggu konsumen mengetikkan nomor seri untuk cek status garansi.'}
+                                 {vk.status_langkah === 'MENUNGGU_RESI_SERVICE' && 'Bot menunggu konsumen mengetikkan nomor resi untuk cek status service.'}
+                              </p>
                            </div>
                            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Terdaftar</p>
@@ -9119,16 +9131,17 @@ ${kode ? `
                         ) : (
                            <div className="space-y-2">
                               {vkClaims.map((c: ClaimPromo) => (
-                                 <div key={c.id_claim} className="bg-white border border-gray-200 rounded-xl p-3 text-xs">
+                                 <div key={c.id_claim} onClick={() => { setViewingKonsumen(null); openModal('edit', 'claim', c); }} className="bg-white border border-gray-200 rounded-xl p-3 text-xs cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-all group">
                                     <div className="flex items-start justify-between gap-2">
                                        <div className="flex-1 min-w-0">
                                           <p className="font-bold text-gray-900 truncate">{c.tipe_barang} <span className="text-gray-500 font-mono font-normal">SN: {c.nomor_seri}</span></p>
                                           <p className="text-gray-600 mt-0.5">{c.jenis_promosi || '-'} · {c.nama_toko || '-'}</p>
                                           <p className="text-gray-500 mt-0.5">Tgl beli: {c.tanggal_pembelian || '-'}</p>
                                        </div>
-                                       <div className="shrink-0 text-right">
+                                       <div className="shrink-0 text-right flex flex-col items-end gap-1">
                                           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${c.validasi_by_fa === 'Valid' ? 'bg-green-100 text-green-800' : c.validasi_by_fa === 'Ditolak' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{c.validasi_by_fa || 'Menunggu'}</span>
-                                          {c.nomor_resi && <p className="text-gray-500 mt-1 font-mono">{c.nomor_resi}</p>}
+                                          {c.nomor_resi && <p className="text-gray-500 font-mono">{c.nomor_resi}</p>}
+                                          <span className="text-[10px] text-blue-500 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">✏️ Edit →</span>
                                        </div>
                                     </div>
                                  </div>
@@ -9148,7 +9161,7 @@ ${kode ? `
                         ) : (
                            <div className="space-y-2">
                               {vkWarranties.map((w: Garansi) => (
-                                 <div key={w.id_garansi} className="bg-white border border-gray-200 rounded-xl p-3 text-xs">
+                                 <div key={w.id_garansi} onClick={() => { setViewingKonsumen(null); openModal('edit', 'warranty', w); }} className="bg-white border border-gray-200 rounded-xl p-3 text-xs cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-all group">
                                     <div className="flex items-start justify-between gap-2">
                                        <div className="flex-1 min-w-0">
                                           <p className="font-bold text-gray-900 truncate">{w.tipe_barang} <span className="text-gray-500 font-mono font-normal">SN: {w.nomor_seri}</span></p>
@@ -9156,8 +9169,9 @@ ${kode ? `
                                           {w.nama_toko && <p className="text-gray-500 mt-0.5">Toko: {w.nama_toko}</p>}
                                           {w.tanggal_pembelian && <p className="text-gray-500">Tgl beli: {w.tanggal_pembelian}</p>}
                                        </div>
-                                       <div className="shrink-0">
+                                       <div className="shrink-0 flex flex-col items-end gap-1">
                                           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : w.status_validasi === 'Ditolak' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{w.status_validasi}</span>
+                                          <span className="text-[10px] text-blue-500 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">✏️ Edit →</span>
                                        </div>
                                     </div>
                                  </div>
