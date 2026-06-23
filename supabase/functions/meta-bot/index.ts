@@ -257,7 +257,18 @@ serve(async (req)=>{
     }
     let statusSaatIni = user.status_langkah;
     const sapaanID = user.id_konsumen ? `(ID: *${user.id_konsumen}*)` : "";
-    if (isiPesanWA && (isiPesanWA.toUpperCase() === "MENU" || isiPesanWA.toLowerCase() === "halo")) {
+
+    // Sesi CS aktif: bot diam total — MENU/halo pun tidak memutus sesi.
+    // Hanya CS (via dashboard) atau auto-timeout cron yang bisa mengakhiri sesi ini.
+    if (statusSaatIni === 'TALKING_TO_CS') {
+      console.log(`[CS_MODE] Mengabaikan pesan dari ${nomorPengirim} karena sedang dalam mode CS.`);
+      return new Response(JSON.stringify({
+        status: "success",
+        message: "Chatbot silent in CS mode"
+      }), {
+        status: 200
+      });
+    } else if (isiPesanWA && (isiPesanWA.toUpperCase() === "MENU" || isiPesanWA.toLowerCase() === "halo")) {
       await supabase.from('konsumen').update({
         status_langkah: 'START'
       }).eq('nomor_wa', nomorPengirim);
@@ -267,15 +278,6 @@ serve(async (req)=>{
       balasanBot = getMsg('MAIN_MENU', `Hi *{{nama_user}}* {{sapaan_id}},\nSelamat datang di layanan *Nikon Indonesia*.\n\nSilakan ketik *Nomor Menu* berikut sesuai kebutuhan Anda:\n\n*1.* Claim Promo\n*2.* Cek Status Claim\n*3.* Daftar Garansi Nikon\n*4.* Cek Status Garansi\n*5.* Cek Status Service\n*6.* Promo Nikon Terkini\n*7.* Alamat Service Center\n*8.* Daftar Dealer Resmi\n*9.* Hubungi CS\n*10.* Cek Jadwal Event\n\n_Balas dengan angka 1-10_\nKetik *MENU* kapan saja untuk kembali ke menu utama.`, {
         nama_user: user.nama_lengkap || namaProfil,
         sapaan_id: sapaanID
-      });
-    } else if (statusSaatIni === 'TALKING_TO_CS') {
-      // Jika sedang bicara dengan CS, chatbot diam (tidak intervensi)
-      console.log(`[CS_MODE] Mengabaikan pesan dari ${nomorPengirim} karena sedang dalam mode CS.`);
-      return new Response(JSON.stringify({
-        status: "success",
-        message: "Chatbot silent in CS mode"
-      }), {
-        status: 200
       });
     } else {
       // Refactor from a long if-else chain to a switch statement for better readability
