@@ -252,6 +252,7 @@ export default function NikonDashboard() {
    const [assets, setAssets] = useState<BarangAset[]>([]);
    const [searchAssets, setSearchAssets] = useState('');
    const [consumersList, setConsumersList] = useState<KonsumenData[]>([]);
+   const [viewingKonsumen, setViewingKonsumen] = useState<KonsumenData | null>(null);
    const [events, setEvents] = useState<EventData[]>([]);
    const [searchEvent, setSearchEvent] = useState('');
    const [sortConfigEvents, setSortConfigEvents] = useState<{ column: string; direction: 'asc' | 'desc' | null }>({ column: '', direction: null });
@@ -4652,6 +4653,7 @@ ${kode ? `
                                           </td>
                                           <td className="px-4 py-3">
                                              <div className="flex gap-1.5 items-center">
+                                                <button onClick={() => setViewingKonsumen(k)} className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition">👁 View</button>
                                                 <GradientActionBtn onClick={() => openModal('edit', 'konsumen', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
                                                 {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                                                    <GradientActionBtn onClick={() => handleDelete('konsumen', k.nomor_wa)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
@@ -4707,6 +4709,7 @@ ${kode ? `
                                              )}
                                           </div>
                                           <div className="flex gap-1.5">
+                                             <button onClick={() => setViewingKonsumen(k)} className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition">👁 View</button>
                                              <GradientActionBtn onClick={() => openModal('edit', 'konsumen', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
                                              {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                                                 <GradientActionBtn onClick={() => handleDelete('konsumen', k.nomor_wa)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
@@ -9050,6 +9053,129 @@ ${kode ? `
             </div>
          </div>
       )}
+      {/* ============ MODAL VIEW KONSUMEN ============ */}
+      {viewingKonsumen && (() => {
+         const vk = viewingKonsumen;
+         const vkClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === vk.nomor_wa);
+         const vkWarranties = warranties.filter((w: Garansi) => w.nomor_wa === vk.nomor_wa);
+         const alamatLengkap = [vk.alamat_rumah, vk.kelurahan, vk.kecamatan, vk.kabupaten_kotamadya, vk.provinsi, vk.kodepos].filter(v => v && v !== 'BELUM_DIISI').join(', ');
+         const initials = (name: string) => (name || '?').split(/\s+/).map(w => w[0] || '').filter(Boolean).slice(0, 2).join('').toUpperCase();
+         const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500', 'bg-amber-500', 'bg-cyan-500', 'bg-rose-500', 'bg-indigo-500'];
+         const colorFor = (s: string) => colors[s.charCodeAt(0) % colors.length] || 'bg-gray-500';
+         return (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setViewingKonsumen(null)}>
+               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                  {/* Header */}
+                  <div className={`${colorFor(vk.nama_lengkap || '?')} p-5 text-white`}>
+                     <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-xl bg-white/30 backdrop-blur text-white font-bold text-xl flex items-center justify-center shrink-0">{initials(vk.nama_lengkap || '?')}</div>
+                        <div className="flex-1 min-w-0">
+                           <h2 className="text-xl font-black truncate">{vk.nama_lengkap || '-'}</h2>
+                           <p className="text-sm font-mono opacity-90">{vk.id_konsumen || '—'}</p>
+                        </div>
+                        <button onClick={() => setViewingKonsumen(null)} className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-bold text-lg transition shrink-0">✕</button>
+                     </div>
+                  </div>
+
+                  {/* Body */}
+                  <div className="overflow-y-auto flex-1 p-5 space-y-5">
+
+                     {/* Identitas */}
+                     <section>
+                        <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-3">Identitas</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                           <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">WhatsApp</p>
+                              <p className="font-mono text-sm font-bold text-gray-900">{vk.nomor_wa}</p>
+                           </div>
+                           <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">NIK</p>
+                              <p className="font-mono text-sm font-bold text-gray-900">{vk.nik && vk.nik !== 'BELUM_DIISI' ? vk.nik : <span className="text-gray-400 italic font-sans font-normal">Belum diisi</span>}</p>
+                           </div>
+                           <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 sm:col-span-2">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Alamat</p>
+                              <p className="text-sm text-gray-900 leading-relaxed">{alamatLengkap || <span className="text-gray-400 italic">Belum diisi</span>}</p>
+                              {vk.kodepos && <p className="text-xs text-gray-500 mt-1">Kodepos: {vk.kodepos}</p>}
+                           </div>
+                           <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Status Chatbot</p>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-800 text-xs font-bold">{vk.status_langkah || 'START'}</span>
+                           </div>
+                           <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Terdaftar</p>
+                              <p className="text-sm text-gray-900">{vk.created_at ? new Date(vk.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-'}</p>
+                           </div>
+                        </div>
+                     </section>
+
+                     {/* Claim Promo */}
+                     <section>
+                        <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-3 flex items-center gap-2">
+                           Claim Promo
+                           <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-green-100 text-green-800 text-[10px] font-bold">{vkClaims.length}</span>
+                        </h3>
+                        {vkClaims.length === 0 ? (
+                           <p className="text-sm text-gray-400 italic py-2">Belum ada claim promo.</p>
+                        ) : (
+                           <div className="space-y-2">
+                              {vkClaims.map((c: ClaimPromo) => (
+                                 <div key={c.id_claim} className="bg-white border border-gray-200 rounded-xl p-3 text-xs">
+                                    <div className="flex items-start justify-between gap-2">
+                                       <div className="flex-1 min-w-0">
+                                          <p className="font-bold text-gray-900 truncate">{c.tipe_barang} <span className="text-gray-500 font-mono font-normal">SN: {c.nomor_seri}</span></p>
+                                          <p className="text-gray-600 mt-0.5">{c.jenis_promosi || '-'} · {c.nama_toko || '-'}</p>
+                                          <p className="text-gray-500 mt-0.5">Tgl beli: {c.tanggal_pembelian || '-'}</p>
+                                       </div>
+                                       <div className="shrink-0 text-right">
+                                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${c.validasi_by_fa === 'Valid' ? 'bg-green-100 text-green-800' : c.validasi_by_fa === 'Ditolak' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{c.validasi_by_fa || 'Menunggu'}</span>
+                                          {c.nomor_resi && <p className="text-gray-500 mt-1 font-mono">{c.nomor_resi}</p>}
+                                       </div>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
+                        )}
+                     </section>
+
+                     {/* Garansi */}
+                     <section>
+                        <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-3 flex items-center gap-2">
+                           Garansi
+                           <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold">{vkWarranties.length}</span>
+                        </h3>
+                        {vkWarranties.length === 0 ? (
+                           <p className="text-sm text-gray-400 italic py-2">Belum ada data garansi.</p>
+                        ) : (
+                           <div className="space-y-2">
+                              {vkWarranties.map((w: Garansi) => (
+                                 <div key={w.id_garansi} className="bg-white border border-gray-200 rounded-xl p-3 text-xs">
+                                    <div className="flex items-start justify-between gap-2">
+                                       <div className="flex-1 min-w-0">
+                                          <p className="font-bold text-gray-900 truncate">{w.tipe_barang} <span className="text-gray-500 font-mono font-normal">SN: {w.nomor_seri}</span></p>
+                                          <p className="text-gray-600 mt-0.5">{w.jenis_garansi} · {w.lama_garansi}</p>
+                                          {w.nama_toko && <p className="text-gray-500 mt-0.5">Toko: {w.nama_toko}</p>}
+                                          {w.tanggal_pembelian && <p className="text-gray-500">Tgl beli: {w.tanggal_pembelian}</p>}
+                                       </div>
+                                       <div className="shrink-0">
+                                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${w.status_validasi === 'Valid' ? 'bg-green-100 text-green-800' : w.status_validasi === 'Ditolak' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{w.status_validasi}</span>
+                                       </div>
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
+                        )}
+                     </section>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="border-t border-gray-100 p-4 flex justify-end gap-3">
+                     <button onClick={() => { setViewingKonsumen(null); openModal('edit', 'konsumen', vk); }} className="px-4 py-2 rounded-xl text-sm font-bold bg-gray-100 hover:bg-gray-200 text-gray-800 transition">Edit Data</button>
+                     <button onClick={() => setViewingKonsumen(null)} className="px-4 py-2 rounded-xl text-sm font-bold bg-[#FFE500] hover:bg-[#E5CE00] text-black transition">Tutup</button>
+                  </div>
+               </div>
+            </div>
+         );
+      })()}
       </>
    );
 }
