@@ -4017,7 +4017,7 @@ ${kode ? `
                               ...((currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') ? [
                                  { href: '/admin/monitoring', label: 'System Monitoring' },
                                  { href: '/admin/google-auth', label: 'Google Drive Auth' },
-                                 { href: 'https://photos.altanikindo.web.id', label: 'Galeri Foto' },
+                                 { href: 'https://immich.altanikindo.web.id', label: 'Galeri Foto' },
                                  { href: 'https://backup.altanikindo.web.id/dashboard', label: 'Backup Dashboard' },
                               ] : []),
                               ...(currentUser?.role === 'Super Admin' ? [
