@@ -226,3 +226,87 @@ Kolom: `id`, `created_at`, `created_by`, `nama_pembuat`, `tanggal_kirim`, `nama_
 Utility classes tersedia tanpa npm tambahan:
 - `.n-float` · `.n-glow` · `.n-bounce-arrow` · `.n-shimmer-btn` (dengan `::after` shimmer) · `.n-dot-bg` · `.n-gradient-bg` · `.n-text-gradient`
 - Keyframes: `bounce-in`, `spin-in`, `float-y`, `shimmer`, `glow-pulse`, `dot-drift`, `gradient-x`, `slide-left`, `slide-right`, `sticker-pop`, `bounce-down`, `badge-ping`, `word-pop`
+
+---
+
+## Infrastruktur Server (Proxmox VE)
+
+### Hardware
+- **PC**: Dell OptiPlex 5060, Intel Core i3-8100, RAM 24GB
+- **Storage**: NVMe 256GB ×2, HDD 3TB (sda/hdd-bulk), HDD 2TB (sdb/hdd-backup), HDD 1TB (sdc/hdd-files)
+
+### Network & Tunnel
+- **IP Proxmox node**: `192.168.18.199`
+- **Cloudflare Tunnel**: ID `e21222d0-e000-455d-a8fa-b3d8a1186cf2`, config di `/etc/cloudflared/config.yml` pada Proxmox node
+- **Cloudflared service**: `systemctl status cloudflared` di Proxmox node
+
+### Domain & Services
+| Domain | Service | IP:Port |
+|--------|---------|---------|
+| `proxmox.altanikindo.web.id` | Proxmox Web UI | `localhost:8006` (HTTPS) |
+| `monitorproxmox.altanikindo.web.id` | Netdata monitoring | `localhost:19999` |
+| `immich.altanikindo.web.id` | Immich (foto) | `192.168.18.210:2283` |
+| `casaos.altanikindo.web.id` | CasaOS | `192.168.18.178:81` |
+| `uptime.altanikindo.web.id` | Uptime Kuma | `192.168.18.178:3001` |
+| `files.altanikindo.web.id` | Nextcloud | `192.168.18.188:80` |
+
+### LXC Containers
+| CT | Nama | IP | Isi |
+|----|------|----|-----|
+| CT 100 | immich | `192.168.18.210` | Immich (native, non-Docker) |
+| CT 101 | nas | — | NAS |
+| CT 102 | casaos | `192.168.18.178` | CasaOS + Uptime Kuma (Docker) |
+| CT 103 | nextcloud | `192.168.18.188` | Nextcloud (Apache + MariaDB + PHP) |
+
+### Mount Points (Proxmox node)
+| Path | Disk | Keterangan |
+|------|------|------------|
+| `/mnt/pve/hdd-bulk` | sda (3TB) | Penyimpanan utama (foto, data besar) |
+| `/mnt/pve/hdd-backup` | sdb (2TB) | Target backup dari hdd-bulk |
+| `/mnt/pve/hdd-files` | sdc (1TB) | File tambahan (Multimedia dll) |
+| `/mnt/pve/nvme-fast` | NVMe | Storage cepat untuk VM/CT |
+
+### Immich (CT 100)
+- Install path: `/opt/immich/`
+- Services: `immich-web`, `immich-ml`, `immich-microservices`, `postgresql`, `redis`
+- `.env` di `/opt/immich/.env`
+- Bug pernah terjadi: path salah `/opt//app` → sudah diperbaiki ke `/opt/immich/app` di semua service files
+- External library bind mount: `pct set 100 --mp2 /mnt/pve/hdd-files,mp=/mnt/immich-data/hdd-files`
+
+### Nextcloud (CT 103)
+- Web root: `/var/www/nextcloud`
+- Config: `/var/www/nextcloud/config/config.php`
+- Trusted domains: `192.168.18.188`, `files.altanikindo.web.id`
+- DB: MariaDB, user `nextcloud`, db `nextcloud`
+- Apache config: `/etc/apache2/sites-available/nextcloud.conf`
+- **TODO**: Mount HDD 3TB sebagai external storage
+
+### Netdata Monitoring (`monitorproxmox.altanikindo.web.id`)
+- Versi: v2.10.0-549-nightly
+- Plugin path: `/usr/libexec/netdata/plugins.d/`
+- Config: `/etc/netdata/netdata.conf`
+- **Suhu HDD** (sda/sdb/sdc): via StatsD — cron `/etc/cron.d/hdd-temps` jalankan `/usr/local/bin/update-hdd-temps` tiap menit
+  - Hasilnya ditulis ke `/run/netdata-hdd-temps`
+  - Dikirim ke Netdata StatsD port 8125 via `nc -u`
+  - Charts: `statsd_hdd.temperature.sda_gauge`, `statsd_hdd.temperature.sdb_gauge`, `statsd_hdd.temperature.sdc_gauge`
+- **Suhu CPU/NVMe/PCH**: otomatis via lm-sensors (sudah aktif)
+- **Kapasitas HDD**: otomatis via `disk_space./mnt/pve/*`
+- Catatan: Netdata v2 tidak support external bash plugin (.sh) via `[plugins]` — charts.d dan python.d disabled by default. Gunakan StatsD untuk custom metrics.
+
+### S.M.A.R.T. Monitoring
+- Tool: `smartmontools` (smartctl)
+- Suhu sda (3TB): ~44-45°C, sdb (2TB): ~39°C, sdc (1TB): ~40-41°C
+- sdb pernah ada error Reallocated/Pending/Uncorrectable di jam 623-704, stabil di jam 3661+
+- Perintah cek: `smartctl -A /dev/sda` (sebagai root)
+- Netdata user perlu flag `-d sat` tapi tidak work → pakai workaround cron+file
+
+### Pending Tasks Infrastruktur
+1. **Auto-backup rsync**: cron jam 02:00 — `rsync -av /mnt/pve/hdd-bulk/ /mnt/pve/hdd-backup/` → log ke `/var/log/hdd-sync.log`
+2. **nikon-dashboard disaster recovery backup**:
+   - Clone repo GitHub ke server lokal (CT baru atau existing)
+   - Simpan `.env` secara aman
+   - Build Next.js + serve via PM2 + Nginx
+   - Cloudflare Tunnel untuk akses
+   - pg_dump Supabase tiap malam
+   - Target: jika Vercel/GitHub down, sistem tetap jalan dari lokal
+3. **Nextcloud**: Mount HDD 3TB sebagai external storage
