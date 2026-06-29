@@ -2995,8 +2995,13 @@ ${kode ? `
             setMessages(prev => [optimisticMsg, ...prev]);
             setMediaFile(null); setMediaPreview(null); setReplyText('');
             setTimeout(scrollToBottom, 50);
-            await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: isiPesan, url_media: url, jenis_pesan: mediaType, waktu_pesan: now, bicara_dengan_cs: false, created_at: now } });
-            supabase.functions.invoke('send-wa', { body: { target: selectedWa, mediaUrl: url, mediaType, message: replyText.trim() || undefined } }).catch(console.error);
+            const { error: insertErr } = await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: { nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: isiPesan, url_media: url, jenis_pesan: mediaType, waktu_pesan: now, bicara_dengan_cs: false, created_at: now } });
+            if (insertErr) {
+               console.error('Insert riwayat_pesan error:', insertErr);
+               alert('Gambar terupload tapi gagal disimpan ke database:\n' + insertErr.message);
+            } else {
+               supabase.functions.invoke('send-wa', { body: { target: selectedWa, mediaUrl: url, mediaType, message: replyText.trim() || undefined } }).catch(console.error);
+            }
          } catch (err) {
             alert('Gagal mengirim file: ' + (err as Error).message);
          } finally {
