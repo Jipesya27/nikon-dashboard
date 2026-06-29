@@ -535,6 +535,8 @@ export default function NikonDashboard() {
    const [dualDocUrls, setDualDocUrls] = useState<{ garansi: string | null; nota: string | null }>({ garansi: null, nota: null });
    const [dualZoomG, setDualZoomG] = useState(1);
    const [dualZoomN, setDualZoomN] = useState(1);
+   const [dualRotG, setDualRotG] = useState(0);
+   const [dualRotN, setDualRotN] = useState(0);
 
    const now = new Date();
 
@@ -6366,29 +6368,31 @@ ${kode ? `
                {isSplitView && (
                   <div className="flex-1 flex flex-col gap-2 p-2 min-w-0 overflow-hidden">
                      {([
-                        { label: 'Kartu Garansi', url: splitGaransiUrl, zoom: dualZoomG, setZoom: setDualZoomG },
-                        { label: 'Nota Pembelian', url: splitNotaUrl,    zoom: dualZoomN, setZoom: setDualZoomN },
-                     ] as const).map(({ label, url, zoom, setZoom }) => (
+                        { label: 'Kartu Garansi', url: splitGaransiUrl, zoom: dualZoomG, setZoom: setDualZoomG, rot: dualRotG, setRot: setDualRotG },
+                        { label: 'Nota Pembelian', url: splitNotaUrl,    zoom: dualZoomN, setZoom: setDualZoomN, rot: dualRotN, setRot: setDualRotN },
+                     ] as { label: string; url: string | null; zoom: number; setZoom: React.Dispatch<React.SetStateAction<number>>; rot: number; setRot: React.Dispatch<React.SetStateAction<number>> }[]).map(({ label, url, zoom, setZoom, rot, setRot }) => (
                         <div key={label} className="flex-1 flex flex-col bg-zinc-900 rounded-xl overflow-hidden min-h-0">
                            <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 shrink-0">
                               <span className="text-xs font-bold text-zinc-300 uppercase tracking-wide">{label}</span>
                               <div className="flex items-center gap-1">
+                                 <button type="button" onClick={() => setRot((r: number) => (r - 90 + 360) % 360)} title="Putar kiri" className="w-6 h-6 bg-zinc-800 hover:bg-blue-700 rounded text-zinc-300 text-sm flex items-center justify-center">↺</button>
+                                 <button type="button" onClick={() => setRot((r: number) => (r + 90) % 360)} title="Putar kanan" className="w-6 h-6 bg-zinc-800 hover:bg-blue-700 rounded text-zinc-300 text-sm flex items-center justify-center">↻</button>
                                  <button type="button" onClick={() => setZoom((z: number) => Math.max(0.25, z - 0.25))} className="w-6 h-6 bg-zinc-800 hover:bg-zinc-700 rounded text-white font-bold leading-none">−</button>
                                  <span className="w-10 text-center text-xs text-zinc-400">{Math.round(zoom * 100)}%</span>
                                  <button type="button" onClick={() => setZoom((z: number) => Math.min(5, z + 0.25))} className="w-6 h-6 bg-zinc-800 hover:bg-zinc-700 rounded text-white font-bold leading-none">+</button>
-                                 <button type="button" onClick={() => setZoom(() => 1)} className="px-2 h-6 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-400 text-[11px]">Reset</button>
+                                 <button type="button" onClick={() => { setZoom(() => 1); setRot(() => 0); }} className="px-2 h-6 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-400 text-[11px]">Reset</button>
                               </div>
                            </div>
-                           <div className="flex-1 overflow-auto p-1" onWheel={e => { e.preventDefault(); setZoom((z: number) => Math.min(5, Math.max(0.25, z + (e.deltaY > 0 ? -0.15 : 0.15)))); }}>
+                           <div className="flex-1 overflow-auto p-1 flex items-center justify-center" onWheel={e => { e.preventDefault(); setZoom((z: number) => Math.min(5, Math.max(0.25, z + (e.deltaY > 0 ? -0.15 : 0.15)))); }}>
                               {url ? (
                                  isGoogleDriveLink(url) ? (
                                     // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={driveDocThumb(url)} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', minWidth: '100%' }} className="rounded block" />
+                                    <img src={driveDocThumb(url)} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', transform: `rotate(${rot}deg)`, transition: 'transform 0.2s ease-out' }} className="rounded block" />
                                  ) : url.toLowerCase().endsWith('.pdf') ? (
                                     <iframe src={url} className="w-full border-none rounded" style={{ height: '100%', minHeight: '300px' }} title={label} />
                                  ) : (
                                     // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={url} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', minWidth: '100%' }} className="rounded block" />
+                                    <img src={url} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', transform: `rotate(${rot}deg)`, transition: 'transform 0.2s ease-out' }} className="rounded block" />
                                  )
                               ) : (
                                  <div className="h-full flex items-center justify-center text-zinc-600 text-sm">Tidak ada file</div>
@@ -8538,32 +8542,34 @@ ${kode ? `
                </div>
                <div className="flex flex-1 gap-2 p-2 overflow-hidden" onClick={e => e.stopPropagation()}>
                   {[
-                     { label: 'Kartu Garansi', url: dualDocUrls.garansi, zoom: dualZoomG, setZoom: setDualZoomG },
-                     { label: 'Nota Pembelian', url: dualDocUrls.nota,    zoom: dualZoomN, setZoom: setDualZoomN },
-                  ].map(({ label, url, zoom, setZoom }) => (
+                     { label: 'Kartu Garansi', url: dualDocUrls.garansi, zoom: dualZoomG, setZoom: setDualZoomG, rot: dualRotG, setRot: setDualRotG },
+                     { label: 'Nota Pembelian', url: dualDocUrls.nota,    zoom: dualZoomN, setZoom: setDualZoomN, rot: dualRotN, setRot: setDualRotN },
+                  ].map(({ label, url, zoom, setZoom, rot, setRot }) => (
                      <div key={label} className="flex-1 flex flex-col bg-zinc-900 rounded-lg overflow-hidden min-w-0">
                         <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 shrink-0 gap-2">
                            <span className="text-xs font-bold text-zinc-300 uppercase tracking-wide">{label}</span>
                            <div className="flex items-center gap-1">
+                              <button onClick={() => setRot((r: number) => (r - 90 + 360) % 360)} title="Putar kiri" className="w-7 h-7 bg-zinc-800 hover:bg-blue-700 rounded text-zinc-300 text-sm flex items-center justify-center">↺</button>
+                              <button onClick={() => setRot((r: number) => (r + 90) % 360)} title="Putar kanan" className="w-7 h-7 bg-zinc-800 hover:bg-blue-700 rounded text-zinc-300 text-sm flex items-center justify-center">↻</button>
                               <button onClick={() => setZoom((z: number) => Math.max(0.25, z - 0.25))} className="w-7 h-7 bg-zinc-800 hover:bg-zinc-700 rounded text-white font-bold text-base leading-none">−</button>
                               <span className="w-12 text-center text-xs text-zinc-400">{Math.round(zoom * 100)}%</span>
                               <button onClick={() => setZoom((z: number) => Math.min(5, z + 0.25))} className="w-7 h-7 bg-zinc-800 hover:bg-zinc-700 rounded text-white font-bold text-base leading-none">+</button>
-                              <button onClick={() => setZoom(() => 1)} className="px-2 h-7 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-400 text-xs">Reset</button>
+                              <button onClick={() => { setZoom(() => 1); setRot(() => 0); }} className="px-2 h-7 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-400 text-xs">Reset</button>
                            </div>
                         </div>
                         <div
-                           className="flex-1 overflow-auto p-2"
+                           className="flex-1 overflow-auto p-2 flex items-center justify-center"
                            onWheel={e => { e.preventDefault(); setZoom((z: number) => Math.min(5, Math.max(0.25, z + (e.deltaY > 0 ? -0.15 : 0.15)))); }}
                         >
                            {url ? (
                               isGoogleDriveLink(url) ? (
                                  /* eslint-disable-next-line @next/next/no-img-element */
-                                 <img src={driveDocThumb(url)} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', minWidth: '100%' }} className="rounded block" />
+                                 <img src={driveDocThumb(url)} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', transform: `rotate(${rot}deg)`, transition: 'transform 0.2s ease-out' }} className="rounded block" />
                               ) : url.toLowerCase().endsWith('.pdf') ? (
                                  <iframe src={url} className="w-full h-full border-none rounded" title={label} style={{ minHeight: '80vh' }} />
                               ) : (
                                  /* eslint-disable-next-line @next/next/no-img-element */
-                                 <img src={url} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', minWidth: '100%' }} className="rounded block" />
+                                 <img src={url} alt={label} style={{ width: `${zoom * 100}%`, height: 'auto', transform: `rotate(${rot}deg)`, transition: 'transform 0.2s ease-out' }} className="rounded block" />
                               )
                            ) : (
                               <div className="h-full flex items-center justify-center text-zinc-600 text-sm">Tidak ada file</div>
