@@ -3000,7 +3000,17 @@ ${kode ? `
                console.error('Insert riwayat_pesan error:', insertErr);
                alert('Gambar terupload tapi gagal disimpan ke database:\n' + insertErr.message);
             } else {
-               supabase.functions.invoke('send-wa', { body: { target: selectedWa, mediaUrl: url, mediaType, message: replyText.trim() || undefined } }).catch(console.error);
+               // Kirim via server-side (fetch Drive → upload WA media → send dengan media_id)
+               const driveIdMatch = url.match(/[?&]id=([a-zA-Z0-9_-]{10,100})/) || url.match(/\/d\/([a-zA-Z0-9_-]{10,100})/);
+               if (driveIdMatch) {
+                  fetch('/api/admin/send-chat-media', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ driveFileId: driveIdMatch[1], target: selectedWa, mediaType, caption: replyText.trim() || undefined }),
+                  }).then(r => r.json()).then(d => { if (d.error) console.error('[send-chat-media]', d.error); }).catch(console.error);
+               } else {
+                  supabase.functions.invoke('send-wa', { body: { target: selectedWa, mediaUrl: url, mediaType, message: replyText.trim() || undefined } }).catch(console.error);
+               }
             }
          } catch (err) {
             alert('Gagal mengirim file: ' + (err as Error).message);
