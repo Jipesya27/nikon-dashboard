@@ -1206,11 +1206,19 @@ export default function NikonDashboard() {
          } catch { /* skip failed upload */ }
       }
       const dataToSave = { ...affiliateFormData, foto_profil: fotoProfilUrl || null };
+      let saveError: string | null = null;
       if (editingAffiliateId) {
-         await sbWrite({ action: 'update', table: 'affiliates', data: dataToSave, match: { id: editingAffiliateId } });
-         if (selectedAffiliate?.id === editingAffiliateId) setSelectedAffiliate(prev => prev ? { ...prev, ...dataToSave as Affiliate } : null);
+         const { error } = await sbWrite({ action: 'update', table: 'affiliates', data: dataToSave, match: { id: editingAffiliateId } });
+         if (error) saveError = error.message;
+         else if (selectedAffiliate?.id === editingAffiliateId) setSelectedAffiliate(prev => prev ? { ...prev, ...dataToSave as Affiliate } : null);
       } else {
-         await sbWrite({ action: 'insert', table: 'affiliates', data: dataToSave });
+         const { error } = await sbWrite({ action: 'insert', table: 'affiliates', data: dataToSave });
+         if (error) saveError = error.message;
+      }
+      if (saveError) {
+         alert(`Gagal menyimpan affiliate:\n${saveError}`);
+         setAffiliateSaving(false);
+         return;
       }
       await fetchAffiliates();
       setAffiliateFormOpen(false);
