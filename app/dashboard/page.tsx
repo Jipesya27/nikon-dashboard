@@ -528,6 +528,7 @@ export default function NikonDashboard() {
    const [imageTranslate, setImageTranslate] = useState({ x: 0, y: 0 });
    const [isDragging, setIsDragging] = useState(false);
    const [startDragPosition, setStartDragPosition] = useState({ x: 0, y: 0 });
+   const [imageRotation, setImageRotation] = useState(0);
 
    // DUAL DOC VIEWER STATES
    const [isDualDocOpen, setIsDualDocOpen] = useState(false);
@@ -635,9 +636,9 @@ export default function NikonDashboard() {
          setCurrentImageUrl(urlOrFile);
       }
       setIsImageViewerOpen(true);
-      setImageScale(1); // Reset zoom
-      setImageTranslate({ x: 0, y: 0 }); // Reset position
-      // Reset dragging state to ensure fresh start
+      setImageScale(1);
+      setImageTranslate({ x: 0, y: 0 });
+      setImageRotation(0);
       setIsDragging(false);
    };
 
@@ -8576,9 +8577,17 @@ ${kode ? `
 
          {isImageViewerOpen && (
             <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center animate-fade-in" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-               <button onClick={closeImageViewer} aria-label="Tutup" className="fixed top-4 right-4 z-[60] w-11 h-11 bg-white rounded-md shadow-xl flex items-center justify-center text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all border border-gray-200">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-               </button>
+               <div className="fixed top-4 right-4 z-[60] flex items-center gap-2">
+                  <button onClick={() => setImageRotation(r => (r - 90 + 360) % 360)} aria-label="Putar kiri" title="Putar kiri" className="w-11 h-11 bg-white rounded-md shadow-xl flex items-center justify-center text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-200">
+                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 9l4-4M4 9H8" /></svg>
+                  </button>
+                  <button onClick={() => setImageRotation(r => (r + 90) % 360)} aria-label="Putar kanan" title="Putar kanan" className="w-11 h-11 bg-white rounded-md shadow-xl flex items-center justify-center text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-200">
+                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 4v5h-.582M4.062 11A8.001 8.001 0 0119.418 9m0 0H15m-11 11v-5h.581m0 0a8.003 8.003 0 0015.357-2M4.581 15H9" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 9l-4-4M20 9h-4" /></svg>
+                  </button>
+                  <button onClick={closeImageViewer} aria-label="Tutup" className="w-11 h-11 bg-white rounded-md shadow-xl flex items-center justify-center text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all border border-gray-200">
+                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+               </div>
                <div className="absolute inset-0 flex items-center justify-center overflow-hidden" onWheel={handleWheel} onMouseMove={handleMouseMove} onMouseDown={handleMouseDown}>
                   {currentImageUrl.toLowerCase().endsWith('.pdf') || currentImageUrl.startsWith('data:application/pdf') ? (
                      <iframe src={currentImageUrl} className="w-full h-full border-none" title="PDF Viewer" />
@@ -8588,7 +8597,7 @@ ${kode ? `
                         src={currentImageUrl}
                         alt="Viewer"
                         className="max-w-full max-h-full object-contain cursor-grab"
-                        style={{ transform: `scale(${imageScale}) translate(${imageTranslate.x}px, ${imageTranslate.y}px)`, transition: isDragging ? 'none' : 'transform 0.1s ease-out' }}
+                        style={{ transform: `rotate(${imageRotation}deg) scale(${imageScale}) translate(${imageTranslate.x}px, ${imageTranslate.y}px)`, transition: isDragging ? 'none' : 'transform 0.2s ease-out' }}
                      />
                   )}
                </div>
