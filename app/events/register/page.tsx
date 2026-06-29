@@ -18,6 +18,7 @@ type EventItem = {
   registered_count: number;
   registration_not_open?: boolean;
   registration_open_date?: string | null;
+  is_past?: boolean;
 };
 
 /** Konversi Google Drive URL ke proxy publik agar bisa ditampilkan di <img>. */
@@ -488,7 +489,7 @@ export default function EventRegisterPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {pastEvents.map(evt => (
-                  <div key={evt.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col opacity-60 grayscale">
+                  <div key={evt.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col">
                     <div
                       className="relative bg-gray-100 cursor-pointer"
                       onClick={() => evt.event_description ? setDescEvent(evt) : undefined}
@@ -612,7 +613,11 @@ export default function EventRegisterPage() {
                 >
                   Tutup
                 </button>
-                {descEvent.registration_not_open ? (
+                {descEvent.is_past ? (
+                  <div className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-400 text-sm font-bold text-center">
+                    ✓ Event Selesai
+                  </div>
+                ) : descEvent.registration_not_open ? (
                   <div className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-500 text-sm font-bold text-center">
                     {descEvent.registration_open_date
                       ? `Buka ${new Date(descEvent.registration_open_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', timeZone: 'Asia/Jakarta' })}`
