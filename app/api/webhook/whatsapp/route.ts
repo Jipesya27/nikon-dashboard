@@ -49,6 +49,10 @@ export async function POST(req: Request) {
         const messages: unknown[] = value.messages ?? [];
         const contacts: unknown[] = value.contacts ?? [];
 
+        // Nomor telepon bisnis kita — pesan dari nomor ini adalah echo, skip
+        const businessPhoneId = (value.metadata as Record<string, string>)?.phone_number_id || '';
+        const businessDisplayPhone = (value.metadata as Record<string, string>)?.display_phone_number?.replace(/\D/g, '') || '';
+
         for (const msg of messages) {
           const m = msg as Record<string, unknown>;
           const msgType = m.type as string;
@@ -58,6 +62,11 @@ export async function POST(req: Request) {
           if (!isSupportedType) continue;
 
           const from = m.from as string;
+
+          // Skip echo: pesan yang dikirim OLEH bisnis (bukan dari konsumen)
+          const fromNorm = from.replace(/\D/g, '');
+          if (businessDisplayPhone && fromNorm === businessDisplayPhone) continue;
+          if (businessPhoneId && from === businessPhoneId) continue;
           const timestamp = m.timestamp as string;
 
           const contact = (contacts as Record<string, unknown>[]).find(
