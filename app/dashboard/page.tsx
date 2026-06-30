@@ -6090,7 +6090,7 @@ ${kode ? `
                                     <span>Laptop GPU</span>
                                     {immichMlMode === 'laptop' && <span className="ml-1 text-xs bg-purple-500 text-white rounded-md px-1.5 py-0.5">Aktif</span>}
                                  </div>
-                                 <div className="text-xs font-normal mt-1 opacity-70">RTX 3050 · 100.65.29.78:3003</div>
+                                 <div className="text-xs font-normal mt-1 opacity-70">RTX 3050 · 192.168.18.145:3003</div>
                               </button>
                            </div>
                            {immichMlSwitching && (
@@ -6331,7 +6331,7 @@ ${kode ? `
                               <span>Laptop GPU</span>
                               {immichMlMode === 'laptop' && <span className="ml-1 text-xs bg-purple-500 text-white rounded-md px-1.5 py-0.5">Aktif</span>}
                            </div>
-                           <div className="text-xs font-normal mt-1 opacity-70">RTX 3050 · 100.65.29.78:3003</div>
+                           <div className="text-xs font-normal mt-1 opacity-70">RTX 3050 · 192.168.18.145:3003</div>
                         </button>
                      </div>
                      {immichMlSwitching && (
