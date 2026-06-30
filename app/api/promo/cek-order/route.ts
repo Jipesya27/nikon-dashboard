@@ -8,33 +8,55 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || '',
 );
 
+// Hanya karakter aman yang diizinkan untuk order ID (hex + huruf kapital)
+const ORDER_ID_RE = /^[0-9A-F]{4,8}$/;
+// Hanya digit untuk nomor WA
+const WA_RE = /^[0-9+\s]{4,20}$/;
+
 export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get('q')?.trim().toUpperCase() || '';
-  if (!q || q.length < 4) {
-    return NextResponse.json({ error: 'Masukkan minimal 4 karakter' }, { status: 400 });
+  const raw = req.nextUrl.searchParams.get('q')?.trim() || '';
+
+  if (!raw || raw.length < 4 || raw.length > 20) {
+    return NextResponse.json({ error: 'Masukkan 4–20 karakter' }, { status: 400 });
   }
 
-  // Cari by nomor WA (digits only) ATAU by short order ID (8 karakter pertama UUID)
-  const isWa = /^\d+$/.test(q.replace(/[+ ]/g, ''));
+  const q = raw.toUpperCase();
+
+  // Tentukan tipe pencarian berdasarkan karakter
+  const isWa = WA_RE.test(raw);
+  const isOrderId = ORDER_ID_RE.test(q);
+
+  if (!isWa && !isOrderId) {
+    return NextResponse.json({ error: 'Format tidak valid. Masukkan No. Order (contoh: 85474506) atau Nomor WA (contoh: 08123...)' }, { status: 400 });
+  }
+
+  const SELECT = 'id, nama_pembeli, nama_barang_snapshot, harga_transfer, status, invoice_token, created_at';
+
   let data, error;
 
-  if (isWa) {
-    const waClean = q.replace(/\D/g, '').replace(/^0/, '62');
+  if (isOrderId) {
+    // UUID adalah 32 hex tanpa dash — short order ID = 8 char pertama
+    // Gunakan .filter() dengan cast ::text untuk menghindari error tipe uuid
     ({ data, error } = await supabase
       .from('promo_datacolor_orders')
-      .select('id, nama_pembeli, nama_barang_snapshot, harga_transfer, status, invoice_token, created_at, nomor_wa')
+      .select(SELECT)
+      .filter('id::text', 'ilike', q.toLowerCase() + '%')
+      .limit(5));
+  } else {
+    // Nomor WA — normalisasi 0xxx → 62xxx
+    const waClean = raw.replace(/\D/g, '').replace(/^0/, '62');
+    ({ data, error } = await supabase
+      .from('promo_datacolor_orders')
+      .select(SELECT)
       .eq('nomor_wa', waClean)
       .order('created_at', { ascending: false })
       .limit(5));
-  } else {
-    // Cari by 8-char order ID prefix
-    ({ data, error } = await supabase
-      .from('promo_datacolor_orders')
-      .select('id, nama_pembeli, nama_barang_snapshot, harga_transfer, status, invoice_token, created_at, nomor_wa')
-      .ilike('id', q + '%')
-      .limit(5));
   }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[cek-order]', error.message);
+    return NextResponse.json({ error: 'Gagal mencari pesanan. Silakan coba beberapa saat lagi.' }, { status: 500 });
+  }
+
   return NextResponse.json({ orders: data || [] });
 }
