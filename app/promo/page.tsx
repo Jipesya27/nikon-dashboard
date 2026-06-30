@@ -21,6 +21,17 @@ type Promo = {
   tanggal_berakhir?: string;
 };
 
+type CekOrder = {
+  id: string;
+  nama_pembeli: string;
+  nama_barang_snapshot: string;
+  harga_transfer: number;
+  status: string;
+  invoice_token: string;
+  created_at: string;
+  nomor_wa: string;
+};
+
 type Order = {
   id: string;
   nama_pembeli: string;
@@ -59,6 +70,13 @@ export default function PromoPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState('');
+
+  // Cek status order
+  const [showCekModal, setShowCekModal] = useState(false);
+  const [cekQuery, setCekQuery] = useState('');
+  const [cekLoading, setCekLoading] = useState(false);
+  const [cekResults, setCekResults] = useState<CekOrder[]>([]);
+  const [cekErr, setCekErr] = useState('');
 
   // Form fields
   const [nama, setNama] = useState('');
@@ -147,6 +165,25 @@ export default function PromoPage() {
     }
   }
 
+  async function handleCekOrder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!cekQuery.trim()) return;
+    setCekLoading(true);
+    setCekErr('');
+    setCekResults([]);
+    try {
+      const res = await fetch(`/api/promo/cek-order?q=${encodeURIComponent(cekQuery.trim())}`);
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Gagal mencari order');
+      if (d.orders.length === 0) setCekErr('Order tidak ditemukan. Periksa kembali nomor order atau nomor WA Anda.');
+      else setCekResults(d.orders);
+    } catch (e) {
+      setCekErr((e as Error).message);
+    } finally {
+      setCekLoading(false);
+    }
+  }
+
   async function sendInvoiceToWA() {
     if (!order) return;
     const invoiceUrl = `${window.location.origin}/promo/invoice/${order.invoice_token}`;
@@ -193,12 +230,18 @@ export default function PromoPage() {
             <img src="/ALTA_baru.png" alt="Alta Nikindo" className="h-7 object-contain" />
           </div>
         </div>
-        {step !== 'promo' && (
-          <button onClick={() => { setStep('promo'); setSelectedItem(null); setOrder(null); setErr(''); }}
-            className="text-xs text-gray-400 hover:text-gray-700 transition flex items-center gap-1">
-            ← Kembali ke Promo
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setShowCekModal(true); setCekQuery(''); setCekResults([]); setCekErr(''); }}
+            className="text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
+            Cek Status Pesanan
           </button>
-        )}
+          {step !== 'promo' && (
+            <button onClick={() => { setStep('promo'); setSelectedItem(null); setOrder(null); setErr(''); }}
+              className="text-xs text-gray-400 hover:text-gray-700 transition flex items-center gap-1">
+              ← Kembali
+            </button>
+          )}
+        </div>
       </nav>
 
       <div className="pt-14">
@@ -516,9 +559,97 @@ export default function PromoPage() {
           </div>
         )}
       </div>
+
+      {/* ════ MODAL: CEK STATUS PESANAN ════ */}
+      {showCekModal && (
+        <div className="fixed inset-0 z-[999] bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setShowCekModal(false)}>
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}>
+            {/* Handle bar (mobile) */}
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            </div>
+
+            <div className="px-5 pb-6 pt-2 sm:pt-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-black text-gray-900 text-base">Cek Status Pesanan</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Masukkan No. Order atau Nomor WA</p>
+                </div>
+                <button onClick={() => setShowCekModal(false)} className="text-gray-300 hover:text-gray-500 text-xl leading-none p-1">✕</button>
+              </div>
+
+              <form onSubmit={handleCekOrder} className="flex gap-2 mb-4">
+                <input
+                  value={cekQuery}
+                  onChange={e => { setCekQuery(e.target.value); setCekResults([]); setCekErr(''); }}
+                  placeholder="Contoh: 6DEE51BB atau 08xxxxxxxx"
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gray-400 text-gray-900 placeholder-gray-300"
+                  autoFocus
+                />
+                <button type="submit" disabled={cekLoading || !cekQuery.trim()}
+                  className="bg-[#FFE500] text-black font-black px-4 py-2.5 rounded-xl text-sm hover:bg-yellow-300 transition disabled:opacity-40 shrink-0">
+                  {cekLoading ? '...' : 'Cek'}
+                </button>
+              </form>
+
+              {cekErr && (
+                <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl p-3 mb-3">
+                  {cekErr}
+                </div>
+              )}
+
+              {cekResults.length > 0 && (
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+                  {cekResults.map(o => {
+                    const st = STATUS_LABEL[o.status] || { label: o.status, color: 'text-gray-600', bg: 'bg-gray-50 border-gray-200' };
+                    return (
+                      <div key={o.id} className={`border rounded-2xl p-4 ${st.bg}`}>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div>
+                            <p className="font-black text-gray-900 text-sm">{o.nama_pembeli}</p>
+                            <p className="text-xs text-gray-500 font-mono mt-0.5">#{o.id.slice(0, 8).toUpperCase()}</p>
+                          </div>
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full border ${st.bg} ${st.color} shrink-0`}>
+                            {st.label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-1">{o.nama_barang_snapshot}</p>
+                        <p className="text-sm font-black text-gray-900 mb-3">{fmtRp(o.harga_transfer)}</p>
+                        <a href={`/promo/invoice/${o.invoice_token}`} target="_blank"
+                          className="flex items-center justify-center gap-1.5 w-full py-2 bg-gray-900 text-white text-xs font-bold rounded-xl hover:bg-gray-800 transition">
+                          📄 Lihat E-Invoice
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {!cekLoading && cekResults.length === 0 && !cekErr && (
+                <p className="text-center text-xs text-gray-300 py-4">
+                  No. Order tertera di email atau halaman konfirmasi pesanan
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+// ── Cek Status Modal ──────────────────────────────────────────────────────────
+
+const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
+  menunggu_pembayaran: { label: 'Menunggu Pembayaran', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+  menunggu_verifikasi: { label: 'Menunggu Verifikasi', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+  diproses:            { label: 'Sedang Diproses',     color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' },
+  dikirim:             { label: 'Dikirim',             color: 'text-cyan-700',   bg: 'bg-cyan-50 border-cyan-200' },
+  selesai:             { label: 'Selesai ✓',           color: 'text-green-700',  bg: 'bg-green-50 border-green-200' },
+  dibatalkan:          { label: 'Dibatalkan',          color: 'text-red-700',    bg: 'bg-red-50 border-red-200' },
+};
 
 // ── Components ──
 
