@@ -1324,8 +1324,19 @@ export default function NikonDashboard() {
       let user: Karyawan;
       try { user = JSON.parse(saved); } catch { localStorage.removeItem('nikon_karyawan'); setLoading(false); return; }
       fetch('/api/admin/auth', { cache: 'no-store' })
-         .then(res => {
+         .then(async res => {
             if (res.ok) {
+               // Refresh data karyawan dari DB agar akses_halaman selalu up-to-date
+               try {
+                  const meRes = await fetch('/api/auth/me', { cache: 'no-store' });
+                  if (meRes.ok) {
+                     const meData = await meRes.json();
+                     if (meData.karyawan) {
+                        user = { ...user, ...meData.karyawan };
+                        localStorage.setItem('nikon_karyawan', JSON.stringify(user));
+                     }
+                  }
+               } catch { /* gunakan data localStorage jika /me gagal */ }
                setCurrentUser(user);
                setIsLoggedIn(true);
             } else {
