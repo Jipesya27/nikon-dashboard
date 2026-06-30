@@ -39,9 +39,11 @@ export async function GET() {
   }
   try {
     const config = await immichFetch('/api/system-config');
-    const currentUrl: string = config?.machineLearning?.url ?? '';
+    const ml = config?.machineLearning;
+    // Immich menyimpan URL sebagai string (url) atau array (urls) tergantung versi
+    const currentUrl: string = ml?.url ?? (Array.isArray(ml?.urls) ? ml.urls[0] : '') ?? '';
     const mode = currentUrl === LAPTOP_ML_URL ? 'laptop' : isDellUrl(currentUrl) ? 'dell' : 'unknown';
-    return NextResponse.json({ mode, url: currentUrl });
+    return NextResponse.json({ mode, url: currentUrl, _ml: ml });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
@@ -62,7 +64,12 @@ export async function POST(req: NextRequest) {
   try {
     const config = await immichFetch('/api/system-config');
     const newUrl = mode === 'laptop' ? LAPTOP_ML_URL : DELL_ML_URL;
-    config.machineLearning.url = newUrl;
+    // Handle kedua format: string url atau array urls
+    if (Array.isArray(config?.machineLearning?.urls)) {
+      config.machineLearning.urls = [newUrl];
+    } else {
+      config.machineLearning.url = newUrl;
+    }
     await immichFetch('/api/system-config', { method: 'PUT', body: JSON.stringify(config) });
     return NextResponse.json({ ok: true, mode, url: newUrl });
   } catch (err) {
