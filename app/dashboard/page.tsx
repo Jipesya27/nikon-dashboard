@@ -507,20 +507,6 @@ export default function NikonDashboard() {
    const [dealerSortDir, setDealerSortDir] = useState<'asc' | 'desc'>('asc');
    const [dealerColFilters, setDealerColFilters] = useState<Record<number, string>>({});
 
-   // STB MONITORING STATES
-   type StbMetrics = {
-      hostname: string; platform: string; arch: string;
-      cpu: { model: string; cores: number; loadAvg: number[]; usagePercent: number };
-      memory: { total: number; used: number; free: number; usedPercent: number };
-      disk: { total: number; used: number; free: number; usedPercent: number };
-      uptime: { system: number; process: number };
-      timestamp: string;
-   };
-   const [stbMetrics, setStbMetrics] = useState<StbMetrics | null>(null);
-   const [stbLoading, setStbLoading] = useState(false);
-   const [stbError, setStbError] = useState('');
-   const [stbLastUpdated, setStbLastUpdated] = useState<Date | null>(null);
-
    // IMAGE VIEWER STATES
 
    const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
@@ -849,24 +835,6 @@ export default function NikonDashboard() {
          .catch((e: Error) => setDealerError(e.message))
          .finally(() => setDealerLoading(false));
    }, [activeTab, dealerSheet, dealerLoading]);
-   // Fetch STB metrics saat tab infrastruktur aktif, refresh setiap 30 detik
-   useEffect(() => {
-      if (activeTab !== 'infrastruktur') return;
-      const loadMetrics = () => {
-         setStbLoading(true);
-         setStbError('');
-         fetch('https://backup.altanikindo.web.id/api/infrastruktur/stb')
-            .then(r => r.json())
-            .then((data: StbMetrics) => { setStbMetrics(data); setStbLastUpdated(new Date()); })
-            .catch((e: Error) => setStbError(e.message || 'Gagal mengambil data STB'))
-            .finally(() => setStbLoading(false));
-      };
-      loadMetrics();
-      const timer = setInterval(loadMetrics, 30000);
-      return () => clearInterval(timer);
-   // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [activeTab]);
-
    // Migrasi key lama ke key per-user, lalu load dari Supabase (sync lintas perangkat)
    useEffect(() => {
       if (!currentUser?.id_karyawan) return;
@@ -4067,10 +4035,10 @@ ${kode ? `
                                  { href: '/admin/monitoring', label: 'System Monitoring' },
                                  { href: '/admin/google-auth', label: 'Google Drive Auth' },
                                  { href: 'https://photos.altanikindo.web.id', label: 'Galeri Foto' },
-                                 { href: 'https://backup.altanikindo.web.id/dashboard', label: 'Backup Dashboard' },
+                                 { href: 'https://proxmox.altanikindo.web.id', label: 'Proxmox' },
                               ] : []),
                               ...(currentUser?.role === 'Super Admin' ? [
-                                 { href: 'https://terminal.altanikindo.web.id', label: 'Terminal SSH' },
+                                 { href: 'https://monitorproxmox.altanikindo.web.id', label: 'Netdata Monitor' },
                               ] : []),
                            ].map(link => (
                               <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" onClick={() => setSidebarOpen(false)}
@@ -5988,65 +5956,13 @@ ${kode ? `
                               Monitoring Infrastruktur
                            </h2>
                            <div className="flex items-center gap-3">
-                              {stbLastUpdated && <span className="text-xs text-gray-400">Update: {stbLastUpdated.toLocaleTimeString('id-ID')}</span>}
                               <button
-                                 onClick={() => { setStbMetrics(null); setStbLastUpdated(null); setActiveTab('dashboard'); setTimeout(() => setActiveTab('infrastruktur'), 50); }}
+                                 onClick={() => { setActiveTab('dashboard'); setTimeout(() => setActiveTab('infrastruktur'), 50); }}
                                  className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-bold hover:bg-gray-700 transition"
                               >
                                  <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Refresh
                               </button>
                            </div>
-                        </div>
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
-                           <div className="flex items-center gap-3 mb-5">
-                              <div className={`w-3 h-3 rounded-md ${stbLoading ? 'bg-yellow-400 animate-pulse' : stbError ? 'bg-red-500' : 'bg-green-500'}`} />
-                              <h3 className="text-lg font-bold text-gray-900">STB HG680P — <span className="font-mono text-gray-600">192.168.18.63</span></h3>
-                              <span className="ml-auto text-xs text-gray-400">Armbian · ARM64</span>
-                           </div>
-                           {stbLoading && !stbMetrics && (
-                              <div className="flex items-center justify-center py-12 text-gray-400">
-                                 <svg className="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                                 Mengambil data STB...
-                              </div>
-                           )}
-                           {stbError && (
-                              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
-                                 <strong>Gagal terhubung:</strong> {stbError}
-                              </div>
-                           )}
-                           {stbMetrics && (
-                              <div className="space-y-5">
-                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                    <div className="bg-gray-50 rounded-xl p-3">
-                                       <div className="text-gray-500 text-xs mb-1">Hostname</div>
-                                       <div className="font-bold font-mono">{stbMetrics.hostname}</div>
-                                    </div>
-                                    <div className="bg-gray-50 rounded-xl p-3">
-                                       <div className="text-gray-500 text-xs mb-1">CPU</div>
-                                       <div className="font-bold text-xs">{stbMetrics.cpu.model}</div>
-                                       <div className="text-gray-500 text-xs">{stbMetrics.cpu.cores} core</div>
-                                    </div>
-                                    <div className="bg-gray-50 rounded-xl p-3">
-                                       <div className="text-gray-500 text-xs mb-1">System Uptime</div>
-                                       <div className="font-bold">{fmtUptime(stbMetrics.uptime.system)}</div>
-                                    </div>
-                                    <div className="bg-gray-50 rounded-xl p-3">
-                                       <div className="text-gray-500 text-xs mb-1">App Uptime</div>
-                                       <div className="font-bold">{fmtUptime(stbMetrics.uptime.process)}</div>
-                                    </div>
-                                 </div>
-                                 <div className="space-y-3 pt-2">
-                                    <MetricBar label="CPU Load" used={stbMetrics.cpu.loadAvg[0].toString()} total={stbMetrics.cpu.cores.toString()} pct={stbMetrics.cpu.usagePercent} unitUsed={` (1m avg)`} unitTotal={` core`} />
-                                    <MetricBar label="RAM" used={fmtBytes(stbMetrics.memory.used)} total={fmtBytes(stbMetrics.memory.total)} pct={stbMetrics.memory.usedPercent} />
-                                    <MetricBar label="Disk (/)" used={fmtBytes(stbMetrics.disk.used)} total={fmtBytes(stbMetrics.disk.total)} pct={stbMetrics.disk.usedPercent} />
-                                 </div>
-                                 <div className="pt-1 text-xs text-gray-400 flex gap-4">
-                                    <span>Load avg: {stbMetrics.cpu.loadAvg.join(' / ')}</span>
-                                    <span>RAM free: {fmtBytes(stbMetrics.memory.free)}</span>
-                                    <span>Disk free: {fmtBytes(stbMetrics.disk.free)}</span>
-                                 </div>
-                              </div>
-                           )}
                         </div>
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
                            <div className="flex items-center gap-3 mb-3">
@@ -6074,12 +5990,16 @@ ${kode ? `
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
                            <div className="flex items-center gap-3 mb-3">
                               <div className="w-3 h-3 rounded-md bg-orange-400" />
-                              <h3 className="text-lg font-bold text-gray-900">Cloudflare Tunnel</h3>
+                              <h3 className="text-lg font-bold text-gray-900">Cloudflare Tunnel — <span className="font-mono text-sm font-normal text-gray-500">Proxmox Dell OptiPlex 5060</span></h3>
                            </div>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               {[
-                                 { hostname: 'backup.altanikindo.web.id', target: '192.168.18.63:3000', desc: 'Next.js backup site' },
-                                 { hostname: 'terminal.altanikindo.web.id', target: 'localhost:7681', desc: 'Wetty SSH ke STB' },
+                                 { hostname: 'proxmox.altanikindo.web.id', target: 'localhost:8006', desc: 'Proxmox Web UI (HTTPS)' },
+                                 { hostname: 'monitorproxmox.altanikindo.web.id', target: 'localhost:19999', desc: 'Netdata monitoring' },
+                                 { hostname: 'immich.altanikindo.web.id', target: '192.168.18.210:2283', desc: 'Immich (CT 100)' },
+                                 { hostname: 'casaos.altanikindo.web.id', target: '192.168.18.178:81', desc: 'CasaOS (CT 102)' },
+                                 { hostname: 'uptime.altanikindo.web.id', target: '192.168.18.178:3001', desc: 'Uptime Kuma (CT 102)' },
+                                 { hostname: 'files.altanikindo.web.id', target: '192.168.18.188:80', desc: 'Nextcloud (CT 103)' },
                               ].map(r => (
                                  <div key={r.hostname} className="bg-gray-50 rounded-xl p-3 flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 bg-orange-400 rounded-md mt-1.5 shrink-0" />
@@ -6213,89 +6133,13 @@ ${kode ? `
                   <div className="flex items-center justify-between">
                      <h2 className="text-2xl font-bold text-gray-900">🖥️ Monitoring Infrastruktur</h2>
                      <div className="flex items-center gap-3">
-                        {stbLastUpdated && <span className="text-xs text-gray-400">Update: {stbLastUpdated.toLocaleTimeString('id-ID')}</span>}
                         <button
-                           onClick={() => { setStbMetrics(null); setStbLastUpdated(null); setActiveTab('dashboard'); setTimeout(() => setActiveTab('infrastruktur'), 50); }}
+                           onClick={() => { setActiveTab('dashboard'); setTimeout(() => setActiveTab('infrastruktur'), 50); }}
                            className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-bold hover:bg-gray-700 transition"
                         >
                            🔄 Refresh
                         </button>
                      </div>
-                  </div>
-
-                  {/* STB Card */}
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
-                     <div className="flex items-center gap-3 mb-5">
-                        <div className={`w-3 h-3 rounded-md ${stbLoading ? 'bg-yellow-400 animate-pulse' : stbError ? 'bg-red-500' : 'bg-green-500'}`} />
-                        <h3 className="text-lg font-bold text-gray-900">STB HG680P — <span className="font-mono text-gray-600">192.168.18.63</span></h3>
-                        <span className="ml-auto text-xs text-gray-400">Armbian · ARM64</span>
-                     </div>
-
-                     {stbLoading && !stbMetrics && (
-                        <div className="flex items-center justify-center py-12 text-gray-400">
-                           <svg className="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                           Mengambil data STB...
-                        </div>
-                     )}
-
-                     {stbError && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
-                           <strong>Gagal terhubung:</strong> {stbError}
-                        </div>
-                     )}
-
-                     {stbMetrics && (
-                        <div className="space-y-5">
-                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                              <div className="bg-gray-50 rounded-xl p-3">
-                                 <div className="text-gray-500 text-xs mb-1">Hostname</div>
-                                 <div className="font-bold font-mono">{stbMetrics.hostname}</div>
-                              </div>
-                              <div className="bg-gray-50 rounded-xl p-3">
-                                 <div className="text-gray-500 text-xs mb-1">CPU</div>
-                                 <div className="font-bold text-xs">{stbMetrics.cpu.model}</div>
-                                 <div className="text-gray-500 text-xs">{stbMetrics.cpu.cores} core</div>
-                              </div>
-                              <div className="bg-gray-50 rounded-xl p-3">
-                                 <div className="text-gray-500 text-xs mb-1">System Uptime</div>
-                                 <div className="font-bold">{fmtUptime(stbMetrics.uptime.system)}</div>
-                              </div>
-                              <div className="bg-gray-50 rounded-xl p-3">
-                                 <div className="text-gray-500 text-xs mb-1">App Uptime</div>
-                                 <div className="font-bold">{fmtUptime(stbMetrics.uptime.process)}</div>
-                              </div>
-                           </div>
-
-                           <div className="space-y-3 pt-2">
-                              <MetricBar
-                                 label="CPU Load"
-                                 used={stbMetrics.cpu.loadAvg[0].toString()}
-                                 total={stbMetrics.cpu.cores.toString()}
-                                 pct={stbMetrics.cpu.usagePercent}
-                                 unitUsed={` (1m avg)`}
-                                 unitTotal={` core`}
-                              />
-                              <MetricBar
-                                 label="RAM"
-                                 used={fmtBytes(stbMetrics.memory.used)}
-                                 total={fmtBytes(stbMetrics.memory.total)}
-                                 pct={stbMetrics.memory.usedPercent}
-                              />
-                              <MetricBar
-                                 label="Disk (/)"
-                                 used={fmtBytes(stbMetrics.disk.used)}
-                                 total={fmtBytes(stbMetrics.disk.total)}
-                                 pct={stbMetrics.disk.usedPercent}
-                              />
-                           </div>
-
-                           <div className="pt-1 text-xs text-gray-400 flex gap-4">
-                              <span>Load avg: {stbMetrics.cpu.loadAvg.join(' / ')}</span>
-                              <span>RAM free: {fmtBytes(stbMetrics.memory.free)}</span>
-                              <span>Disk free: {fmtBytes(stbMetrics.disk.free)}</span>
-                           </div>
-                        </div>
-                     )}
                   </div>
 
                   {/* Synology Card */}
@@ -6327,12 +6171,16 @@ ${kode ? `
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
                      <div className="flex items-center gap-3 mb-3">
                         <div className="w-3 h-3 rounded-md bg-orange-400" />
-                        <h3 className="text-lg font-bold text-gray-900">Cloudflare Tunnel</h3>
+                        <h3 className="text-lg font-bold text-gray-900">Cloudflare Tunnel — <span className="font-mono text-sm font-normal text-gray-500">Proxmox Dell OptiPlex 5060</span></h3>
                      </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         {[
-                           { hostname: 'backup.altanikindo.web.id', target: '192.168.18.63:3000', desc: 'Next.js backup site' },
-                           { hostname: 'terminal.altanikindo.web.id', target: 'localhost:7681', desc: 'Wetty SSH ke STB' },
+                           { hostname: 'proxmox.altanikindo.web.id', target: 'localhost:8006', desc: 'Proxmox Web UI (HTTPS)' },
+                           { hostname: 'monitorproxmox.altanikindo.web.id', target: 'localhost:19999', desc: 'Netdata monitoring' },
+                           { hostname: 'immich.altanikindo.web.id', target: '192.168.18.210:2283', desc: 'Immich (CT 100)' },
+                           { hostname: 'casaos.altanikindo.web.id', target: '192.168.18.178:81', desc: 'CasaOS (CT 102)' },
+                           { hostname: 'uptime.altanikindo.web.id', target: '192.168.18.178:3001', desc: 'Uptime Kuma (CT 102)' },
+                           { hostname: 'files.altanikindo.web.id', target: '192.168.18.188:80', desc: 'Nextcloud (CT 103)' },
                         ].map(r => (
                            <div key={r.hostname} className="bg-gray-50 rounded-xl p-3 flex items-start gap-3">
                               <div className="w-1.5 h-1.5 bg-orange-400 rounded-md mt-1.5 shrink-0" />
