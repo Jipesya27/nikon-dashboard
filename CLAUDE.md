@@ -338,6 +338,15 @@ Utility classes tersedia tanpa npm tambahan:
 - **Proxmox target**: `/mnt/pve/hdd-bulk/team/`
 - File yang sudah ada di Proxmox di-skip (`--ignore-existing`). Delete di Synology tidak hapus di Proxmox.
 
+### Lenovo LOQ — Immich ML Worker (PENDING, setup di rumah via LAN)
+- **Spec**: i5-12450HX, 12GB DDR5, RTX 3050 6GB, dual NVMe 512GB
+- **Tailscale IP**: `100.65.29.78` (device name: `desktop-fjjpj4e`)
+- **Docker Desktop**: sudah terinstall, GPU (CUDA) sudah terdeteksi
+- **Container**: `ghcr.io/immich-app/immich-machine-learning:release`, port 3003, docker-compose di `C:\immich-ml\`
+- **Test**: `curl http://100.65.29.78:3003/ping` dari Proxmox → pong ✓
+- **Workflow**: Opsi A — pakai laptop hanya saat bulk import (ratusan ribu foto), ganti URL ML di Immich Settings → `http://100.65.29.78:3003`, selesai → ganti balik ke default
+- **TODO**: Konfigurasi Immich ML URL saat di rumah (LAN), test dengan real job
+
 ### nikon-dashboard Disaster Recovery (CT 104)
 - **Status**: IN PROGRESS — repo sudah di-clone, Node.js 20 + PM2 + Nginx terinstall
 - **Path repo**: `/opt/nikon-dashboard`
