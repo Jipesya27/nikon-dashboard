@@ -188,8 +188,10 @@ export default function PromoPage() {
     <div className="min-h-screen bg-white text-gray-900 font-sans">
       {/* ── NAVBAR ── */}
       <nav className="fixed top-0 inset-x-0 z-50 bg-white border-b border-gray-100 shadow-sm px-4 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img src="/ALTA_baru.png" alt="Alta Nikindo" className="h-8 object-contain" />
+        <div className="flex items-center gap-2">
+          <div className="bg-black rounded-lg px-2 py-1.5 flex items-center">
+            <img src="/ALTA_baru.png" alt="Alta Nikindo" className="h-7 object-contain" />
+          </div>
         </div>
         {step !== 'promo' && (
           <button onClick={() => { setStep('promo'); setSelectedItem(null); setOrder(null); setErr(''); }}
@@ -213,14 +215,14 @@ export default function PromoPage() {
                   <span className="text-6xl">🎁</span>
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f0f] via-black/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="absolute bottom-0 inset-x-0 px-4 pb-8 pt-16 text-center">
                 <div className="inline-block bg-[#FFE500] text-black text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full mb-3">
                   Special Promo
                 </div>
-                <h1 className="text-xl sm:text-3xl font-black leading-tight max-w-2xl mx-auto">{promo.judul}</h1>
+                <h1 className="text-xl sm:text-3xl font-black leading-tight max-w-2xl mx-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" style={{textShadow:'0 2px 12px rgba(0,0,0,1), 0 0px 3px rgba(0,0,0,1)'}}>{promo.judul}</h1>
                 {(promo.tanggal_mulai || promo.tanggal_berakhir) && (
-                  <p className="mt-3 text-white/60 text-sm">
+                  <p className="mt-3 text-white text-sm font-semibold drop-shadow-[0_1px_4px_rgba(0,0,0,1)]">
                     {fmtDate(promo.tanggal_mulai)} — {fmtDate(promo.tanggal_berakhir)}
                   </p>
                 )}
