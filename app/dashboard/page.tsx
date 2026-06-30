@@ -20,6 +20,7 @@ import EventReport from '@/app/components/EventReport';
 import WaTemplatesTab from '@/app/components/WaTemplatesTab';
 import ExpenseClaimTab from '@/app/components/ExpenseClaimTab';
 import ResiTab from '@/app/components/ResiTab';
+import PromoDatacolorTab from '@/app/components/PromoDatacolorTab';
 import MessagesTab from '@/app/components/MessagesTab';
 import AffiliateTab from '@/app/components/AffiliateTab';
 import DealerTab from '@/app/components/DealerTab';
@@ -3789,6 +3790,7 @@ ${kode ? `
          category: 'Operasional',
          tabs: [
             { id: 'promos', label: '📢 Promo', count: undefined },
+            { id: 'promo_datacolor', label: '🏷️ Promo Datacolor', count: undefined },
             { id: 'claims', label: '🎫 Claim Promo', count: sidebarCounts.claimBelumCek || undefined },
             { id: 'warranties', label: '🛡️ Garansi', count: sidebarCounts.garansiBelum || undefined },
             { id: 'services', label: '🔧 Service', count: sidebarCounts.serviceAktif || undefined },
@@ -5207,6 +5209,11 @@ ${kode ? `
                         </div>
                      )}
                   </div>
+               )}
+
+               {/* ======================= PROMO DATACOLOR ======================= */}
+               {activeTab === 'promo_datacolor' && (
+                  <PromoDatacolorTab currentUser={currentUser} />
                )}
 
                {/* ======================= KLAIM BIAYA ======================= */}
