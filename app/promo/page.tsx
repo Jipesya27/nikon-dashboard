@@ -209,20 +209,25 @@ export default function PromoPage() {
             <div className="relative w-full bg-black overflow-hidden">
               {promo.banner_url ? (
                 <img src={driveThumb(promo.banner_url) || promo.banner_url} alt="Banner Promo"
-                  className="w-full max-h-[520px] object-cover object-center opacity-90" />
+                  className="w-full object-contain object-center" style={{ maxHeight: '60vh' }} />
               ) : (
                 <div className="w-full h-72 bg-gradient-to-br from-[#FFE500]/20 to-black flex items-center justify-center">
                   <span className="text-6xl">🎁</span>
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 inset-x-0 px-4 pb-8 pt-16 text-center">
-                <div className="inline-block bg-[#FFE500] text-black text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full mb-3">
+              {/* gradient hanya di bawah, tidak pekat di tengah */}
+              <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black/75 to-transparent" />
+              <div className="absolute bottom-0 inset-x-0 px-4 pb-6 text-center">
+                <div className="inline-block bg-[#FFE500] text-black text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full mb-2">
                   Special Promo
                 </div>
-                <h1 className="text-xl sm:text-3xl font-black leading-tight max-w-2xl mx-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" style={{textShadow:'0 2px 12px rgba(0,0,0,1), 0 0px 3px rgba(0,0,0,1)'}}>{promo.judul}</h1>
+                <h1 className="text-lg sm:text-2xl font-black leading-tight max-w-2xl mx-auto text-white"
+                  style={{ textShadow: '0 1px 6px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,1)' }}>
+                  {promo.judul}
+                </h1>
                 {(promo.tanggal_mulai || promo.tanggal_berakhir) && (
-                  <p className="mt-3 text-white text-sm font-semibold drop-shadow-[0_1px_4px_rgba(0,0,0,1)]">
+                  <p className="mt-1.5 text-white/90 text-sm font-semibold"
+                    style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}>
                     {fmtDate(promo.tanggal_mulai)} — {fmtDate(promo.tanggal_berakhir)}
                   </p>
                 )}
