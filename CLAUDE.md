@@ -257,6 +257,7 @@ Utility classes tersedia tanpa npm tambahan:
 | CT 101 | nas | — | NAS |
 | CT 102 | casaos | `192.168.18.178` | CasaOS + Uptime Kuma (Docker) |
 | CT 103 | nextcloud | `192.168.18.188` | Nextcloud (Apache + MariaDB + PHP) |
+| CT 104 | nikon-backup | `192.168.18.220` | Disaster recovery nikon-dashboard (Node.js 20 + PM2 + Nginx) |
 
 ### Mount Points (Proxmox node)
 | Path | Disk | Keterangan |
@@ -271,7 +272,11 @@ Utility classes tersedia tanpa npm tambahan:
 - Services: `immich-web`, `immich-ml`, `immich-microservices`, `postgresql`, `redis`
 - `.env` di `/opt/immich/.env`
 - Bug pernah terjadi: path salah `/opt//app` → sudah diperbaiki ke `/opt/immich/app` di semua service files
-- External library bind mount: `pct set 100 --mp2 /mnt/pve/hdd-files,mp=/mnt/immich-data/hdd-files`
+- Mount points: `mp0=hdd-bulk/immich-upload`, `mp1=nvme-fast/immich-pgdata`, `mp2=hdd-files`, `mp3=hdd-bulk/immich-upload/immich`, `mp4=hdd-bulk/team (ro)`
+- External library "Multimedia": `/mnt/immich-data/hdd-files/Multimedia` → owner: Jamal (jump.all27@gmail.com)
+- External library "Folder Adhi": `/mnt/immich-data/team` → owner: Folder Adhi (folderadhi@alta.com)
+- Immich users: Jamal (admin), jipesya (admin), Ika Widiya Astuti, Qafisha, Alta iPhone, Folder Adhi
+- Immich UID: 999 → host UID 100999. Folder `/mnt/pve/hdd-bulk/team` perlu chmod 755 agar readable
 
 ### Nextcloud (CT 103)
 - Web root: `/var/www/nextcloud`
@@ -279,7 +284,17 @@ Utility classes tersedia tanpa npm tambahan:
 - Trusted domains: `192.168.18.188`, `files.altanikindo.web.id`
 - DB: MariaDB, user `nextcloud`, db `nextcloud`
 - Apache config: `/etc/apache2/sites-available/nextcloud.conf`
-- **TODO**: Mount HDD 3TB sebagai external storage
+- PHP: mod_php (bukan FPM). Config di `/etc/php/8.2/apache2/php.ini`
+- PHP limits sudah diset: `upload_max_filesize=100G`, `post_max_size=100G`, `memory_limit=512M`
+- `occ config:app:set files max_chunk_size --value 0` (unlimited chunk)
+- 2FA enforcement: **disabled** (`twofactor_enforced=false`) — perlu untuk WebDAV/Synology
+- Mount points di CT 103: `/mnt/hdd-bulk` (hdd-bulk), `/mnt/hdd-backup`, `/mnt/hdd-files`
+- External Storage "Team Files": `/mnt/hdd-bulk/team` → path di CT: `/mnt/hdd-bulk/team`
+- www-data UID di CT 103 = 33 → host UID = 100033. Path hdd-bulk/team harus `chown 100033:100033`
+- Users: jipesya (admin), Adhi (untuk Synology sync)
+- **Cloudflare Tunnel limit**: upload max ~100MB via `files.altanikindo.web.id` — jangan pakai untuk file besar
+- Reset brute force: `occ security:bruteforce:reset <IP>`
+- Reset password user: `occ user:resetpassword <username>`
 
 ### Netdata Monitoring (`monitorproxmox.altanikindo.web.id`)
 - Versi: v2.10.0-549-nightly
@@ -300,13 +315,35 @@ Utility classes tersedia tanpa npm tambahan:
 - Perintah cek: `smartctl -A /dev/sda` (sebagai root)
 - Netdata user perlu flag `-d sat` tapi tidak work → pakai workaround cron+file
 
+### Tailscale Network
+| Device | Tailscale IP | Keterangan |
+|--------|-------------|------------|
+| optiolex (Proxmox) | `100.71.166.85` | Advertise subnet `192.168.18.0/24` (approved di admin panel) |
+| altamarketing (Synology) | `100.124.1.15` | Userspace mode — tidak support `--accept-routes`, tidak ada `tailscale0` interface |
+| desktop-fjjpj4e | `100.65.29.78` | Windows PC kantor |
+| nas | `100.73.152.98` | NAS |
+| putradhipc | `100.101.68.118` | Windows PC |
+
+**Catatan Tailscale Synology**: Synology pakai userspace networking — tidak bisa terima incoming connections dari Tailscale node lain. Proxmox → Synology via SSH BISA (via DERP relay). Synology → Proxmox TIDAK BISA.
+
+### Synology → Proxmox Sync (Team Folder)
+- **Metode**: rsync pull dari Proxmox (bukan push dari Synology)
+- **Kenapa**: Cloudflare Tunnel limit 100MB, Synology Tailscale userspace tidak support subnet routing
+- **Script**: `/usr/local/bin/sync-team-synology.sh`
+- **Cron**: `/etc/cron.d/sync-team-synology` (setiap 2 jam)
+- **Command**: `rsync -av --ignore-existing --rsync-path=/usr/bin/rsync -e "ssh -o BatchMode=yes" SysAdmin@100.124.1.15:/volume1/homes/SysAdmin/Team/ /mnt/pve/hdd-bulk/team/`
+- **Log**: `/var/log/sync-team-synology.log`
+- **SSH key**: Proxmox root key sudah di authorized_keys Synology SysAdmin
+- **Synology Team path**: `/volume1/homes/SysAdmin/Team/`
+- **Proxmox target**: `/mnt/pve/hdd-bulk/team/`
+- File yang sudah ada di Proxmox di-skip (`--ignore-existing`). Delete di Synology tidak hapus di Proxmox.
+
+### nikon-dashboard Disaster Recovery (CT 104)
+- **Status**: IN PROGRESS — repo sudah di-clone, Node.js 20 + PM2 + Nginx terinstall
+- **Path repo**: `/opt/nikon-dashboard`
+- **TODO**: buat `.env`, `npm install`, `npm run build`, setup PM2 + Nginx + Cloudflare Tunnel
+
 ### Pending Tasks Infrastruktur
-1. **Auto-backup rsync**: cron jam 02:00 — `rsync -av /mnt/pve/hdd-bulk/ /mnt/pve/hdd-backup/` → log ke `/var/log/hdd-sync.log`
-2. **nikon-dashboard disaster recovery backup**:
-   - Clone repo GitHub ke server lokal (CT baru atau existing)
-   - Simpan `.env` secara aman
-   - Build Next.js + serve via PM2 + Nginx
-   - Cloudflare Tunnel untuk akses
-   - pg_dump Supabase tiap malam
-   - Target: jika Vercel/GitHub down, sistem tetap jalan dari lokal
-3. **Nextcloud**: Mount HDD 3TB sebagai external storage
+1. **Auto-backup rsync**: ✅ Script `/usr/local/bin/hdd-backup-sync.sh` + cron `/etc/cron.d/hdd-backup` (jam 02:00) — sudah dibuat, perlu verifikasi log
+2. **nikon-dashboard disaster recovery**: CT 104 siap, perlu `.env` + build + PM2 + Nginx + Cloudflare Tunnel
+3. **Nextcloud**: ~~Mount HDD 3TB~~ ✅ sudah mount sebagai External Storage "Team Files"
