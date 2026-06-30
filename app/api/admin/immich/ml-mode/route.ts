@@ -43,7 +43,7 @@ export async function GET() {
     // Immich menyimpan URL sebagai string (url) atau array (urls) tergantung versi
     const currentUrl: string = ml?.url ?? (Array.isArray(ml?.urls) ? ml.urls[0] : '') ?? '';
     const mode = currentUrl === LAPTOP_ML_URL ? 'laptop' : isDellUrl(currentUrl) ? 'dell' : 'unknown';
-    return NextResponse.json({ mode, url: currentUrl, _ml: ml });
+    return NextResponse.json({ mode, url: currentUrl });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
