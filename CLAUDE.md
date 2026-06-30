@@ -331,7 +331,7 @@ Utility classes tersedia tanpa npm tambahan:
 - **Kenapa**: Cloudflare Tunnel limit 100MB, Synology Tailscale userspace tidak support subnet routing
 - **Script**: `/usr/local/bin/sync-team-synology.sh`
 - **Cron**: `/etc/cron.d/sync-team-synology` (setiap 2 jam)
-- **Command**: `rsync -av --ignore-existing --rsync-path=/usr/bin/rsync -e "ssh -o BatchMode=yes" SysAdmin@100.124.1.15:/volume1/homes/SysAdmin/Team/ /mnt/pve/hdd-bulk/team/`
+- **Command**: `rsync -av --ignore-existing --rsync-path=/usr/bin/rsync -e "ssh -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes" SysAdmin@100.124.1.15:/volume1/homes/SysAdmin/Team/ /mnt/pve/hdd-bulk/team/`
 - **Log**: `/var/log/sync-team-synology.log`
 - **SSH key**: Proxmox root key sudah di authorized_keys Synology SysAdmin
 - **Synology Team path**: `/volume1/homes/SysAdmin/Team/`
