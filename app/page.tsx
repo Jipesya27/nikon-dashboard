@@ -89,8 +89,8 @@ export default function HomePage() {
               {NAV_LINKS.map(l => (
                 <a key={l.label} href={l.href} className="text-white/70 hover:text-[#FFE500] text-sm font-semibold transition-colors">{l.label}</a>
               ))}
-              <Link href="/dashboard" className="bg-[#FFE500] text-black text-xs font-black px-4 py-2 rounded-lg hover:bg-yellow-400 transition-colors">
-                Staff Login
+              <Link href="/promo" className="bg-[#FFE500] text-black text-xs font-black px-4 py-2 rounded-lg hover:bg-yellow-400 transition-colors">
+                Promo
               </Link>
             </div>
             <button className="md:hidden text-white p-2" onClick={() => setMenuOpen(o => !o)}>
@@ -105,7 +105,7 @@ export default function HomePage() {
             {NAV_LINKS.map(l => (
               <a key={l.label} href={l.href} onClick={() => setMenuOpen(false)} className="block text-white/80 hover:text-[#FFE500] font-semibold py-1 text-sm">{l.label}</a>
             ))}
-            <Link href="/dashboard" className="block bg-[#FFE500] text-black text-center font-black px-4 py-2 rounded-lg text-sm mt-2">Staff Login</Link>
+            <Link href="/promo" className="block bg-[#FFE500] text-black text-center font-black px-4 py-2 rounded-lg text-sm mt-2">Promo</Link>
           </div>
         )}
       </nav>
