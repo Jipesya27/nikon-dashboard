@@ -416,7 +416,7 @@ export default function PromoPage() {
             <h2 className="text-lg font-black mb-6">Ringkasan Pembayaran</h2>
 
             {/* Transfer info */}
-            <div className="bg-[#FFE500] rounded-2xl p-5 mb-6">
+            <div className="bg-[#FFE500] rounded-2xl p-5 mb-4">
               <p className="text-xs text-black/50 uppercase tracking-wider font-semibold mb-3">Nominal Transfer</p>
               <div className="text-4xl font-black text-black mb-1">{fmtRp(order.harga_transfer)}</div>
               <div className="text-xs text-black/60 space-y-0.5 mt-2">
@@ -426,6 +426,23 @@ export default function PromoPage() {
               <p className="text-[10px] text-black/40 mt-3">
                 ⚠️ Pastikan transfer tepat sesuai nominal di atas untuk mempermudah verifikasi.
               </p>
+            </div>
+
+            {/* Rekening tujuan */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
+                <span className="text-white font-black text-xs">BCA</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Transfer ke</p>
+                <p className="text-lg font-black text-gray-900 tracking-widest">5910060173</p>
+                <p className="text-xs text-gray-500">a.n. <span className="font-semibold text-gray-700">PT. ALTA NIKINDO</span></p>
+              </div>
+              <button
+                onClick={() => { navigator.clipboard.writeText('5910060173'); alert('No. rekening disalin!'); }}
+                className="shrink-0 text-xs text-blue-500 hover:text-blue-700 font-semibold border border-blue-200 rounded-lg px-2.5 py-1.5 hover:bg-blue-50 transition">
+                Salin
+              </button>
             </div>
 
             {/* Order summary */}
