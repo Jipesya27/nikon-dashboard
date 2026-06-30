@@ -8,6 +8,27 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder',
 );
 
+async function sbWrite<T = unknown>(opts: {
+  action: 'insert' | 'update' | 'delete' | 'upsert';
+  table: string;
+  data?: unknown;
+  match?: Record<string, unknown>;
+  select?: string;
+}): Promise<{ data: T[] | null; error: { message: string } | null }> {
+  try {
+    const res = await fetch('/api/admin/sb-write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(opts),
+    });
+    const out = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    if (!res.ok) return { data: null, error: { message: out.error || JSON.stringify(out) } };
+    return { data: (out.data as T[]) ?? null, error: null };
+  } catch (e) {
+    return { data: null, error: { message: (e as Error).message } };
+  }
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Promo = {
@@ -206,10 +227,10 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
       };
 
       if (editingPromo) {
-        const { error } = await supabase.from('promo_datacolor').update(payload).eq('id', editingPromo.id);
+        const { error } = await sbWrite({ action: 'update', table: 'promo_datacolor', data: payload, match: { id: editingPromo.id } });
         if (error) throw new Error(error.message);
       } else {
-        const { error } = await supabase.from('promo_datacolor').insert(payload);
+        const { error } = await sbWrite({ action: 'insert', table: 'promo_datacolor', data: payload });
         if (error) throw new Error(error.message);
       }
       setShowPromoModal(false);
@@ -223,13 +244,13 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
 
   async function deletePromo(id: string) {
     if (!confirm('Hapus promo ini beserta semua itemnya?')) return;
-    const { error } = await supabase.from('promo_datacolor').delete().eq('id', id);
+    const { error } = await sbWrite({ action: 'delete', table: 'promo_datacolor', match: { id } });
     if (error) { alert(error.message); return; }
     fetchPromos();
   }
 
   async function toggleActive(p: Promo) {
-    await supabase.from('promo_datacolor').update({ is_active: !p.is_active }).eq('id', p.id);
+    await sbWrite({ action: 'update', table: 'promo_datacolor', data: { is_active: !p.is_active }, match: { id: p.id } });
     fetchPromos();
   }
 
@@ -267,10 +288,10 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
       };
 
       if (editingItem) {
-        const { error } = await supabase.from('promo_datacolor_items').update(payload).eq('id', editingItem.id);
+        const { error } = await sbWrite({ action: 'update', table: 'promo_datacolor_items', data: payload, match: { id: editingItem.id } });
         if (error) throw new Error(error.message);
       } else {
-        const { error } = await supabase.from('promo_datacolor_items').insert(payload);
+        const { error } = await sbWrite({ action: 'insert', table: 'promo_datacolor_items', data: payload });
         if (error) throw new Error(error.message);
       }
       setShowItemModal(false);
@@ -284,7 +305,7 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
 
   async function deleteItem(id: string) {
     if (!confirm('Hapus produk ini?')) return;
-    await supabase.from('promo_datacolor_items').delete().eq('id', id);
+    await sbWrite({ action: 'delete', table: 'promo_datacolor_items', match: { id } });
     fetchItems(itemsPromoId);
   }
 
@@ -292,7 +313,7 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
 
   async function updateOrderStatus(orderId: string, status: string) {
     setStatusUpdating(true);
-    const { error } = await supabase.from('promo_datacolor_orders').update({ status }).eq('id', orderId);
+    const { error } = await sbWrite({ action: 'update', table: 'promo_datacolor_orders', data: { status }, match: { id: orderId } });
     if (error) { alert(error.message); }
     else {
       setViewingOrder(v => v ? { ...v, status } : v);
