@@ -35,12 +35,16 @@ export async function GET(req: NextRequest) {
   let data, error;
 
   if (isOrderId) {
-    // UUID adalah 32 hex tanpa dash — short order ID = 8 char pertama
-    // Gunakan .filter() dengan cast ::text untuk menghindari error tipe uuid
+    // UUID disimpan sebagai tipe uuid di Postgres — gunakan range query
+    // first 8 hex chars = segmen pertama UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+    const prefix = q.toLowerCase();
+    const lower = `${prefix}-0000-0000-0000-000000000000`;
+    const upper = `${prefix}-ffff-ffff-ffff-ffffffffffff`;
     ({ data, error } = await supabase
       .from('promo_datacolor_orders')
       .select(SELECT)
-      .filter('id::text', 'ilike', q.toLowerCase() + '%')
+      .gte('id', lower)
+      .lte('id', upper)
       .limit(5));
   } else {
     // Nomor WA — normalisasi 0xxx → 62xxx

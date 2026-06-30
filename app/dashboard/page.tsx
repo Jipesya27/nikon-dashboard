@@ -1328,7 +1328,10 @@ export default function NikonDashboard() {
             if (res.ok) {
                // Refresh data karyawan dari DB agar akses_halaman selalu up-to-date
                try {
-                  const meRes = await fetch('/api/auth/me', { cache: 'no-store' });
+                  const meUrl = user.username
+                     ? `/api/auth/me?username=${encodeURIComponent(user.username)}`
+                     : '/api/auth/me';
+                  const meRes = await fetch(meUrl, { cache: 'no-store' });
                   if (meRes.ok) {
                      const meData = await meRes.json();
                      if (meData.karyawan) {
