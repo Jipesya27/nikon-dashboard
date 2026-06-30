@@ -7,8 +7,11 @@ export const dynamic = 'force-dynamic';
 const IMMICH_URL = process.env.IMMICH_URL || 'http://192.168.18.210:2283';
 const IMMICH_API_KEY = process.env.IMMICH_API_KEY || '';
 
-const DELL_ML_URL = 'http://localhost:3003';
+const DELL_ML_URL = 'http://127.0.0.1:3003';
 const LAPTOP_ML_URL = 'http://100.65.29.78:3003';
+
+const isDellUrl = (url: string) =>
+  url === 'http://127.0.0.1:3003' || url === 'http://localhost:3003';
 
 async function immichFetch(path: string, options: RequestInit = {}) {
   const res = await fetch(`${IMMICH_URL}${path}`, {
@@ -37,7 +40,7 @@ export async function GET() {
   try {
     const config = await immichFetch('/api/system-config');
     const currentUrl: string = config?.machineLearning?.url ?? '';
-    const mode = currentUrl === LAPTOP_ML_URL ? 'laptop' : currentUrl === DELL_ML_URL ? 'dell' : 'unknown';
+    const mode = currentUrl === LAPTOP_ML_URL ? 'laptop' : isDellUrl(currentUrl) ? 'dell' : 'unknown';
     return NextResponse.json({ mode, url: currentUrl });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
