@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { RiwayatPesan, KonsumenData, Karyawan, PengaturanBot } from '@/app/index';
 
 export interface MessagesTabProps {
@@ -133,6 +133,47 @@ export default function MessagesTab({
   openImageViewer, isGoogleDriveLink, toDriveProxy, isImageUrl,
   scrollToBottom, sbWrite,
 }: MessagesTabProps) {
+  // Edit pesan state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+  const editInputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const EDIT_WINDOW_MS = 15 * 60 * 1000;
+  const canEdit = (msg: RiwayatPesan) =>
+    msg.arah_pesan === 'OUT' &&
+    !msg.url_media &&
+    msg.id_pesan &&
+    !msg.id_pesan.startsWith('__opt_') &&
+    Date.now() - new Date(msg.waktu_pesan || msg.created_at || 0).getTime() < EDIT_WINDOW_MS;
+
+  const startEdit = (msg: RiwayatPesan) => {
+    setEditingId(msg.id_pesan!);
+    setEditText(msg.isi_pesan);
+    setTimeout(() => { editInputRef.current?.focus(); editInputRef.current?.select(); }, 50);
+  };
+
+  const cancelEdit = () => { setEditingId(null); setEditText(''); };
+
+  const submitEdit = async (id_pesan: string) => {
+    if (!editText.trim() || editLoading) return;
+    setEditLoading(true);
+    try {
+      const res = await fetch('/api/admin/edit-wa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_pesan, new_text: editText.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || 'Gagal mengedit pesan'); return; }
+      cancelEdit();
+    } catch (e) {
+      alert('Gagal mengedit pesan: ' + (e as Error).message);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const findTag = (key: string) => TAG_PRESETS.find(t => t.key === key);
 
   const countUnread = (wa: string) => {
@@ -421,14 +462,36 @@ export default function MessagesTab({
                     </div>
                   ) : (
                     <div key={msg.id_pesan || index} className={`group flex items-end gap-1 ${msg.arah_pesan === 'OUT' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] md:max-w-[72%] px-3 py-2 text-sm relative shadow-[0_1px_2px_rgba(0,0,0,0.13)] ${msg.arah_pesan === 'OUT' ? 'bg-[#dcf8c6] text-gray-900 rounded-t-2xl rounded-bl-2xl rounded-br-sm' : 'bg-white text-gray-900 rounded-t-2xl rounded-br-2xl rounded-bl-sm border border-gray-100'}`}>
+                      {/* Tombol aksi: reply (IN) | edit+reply (OUT) */}
+                      {msg.arah_pesan === 'OUT' ? (
+                        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity order-first">
+                          {canEdit(msg) && editingId !== msg.id_pesan && (
+                            <button
+                              onClick={() => startEdit(msg)}
+                              className="p-1 rounded-full hover:bg-gray-200"
+                              title="Edit pesan" aria-label="Edit pesan"
+                            >
+                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setReplyToMessage(msg)}
+                            className="p-1 rounded-full hover:bg-gray-200"
+                            title="Balas" aria-label="Balas"
+                          >
+                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v6M3 10l6 6M3 10l6-6" /></svg>
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           onClick={() => setReplyToMessage(msg)}
-                          className={`absolute top-1 ${msg.arah_pesan === 'OUT' ? '-left-8' : '-right-8'} opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-gray-200`}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-gray-200 shrink-0"
                           title="Balas" aria-label="Balas"
                         >
                           <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v6M3 10l6 6M3 10l6-6" /></svg>
                         </button>
+                      )}
+                      <div className={`max-w-[85%] md:max-w-[72%] px-3 py-2 text-sm relative shadow-[0_1px_2px_rgba(0,0,0,0.13)] ${msg.arah_pesan === 'OUT' ? 'bg-[#dcf8c6] text-gray-900 rounded-t-2xl rounded-bl-2xl rounded-br-sm' : 'bg-white text-gray-900 rounded-t-2xl rounded-br-2xl rounded-bl-sm border border-gray-100'}`}>
                         {msg.url_media ? (() => {
                           const mediaType = msg.jenis_pesan === 'image' || msg.jenis_pesan === 'video' || msg.jenis_pesan === 'document' || msg.jenis_pesan === 'audio'
                             ? msg.jenis_pesan
@@ -472,10 +535,34 @@ export default function MessagesTab({
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={isGoogleDriveLink(msg.isi_pesan) ? toDriveProxy(msg.isi_pesan) : msg.isi_pesan} alt="Media" className="w-full max-h-64 object-cover rounded-md" onLoad={scrollToBottom} />
                           </div>
+                        ) : editingId === msg.id_pesan ? (
+                          /* ── Inline edit field ── */
+                          <div className="min-w-[200px]">
+                            <textarea
+                              ref={editInputRef}
+                              value={editText}
+                              onChange={e => setEditText(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitEdit(msg.id_pesan!); }
+                                if (e.key === 'Escape') cancelEdit();
+                              }}
+                              rows={Math.min(6, editText.split('\n').length + 1)}
+                              className="w-full text-sm bg-white/70 border border-green-400 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-green-400"
+                              disabled={editLoading}
+                            />
+                            <div className="flex gap-1.5 mt-1.5 justify-end">
+                              <button onClick={cancelEdit} disabled={editLoading} className="text-[11px] px-2 py-0.5 rounded bg-white/80 border border-gray-300 text-gray-600 hover:bg-gray-100 transition">Batal</button>
+                              <button onClick={() => submitEdit(msg.id_pesan!)} disabled={editLoading || !editText.trim()} className="text-[11px] px-2 py-0.5 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition flex items-center gap-1">
+                                {editLoading && <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>}
+                                Simpan
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           <p className="whitespace-pre-wrap leading-relaxed font-medium">{msg.isi_pesan}</p>
                         )}
-                        <div className="text-[10px] mt-1.5 text-right text-gray-400 select-none">
+                        <div className="text-[10px] mt-1.5 text-right text-gray-400 select-none flex items-center justify-end gap-1">
+                          {msg.is_edited && <span className="italic">Diedit</span>}
                           {(() => {
                             const d = new Date(msg.waktu_pesan || msg.created_at || 0);
                             return isNaN(d.getTime()) ? '-' : `${d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;

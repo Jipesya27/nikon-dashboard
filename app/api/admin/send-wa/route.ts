@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    let wamid: string | undefined;
     if (templateName && documentUrl) {
       // Template dengan DOCUMENT header (hindari — iOS tidak support)
       await sendWATemplateWithDoc(target, templateName, bodyParams ?? [], documentUrl, documentFilename ?? 'dokumen.pdf');
@@ -27,9 +28,9 @@ export async function POST(req: NextRequest) {
       await sendWATemplate(target, templateName, bodyParams ?? []);
     } else {
       if (!message) return NextResponse.json({ error: 'message wajib diisi' }, { status: 400 });
-      await sendWA(target, message);
+      wamid = await sendWA(target, message);
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, wamid });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[send-wa] error:', msg);

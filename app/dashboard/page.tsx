@@ -208,7 +208,7 @@ const sendWhatsAppMessage = async (
    targetWa: string,
    message: string,
    templateOpts?: { templateName: string; bodyParams: string[]; documentUrl?: string; documentFilename?: string },
-) => {
+): Promise<{ wamid?: string }> => {
    const payload = templateOpts
       ? { target: targetWa, ...templateOpts }
       : { target: targetWa, message };
@@ -221,6 +221,8 @@ const sendWhatsAppMessage = async (
       const err = await res.json().catch(() => ({}));
       throw new Error(`Gagal kirim WA: ${err.error || `HTTP ${res.status}`}`);
    }
+   const data = await res.json().catch(() => ({}));
+   return { wamid: data.wamid };
 };
 
 export default function NikonDashboard() {
@@ -3072,10 +3074,11 @@ ${kode ? `
       setTimeout(scrollToBottom, 50);
 
       // --- Simpan ke DB dulu — insert DB → tampil di UI via polling, WA = fire-and-forget ---
-      const { error: insertErr } = await sbWrite({
+      const { data: insertedRows, error: insertErr } = await sbWrite<{ id_pesan: string }>({
          action: 'insert',
          table: 'riwayat_pesan',
          data: { nomor_wa: selectedWa, nama_profil_wa: getRealProfileName(selectedWa), arah_pesan: 'OUT', isi_pesan: fullMessage, waktu_pesan: now, bicara_dengan_cs: false, created_at: now },
+         select: 'id_pesan',
       });
       if (insertErr) {
          console.error('[handleSendReply] insert error:', insertErr.message);
@@ -3085,9 +3088,16 @@ ${kode ? `
          return;
       }
 
-      // --- Kirim WA — fire-and-forget, tidak memblokir UI ---
-      // bicara_dengan_cs TIDAK di-clear di sini; hanya tombol "Selesai CS" yang boleh clear
+      // --- Kirim WA lalu simpan wamid ke DB ---
+      const insertedId = insertedRows?.[0]?.id_pesan;
       sendWhatsAppMessage(selectedWa, fullMessage)
+         .then(({ wamid }) => {
+            if (wamid && insertedId) {
+               sbWrite({ action: 'update', table: 'riwayat_pesan', data: { wamid }, match: { id_pesan: insertedId } }).catch(() => {});
+               // Update local state agar tombol edit langsung aktif tanpa tunggu polling
+               setMessages(prev => prev.map(m => m.id_pesan === insertedId ? { ...m, wamid } : m));
+            }
+         })
          .catch(err => console.error('[handleSendReply] wa error:', err));
       // Polling 5 detik akan replace optimistic dengan data real dari DB secara otomatis
    };

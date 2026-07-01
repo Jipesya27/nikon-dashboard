@@ -80,7 +80,7 @@ export async function sendWA(
   nomor: string,
   pesan: string,
   template?: { name: string; params: string[] },
-) {
+): Promise<string | undefined> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN || '';
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
   if (!token || !phoneNumberId || !nomor) return;
@@ -124,6 +124,13 @@ export async function sendWA(
     if (!res.ok) {
       throw new Error(`Meta WA ${res.status}: ${resText}`);
     }
+    // Ekstrak wamid dari response Meta
+    let wamid: string | undefined;
+    try {
+      const parsed = JSON.parse(resText);
+      wamid = parsed?.messages?.[0]?.id;
+    } catch { /* abaikan */ }
+
     // Log pesan sistem ke riwayat_pesan agar tampil di tab chat dashboard.
     // Fire-and-forget — gagal log tidak memblokir alur utama.
     // FK ke konsumen mungkin gagal untuk peserta event yang belum pernah chat; .catch() menangani ini.
@@ -147,9 +154,11 @@ export async function sendWA(
             created_at: now,
             bicara_dengan_cs: false,
             jenis_pesan: 'system',
+            wamid: wamid ?? null,
           });
       } catch { /* non-kritis, FK mungkin gagal untuk non-konsumen */ }
     })();
+    return wamid;
   } catch (e) {
     console.error('[notify] Gagal kirim WA (non-kritis):', e);
   }
@@ -430,7 +439,7 @@ export async function sendNotif(consumer: NotifTarget, admin?: NotifTarget): Pro
 
   // ── Consumer ──────────────────────────────────
   if (consumer.phone && doWA) {
-    tasks.push(sendWA(consumer.phone, consumer.message, consumer.waTemplate));
+    tasks.push(sendWA(consumer.phone, consumer.message, consumer.waTemplate).then(() => {}));
   }
   if (consumer.email && doEmail) {
     tasks.push(sendEmail(
