@@ -340,14 +340,14 @@ Utility classes tersedia tanpa npm tambahan:
 
 ### Lenovo LOQ — Immich ML Worker (✅ Production Ready)
 - **Spec**: i5-12450HX, 12GB DDR5, RTX 3050 6GB, dual NVMe 512GB
-- **LAN IP (Ethernet)**: `192.168.18.94:3003` — koneksi Ethernet untuk stabil & cepat (bukan WiFi)
+- **WiFi IP**: `192.168.18.145:3003` — koneksi WiFi lokal
 - **Tailscale IP**: `100.65.29.78` (device name: `desktop-fjjpj4e`, backup untuk remote access)
 - **Docker Desktop**: sudah terinstall, GPU (CUDA) sudah terdeteksi
 - **Container**: `ghcr.io/immich-app/immich-machine-learning:release-cuda`, port 3003, docker-compose di `C:\immich-ml\`
   - Runtime: `nvidia` (untuk CUDA support)
   - Image: CUDA-enabled untuk full GPU acceleration (RTX 3050)
-- **Test**: `curl http://192.168.18.94:3003/ping` dari Proxmox → pong ✓
-- **Workflow**: Dashboard infrastruktur tab → card "Immich ML Mode" → click "Laptop GPU" untuk switch ke `http://192.168.18.94:3003`
+- **Test**: `curl http://192.168.18.145:3003/ping` dari Proxmox → pong ✓
+- **Workflow**: Dashboard infrastruktur tab → card "Immich ML Mode" → click "Laptop GPU" untuk switch ke `http://192.168.18.145:3003`
   - Gunakan saat bulk import (ratusan ribu foto) untuk percepatan GPU
   - Setelah selesai, click "Dell PC" untuk switch balik ke default CPU mode
   - API route: `POST /api/admin/immich/ml-mode` — update `systemConfig.machineLearning.url` di Immich

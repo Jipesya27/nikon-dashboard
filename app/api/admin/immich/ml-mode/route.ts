@@ -8,7 +8,7 @@ const IMMICH_URL = process.env.IMMICH_URL || 'http://192.168.18.210:2283';
 const IMMICH_API_KEY = process.env.IMMICH_API_KEY || '';
 
 const DELL_ML_URL = 'http://127.0.0.1:3003';
-const LAPTOP_ML_URL = 'http://192.168.18.94:3003';
+const LAPTOP_ML_URL = 'http://192.168.18.145:3003';
 
 const isDellUrl = (url: string) =>
   url === 'http://127.0.0.1:3003' || url === 'http://localhost:3003';
