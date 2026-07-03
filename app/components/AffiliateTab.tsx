@@ -22,8 +22,8 @@ export interface AffiliateTabProps {
   setAffiliateFormData: React.Dispatch<React.SetStateAction<Partial<Affiliate>>>;
   skemaFormData: { barang: string; nilai_barang: string; potongan_persen: string };
   setSkemaFormData: React.Dispatch<React.SetStateAction<{ barang: string; nilai_barang: string; potongan_persen: string }>>;
-  penjualanFormData: { barang: string; harga_barang: string; persentase: string };
-  setPenjualanFormData: React.Dispatch<React.SetStateAction<{ barang: string; harga_barang: string; persentase: string }>>;
+  penjualanFormData: { barang: string; harga_barang: string; persentase: string; tanggal_transaksi: string };
+  setPenjualanFormData: React.Dispatch<React.SetStateAction<{ barang: string; harga_barang: string; persentase: string; tanggal_transaksi: string }>>;
   skemaFormOpen: boolean;
   setSkemaFormOpen: React.Dispatch<React.SetStateAction<boolean>>;
   penjualanFormOpen: boolean;
@@ -70,7 +70,9 @@ export default function AffiliateTab({
 }: AffiliateTabProps) {
   const fmtRp = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n));
 
-  const sisal = affiliateSkema.reduce((acc, s) => acc + s.nilai_barang - (s.nilai_barang * s.potongan_persen / 100), 0);
+  const totalNilai = affiliateSkema.reduce((acc, s) => acc + s.nilai_barang, 0);
+  const totalPotongan = affiliateSkema.reduce((acc, s) => acc + s.nilai_barang * s.potongan_persen / 100, 0);
+  const sisal = totalNilai - totalPotongan;
   let running = sisal;
   const penjualanWithSisa = affiliatePenjualan.map(p => {
     const nominal = p.harga_barang * p.persentase / 100;
@@ -98,8 +100,12 @@ export default function AffiliateTab({
     const penjualanRows = affiliatePenjualan.map((p, i) => {
       const nom = p.harga_barang * p.persentase / 100;
       runPrint -= nom;
+      const tgl = p.tanggal_transaksi
+        ? new Date(p.tanggal_transaksi).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })
+        : '-';
       return `<tr>
         <td class="c">${i + 1}</td>
+        <td class="c">${tgl}</td>
         <td>${p.barang}</td>
         <td class="r">${fmt(p.harga_barang)}</td>
         <td class="c">${p.persentase}%</td>
@@ -109,7 +115,7 @@ export default function AffiliateTab({
     }).join('');
 
     const emptyRows = Array.from({ length: Math.max(0, 3 - affiliatePenjualan.length) },
-      () => `<tr>${'<td>&nbsp;</td>'.repeat(6)}</tr>`).join('');
+      () => `<tr>${'<td>&nbsp;</td>'.repeat(7)}</tr>`).join('');
 
     const fotoSection = affiliatePenjualan.filter(p => p.foto_urls && p.foto_urls.length > 0).map(p => {
       const imgs = (p.foto_urls || []).map(url => {
@@ -143,7 +149,7 @@ export default function AffiliateTab({
 
 <p class="subtitle">Penjualan Affiliate</p>
 <table><thead><tr>
-  <th>No</th><th>Barang Affiliator</th><th>Harga Barang</th>
+  <th>No</th><th>Tanggal</th><th>Barang Affiliator</th><th>Harga Barang</th>
   <th>Persentase %</th><th>Nominal</th><th>Sisa Kontrak</th>
 </tr></thead><tbody>${penjualanRows}${emptyRows}</tbody></table>
 ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` : ''}
@@ -254,9 +260,12 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                 );
               })}
               {affiliateSkema.length > 0 && (
-                <tr className="bg-gray-50 border-t-2 border-gray-300">
-                  <td className="px-3 py-2 font-bold text-gray-700" colSpan={4}>Total Sisa Target</td>
-                  <td className="px-3 py-2 text-right font-bold font-mono text-green-700">{fmtRp(sisal)}</td>
+                <tr className="bg-gray-50 border-t-2 border-gray-300 font-bold">
+                  <td className="px-3 py-2 text-gray-700">Total</td>
+                  <td className="px-3 py-2 text-right font-mono text-gray-800">{fmtRp(totalNilai)}</td>
+                  <td />
+                  <td className="px-3 py-2 text-right font-mono text-orange-600">{fmtRp(totalPotongan)}</td>
+                  <td className="px-3 py-2 text-right font-mono text-green-700">{fmtRp(sisal)}</td>
                   <td />
                 </tr>
               )}
@@ -282,6 +291,8 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                   className="border border-gray-300 rounded px-2 py-1.5 text-sm w-36" />
                 <input placeholder="Persentase %" type="number" step="0.1" value={penjualanFormData.persentase} onChange={e => setPenjualanFormData(f => ({ ...f, persentase: e.target.value }))}
                   className="border border-gray-300 rounded px-2 py-1.5 text-sm w-28" />
+                <input type="date" value={penjualanFormData.tanggal_transaksi} onChange={e => setPenjualanFormData(f => ({ ...f, tanggal_transaksi: e.target.value }))}
+                  className="border border-gray-300 rounded px-2 py-1.5 text-sm w-36" title="Tanggal Transaksi" />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <label className="text-xs font-semibold text-gray-600">Foto bukti penjualan (maks 6):</label>
@@ -314,18 +325,21 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
           <table className="w-full text-sm">
             <thead className="bg-yellow-400">
               <tr>
-                {['No','Barang Affiliator','Harga Barang','Persentase %','Nominal','Sisa Kontrak','Foto',''].map(h => (
+                {['No','Tanggal','Barang Affiliator','Harga Barang','Persentase %','Nominal','Sisa Kontrak','Foto',''].map(h => (
                   <th key={h} className="px-3 py-2 text-left font-bold text-black">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {penjualanWithSisa.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-6 text-gray-400 text-xs">Belum ada data penjualan.</td></tr>
+                <tr><td colSpan={9} className="text-center py-6 text-gray-400 text-xs">Belum ada data penjualan.</td></tr>
               )}
               {penjualanWithSisa.map((p, i) => (
                 <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
                   <td className="px-3 py-2 text-gray-400">{i + 1}</td>
+                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap text-xs">
+                    {p.tanggal_transaksi ? new Date(p.tanggal_transaksi).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : <span className="text-gray-300">-</span>}
+                  </td>
                   <td className="px-3 py-2">{p.barang}</td>
                   <td className="px-3 py-2 text-right font-mono">{fmtRp(p.harga_barang)}</td>
                   <td className="px-3 py-2 text-center">{p.persentase}%</td>

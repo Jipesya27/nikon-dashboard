@@ -463,7 +463,7 @@ export default function NikonDashboard() {
    const [editingAffiliateId, setEditingAffiliateId] = useState<string | null>(null);
    const [affiliateFormData, setAffiliateFormData] = useState<Partial<Affiliate>>({});
    const [skemaFormData, setSkemaFormData] = useState({ barang: '', nilai_barang: '', potongan_persen: '' });
-   const [penjualanFormData, setPenjualanFormData] = useState({ barang: '', harga_barang: '', persentase: '' });
+   const [penjualanFormData, setPenjualanFormData] = useState({ barang: '', harga_barang: '', persentase: '', tanggal_transaksi: '' });
    const [skemaFormOpen, setSkemaFormOpen] = useState(false);
    const [penjualanFormOpen, setPenjualanFormOpen] = useState(false);
    const [penjualanFotoFiles, setPenjualanFotoFiles] = useState<File[]>([]);
@@ -1288,9 +1288,10 @@ export default function NikonDashboard() {
          harga_barang: parseFloat(penjualanFormData.harga_barang) || 0,
          persentase: parseFloat(penjualanFormData.persentase) || 0,
          ...(fotoUrls.length > 0 ? { foto_urls: fotoUrls } : {}),
+         ...(penjualanFormData.tanggal_transaksi ? { tanggal_transaksi: penjualanFormData.tanggal_transaksi } : {}),
       }});
       await fetchAffiliateDetail(selectedAffiliate.id);
-      setPenjualanFormData({ barang: '', harga_barang: '', persentase: '' });
+      setPenjualanFormData({ barang: '', harga_barang: '', persentase: '', tanggal_transaksi: '' });
       setPenjualanFotoFiles([]);
       setPenjualanFormOpen(false);
       setAffiliateSaving(false);
