@@ -1229,6 +1229,8 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
           </div>
         </div>
       )}
+
+      <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
     </div>
   );
 }
@@ -1379,8 +1381,6 @@ function ClaimCard({ claim, isAdmin, currentUsername, onEdit, onDelete, onStatus
           )}
         </div>
       )}
-
-      <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
     </div>
   );
 }
