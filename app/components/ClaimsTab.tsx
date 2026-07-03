@@ -261,7 +261,7 @@ export default function ClaimsTab({
                       </span>
                     </td>
                     <td className="px-3 py-2.5">
-                      <p className="font-bold text-slate-800 text-sm leading-tight">{c.nama_pendaftar || consumers[c.nomor_wa] || c.nomor_wa}</p>
+                      <p className="font-bold text-slate-800 text-sm leading-tight">{c.nama_pendaftar || c.nomor_wa}</p>
                       <p className="text-[10px] text-gray-500 font-mono mt-0.5">{c.nomor_wa}
                         {isDuplicate && <span className="ml-1.5 bg-red-500 text-white text-[9px] px-1 py-0.5 rounded font-bold animate-pulse">⚠️ DUPLIKAT</span>}
                       </p>
@@ -362,7 +362,7 @@ export default function ClaimsTab({
                       <span className="font-bold text-lg text-gray-600 bg-gray-100 rounded-full w-7 h-7 flex items-center justify-center text-center">{claimNumberMap.get(c.id_claim!)}</span>
                       <div>
                         <h3 className="font-bold text-base text-slate-800">
-                          {c.nama_pendaftar || consumers[c.nomor_wa] || c.nomor_wa}
+                          {c.nama_pendaftar || c.nomor_wa}
                         </h3>
                         <p className="text-xs text-gray-500 font-mono flex items-center gap-2">
                           {c.nomor_seri}
