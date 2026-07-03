@@ -39,7 +39,7 @@ export interface AffiliateTabProps {
   fetchAffiliates: () => Promise<void>;
   fetchAffiliateDetail: (id: string) => Promise<void>;
   saveAffiliate: () => Promise<void>;
-  deleteAffiliate: (id: string) => Promise<void>;
+  deleteAffiliate: (id: string) => void;
   addSkema: () => Promise<void>;
   deleteSkema: (id: string) => Promise<void>;
   addPenjualan: () => Promise<void>;
