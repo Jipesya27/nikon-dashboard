@@ -42,6 +42,7 @@ export interface AffiliateTabProps {
   addSkema: () => Promise<void>;
   deleteSkema: (id: string) => Promise<void>;
   addPenjualan: () => Promise<void>;
+  editPenjualan: (id: string, data: { barang: string; harga_barang: number; persentase: number; tanggal_transaksi?: string | null }) => Promise<void>;
   deletePenjualan: (id: string) => Promise<void>;
   proxyImg: (url: string | null | undefined) => string | null;
 }
@@ -65,10 +66,13 @@ export default function AffiliateTab({
   fetchAffiliates, fetchAffiliateDetail,
   saveAffiliate, deleteAffiliate,
   addSkema, deleteSkema,
-  addPenjualan, deletePenjualan,
+  addPenjualan, editPenjualan, deletePenjualan,
   proxyImg,
 }: AffiliateTabProps) {
   const fmtRp = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n));
+
+  const [editingPenjualanId, setEditingPenjualanId] = React.useState<string | null>(null);
+  const [editPenjualanData, setEditPenjualanData] = React.useState({ barang: '', harga_barang: '', persentase: '', tanggal_transaksi: '' });
 
   const totalNilai = affiliateSkema.reduce((acc, s) => acc + s.nilai_barang, 0);
   const totalPotongan = affiliateSkema.reduce((acc, s) => acc + s.nilai_barang * s.potongan_persen / 100, 0);
@@ -334,37 +338,100 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
               {penjualanWithSisa.length === 0 && (
                 <tr><td colSpan={9} className="text-center py-6 text-gray-400 text-xs">Belum ada data penjualan.</td></tr>
               )}
-              {penjualanWithSisa.map((p, i) => (
-                <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="px-3 py-2 text-gray-400">{i + 1}</td>
-                  <td className="px-3 py-2 text-gray-600 whitespace-nowrap text-xs">
-                    {p.tanggal_transaksi ? new Date(p.tanggal_transaksi).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : <span className="text-gray-300">-</span>}
-                  </td>
-                  <td className="px-3 py-2">{p.barang}</td>
-                  <td className="px-3 py-2 text-right font-mono">{fmtRp(p.harga_barang)}</td>
-                  <td className="px-3 py-2 text-center">{p.persentase}%</td>
-                  <td className="px-3 py-2 text-right font-mono text-blue-700 font-semibold">{fmtRp(p.nominal)}</td>
-                  <td className="px-3 py-2 text-right font-mono font-bold text-green-700">{fmtRp(p.sisa_kontrak)}</td>
-                  <td className="px-3 py-2">
-                    {p.foto_urls && p.foto_urls.length > 0 ? (
-                      <div className="flex gap-1 flex-wrap">
-                        {p.foto_urls.map((url, fi) => {
-                          const src = proxyImg(url) || url;
-                          return (
-                            <a key={fi} href={url} target="_blank" rel="noopener noreferrer">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={src} alt={`foto ${fi + 1}`} className="w-10 h-10 object-cover rounded border border-gray-200 hover:opacity-80 transition" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                            </a>
-                          );
-                        })}
+              {penjualanWithSisa.map((p, i) => {
+                const isEditing = editingPenjualanId === p.id;
+                if (isEditing) {
+                  return (
+                    <tr key={p.id} className="border-t border-yellow-200 bg-yellow-50">
+                      <td className="px-2 py-1.5 text-gray-400 text-sm">{i + 1}</td>
+                      <td className="px-2 py-1.5">
+                        <input type="date" value={editPenjualanData.tanggal_transaksi}
+                          onChange={e => setEditPenjualanData(f => ({ ...f, tanggal_transaksi: e.target.value }))}
+                          className="border border-gray-300 rounded px-1.5 py-1 text-xs w-32" />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input value={editPenjualanData.barang}
+                          onChange={e => setEditPenjualanData(f => ({ ...f, barang: e.target.value }))}
+                          className="border border-gray-300 rounded px-1.5 py-1 text-xs w-full min-w-32" />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input type="number" value={editPenjualanData.harga_barang}
+                          onChange={e => setEditPenjualanData(f => ({ ...f, harga_barang: e.target.value }))}
+                          className="border border-gray-300 rounded px-1.5 py-1 text-xs w-28 text-right" />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input type="number" step="0.1" value={editPenjualanData.persentase}
+                          onChange={e => setEditPenjualanData(f => ({ ...f, persentase: e.target.value }))}
+                          className="border border-gray-300 rounded px-1.5 py-1 text-xs w-16 text-center" />
+                      </td>
+                      <td colSpan={2} />
+                      <td className="px-2 py-1.5 text-gray-300 text-xs">—</td>
+                      <td className="px-2 py-1.5">
+                        <div className="flex gap-1">
+                          <button onClick={async () => {
+                            await editPenjualan(p.id, {
+                              barang: editPenjualanData.barang,
+                              harga_barang: parseFloat(editPenjualanData.harga_barang) || 0,
+                              persentase: parseFloat(editPenjualanData.persentase) || 0,
+                              tanggal_transaksi: editPenjualanData.tanggal_transaksi || null,
+                            });
+                            setEditingPenjualanId(null);
+                          }} disabled={affiliateSaving}
+                            className="px-2 py-1 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-black rounded text-xs font-bold transition">
+                            {affiliateSaving ? '...' : 'Simpan'}
+                          </button>
+                          <button onClick={() => setEditingPenjualanId(null)}
+                            className="px-2 py-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs transition">
+                            Batal
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                return (
+                  <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
+                    <td className="px-3 py-2 text-gray-400">{i + 1}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap text-xs">
+                      {p.tanggal_transaksi ? new Date(p.tanggal_transaksi).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : <span className="text-gray-300">-</span>}
+                    </td>
+                    <td className="px-3 py-2">{p.barang}</td>
+                    <td className="px-3 py-2 text-right font-mono">{fmtRp(p.harga_barang)}</td>
+                    <td className="px-3 py-2 text-center">{p.persentase}%</td>
+                    <td className="px-3 py-2 text-right font-mono text-blue-700 font-semibold">{fmtRp(p.nominal)}</td>
+                    <td className="px-3 py-2 text-right font-mono font-bold text-green-700">{fmtRp(p.sisa_kontrak)}</td>
+                    <td className="px-3 py-2">
+                      {p.foto_urls && p.foto_urls.length > 0 ? (
+                        <div className="flex gap-1 flex-wrap">
+                          {p.foto_urls.map((url, fi) => {
+                            const src = proxyImg(url) || url;
+                            return (
+                              <a key={fi} href={url} target="_blank" rel="noopener noreferrer">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={src} alt={`foto ${fi + 1}`} className="w-10 h-10 object-cover rounded border border-gray-200 hover:opacity-80 transition" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      ) : <span className="text-gray-300 text-xs">-</span>}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <div className="flex gap-1 justify-center">
+                        <GradientActionBtn onClick={() => {
+                          setEditingPenjualanId(p.id);
+                          setEditPenjualanData({
+                            barang: p.barang,
+                            harga_barang: String(p.harga_barang),
+                            persentase: String(p.persentase),
+                            tanggal_transaksi: p.tanggal_transaksi || '',
+                          });
+                        }} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
+                        <GradientActionBtn onClick={() => deletePenjualan(p.id)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                       </div>
-                    ) : <span className="text-gray-300 text-xs">-</span>}
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <GradientActionBtn onClick={() => deletePenjualan(p.id)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

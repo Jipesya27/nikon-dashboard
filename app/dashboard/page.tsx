@@ -1296,6 +1296,13 @@ export default function NikonDashboard() {
       setPenjualanFormOpen(false);
       setAffiliateSaving(false);
    };
+   const editPenjualan = async (id: string, data: { barang: string; harga_barang: number; persentase: number; tanggal_transaksi?: string | null }) => {
+      if (!selectedAffiliate) return;
+      setAffiliateSaving(true);
+      await sbWrite({ action: 'update', table: 'affiliate_penjualan', match: { id }, data });
+      await fetchAffiliateDetail(selectedAffiliate.id);
+      setAffiliateSaving(false);
+   };
    const deletePenjualan = async (id: string) => {
       if (!selectedAffiliate) return;
       await sbWrite({ action: 'delete', table: 'affiliate_penjualan', match: { id } });
@@ -5954,6 +5961,7 @@ ${kode ? `
                      addSkema={addSkema}
                      deleteSkema={deleteSkema}
                      addPenjualan={addPenjualan}
+                     editPenjualan={editPenjualan}
                      deletePenjualan={deletePenjualan}
                      proxyImg={proxyImg}
                   />
