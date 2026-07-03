@@ -40,6 +40,7 @@ type Promo = {
   tanggal_mulai?: string;
   tanggal_berakhir?: string;
   is_active: boolean;
+  deskripsi?: string;
 };
 
 type PromoItem = {
@@ -128,7 +129,7 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
   const [promoLoading, setPromoLoading] = useState(false);
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [editingPromo, setEditingPromo] = useState<Promo | null>(null);
-  const [promoForm, setPromoForm] = useState({ judul: '', tanggal_mulai: '', tanggal_berakhir: '', is_active: true, banner_url: '' });
+  const [promoForm, setPromoForm] = useState({ judul: '', tanggal_mulai: '', tanggal_berakhir: '', is_active: true, banner_url: '', deskripsi: '' });
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const bannerRef = useRef<HTMLInputElement>(null);
   const [promoSaving, setPromoSaving] = useState(false);
@@ -209,8 +210,8 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
   function openPromoModal(p?: Promo) {
     setEditingPromo(p || null);
     setPromoForm(p
-      ? { judul: p.judul, tanggal_mulai: p.tanggal_mulai || '', tanggal_berakhir: p.tanggal_berakhir || '', is_active: p.is_active, banner_url: p.banner_url || '' }
-      : { judul: '', tanggal_mulai: '', tanggal_berakhir: '', is_active: true, banner_url: '' }
+      ? { judul: p.judul, tanggal_mulai: p.tanggal_mulai || '', tanggal_berakhir: p.tanggal_berakhir || '', is_active: p.is_active, banner_url: p.banner_url || '', deskripsi: p.deskripsi || '' }
+      : { judul: '', tanggal_mulai: '', tanggal_berakhir: '', is_active: true, banner_url: '', deskripsi: '' }
     );
     setBannerFile(null);
     setShowPromoModal(true);
@@ -229,6 +230,7 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
         tanggal_berakhir: promoForm.tanggal_berakhir || null,
         is_active: promoForm.is_active,
         banner_url: banner_url || null,
+        deskripsi: promoForm.deskripsi.trim() || null,
       };
 
       if (editingPromo) {
@@ -605,6 +607,17 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
                 </button>
               )}
               <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={e => setBannerFile(e.target.files?.[0] || null)} />
+            </div>
+            <div>
+              <label className={labelCls}>Deskripsi Event</label>
+              <textarea
+                value={promoForm.deskripsi}
+                onChange={e => setPromoForm(f => ({ ...f, deskripsi: e.target.value }))}
+                placeholder="Tuliskan syarat, ketentuan, atau cara mendapatkan promo ini..."
+                rows={5}
+                className={inputCls + ' resize-none'}
+              />
+              <p className="text-[11px] text-gray-400 mt-1">Ditampilkan sebagai "Deskripsi Event" di halaman publik. Baris baru dihargai.</p>
             </div>
             <div className="flex items-center gap-3">
               <label className="relative inline-flex items-center cursor-pointer">

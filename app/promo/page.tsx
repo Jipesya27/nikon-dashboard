@@ -19,6 +19,7 @@ type Promo = {
   banner_url?: string;
   tanggal_mulai?: string;
   tanggal_berakhir?: string;
+  deskripsi?: string;
 };
 
 type CekOrder = {
@@ -378,23 +379,15 @@ export default function PromoPage() {
               </div>
             </div>
 
-            {/* Steps Info */}
-            <div className="max-w-4xl mx-auto px-4 py-8">
-              <h2 className="text-center text-gray-400 text-[11px] uppercase tracking-widest mb-6 font-semibold">Cara Mendapatkan Promo</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { n: '1', label: 'Beli kamera Nikon Z Series' },
-                  { n: '2', label: 'Pilih produk Datacolor promo' },
-                  { n: '3', label: 'Isi data & upload dokumen' },
-                  { n: '4', label: 'Transfer & terima barang' },
-                ].map(s => (
-                  <div key={s.n} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-                    <div className="w-7 h-7 rounded-full bg-[#FFE500] text-black text-sm font-black flex items-center justify-center mx-auto mb-3">{s.n}</div>
-                    <p className="text-xs text-gray-600 leading-snug font-medium">{s.label}</p>
-                  </div>
-                ))}
+            {/* Deskripsi Event */}
+            {promo.deskripsi && (
+              <div className="max-w-3xl mx-auto px-4 py-8">
+                <h2 className="text-center text-gray-400 text-[11px] uppercase tracking-widest mb-5 font-semibold">Deskripsi Event</h2>
+                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6">
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{promo.deskripsi}</p>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Product Grid */}
             <div className="max-w-5xl mx-auto px-4 pb-16">
