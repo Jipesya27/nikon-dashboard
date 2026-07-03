@@ -42,7 +42,7 @@ export interface AffiliateTabProps {
   addSkema: () => Promise<void>;
   deleteSkema: (id: string) => Promise<void>;
   addPenjualan: () => Promise<void>;
-  editPenjualan: (id: string, data: { barang: string; harga_barang: number; persentase: number; tanggal_transaksi?: string | null }) => Promise<void>;
+  editPenjualan: (id: string, data: { barang: string; harga_barang: number; persentase: number; tanggal_transaksi?: string | null; foto_urls?: string[] }) => Promise<void>;
   deletePenjualan: (id: string) => Promise<void>;
   proxyImg: (url: string | null | undefined) => string | null;
 }
@@ -72,7 +72,8 @@ export default function AffiliateTab({
   const fmtRp = (n: number) => new Intl.NumberFormat('id-ID').format(Math.round(n));
 
   const [editingPenjualanId, setEditingPenjualanId] = React.useState<string | null>(null);
-  const [editPenjualanData, setEditPenjualanData] = React.useState({ barang: '', harga_barang: '', persentase: '', tanggal_transaksi: '' });
+  const [editPenjualanData, setEditPenjualanData] = React.useState({ barang: '', harga_barang: '', persentase: '', tanggal_transaksi: '', foto_urls: [] as string[] });
+  const [editPenjualanNewFiles, setEditPenjualanNewFiles] = React.useState<File[]>([]);
 
   const totalNilai = affiliateSkema.reduce((acc, s) => acc + s.nilai_barang, 0);
   const totalPotongan = affiliateSkema.reduce((acc, s) => acc + s.nilai_barang * s.potongan_persen / 100, 0);
@@ -365,22 +366,73 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                           className="border border-gray-300 rounded px-1.5 py-1 text-xs w-16 text-center" />
                       </td>
                       <td colSpan={2} />
-                      <td className="px-2 py-1.5 text-gray-300 text-xs">—</td>
+                      <td className="px-2 py-1.5">
+                        <div className="flex flex-col gap-1">
+                          {editPenjualanData.foto_urls.length > 0 && (
+                            <div className="flex gap-1 flex-wrap">
+                              {editPenjualanData.foto_urls.map((url, fi) => {
+                                const src = proxyImg(url) || url;
+                                return (
+                                  <div key={fi} className="relative">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={src} alt={`foto ${fi + 1}`} className="w-10 h-10 object-cover rounded border border-gray-200" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                    <button onClick={() => setEditPenjualanData(f => ({ ...f, foto_urls: f.foto_urls.filter((_, j) => j !== fi) }))}
+                                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center leading-none">×</button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {editPenjualanNewFiles.length > 0 && (
+                            <div className="flex gap-1 flex-wrap">
+                              {editPenjualanNewFiles.map((f, fi) => (
+                                <div key={fi} className="relative">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={URL.createObjectURL(f)} alt="" className="w-10 h-10 object-cover rounded border border-blue-300" />
+                                  <button onClick={() => setEditPenjualanNewFiles(prev => prev.filter((_, j) => j !== fi))}
+                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center leading-none">×</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <input type="file" accept="image/*" multiple
+                            onChange={e => {
+                              const files = Array.from(e.target.files || []).slice(0, 6 - editPenjualanData.foto_urls.length);
+                              setEditPenjualanNewFiles(prev => [...prev, ...files].slice(0, 6));
+                              e.target.value = '';
+                            }}
+                            className="text-xs text-gray-500 file:py-0.5 file:px-1.5 file:rounded file:border-0 file:bg-yellow-400 file:text-black file:text-xs file:font-bold file:cursor-pointer" />
+                        </div>
+                      </td>
                       <td className="px-2 py-1.5">
                         <div className="flex gap-1">
                           <button onClick={async () => {
+                            const newUrls: string[] = [];
+                            for (const file of editPenjualanNewFiles) {
+                              try {
+                                const fd = new FormData();
+                                fd.append('file', file);
+                                fd.append('prefix', 'affiliate-foto');
+                                fd.append('serial', selectedAffiliate?.nama.replace(/\s+/g, '_') || '');
+                                const res = await fetch('/api/upload-google-drive', { method: 'POST', body: fd });
+                                const data = await res.json();
+                                if (data.url) newUrls.push(data.url);
+                              } catch { /* skip failed upload */ }
+                            }
                             await editPenjualan(p.id, {
                               barang: editPenjualanData.barang,
                               harga_barang: parseFloat(editPenjualanData.harga_barang) || 0,
                               persentase: parseFloat(editPenjualanData.persentase) || 0,
                               tanggal_transaksi: editPenjualanData.tanggal_transaksi || null,
+                              foto_urls: [...editPenjualanData.foto_urls, ...newUrls],
                             });
                             setEditingPenjualanId(null);
+                            setEditPenjualanNewFiles([]);
                           }} disabled={affiliateSaving}
                             className="px-2 py-1 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-black rounded text-xs font-bold transition">
                             {affiliateSaving ? '...' : 'Simpan'}
                           </button>
-                          <button onClick={() => setEditingPenjualanId(null)}
+                          <button onClick={() => { setEditingPenjualanId(null); setEditPenjualanNewFiles([]); }}
                             className="px-2 py-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs transition">
                             Batal
                           </button>
@@ -419,11 +471,13 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                       <div className="flex gap-1 justify-center">
                         <GradientActionBtn onClick={() => {
                           setEditingPenjualanId(p.id);
+                          setEditPenjualanNewFiles([]);
                           setEditPenjualanData({
                             barang: p.barang,
                             harga_barang: String(p.harga_barang),
                             persentase: String(p.persentase),
                             tanggal_transaksi: p.tanggal_transaksi || '',
+                            foto_urls: p.foto_urls || [],
                           });
                         }} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
                         <GradientActionBtn onClick={() => deletePenjualan(p.id)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />

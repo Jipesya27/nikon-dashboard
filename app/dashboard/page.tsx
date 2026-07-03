@@ -1296,7 +1296,7 @@ export default function NikonDashboard() {
       setPenjualanFormOpen(false);
       setAffiliateSaving(false);
    };
-   const editPenjualan = async (id: string, data: { barang: string; harga_barang: number; persentase: number; tanggal_transaksi?: string | null }) => {
+   const editPenjualan = async (id: string, data: { barang: string; harga_barang: number; persentase: number; tanggal_transaksi?: string | null; foto_urls?: string[] }) => {
       if (!selectedAffiliate) return;
       setAffiliateSaving(true);
       await sbWrite({ action: 'update', table: 'affiliate_penjualan', match: { id }, data });
