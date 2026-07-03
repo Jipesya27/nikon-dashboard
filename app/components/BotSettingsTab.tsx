@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { PengaturanBot, Karyawan } from '@/app/index';
+import ConfirmModal from '@/app/components/ConfirmModal';
 import { DEFAULT_TEMPLATES, DB_KEY_PREFIX, TEMPLATE_CATEGORIES } from '@/app/lib/chatbotTemplate';
 
 export interface BotSettingsTabProps {
@@ -51,6 +52,10 @@ export default function BotSettingsTab({
   sbWrite, sbRead,
 }: BotSettingsTabProps) {
   const qrItems = botSettings.filter(b => b.nama_pengaturan?.startsWith('quick_reply:'));
+
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; message?: string; onConfirm: () => void }>({ open: false, onConfirm: () => {} });
+  const askConfirm = (message: string, fn: () => void) => setConfirmModal({ open: true, message, onConfirm: fn });
+  const closeConfirm = () => setConfirmModal(m => ({ ...m, open: false }));
 
   const handleAddQr = async () => {
     if (!qrShortcut.trim() || !qrText.trim()) return;
@@ -308,19 +313,21 @@ ADMIN_EMAIL=email_admin@gmail.com`}</pre>
                         )}
                         {isSaved && (
                           <button type="button"
-                            onClick={async () => {
-                              if (!confirm('Hapus custom teks dan kembali ke default?')) return;
-                              setChatbotSaving(prev => ({ ...prev, [key]: true }));
-                              try {
-                                const dbKey = `${DB_KEY_PREFIX}${key}`;
-                                const { data: ex } = await sbRead<{ id: string }>({ table: 'pengaturan_bot', select: 'id', filters: [{ col: 'nama_pengaturan', op: 'eq', val: dbKey }], limit: 1 });
-                                const found = ex?.[0];
-                                if (found?.id) await sbWrite({ action: 'delete', table: 'pengaturan_bot', match: { id: found.id } });
-                                setChatbotTemplates(prev => { const n = { ...prev }; delete n[key]; return n; });
-                                setChatbotEditValues(prev => { const n = { ...prev }; delete n[key]; return n; });
-                              } finally {
-                                setChatbotSaving(prev => ({ ...prev, [key]: false }));
-                              }
+                            onClick={() => {
+                              askConfirm('Hapus custom teks dan kembali ke default?', async () => {
+                                closeConfirm();
+                                setChatbotSaving(prev => ({ ...prev, [key]: true }));
+                                try {
+                                  const dbKey = `${DB_KEY_PREFIX}${key}`;
+                                  const { data: ex } = await sbRead<{ id: string }>({ table: 'pengaturan_bot', select: 'id', filters: [{ col: 'nama_pengaturan', op: 'eq', val: dbKey }], limit: 1 });
+                                  const found = ex?.[0];
+                                  if (found?.id) await sbWrite({ action: 'delete', table: 'pengaturan_bot', match: { id: found.id } });
+                                  setChatbotTemplates(prev => { const n = { ...prev }; delete n[key]; return n; });
+                                  setChatbotEditValues(prev => { const n = { ...prev }; delete n[key]; return n; });
+                                } finally {
+                                  setChatbotSaving(prev => ({ ...prev, [key]: false }));
+                                }
+                              });
                             }}
                             className="text-xs text-red-500 hover:underline">Hapus custom</button>
                         )}
@@ -337,6 +344,8 @@ ADMIN_EMAIL=email_admin@gmail.com`}</pre>
           })}
         </div>
       )}
+
+      <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
     </div>
   );
 }

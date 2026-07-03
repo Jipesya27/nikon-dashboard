@@ -27,6 +27,7 @@ import DealerTab from '@/app/components/DealerTab';
 import LendingTab from '@/app/components/LendingTab';
 import BotSettingsTab from '@/app/components/BotSettingsTab';
 import ClaimsTab from '@/app/components/ClaimsTab';
+import ConfirmModal from '@/app/components/ConfirmModal';
 import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield, IconCheck, IconPrint, IconKey } from '@/app/components/GradientActionBtn';
 
 /** Konversi Google Drive URL ke proxy lokal agar gambar bisa tampil di dashboard.
@@ -455,6 +456,10 @@ export default function NikonDashboard() {
 
    // AFFILIATE
    const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
+   const [confirmModal, setConfirmModal] = useState<{ open: boolean; message?: string; onConfirm: () => void }>({ open: false, onConfirm: () => {} });
+   const askConfirm = (message: string, fn: () => void) => setConfirmModal({ open: true, message, onConfirm: fn });
+   const closeConfirm = () => setConfirmModal(m => ({ ...m, open: false }));
+
    const [affiliateView, setAffiliateView] = useState<'list' | 'detail'>('list');
    const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null);
    const [affiliateSkema, setAffiliateSkema] = useState<AffiliateSkema[]>([]);
@@ -1240,13 +1245,15 @@ export default function NikonDashboard() {
       setAffiliateFotoProfilFile(null);
       setAffiliateSaving(false);
    };
-   const deleteAffiliate = async (id: string) => {
-      if (!confirm('Hapus affiliate ini beserta semua data skema dan penjualannya?')) return;
+   const deleteAffiliate = (id: string) => {
+      askConfirm('Hapus affiliate ini beserta semua data skema dan penjualannya?', async () => {
+      closeConfirm();
       await sbWrite({ action: 'delete', table: 'affiliate_penjualan', match: { affiliate_id: id } });
       await sbWrite({ action: 'delete', table: 'affiliate_skema', match: { affiliate_id: id } });
       await sbWrite({ action: 'delete', table: 'affiliates', match: { id } });
       await fetchAffiliates();
       if (selectedAffiliate?.id === id) { setSelectedAffiliate(null); setAffiliateView('list'); }
+      });
    };
    const addSkema = async () => {
       if (!selectedAffiliate || !skemaFormData.barang || !skemaFormData.nilai_barang) return;
@@ -1318,9 +1325,12 @@ export default function NikonDashboard() {
       setAcSaving(false);
    };
 
-   const handleACDelete = async (id: string) => {
+   const handleACDelete = (id: string) => {
+      askConfirm('Apakah anda yakin akan menghapus data ini?', async () => {
+      closeConfirm();
       await fetch(`/api/autocomplete?id=${id}`, { method: 'DELETE' });
       await fetchAutocomplete();
+      });
    };
    const fetchKaryawans = async () => {
       try {
@@ -2972,8 +2982,9 @@ ${kode ? `
       } finally { setIsSubmitting(false); }
    };
 
-   const handleDelete = async (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings' | 'events' | 'eventregistration' | 'asset', id: string) => {
-      if (!window.confirm('Yakin menghapus data?')) return;
+   const handleDelete = (type: 'claim' | 'warranty' | 'promo' | 'service' | 'budget' | 'karyawan' | 'lending' | 'konsumen' | 'botsettings' | 'events' | 'eventregistration' | 'asset', id: string) => {
+      askConfirm('Apakah anda yakin akan menghapus data ini?', async () => {
+      closeConfirm();
       if (type === 'claim') { await sbWrite({ action: 'delete', table: 'claim_promo', match: { id_claim: id } }); fetchClaims(); }
       else if (type === 'warranty') { await sbWrite({ action: 'delete', table: 'garansi', match: { id_garansi: id } }); fetchWarranties(); }
       else if (type === 'konsumen') { await sbWrite({ action: 'delete', table: 'konsumen', match: { nomor_wa: id } }); fetchConsumers(); }
@@ -2985,11 +2996,11 @@ ${kode ? `
       else if (type === 'eventregistration') { await sbWrite({ action: 'delete', table: 'event_registrations', match: { id } }); fetchEventRegistrations(); fetchEvents(); }
       else if (type === 'lending') {
          await sbWrite({ action: 'delete', table: 'peminjaman_barang', match: { id_peminjaman: id } });
-         // TODO: Delete KTP file from storage if it exists
          fetchLendingRecords();
       }
       else if (type === 'asset') { await sbWrite({ action: 'delete', table: 'barang_aset', match: { id } }); fetchAssets(); }
       else { await sbWrite({ action: 'delete', table: 'budget_approval', match: { id_budget: id } }); fetchBudgets(); }
+      });
    };
 
    const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -9322,6 +9333,7 @@ ${kode ? `
             </div>
          );
       })()}
+      <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
       </>
    );
 }

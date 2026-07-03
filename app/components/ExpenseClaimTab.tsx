@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Karyawan, ExpenseClaim, ExpenseClaimItem } from '@/app/index';
 import { GradientActionBtn, IconCheck, IconTrash, IconEdit } from '@/app/components/GradientActionBtn';
+import ConfirmModal from '@/app/components/ConfirmModal';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -319,6 +320,10 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
 
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; message?: string; onConfirm: () => void }>({ open: false, onConfirm: () => {} });
+  const askConfirm = (message: string, fn: () => void) => setConfirmModal({ open: true, message, onConfirm: fn });
+  const closeConfirm = () => setConfirmModal(m => ({ ...m, open: false }));
+
   // Modal state
   const [showModal,  setShowModal]  = useState(false);
   const [editTarget, setEditTarget] = useState<ExpenseClaim | null>(null);
@@ -543,11 +548,13 @@ export default function ExpenseClaimTab({ currentUser }: Props) {
   }
 
   // ── Delete ─────────────────────────────────────────────────────────────────
-  async function handleDelete(id: string) {
-    if (!confirm('Hapus klaim ini?')) return;
-    const res = await fetch(`/api/expense-claim/${id}`, { method: 'DELETE' });
-    if (!res.ok) { alert('Gagal hapus'); return; }
-    setClaims(prev => prev.filter(c => c.id !== id));
+  function handleDelete(id: string) {
+    askConfirm('Hapus klaim ini?', async () => {
+      closeConfirm();
+      const res = await fetch(`/api/expense-claim/${id}`, { method: 'DELETE' });
+      if (!res.ok) { alert('Gagal hapus'); return; }
+      setClaims(prev => prev.filter(c => c.id !== id));
+    });
   }
 
   // ── Change status (admin only) ─────────────────────────────────────────────
@@ -1372,6 +1379,8 @@ function ClaimCard({ claim, isAdmin, currentUsername, onEdit, onDelete, onStatus
           )}
         </div>
       )}
+
+      <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
     </div>
   );
 }

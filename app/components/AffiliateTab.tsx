@@ -3,6 +3,7 @@
 import React from 'react';
 import { Affiliate, AffiliateSkema, AffiliatePenjualan } from '@/app/index';
 import { GradientActionBtn, IconTrash, IconEdit } from '@/app/components/GradientActionBtn';
+import ConfirmModal from '@/app/components/ConfirmModal';
 
 export interface AffiliateTabProps {
   affiliates: Affiliate[];
@@ -74,6 +75,9 @@ export default function AffiliateTab({
   const [editingPenjualanId, setEditingPenjualanId] = React.useState<string | null>(null);
   const [editPenjualanData, setEditPenjualanData] = React.useState({ barang: '', harga_barang: '', persentase: '', tanggal_transaksi: '', foto_urls: [] as string[] });
   const [editPenjualanNewFiles, setEditPenjualanNewFiles] = React.useState<File[]>([]);
+  const [confirmModal, setConfirmModal] = React.useState<{ open: boolean; message?: string; onConfirm: () => void }>({ open: false, onConfirm: () => {} });
+  const askConfirm = (message: string, fn: () => void) => setConfirmModal({ open: true, message, onConfirm: fn });
+  const closeConfirm = () => setConfirmModal(m => ({ ...m, open: false }));
 
   const totalNilai = affiliateSkema.reduce((acc, s) => acc + s.nilai_barang, 0);
   const totalPotongan = affiliateSkema.reduce((acc, s) => acc + s.nilai_barang * s.potongan_persen / 100, 0);
@@ -259,7 +263,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                     <td className="px-3 py-2 text-right font-mono text-orange-600">{fmtRp(pot)}</td>
                     <td className="px-3 py-2 text-right font-mono font-bold text-green-700">{fmtRp(sisa)}</td>
                     <td className="px-3 py-2 text-center">
-                      <GradientActionBtn onClick={() => deleteSkema(s.id)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                      <GradientActionBtn onClick={() => askConfirm('Apakah anda yakin akan menghapus data ini?', () => { closeConfirm(); deleteSkema(s.id); })} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                     </td>
                   </tr>
                 );
@@ -480,7 +484,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                             foto_urls: p.foto_urls || [],
                           });
                         }} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                        <GradientActionBtn onClick={() => deletePenjualan(p.id)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
+                        <GradientActionBtn onClick={() => askConfirm('Apakah anda yakin akan menghapus data ini?', () => { closeConfirm(); deletePenjualan(p.id); })} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                       </div>
                     </td>
                   </tr>
@@ -490,6 +494,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
           </table>
         </div>
       </div>
+      <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
     );
   }
 
@@ -654,6 +659,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
           <p className="text-xs text-gray-400 text-right mt-1">{filteredAffiliates.length} affiliate</p>
         </>
       )}
+      <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
     </div>
   );
 }

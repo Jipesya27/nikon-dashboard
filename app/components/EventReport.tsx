@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { EventData } from '@/app/index';
+import ConfirmModal from '@/app/components/ConfirmModal';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -243,8 +244,11 @@ export default function EventReport({ eventsData }: { eventsData: EventData[] })
   const [loadErr,     setLoadErr]     = useState('');
   const [saving,      setSaving]      = useState(false);
   const [deleting,    setDeleting]    = useState(false);
-  const [confirmDel,  setConfirmDel]  = useState(false);
   const [toast,       setToast]       = useState<{ msg: string; ok: boolean } | null>(null);
+
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; message?: string; onConfirm: () => void }>({ open: false, onConfirm: () => {} });
+  const askConfirm = (message: string, fn: () => void) => setConfirmModal({ open: true, message, onConfirm: fn });
+  const closeConfirm = () => setConfirmModal(m => ({ ...m, open: false }));
   const [search,      setSearch]      = useState('');
   const [section,     setSection]     = useState<'basic' | 'target' | 'kpi' | 'docs'>('basic');
   const showToast = (msg: string, ok = true) => {
@@ -292,12 +296,12 @@ export default function EventReport({ eventsData }: { eventsData: EventData[] })
 
   const deleteReport = async (id: string) => {
     setDeleting(true);
+    closeConfirm();
     try {
       const res = await fetch(`/api/event-reports?eventId=${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Gagal');
       setReports(prev => { const n = { ...prev }; delete n[id]; return n; });
       setDirty(prev => { const s = new Set(prev); s.delete(id); return s; });
-      setConfirmDel(false);
       showToast('Report dihapus');
     } catch { showToast('Gagal menghapus!', false); }
     finally { setDeleting(false); }
@@ -387,28 +391,14 @@ export default function EventReport({ eventsData }: { eventsData: EventData[] })
                 {saving ? '⏳...' : '💾 Simpan'}
               </button>
               {/* Delete — hanya jika report sudah tersimpan di DB */}
-              {reports[editingId] && !confirmDel && (
-                <button onClick={() => setConfirmDel(true)}
+              {reports[editingId] && (
+                <button onClick={() => askConfirm('Hapus report ini secara permanen?', () => deleteReport(editingId))}
                   className="text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 text-xs font-bold px-2.5 py-1.5 rounded-lg transition">
                   🗑
                 </button>
               )}
             </div>
           </div>
-          {/* Confirm delete */}
-          {confirmDel && (
-            <div className="mt-2 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              <span className="text-xs text-red-700 font-semibold flex-1">Hapus report ini secara permanen?</span>
-              <button onClick={() => deleteReport(editingId)} disabled={deleting}
-                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1 rounded-lg transition">
-                {deleting ? '⏳...' : 'Ya, Hapus'}
-              </button>
-              <button onClick={() => setConfirmDel(false)}
-                className="text-gray-500 hover:text-gray-700 text-xs border border-gray-200 px-3 py-1 rounded-lg transition">
-                Batal
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Section tabs */}
@@ -649,6 +639,8 @@ export default function EventReport({ eventsData }: { eventsData: EventData[] })
 
       {/* ── Right: form editor ── */}
       {renderForm()}
+
+      <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
     </div>
   );
 }
