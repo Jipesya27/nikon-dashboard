@@ -278,6 +278,24 @@ Utility classes tersedia tanpa npm tambahan:
 - Immich users: Jamal (admin), jipesya (admin), Ika Widiya Astuti, Qafisha, Alta iPhone, Folder Adhi
 - Immich UID: 999 → host UID 100999. Folder `/mnt/pve/hdd-bulk/team` perlu chmod 755 agar readable
 
+### CasaOS (CT 102)
+- Web UI: `https://casaos.altanikindo.web.id` (`192.168.18.178:81`)
+- **Mount points LXC** (Proxmox → CT 102), config via `pct set 102 -mpN <host-path>,mp=<path-in-ct>`:
+  - `mp0`: host `/mnt/pve/hdd-bulk` → CT `/mnt/hdd-bulk`
+  - `mp1`: host `/mnt/pve/hdd-files` → CT `/mnt/hdd-files`
+  - **Urutan parameter penting**: `mp=<vmid-nya>,mp=<path>` — path host di depan, `mp=` untuk path di dalam container. Kalau tertukar, container gagal start (`lxc_init: Failed to run lxc.hook.pre-start`)
+- **Bind mount ke direktori CasaOS** (`/etc/fstab` di dalam CT 102):
+  ```
+  /mnt/hdd-bulk /var/lib/casaos/hdd-bulk none bind 0 0
+  /mnt/hdd-files /var/lib/casaos/hdd-files none bind 0 0
+  ```
+  - **Source path harus path DI DALAM container** (`/mnt/hdd-bulk`), bukan path Proxmox host (`/mnt/pve/hdd-bulk`) — kalau salah, bind mount gagal dan `/var/lib/casaos/*` cuma nempel ke rootfs container sendiri (kelihatan kosong/isi beda)
+  - Setelah edit fstab: `systemctl daemon-reload && mount -a`
+- **Bug pernah terjadi**: setelah setup auto-mount flashdisk USB, `hdd-bulk` & `hdd-files` hilang dari CasaOS. Root cause: LXC mount points (mp0/mp1) sempat ke-reset/config source-mp path tertukar. Fix: re-set `pct set 102 -mp0/-mp1` dengan urutan benar lalu perbaiki fstab bind source
+- Auto-mount flashdisk USB: root filesystem CT 102 mount di `/mnt/usb-flashdisk` (device `/dev/mapper/pve-root`)
+- Setelah semua mount benar, `hdd-bulk` & `hdd-files` otomatis muncul lagi di CasaOS Files/Storage UI — tidak perlu config tambahan di CasaOS sendiri
+- `casaos-local-storage` service pernah down (503 di `/v2/local_storage/merge`) — restart `casaos-message-bus`, `casaos-local-storage`, `casaos` service kalau terulang
+
 ### Nextcloud (CT 103)
 - Web root: `/var/www/nextcloud`
 - Config: `/var/www/nextcloud/config/config.php`
