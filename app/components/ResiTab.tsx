@@ -1,6 +1,7 @@
 'use client';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { GradientActionBtn, IconEdit, IconTrash } from '@/app/components/GradientActionBtn';
+import ConfirmModal from '@/app/components/ConfirmModal';
 
 interface Karyawan { username: string; nama_karyawan: string; role: string; }
 
@@ -82,6 +83,10 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
   const [jneFileName,  setJneFileName]  = useState('');
   const [jneFile,      setJneFile]      = useState<File | null>(null);
   const [savingJne,    setSavingJne]    = useState(false);
+
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; message?: string; onConfirm: () => void }>({ open: false, onConfirm: () => {} });
+  const askConfirm = (message: string, fn: () => void) => setConfirmModal({ open: true, message, onConfirm: fn });
+  const closeConfirm = () => setConfirmModal(m => ({ ...m, open: false }));
 
   const fileInputRef  = useRef<HTMLInputElement>(null);
   const jnePdfRef     = useRef<HTMLInputElement>(null);
@@ -256,11 +261,13 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
     } finally { setSaving(false); }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Hapus data resi ini?')) return;
-    const res = await fetch(`/api/resi/${id}`, { method: 'DELETE' });
-    if (!res.ok) { alert('Gagal hapus'); return; }
-    setRecords(prev => prev.filter(r => r.id !== id));
+  function handleDelete(id: string) {
+    askConfirm('Hapus data resi ini?', async () => {
+      closeConfirm();
+      const res = await fetch(`/api/resi/${id}`, { method: 'DELETE' });
+      if (!res.ok) { alert('Gagal hapus'); return; }
+      setRecords(prev => prev.filter(r => r.id !== id));
+    });
   }
 
   const thClass = 'text-left px-4 py-3 font-semibold text-gray-600 text-xs cursor-pointer select-none hover:text-gray-900 whitespace-nowrap';
@@ -550,6 +557,8 @@ export default function ResiTab({ currentUser }: { currentUser: Karyawan | null 
           </div>
         </div>
       )}
+
+      <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
     </div>
   );
 }

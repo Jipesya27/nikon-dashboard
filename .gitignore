@@ -62,3 +62,19 @@ dev.log
 ruvector.db
 *.db
 .claude/settings.local.json
+
+# Scripts with credentials (must never be committed)
+scripts/backup-nikon.sh
+gen-apikey.sh
+
+# Android build artifacts
+/android-app/android/build/
+/android-app/android/app/build/
+/android-app/android/.cxx/
+/android-app/android/.gradle/
+/android-app/android/app/.cxx/
+
+# Android Studio & Reanimated build artifacts
+/AndroidStudioProjects/
+/build-reanimated/
+/android-app/android/local.properties

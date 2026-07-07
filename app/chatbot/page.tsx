@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import ConfirmModal from '@/app/components/ConfirmModal';
 import { createClient } from '@supabase/supabase-js';
 import {
    DEFAULT_TEMPLATES,
@@ -248,6 +249,10 @@ export default function ChatbotPage() {
    const [previewKey, setPreviewKey] = useState<string | null>(null);
    const [activeCategory, setActiveCategory] = useState<string>('Semua');
 
+   const [confirmModal, setConfirmModal] = useState<{ open: boolean; message?: string; onConfirm: () => void }>({ open: false, onConfirm: () => {} });
+   const askConfirm = (message: string, fn: () => void) => setConfirmModal({ open: true, message, onConfirm: fn });
+   const closeConfirm = () => setConfirmModal(m => ({ ...m, open: false }));
+
    const showToast = useCallback((msg: string, type: 'success' | 'error' = 'success') => {
       setToast({ msg, type });
       setTimeout(() => setToast(null), 3000);
@@ -306,13 +311,15 @@ export default function ChatbotPage() {
       setSaving(false);
    };
 
-   const resetToDefault = async (key: string) => {
-      if (!confirm(`Reset template "${DEFAULT_TEMPLATES[key]?.label}" ke default? Perubahan custom akan hilang.`)) return;
-      const dbKey = `${DB_KEY_PREFIX}${key}`;
-      await sbWrite({ action: 'delete', table: 'pengaturan_bot', match: { nama_pengaturan: dbKey } });
-      setDbTemplates(prev => { const n = { ...prev }; delete n[key]; return n; });
-      setSavedKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
-      showToast('Template direset ke default');
+   const resetToDefault = (key: string) => {
+      askConfirm(`Reset template "${DEFAULT_TEMPLATES[key]?.label}" ke default? Perubahan custom akan hilang.`, async () => {
+         closeConfirm();
+         const dbKey = `${DB_KEY_PREFIX}${key}`;
+         await sbWrite({ action: 'delete', table: 'pengaturan_bot', match: { nama_pengaturan: dbKey } });
+         setDbTemplates(prev => { const n = { ...prev }; delete n[key]; return n; });
+         setSavedKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+         showToast('Template direset ke default');
+      });
    };
 
    const allKeys = Object.keys(DEFAULT_TEMPLATES);
@@ -584,6 +591,8 @@ export default function ChatbotPage() {
                </div>
             </div>
          </div>
+
+         <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
       </div>
    );
 }

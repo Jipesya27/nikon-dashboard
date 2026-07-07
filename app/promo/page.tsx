@@ -19,6 +19,7 @@ type Promo = {
   banner_url?: string;
   tanggal_mulai?: string;
   tanggal_berakhir?: string;
+  deskripsi?: string;
 };
 
 type CekOrder = {
@@ -59,13 +60,15 @@ function driveThumb(url?: string) {
   return m ? `https://lh3.googleusercontent.com/d/${m[1]}=w600` : url;
 }
 
-type Step = 'promo' | 'form' | 'transfer' | 'done';
+type Step = 'list' | 'promo' | 'form' | 'transfer' | 'done';
 
 export default function PromoPage() {
+  const [promos, setPromos] = useState<Promo[]>([]);
   const [promo, setPromo] = useState<Promo | null>(null);
   const [items, setItems] = useState<PromoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<Step>('promo');
+  const [loadingPromo, setLoadingPromo] = useState(false);
+  const [step, setStep] = useState<Step>('list');
   const [selectedItem, setSelectedItem] = useState<PromoItem | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [sending, setSending] = useState(false);
@@ -94,9 +97,35 @@ export default function PromoPage() {
   useEffect(() => {
     fetch('/api/promo/data')
       .then(r => r.json())
-      .then(d => { setPromo(d.promo); setItems(d.items || []); })
+      .then(d => setPromos(d.promos || []))
       .finally(() => setLoading(false));
   }, []);
+
+  async function selectPromo(p: Promo) {
+    setLoadingPromo(true);
+    try {
+      const r = await fetch(`/api/promo/data?id=${p.id}`);
+      const d = await r.json();
+      setPromo(d.promo || p);
+      setItems(d.items || []);
+      setStep('promo');
+    } finally {
+      setLoadingPromo(false);
+    }
+  }
+
+  function goBack() {
+    if (step === 'promo') {
+      setStep('list');
+      setPromo(null);
+      setItems([]);
+    } else {
+      setStep('promo');
+      setSelectedItem(null);
+      setOrder(null);
+      setErr('');
+    }
+  }
 
   async function uploadFile(file: File, prefix: string): Promise<string> {
     const fd = new FormData();
@@ -209,18 +238,6 @@ export default function PromoPage() {
     </div>
   );
 
-  if (!promo) return (
-    <div className="min-h-screen bg-white flex items-center justify-center text-gray-800 text-center px-4">
-      <div>
-        <div className="text-5xl mb-4">🔍</div>
-        <h2 className="text-xl font-bold mb-2">Tidak ada promo aktif saat ini</h2>
-        <p className="text-gray-400 text-sm">Pantau terus halaman ini untuk penawaran menarik berikutnya.</p>
-      </div>
-    </div>
-  );
-
-  const isExpired = promo.tanggal_berakhir ? new Date(promo.tanggal_berakhir) < new Date() : false;
-
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
       {/* ── NAVBAR ── */}
@@ -235,8 +252,8 @@ export default function PromoPage() {
             className="text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
             Cek Status Pesanan
           </button>
-          {step !== 'promo' && (
-            <button onClick={() => { setStep('promo'); setSelectedItem(null); setOrder(null); setErr(''); }}
+          {step !== 'list' && (
+            <button onClick={goBack}
               className="text-xs text-gray-400 hover:text-gray-700 transition flex items-center gap-1">
               ← Kembali
             </button>
@@ -245,8 +262,89 @@ export default function PromoPage() {
       </nav>
 
       <div className="pt-14">
-        {/* ════ STEP: PROMO PAGE ════ */}
-        {step === 'promo' && (
+
+        {/* ════ STEP: DAFTAR PROMO ════ */}
+        {step === 'list' && (
+          <>
+            {/* Header */}
+            <div className="bg-black text-white px-4 py-10 text-center">
+              <div className="inline-block bg-[#FFE500] text-black text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full mb-3">
+                Special Promo
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black leading-tight">Program Promo Datacolor</h1>
+              <p className="mt-2 text-white/60 text-sm">Dapatkan produk Datacolor dengan harga spesial untuk pembelian kamera Nikon</p>
+            </div>
+
+            <div className="max-w-5xl mx-auto px-4 py-10">
+              {promos.length === 0 ? (
+                <div className="text-center py-20">
+                  <div className="text-5xl mb-4">🔍</div>
+                  <h2 className="text-xl font-bold mb-2 text-gray-800">Tidak ada promo aktif saat ini</h2>
+                  <p className="text-gray-400 text-sm">Pantau terus halaman ini untuk penawaran menarik berikutnya.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {promos.map(p => {
+                    const expired = p.tanggal_berakhir ? new Date(p.tanggal_berakhir) < new Date() : false;
+                    const thumb = driveThumb(p.banner_url);
+                    return (
+                      <div key={p.id} className={`bg-white border rounded-2xl overflow-hidden flex flex-col shadow-sm transition-all ${expired ? 'opacity-60' : 'hover:border-[#FFE500] hover:shadow-md border-gray-200'}`}>
+                        {/* Banner thumbnail */}
+                        <div className="relative bg-black aspect-video overflow-hidden">
+                          {thumb ? (
+                            <img src={thumb} alt={p.judul} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-4xl bg-gradient-to-br from-[#FFE500]/20 to-black">
+                              🎁
+                            </div>
+                          )}
+                          {expired && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <span className="bg-white text-gray-700 text-xs font-bold px-3 py-1 rounded-full">PROMO BERAKHIR</span>
+                            </div>
+                          )}
+                          {!expired && (
+                            <div className="absolute top-2 left-2 bg-[#FFE500] text-black text-[10px] font-black px-2 py-0.5 rounded-full">
+                              AKTIF
+                            </div>
+                          )}
+                        </div>
+                        {/* Info */}
+                        <div className="p-4 flex flex-col flex-1 gap-2">
+                          <h3 className="font-black text-sm leading-snug text-gray-900 flex-1">{p.judul}</h3>
+                          {(p.tanggal_mulai || p.tanggal_berakhir) && (
+                            <p className="text-[11px] text-gray-400 font-medium">
+                              {fmtDate(p.tanggal_mulai)} — {fmtDate(p.tanggal_berakhir)}
+                            </p>
+                          )}
+                          <button
+                            disabled={loadingPromo || expired}
+                            onClick={() => selectPromo(p)}
+                            className={`mt-2 w-full py-2.5 rounded-xl text-sm font-bold transition-all ${
+                              expired
+                                ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                                : 'bg-[#FFE500] text-black hover:bg-yellow-300 active:scale-95'
+                            }`}>
+                            {loadingPromo ? 'Memuat...' : expired ? 'Promo Berakhir' : 'Lihat Produk Promo →'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-gray-100 py-8 text-center text-gray-400 text-xs">
+              <p>PT. Alta Nikindo · Distributor Resmi Nikon Indonesia</p>
+              <p className="mt-1"><a href="https://altanikindo.com" className="hover:text-gray-600 transition">altanikindo.com</a></p>
+            </div>
+          </>
+        )}
+
+        {/* ════ STEP: DETAIL PROMO + PRODUK ════ */}
+        {step === 'promo' && promo && (
           <>
             {/* Hero Banner */}
             <div className="relative w-full bg-black overflow-hidden">
@@ -258,7 +356,6 @@ export default function PromoPage() {
                   <span className="text-6xl">🎁</span>
                 </div>
               )}
-              {/* gradient hanya di bawah, tidak pekat di tengah */}
               <div className="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-black/75 to-transparent" />
               <div className="absolute bottom-0 inset-x-0 px-4 pb-6 text-center">
                 <div className="inline-block bg-[#FFE500] text-black text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full mb-2">
@@ -274,7 +371,7 @@ export default function PromoPage() {
                     {fmtDate(promo.tanggal_mulai)} — {fmtDate(promo.tanggal_berakhir)}
                   </p>
                 )}
-                {isExpired && (
+                {promo.tanggal_berakhir && new Date(promo.tanggal_berakhir) < new Date() && (
                   <div className="mt-3 inline-block bg-red-500/80 text-white text-xs px-3 py-1 rounded-full font-bold">
                     Promo telah berakhir
                   </div>
@@ -282,23 +379,15 @@ export default function PromoPage() {
               </div>
             </div>
 
-            {/* Steps Info */}
-            <div className="max-w-4xl mx-auto px-4 py-8">
-              <h2 className="text-center text-gray-400 text-[11px] uppercase tracking-widest mb-6 font-semibold">Cara Mendapatkan Promo</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { n: '1', label: 'Beli kamera Nikon Z Series' },
-                  { n: '2', label: 'Pilih produk Datacolor promo' },
-                  { n: '3', label: 'Isi data & upload dokumen' },
-                  { n: '4', label: 'Transfer & terima barang' },
-                ].map(s => (
-                  <div key={s.n} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-                    <div className="w-7 h-7 rounded-full bg-[#FFE500] text-black text-sm font-black flex items-center justify-center mx-auto mb-3">{s.n}</div>
-                    <p className="text-xs text-gray-600 leading-snug font-medium">{s.label}</p>
-                  </div>
-                ))}
+            {/* Deskripsi Event */}
+            {promo.deskripsi && (
+              <div className="max-w-3xl mx-auto px-4 py-8">
+                <h2 className="text-center text-gray-400 text-[11px] uppercase tracking-widest mb-5 font-semibold">Deskripsi Event</h2>
+                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6">
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{promo.deskripsi}</p>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Product Grid */}
             <div className="max-w-5xl mx-auto px-4 pb-16">
@@ -308,11 +397,11 @@ export default function PromoPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {items.map(item => {
+                    const isExpired = promo.tanggal_berakhir ? new Date(promo.tanggal_berakhir) < new Date() : false;
                     const habis = item.stock !== null && item.stock <= 0;
                     const disc = Math.round((1 - item.harga_promo / item.harga_normal) * 100);
                     return (
                       <div key={item.id} className={`bg-white border rounded-2xl overflow-hidden flex flex-col transition-all shadow-sm ${habis ? 'border-gray-100 opacity-60' : 'border-gray-200 hover:border-[#FFE500] hover:shadow-md'}`}>
-                        {/* Gambar */}
                         <div className="relative bg-gray-50 aspect-[4/3] overflow-hidden">
                           {item.gambar_url ? (
                             <img src={driveThumb(item.gambar_url) || item.gambar_url} alt={item.nama_barang}
@@ -331,7 +420,6 @@ export default function PromoPage() {
                             </div>
                           )}
                         </div>
-                        {/* Info */}
                         <div className="p-4 flex flex-col flex-1 gap-2">
                           <div className="text-[10px] text-gray-400 font-mono">{item.kode_barang}</div>
                           <h3 className="font-bold text-sm leading-snug text-gray-900">{item.nama_barang}</h3>
@@ -374,10 +462,8 @@ export default function PromoPage() {
         {/* ════ STEP: FORM DATA PEMBELI ════ */}
         {step === 'form' && selectedItem && (
           <div className="max-w-2xl mx-auto px-4 py-8">
-            {/* Progress */}
             <StepIndicator current={1} />
 
-            {/* Selected product summary */}
             <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex gap-4 mb-6">
               {selectedItem.gambar_url && (
                 <img src={driveThumb(selectedItem.gambar_url) || selectedItem.gambar_url} alt={selectedItem.nama_barang}
@@ -458,7 +544,6 @@ export default function PromoPage() {
 
             <h2 className="text-lg font-black mb-6">Ringkasan Pembayaran</h2>
 
-            {/* Transfer info */}
             <div className="bg-[#FFE500] rounded-2xl p-5 mb-4">
               <p className="text-xs text-black/50 uppercase tracking-wider font-semibold mb-3">Nominal Transfer</p>
               <div className="text-4xl font-black text-black mb-1">{fmtRp(order.harga_transfer)}</div>
@@ -471,7 +556,6 @@ export default function PromoPage() {
               </p>
             </div>
 
-            {/* Rekening tujuan */}
             <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6 flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
                 <span className="text-white font-black text-xs">BCA</span>
@@ -488,7 +572,6 @@ export default function PromoPage() {
               </button>
             </div>
 
-            {/* Order summary */}
             <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 mb-6 space-y-3 text-sm">
               <Row label="Produk" value={order.nama_barang_snapshot} />
               <Row label="Nama Pembeli" value={order.nama_pembeli} />
@@ -534,7 +617,6 @@ export default function PromoPage() {
               Pembayaran Anda sedang kami verifikasi. Kami akan segera memproses pesanan setelah pembayaran terkonfirmasi.
             </p>
 
-            {/* Invoice card */}
             <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 mb-6 text-left space-y-3 text-sm">
               <Row label="No. Order" value={order.id.slice(0, 8).toUpperCase()} mono />
               <Row label="Produk" value={order.nama_barang_snapshot} />
@@ -551,7 +633,13 @@ export default function PromoPage() {
                 className="flex items-center justify-center gap-2 w-full py-3 bg-[#25D366] text-white font-bold rounded-xl hover:bg-[#22c55e] transition text-sm">
                 <WhatsAppIcon /> Kirim Invoice ke WhatsApp
               </button>
-              <button onClick={() => { setStep('promo'); setSelectedItem(null); setOrder(null); setNama(''); setWa(''); setAlamat(''); setKodepos(''); setNotaFile(null); setGaransiFile(null); setBuktiFile(null); }}
+              <button onClick={() => {
+                setStep('list');
+                setPromo(null); setItems([]);
+                setSelectedItem(null); setOrder(null);
+                setNama(''); setWa(''); setAlamat(''); setKodepos('');
+                setNotaFile(null); setGaransiFile(null); setBuktiFile(null);
+              }}
                 className="w-full py-3 border border-gray-200 text-gray-400 font-semibold rounded-xl hover:bg-gray-50 transition text-sm">
                 Kembali ke Halaman Promo
               </button>
@@ -566,7 +654,6 @@ export default function PromoPage() {
           onClick={() => setShowCekModal(false)}>
           <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
             onClick={e => e.stopPropagation()}>
-            {/* Handle bar (mobile) */}
             <div className="flex justify-center pt-3 pb-1 sm:hidden">
               <div className="w-10 h-1 bg-gray-200 rounded-full" />
             </div>

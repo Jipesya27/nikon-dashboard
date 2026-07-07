@@ -10,6 +10,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import ConfirmModal from '@/app/components/ConfirmModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -137,8 +138,11 @@ export default function WaTemplatesTab() {
   const [docUploadError, setDocUploadError] = useState('');
   const [saveOk, setSaveOk]         = useState('');
   const [deleting, setDeleting]     = useState<string | null>(null);
-  const [confirmDel, setConfirmDel] = useState<string | null>(null); // template name to confirm
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; message?: string; onConfirm: () => void }>({ open: false, onConfirm: () => {} });
+  const askConfirm = (message: string, fn: () => void) => setConfirmModal({ open: true, message, onConfirm: fn });
+  const closeConfirm = () => setConfirmModal(m => ({ ...m, open: false }));
   const [showRequired, setShowRequired] = useState(false);
   const prevParamCount = useRef(0);
 
@@ -302,7 +306,7 @@ export default function WaTemplatesTab() {
 
   const handleDelete = async (name: string) => {
     setDeleting(name);
-    setConfirmDel(null);
+    closeConfirm();
     try {
       const res = await fetch(`/api/admin/wa-templates?name=${encodeURIComponent(name)}`, {
         method: 'DELETE',
@@ -317,6 +321,10 @@ export default function WaTemplatesTab() {
     } finally {
       setDeleting(null);
     }
+  };
+
+  const confirmDeleteTemplate = (name: string) => {
+    askConfirm(`Hapus template "${name}"?`, () => handleDelete(name));
   };
 
   // ── Counts ─────────────────────────────────────────────────────────────────
@@ -462,26 +470,13 @@ export default function WaTemplatesTab() {
 
                         {/* Actions */}
                         <td className="px-4 py-3 text-right">
-                          {confirmDel === t.name ? (
-                            <span className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => handleDelete(t.name)}
-                                disabled={deleting === t.name}
-                                className="text-xs font-bold text-red-600 hover:underline disabled:opacity-50"
-                              >
-                                {deleting === t.name ? '...' : 'Yakin?'}
-                              </button>
-                              <button onClick={() => setConfirmDel(null)} className="text-xs text-gray-400 hover:text-gray-600">Batal</button>
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => setConfirmDel(t.name)}
-                              disabled={!!deleting}
-                              className="text-xs font-bold text-red-500 hover:text-red-700 hover:underline disabled:opacity-40"
-                            >
-                              Hapus
-                            </button>
-                          )}
+                          <button
+                            onClick={() => confirmDeleteTemplate(t.name)}
+                            disabled={!!deleting}
+                            className="text-xs font-bold text-red-500 hover:text-red-700 hover:underline disabled:opacity-40"
+                          >
+                            {deleting === t.name ? '...' : 'Hapus'}
+                          </button>
                         </td>
                       </tr>
 
@@ -853,6 +848,8 @@ export default function WaTemplatesTab() {
           </div>
         </div>
       )}
+
+      <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
     </div>
   );
 }

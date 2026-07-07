@@ -111,6 +111,7 @@ export interface AffiliatePenjualan {
   harga_barang: number;
   persentase: number;
   foto_urls?: string[] | null;
+  tanggal_transaksi?: string | null;
   created_at: string;
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import ConfirmModal from '@/app/components/ConfirmModal';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -39,6 +40,7 @@ type Promo = {
   tanggal_mulai?: string;
   tanggal_berakhir?: string;
   is_active: boolean;
+  deskripsi?: string;
 };
 
 type PromoItem = {
@@ -127,7 +129,7 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
   const [promoLoading, setPromoLoading] = useState(false);
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [editingPromo, setEditingPromo] = useState<Promo | null>(null);
-  const [promoForm, setPromoForm] = useState({ judul: '', tanggal_mulai: '', tanggal_berakhir: '', is_active: true, banner_url: '' });
+  const [promoForm, setPromoForm] = useState({ judul: '', tanggal_mulai: '', tanggal_berakhir: '', is_active: true, banner_url: '', deskripsi: '' });
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const bannerRef = useRef<HTMLInputElement>(null);
   const [promoSaving, setPromoSaving] = useState(false);
@@ -153,6 +155,10 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
 
   // Image lightbox
   const [lightbox, setLightbox] = useState<string | null>(null);
+
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; message?: string; onConfirm: () => void }>({ open: false, onConfirm: () => {} });
+  const askConfirm = (message: string, fn: () => void) => setConfirmModal({ open: true, message, onConfirm: fn });
+  const closeConfirm = () => setConfirmModal(m => ({ ...m, open: false }));
 
   // ── Fetch ────────────────────────────────────────────────────────────────────
 
@@ -204,8 +210,8 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
   function openPromoModal(p?: Promo) {
     setEditingPromo(p || null);
     setPromoForm(p
-      ? { judul: p.judul, tanggal_mulai: p.tanggal_mulai || '', tanggal_berakhir: p.tanggal_berakhir || '', is_active: p.is_active, banner_url: p.banner_url || '' }
-      : { judul: '', tanggal_mulai: '', tanggal_berakhir: '', is_active: true, banner_url: '' }
+      ? { judul: p.judul, tanggal_mulai: p.tanggal_mulai || '', tanggal_berakhir: p.tanggal_berakhir || '', is_active: p.is_active, banner_url: p.banner_url || '', deskripsi: p.deskripsi || '' }
+      : { judul: '', tanggal_mulai: '', tanggal_berakhir: '', is_active: true, banner_url: '', deskripsi: '' }
     );
     setBannerFile(null);
     setShowPromoModal(true);
@@ -224,6 +230,7 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
         tanggal_berakhir: promoForm.tanggal_berakhir || null,
         is_active: promoForm.is_active,
         banner_url: banner_url || null,
+        deskripsi: promoForm.deskripsi.trim() || null,
       };
 
       if (editingPromo) {
@@ -242,11 +249,13 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
     }
   }
 
-  async function deletePromo(id: string) {
-    if (!confirm('Hapus promo ini beserta semua itemnya?')) return;
-    const { error } = await sbWrite({ action: 'delete', table: 'promo_datacolor', match: { id } });
-    if (error) { alert(error.message); return; }
-    fetchPromos();
+  function deletePromo(id: string) {
+    askConfirm('Hapus promo ini beserta semua itemnya?', async () => {
+      closeConfirm();
+      const { error } = await sbWrite({ action: 'delete', table: 'promo_datacolor', match: { id } });
+      if (error) { alert(error.message); return; }
+      fetchPromos();
+    });
   }
 
   async function toggleActive(p: Promo) {
@@ -303,10 +312,12 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
     }
   }
 
-  async function deleteItem(id: string) {
-    if (!confirm('Hapus produk ini?')) return;
-    await sbWrite({ action: 'delete', table: 'promo_datacolor_items', match: { id } });
-    fetchItems(itemsPromoId);
+  function deleteItem(id: string) {
+    askConfirm('Hapus produk ini?', async () => {
+      closeConfirm();
+      await sbWrite({ action: 'delete', table: 'promo_datacolor_items', match: { id } });
+      fetchItems(itemsPromoId);
+    });
   }
 
   // ── Order actions ─────────────────────────────────────────────────────────────
@@ -597,6 +608,17 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
               )}
               <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={e => setBannerFile(e.target.files?.[0] || null)} />
             </div>
+            <div>
+              <label className={labelCls}>Deskripsi Event</label>
+              <textarea
+                value={promoForm.deskripsi}
+                onChange={e => setPromoForm(f => ({ ...f, deskripsi: e.target.value }))}
+                placeholder="Tuliskan syarat, ketentuan, atau cara mendapatkan promo ini..."
+                rows={5}
+                className={inputCls + ' resize-none'}
+              />
+              <p className="text-[11px] text-gray-400 mt-1">Ditampilkan sebagai "Deskripsi Event" di halaman publik. Baris baru dihargai.</p>
+            </div>
             <div className="flex items-center gap-3">
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" checked={promoForm.is_active} onChange={e => setPromoForm(f => ({ ...f, is_active: e.target.checked }))} className="sr-only peer" />
@@ -787,6 +809,8 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
           <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl font-bold">✕</button>
         </div>
       )}
+
+      <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
     </div>
   );
 }
