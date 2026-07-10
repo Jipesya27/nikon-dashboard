@@ -572,7 +572,7 @@ export default function ChatbotPage() {
                      </div>
                   ) : (
                      <div className="bg-white rounded-xl border-2 border-dashed border-gray-200 p-8 text-center text-gray-400">
-                        <div className="text-4xl mb-3">🤖</div>
+                        <div className="text-4xl mb-3">Pesan Terkirim :</div>
                         <p className="font-bold text-sm">Pilih template untuk diedit</p>
                         <p className="text-xs mt-1">Klik tombol Edit pada template di sebelah kiri</p>
                      </div>
