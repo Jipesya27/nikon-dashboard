@@ -346,7 +346,7 @@ export default function ChatbotPage() {
                </Link>
                <div className="w-px h-5 bg-gray-600" />
                <div>
-                  <h1 className="text-white font-bold text-lg flex items-center gap-2">🤖 Editor Teks Chatbot</h1>
+                  <h1 className="text-white font-bold text-lg flex items-center gap-2">Editor Teks Chatbot</h1>
                   <p className="text-gray-400 text-xs">Kelola teks pesan WhatsApp yang dikirim ke konsumen</p>
                </div>
             </div>
