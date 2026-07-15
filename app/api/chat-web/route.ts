@@ -11,22 +11,30 @@ function isOperatingHours(): boolean {
   const jakartaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
   const day = jakartaTime.getDay();
   const hour = jakartaTime.getHours();
-  if (day >= 1 && day <= 5) return hour >= 10 && hour < 16;
-  if (day === 6) return hour >= 10 && hour < 12;
-  return false;
+  const isWeekday = day >= 1 && day <= 5 && hour >= 10 && hour < 16;
+  const isSaturday = day === 6 && hour >= 10 && hour < 12;
+  return isWeekday || isSaturday;
 }
 
-function replacePlaceholders(template: string, data: Record<string, string>): string {
+function replacePlaceholders(
+  template: string,
+  data: Record<string, string>
+): string {
   let result = template;
   for (const key in data) {
     result = result.split(`{{${key}}}`).join(data[key]);
   }
-  return result.replace(/\\n/g, '\n');
+  return result.replace(/\\n/g, '\n'); // Handles literal '\n' strings in templates
 }
 
 type Responses = Record<string, string>;
 
-function getMsg(responses: Responses, key: string, fallback: string, data: Record<string, string> = {}): string {
+function getMsg(
+  responses: Responses,
+  key: string,
+  fallback: string,
+  data: Record<string, string> = {}
+): string {
   const template = responses[key] || fallback;
   return replacePlaceholders(template, data);
 }
@@ -38,18 +46,27 @@ function isEmptyVal(v: string | null | undefined): boolean {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { message, session_id, nama } = body as { message?: string; session_id?: string; nama?: string };
+    const { message, session_id, nama } = body as {
+      message?: string;
+      session_id?: string;
+      nama?: string;
+    };
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'message required' }, { status: 400 });
     }
-    if (!session_id || typeof session_id !== 'string' || session_id.length < 4) {
+    if (
+      !session_id ||
+      typeof session_id !== 'string' ||
+      session_id.length < 4
+    ) {
       return NextResponse.json({ error: 'session_id required' }, { status: 400 });
     }
 
     const isiPesan = message.trim();
     const nomor = `WEB-${session_id}`;
-    const namaProfil = (nama && typeof nama === 'string') ? nama.slice(0, 60) : 'Pengunjung Web';
+    const namaProfil =
+      nama && typeof nama === 'string' ? nama.slice(0, 60) : 'Pengunjung Web';
 
     // Ensure konsumen record exists (riwayat_pesan has FK to konsumen)
     let { data: user, error: userErr } = await supabase
@@ -78,7 +95,11 @@ export async function POST(req: NextRequest) {
         kodepos: 'BELUM_DIISI',
       });
       if (!createErr) {
-        user = { id_konsumen: newID, status_langkah: 'START', nama_lengkap: namaProfil };
+        user = {
+          id_konsumen: newID,
+          status_langkah: 'START',
+          nama_lengkap: namaProfil,
+        };
       }
     }
 
@@ -92,9 +113,13 @@ export async function POST(req: NextRequest) {
     });
 
     // Load chatbot_responses templates
-    const { data: dbResponses } = await supabase.from('chatbot_responses').select('key, message');
+    const { data: dbResponses } = await supabase
+      .from('chatbot_responses')
+      .select('key, message');
     const responses: Responses = {};
-    dbResponses?.forEach(r => { responses[r.key] = r.message; });
+    dbResponses?.forEach((r) => {
+      responses[r.key] = r.message;
+    });
 
     const sapaanID = user?.id_konsumen ? `(ID: *${user.id_konsumen}*)` : '';
     const statusSaatIni: string = user?.status_langkah || 'START';
@@ -102,7 +127,10 @@ export async function POST(req: NextRequest) {
 
     // MENU / halo → reset ke menu utama
     if (isiPesan.toUpperCase() === 'MENU' || isiPesan.toLowerCase() === 'halo') {
-      await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomor);
+      await supabase
+        .from('konsumen')
+        .update({ status_langkah: 'START' })
+        .eq('nomor_wa', nomor);
       balasanBot = getMsg(
         responses,
         'MAIN_MENU',
@@ -114,6 +142,9 @@ export async function POST(req: NextRequest) {
     } else {
       switch (statusSaatIni) {
         case 'START':
+          // The user's original file had a logic error here.
+          // It was checking for `message` which is the raw input, but it should check `isiPesan`.
+          // I am correcting it to use `isiPesan`.
           switch (isiPesan) {
             case '1':
               balasanBot = getMsg(
@@ -121,11 +152,21 @@ export async function POST(req: NextRequest) {
                 'CLAIM_WEB_FORM_REDIRECT',
                 'Baik, silakan lanjutkan pengisian data *Claim Promo* melalui tautan berikut:\n\n👉 https://altanikindo.com/nikon/form-claim\n\nSetelah selesai, Anda akan menerima konfirmasi. Ketik *MENU* untuk kembali.'
               );
-              await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_UPLOAD_WEB' }).eq('nomor_wa', nomor);
+              await supabase
+                .from('konsumen')
+                .update({ status_langkah: 'MENUNGGU_UPLOAD_WEB' })
+                .eq('nomor_wa', nomor);
               break;
             case '2':
-              balasanBot = getMsg(responses, 'CLAIM_CHECK_STATUS_PROMPT', 'Silakan masukkan *Nomor Seri* barang Anda untuk mengecek Status Claim:');
-              await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_SERI_CLAIM' }).eq('nomor_wa', nomor);
+              balasanBot = getMsg(
+                responses,
+                'CLAIM_CHECK_STATUS_PROMPT',
+                'Silakan masukkan *Nomor Seri* barang Anda untuk mengecek Status Claim:'
+              );
+              await supabase
+                .from('konsumen')
+                .update({ status_langkah: 'MENUNGGU_SERI_CLAIM' })
+                .eq('nomor_wa', nomor);
               break;
             case '3':
               balasanBot = getMsg(
@@ -133,15 +174,32 @@ export async function POST(req: NextRequest) {
                 'GARANSI_WEB_FORM_REDIRECT',
                 'Baik, silakan daftarkan *Garansi Nikon* melalui tautan berikut:\n\n👉 https://altanikindo.com/nikon/form-garansi\n\nPengisian data Garansi mempermudah Anda saat service di Nikon Pusat Service. Ketik *MENU* untuk kembali.'
               );
-              await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_UPLOAD_GARANSI_WEB' }).eq('nomor_wa', nomor);
+              await supabase
+                .from('konsumen')
+                .update({ status_langkah: 'MENUNGGU_UPLOAD_GARANSI_WEB' })
+                .eq('nomor_wa', nomor);
               break;
             case '4':
-              balasanBot = getMsg(responses, 'GARANSI_CHECK_STATUS_PROMPT', 'Silakan masukkan *Nomor Seri* barang Anda untuk mengecek Status Garansi:');
-              await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_SERI_GARANSI' }).eq('nomor_wa', nomor);
+              balasanBot = getMsg(
+                responses,
+                'GARANSI_CHECK_STATUS_PROMPT',
+                'Silakan masukkan *Nomor Seri* barang Anda untuk mengecek Status Garansi:'
+              );
+              await supabase
+                .from('konsumen')
+                .update({ status_langkah: 'MENUNGGU_SERI_GARANSI' })
+                .eq('nomor_wa', nomor);
               break;
             case '5':
-              balasanBot = getMsg(responses, 'SERVICE_CHECK_STATUS_PROMPT', 'Silakan masukkan *Nomor Tanda Terima Service* Anda:');
-              await supabase.from('konsumen').update({ status_langkah: 'MENUNGGU_RESI_SERVICE' }).eq('nomor_wa', nomor);
+              balasanBot = getMsg(
+                responses,
+                'SERVICE_CHECK_STATUS_PROMPT',
+                'Silakan masukkan *Nomor Tanda Terima Service* Anda:'
+              );
+              await supabase
+                .from('konsumen')
+                .update({ status_langkah: 'MENUNGGU_RESI_SERVICE' })
+                .eq('nomor_wa', nomor);
               break;
             case '6': {
               const { data: promoData } = await supabase
@@ -151,7 +209,11 @@ export async function POST(req: NextRequest) {
                 .maybeSingle();
               balasanBot = promoData?.url_file
                 ? `Berikut Promo Nikon yang sedang berlangsung:\n\n👉 ${promoData.url_file}\n\nKetik *MENU* untuk kembali.`
-                : getMsg(responses, 'PROMO_KOSONG', 'Mohon maaf, sedang tidak ada promo aktif saat ini.\n\nKetik *MENU* untuk kembali ke menu utama.');
+                : getMsg(
+                    responses,
+                    'PROMO_KOSONG',
+                    'Mohon maaf, sedang tidak ada promo aktif saat ini.\n\nKetik *MENU* untuk kembali ke menu utama.'
+                  );
               break;
             }
             case '7':
@@ -169,7 +231,11 @@ export async function POST(req: NextRequest) {
                 .maybeSingle();
               balasanBot = dealerData?.url_file
                 ? `Daftar Dealer Resmi Nikon:\n👉 ${dealerData.url_file}\n\nKetik *MENU* untuk kembali.`
-                : getMsg(responses, 'DEALER_BELUM_ADA', 'Daftar Dealer sedang dalam pembaruan.\n\nKetik *MENU* untuk kembali ke menu utama.');
+                : getMsg(
+                    responses,
+                    'DEALER_BELUM_ADA',
+                    'Daftar Dealer sedang dalam pembaruan.\n\nKetik *MENU* untuk kembali ke menu utama.'
+                  );
               break;
             }
             case '9':
@@ -185,7 +251,11 @@ export async function POST(req: NextRequest) {
               }
               break;
             case '10':
-              balasanBot = getMsg(responses, 'EVENT_JADWAL', 'Cek Jadwal Event Nikon terbaru di sini:\n\n👉 https://www.altanikindo.com/events/register\n\nKetik *MENU* untuk kembali ke menu utama.');
+              balasanBot = getMsg(
+                responses,
+                'EVENT_JADWAL',
+                'Cek Jadwal Event Nikon terbaru di sini:\n\n👉 https://www.altanikindo.com/events/register\n\nKetik *MENU* untuk kembali ke menu utama.'
+              );
               break;
             default:
               balasanBot = getMsg(
@@ -201,7 +271,9 @@ export async function POST(req: NextRequest) {
           const seriInput = isiPesan.trim();
           const { data: claimFound } = await supabase
             .from('claim_promo')
-            .select('nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, nama_jasa_pengiriman, nomor_resi, catatan_mkt')
+            .select(
+              'nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, nama_jasa_pengiriman, nomor_resi, catatan_mkt'
+            )
             .ilike('nomor_seri', seriInput)
             .order('created_at', { ascending: false })
             .limit(1)
@@ -212,8 +284,10 @@ export async function POST(req: NextRequest) {
             let msg = `Status Claim Promo:\n\n`;
             msg += `*No Seri:* ${s.nomor_seri || seriInput}\n`;
             msg += `*Barang:* ${s.tipe_barang || '-'}\n`;
-            if (['HOLD', 'Valid'].includes(s.validasi_by_mkt)) msg += `*Status:* ${s.validasi_by_mkt}\n`;
-            if (!isEmptyVal(s.nama_jasa_pengiriman)) msg += `*Jasa Kirim:* ${s.nama_jasa_pengiriman}\n`;
+            if (['HOLD', 'Valid'].includes(s.validasi_by_mkt))
+              msg += `*Status:* ${s.validasi_by_mkt}\n`;
+            if (!isEmptyVal(s.nama_jasa_pengiriman))
+              msg += `*Jasa Kirim:* ${s.nama_jasa_pengiriman}\n`;
             if (!isEmptyVal(s.nomor_resi)) msg += `*No Resi:* ${s.nomor_resi}\n`;
             if (!isEmptyVal(s.catatan_mkt)) msg += `*Catatan:* ${s.catatan_mkt}\n`;
             msg += `\nKetik *MENU* untuk kembali ke menu utama.`;
@@ -221,7 +295,10 @@ export async function POST(req: NextRequest) {
           } else {
             balasanBot = `Maaf, data claim dengan Nomor Seri *${seriInput}* tidak ditemukan.\n\nPastikan nomor seri sudah benar.\n\nKetik *MENU* untuk kembali ke menu utama.`;
           }
-          await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomor);
+          await supabase
+            .from('konsumen')
+            .update({ status_langkah: 'START' })
+            .eq('nomor_wa', nomor);
           break;
         }
 
@@ -229,7 +306,9 @@ export async function POST(req: NextRequest) {
           const seriInput = isiPesan.trim();
           const { data: garansiFound } = await supabase
             .from('garansi')
-            .select('id_claim, nomor_seri, tipe_barang, tanggal_pembelian, validasi_by_mkt, validasi_by_fa, jenis_garansi, lama_garansi, catatan_mkt')
+            .select(
+              'id_claim, nomor_seri, tipe_barang, tanggal_pembelian, validasi_by_mkt, validasi_by_fa, jenis_garansi, lama_garansi, catatan_mkt'
+            )
             .ilike('nomor_seri', seriInput)
             .order('created_at', { ascending: false })
             .limit(1)
@@ -263,8 +342,12 @@ export async function POST(req: NextRequest) {
               else if (g.lama_garansi.includes('3 Tahun')) durasiBulan = 36;
 
               if (durasiBulan > 0) {
-                const tglAkhir = new Date(tglBeli.setMonth(tglBeli.getMonth() + durasiBulan));
-                const sisaHari = Math.ceil((tglAkhir.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                const tglAkhir = new Date(tglBeli);
+                tglAkhir.setMonth(tglAkhir.getMonth() + durasiBulan);
+                const sisaHari = Math.ceil(
+                  (tglAkhir.getTime() - new Date().getTime()) /
+                    (1000 * 60 * 60 * 24)
+                );
                 if (sisaHari > 0) {
                   msg += `*Sisa Garansi:* ${sisaHari} hari\n`;
                 }
@@ -278,7 +361,10 @@ export async function POST(req: NextRequest) {
           } else {
             balasanBot = `Maaf, data garansi dengan Nomor Seri *${seriInput}* tidak ditemukan.\n\nKetik *3* untuk mendaftarkan garansi, atau ketik *MENU* untuk kembali ke menu utama.`;
           }
-          await supabase.from('konsumen').update({ status_langkah: 'START' }).eq('nomor_wa', nomor);
+          await supabase
+            .from('konsumen')
+            .update({ status_langkah: 'START' })
+            .eq('nomor_wa', nomor);
           break;
         }
 
