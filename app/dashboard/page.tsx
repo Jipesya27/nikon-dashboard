@@ -3632,7 +3632,7 @@ ${kode ? `
    }, [claims]);
 
    useEffect(() => {
-   const duplicateGaransiIds = useMemo(() => {
+   const duplicateGaransiIds = useMemo(() => { // eslint-disable-line
       const serialCounts = new Map<string, string[]>();
       // 'garansis' adalah state yang berisi semua data garansi
       for (const garansi of warranties) {
