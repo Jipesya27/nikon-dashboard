@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+// import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const { searchParams } = new URL(request.url);
   const phone = searchParams.get('phone');
   const fromClaim = searchParams.get('from_claim') === '1';
