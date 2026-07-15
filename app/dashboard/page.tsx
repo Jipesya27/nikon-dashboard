@@ -3632,6 +3632,7 @@ ${kode ? `
    }, [claims]);
 
    useEffect(() => {
+   const duplicateGaransiIds = useMemo(() => {
       const serialCounts = new Map<string, string[]>();
       // 'garansis' adalah state yang berisi semua data garansi
       for (const garansi of warranties) {
@@ -3649,6 +3650,7 @@ ${kode ? `
          }
       }
       setDuplicateGaransiIds(duplicates);
+      return duplicates;
    }, [warranties]);
 
    const filteredClaims = useMemo(() => claims.filter((c: ClaimPromo) => {
