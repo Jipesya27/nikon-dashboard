@@ -1,4 +1,4 @@
-﻿'use client';
+﻿﻿'use client';
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
@@ -247,6 +247,7 @@ export default function NikonDashboard() {
    const [claims, setClaims] = useState<ClaimPromo[]>([]);
    const [warranties, setWarranties] = useState<Garansi[]>([]);
    const [promos, setPromos] = useState<Promosi[]>([]);
+   const [duplicateGaransiIds, setDuplicateGaransiIds] = useState<Set<string>>(new Set());
    const [services, setServices] = useState<StatusService[]>([]);
    const [budgets, setBudgets] = useState<BudgetApproval[]>([]);
    const [karyawans, setKaryawans] = useState<Karyawan[]>([]);
@@ -3630,6 +3631,26 @@ ${kode ? `
       return duplicatesToMark;
    }, [claims]);
 
+   useEffect(() => {
+      const serialCounts = new Map<string, string[]>();
+      // 'garansis' adalah state yang berisi semua data garansi
+      for (const garansi of warranties) {
+         if (garansi.nomor_seri && garansi.id_garansi) {
+            const list = serialCounts.get(garansi.nomor_seri) || [];
+            list.push(garansi.id_garansi);
+            serialCounts.set(garansi.nomor_seri, list);
+         }
+      }
+ 
+      const duplicates = new Set<string>();
+      for (const ids of serialCounts.values()) {
+         if (ids.length > 1) {
+            ids.forEach(id => duplicates.add(id));
+         }
+      }
+      setDuplicateGaransiIds(duplicates);
+   }, [warranties]);
+
    const filteredClaims = useMemo(() => claims.filter((c: ClaimPromo) => {
       const name = (consumers[c.nomor_wa] || c.nomor_wa || "").toLowerCase();
       const seri = (c.nomor_seri || "").toLowerCase();
@@ -5008,18 +5029,24 @@ ${kode ? `
                                        'Valid': 'bg-emerald-100 text-emerald-700',
                                        'Belum': 'bg-amber-100 text-amber-700',
                                        'Menunggu': 'bg-amber-100 text-amber-700',
+                                       'Menunggu': 'bg-amber-100 text-amber-700',
                                        'Ditolak': 'bg-red-100 text-red-700',
                                     };
                                     const pillClass = statusColor[w.status_validasi] ?? 'bg-gray-100 text-gray-600';
                                     return (
                                        <tr key={w.id_garansi} className="hover:bg-gray-50 transition-colors">
                                           <td className="px-3 py-3 text-center text-xs font-bold text-gray-400">{garansiNumberMap.get(w.id_garansi!)}</td>
-                                          <td className="px-3 py-3">
+                                          <td className={`px-3 py-3 ${duplicateGaransiIds.has(w.id_garansi!) ? 'bg-red-50' : ''}`}>
                                              <p className="text-sm font-semibold text-gray-900 leading-tight">{namaText}</p>
                                              <p className="text-xs text-gray-400 mt-0.5">{waText}</p>
                                           </td>
-                                          <td className="px-3 py-3">
-                                             <p className="font-mono font-bold text-sm text-gray-900">{w.nomor_seri}</p>
+                                          <td className={`px-3 py-3 ${duplicateGaransiIds.has(w.id_garansi!) ? 'bg-red-50' : ''}`}>
+                                             <p className="font-mono font-bold text-sm text-gray-900 flex items-center gap-2">
+                                                {w.nomor_seri}
+                                                {duplicateGaransiIds.has(w.id_garansi!) && (
+                                                   <span className="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold whitespace-nowrap animate-pulse">DUPLIKAT</span>
+                                                )}
+                                             </p>
                                              <p className="text-xs text-gray-500 mt-0.5">{w.tipe_barang}</p>
                                           </td>
                                           <td className="px-3 py-3">
@@ -5072,6 +5099,7 @@ ${kode ? `
                                  'Valid': 'bg-emerald-100 text-emerald-700',
                                  'Belum': 'bg-amber-100 text-amber-700',
                                  'Menunggu': 'bg-amber-100 text-amber-700',
+                                 'Menunggu': 'bg-amber-100 text-amber-700',
                                  'Ditolak': 'bg-red-100 text-red-700',
                               };
                               const pillClass = statusColor[w.status_validasi] ?? 'bg-gray-100 text-gray-600';
@@ -5086,8 +5114,13 @@ ${kode ? `
                                        <span className={`shrink-0 px-2.5 py-1 rounded-md text-[11px] font-bold ${pillClass}`}>{w.status_validasi}</span>
                                     </div>
                                     {/* No Seri + Barang */}
-                                    <div className="bg-gray-50 rounded-lg px-3 py-2">
-                                       <p className="font-mono font-bold text-sm text-gray-900">{w.nomor_seri}</p>
+                                    <div className={`rounded-lg px-3 py-2 ${duplicateGaransiIds.has(w.id_garansi!) ? 'bg-red-100' : 'bg-gray-50'}`}>
+                                       <p className="font-mono font-bold text-sm text-gray-900 flex items-center gap-2">
+                                          {w.nomor_seri}
+                                          {duplicateGaransiIds.has(w.id_garansi!) && (
+                                             <span className="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold whitespace-nowrap animate-pulse">DUPLIKAT</span>
+                                          )}
+                                       </p>
                                        <p className="text-xs text-gray-500 mt-0.5">{w.tipe_barang}</p>
                                     </div>
                                     {/* Detail */}
