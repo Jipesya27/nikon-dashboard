@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     // If it's from a claim, try to get the latest claim data
     if (fromClaim) {
       const { data: claim, error: claimError } = await supabase
-        .from('promo_claims') // Assuming table name is 'promo_claims'
+        .from('claim_promo')
         .select('id_claim, tipe_barang, nomor_seri, tanggal_pembelian, nama_toko')
         .eq('nomor_wa', phone)
         .order('created_at', { ascending: false })
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const formData = await request.formData();
 
   const phone = formData.get('phone') as string;
@@ -84,8 +84,8 @@ export async function POST(request: Request) {
 
   const garansiData = {
     nomor_wa: phone,
-    email: formData.get('email') as string,
-    nama_lengkap: formData.get('nama_lengkap') as string,
+    // email is not in the 'garansi' table schema
+    nama_pendaftar: formData.get('nama_lengkap') as string,
     nik: formData.get('nik') as string,
     alamat_rumah: formData.get('alamat_rumah') as string,
     kelurahan: formData.get('kelurahan') as string,
@@ -97,13 +97,13 @@ export async function POST(request: Request) {
     nomor_seri: formData.get('nomor_seri') as string,
     tanggal_pembelian: formData.get('tanggal_pembelian') as string,
     nama_toko: formData.get('nama_toko') as string,
-    foto_kartu_garansi_url: garansiUrl,
-    foto_nota_pembelian_url: notaUrl,
-    id_claim_promo: idClaim,
+    link_kartu_garansi: garansiUrl,
+    link_nota_pembelian: notaUrl,
+    id_claim: idClaim,
   };
 
   const { data, error } = await supabase
-    .from('registrasi_garansi') // Assuming table name
+    .from('garansi')
     .insert([garansiData])
     .select();
 
