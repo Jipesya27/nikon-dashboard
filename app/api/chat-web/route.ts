@@ -229,7 +229,7 @@ export async function POST(req: NextRequest) {
           const seriInput = isiPesan.trim();
           const { data: garansiFound } = await supabase
             .from('garansi')
-            .select('id_claim, nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, jenis_garansi, lama_garansi, catatan_mkt')
+            .select('id_claim, nomor_seri, tipe_barang, tanggal_pembelian, validasi_by_mkt, validasi_by_fa, jenis_garansi, lama_garansi, catatan_mkt')
             .ilike('nomor_seri', seriInput)
             .order('created_at', { ascending: false })
             .limit(1)
@@ -252,8 +252,24 @@ export async function POST(req: NextRequest) {
             let msg = `Status Garansi Anda:\n\n`;
             msg += `*No Seri:* ${g.nomor_seri || seriInput}\n`;
             msg += `*Barang:* ${g.tipe_barang || '-'}\n`;
-            msg += `*Status MKT:* ${statusMkt}\n`;
-            msg += `*Status FA:* ${statusFa}\n`;
+            msg += `*Status:* ${statusMkt}\n`;
+            // msg += `*Status FA:* ${statusFa}\n`;
+            if (g.tanggal_pembelian && g.lama_garansi) {
+              const tglBeli = new Date(g.tanggal_pembelian);
+              let durasiBulan = 0;
+              if (g.lama_garansi.includes('6 Bulan')) durasiBulan = 6;
+              else if (g.lama_garansi.includes('1 Tahun')) durasiBulan = 12;
+              else if (g.lama_garansi.includes('2 Tahun')) durasiBulan = 24;
+              else if (g.lama_garansi.includes('3 Tahun')) durasiBulan = 36;
+
+              if (durasiBulan > 0) {
+                const tglAkhir = new Date(tglBeli.setMonth(tglBeli.getMonth() + durasiBulan));
+                const sisaHari = Math.ceil((tglAkhir.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                if (sisaHari > 0) {
+                  msg += `*Sisa Garansi:* ${sisaHari} hari\n`;
+                }
+              }
+            }
             if (g.jenis_garansi) msg += `*Jenis Garansi:* ${g.jenis_garansi}\n`;
             if (g.lama_garansi) msg += `*Durasi:* ${g.lama_garansi}\n`;
             if (!isEmptyVal(g.catatan_mkt)) msg += `*Catatan:* ${g.catatan_mkt}\n`;

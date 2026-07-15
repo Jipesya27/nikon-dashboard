@@ -50,6 +50,9 @@ function GaransiForm() {
   const [ocrLoading, setOcrLoading]       = useState(false);
   const [ocrMsg, setOcrMsg]               = useState('');
 
+  const [isDuplicateSerial, setIsDuplicateSerial] = useState(false);
+  const [serialCheckLoading, setSerialCheckLoading] = useState(false);
+
   const refGaransi = useRef<HTMLInputElement>(null);
   const refNota    = useRef<HTMLInputElement>(null);
 
@@ -178,10 +181,8 @@ function GaransiForm() {
 
       const res = await fetch('/api/garansi', { method: 'POST', body: fd });
       if (res.status === 413) throw new Error('Ukuran file terlalu besar (maks. ~3MB per file).');
-      const text = await res.text();
-      let result: { error?: string; success?: boolean };
-      try { result = JSON.parse(text); } catch { throw new Error(`Server error (${res.status}): ${text.slice(0, 120)}`); }
-      if (!res.ok) throw new Error(result.error || 'Gagal mengirim data.');
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || `Gagal mengirim data. Server responded with ${res.status}`);
       setStep('success');
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Unknown error');
@@ -190,6 +191,22 @@ function GaransiForm() {
       setLoading(false);
     }
   }
+
+  const checkDuplicateSerial = useCallback(async (serial: string) => {
+    if (serial.length < 4) {
+      setIsDuplicateSerial(false);
+      return;
+    }
+    setSerialCheckLoading(true);
+    try {
+      const res = await fetch(`/api/cek-status?serial=${encodeURIComponent(serial)}`);
+      if (res.ok) {
+        const result = await res.json();
+        setIsDuplicateSerial(result.is_duplicate);
+      }
+    } catch { /* abaikan */ }
+    finally { setSerialCheckLoading(false); }
+  }, []);
 
   // ── Loading ────────────────────────────────────────────────────────
   if (initLoading) {
@@ -443,8 +460,27 @@ function GaransiForm() {
               <input type="text" name="tipe_barang" value={formData.tipe_barang} onChange={handleChange} required placeholder="Contoh: Nikon Z50 Kit 16-50mm" className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>Nomor Seri Produk {req}</label>
-              <input type="text" name="nomor_seri" value={formData.nomor_seri} onChange={handleChange} required placeholder="Tertera di body kamera/lensa/kotak" className={inputCls} />
+              <label className={labelCls}>
+                Nomor Seri Produk {req}
+                {serialCheckLoading && (
+                  <span className="ml-2 text-xs text-gray-500 font-normal">
+                    (memeriksa...)
+                  </span>
+                )}
+                {isDuplicateSerial && !serialCheckLoading && (
+                  <span className="ml-2 text-xs font-bold text-white bg-red-600 px-2 py-0.5 rounded-md">
+                    DUPLICATE
+                  </span>
+                )}
+              </label>
+              <input
+                type="text"
+                name="nomor_seri"
+                value={formData.nomor_seri}
+                onChange={handleChange}
+                onBlur={(e) => checkDuplicateSerial(e.target.value)}
+                required placeholder="Tertera di body kamera/lensa/kotak" className={inputCls}
+              />
             </div>
             <div>
               <label className={labelCls}>Tanggal Pembelian {req}</label>
