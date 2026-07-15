@@ -462,7 +462,7 @@ serve(async (req)=>{
 
           const { data: garansiFound } = await supabase
             .from('garansi')
-            .select('id_claim, nomor_seri, tipe_barang, validasi_by_mkt, validasi_by_fa, status_validasi, jenis_garansi, lama_garansi, catatan_mkt')
+            .select('id_claim, nomor_seri, tipe_barang, tanggal_pembelian, validasi_by_mkt, validasi_by_fa, status_validasi, jenis_garansi, lama_garansi, catatan_mkt')
             .ilike('nomor_seri', nomorSeriInput)
             .order('created_at', { ascending: false })
             .limit(1)
@@ -493,10 +493,33 @@ serve(async (req)=>{
             let msg = `Status Garansi Anda:\n\n`;
             msg += `*No Seri:* ${g.nomor_seri || nomorSeriInput}\n`;
             msg += `*Barang:* ${g.tipe_barang || '-'}\n`;
-            msg += `*Status MKT:* ${statusMkt}\n`;
-            msg += `*Status FA:* ${statusFa}\n`;
+            msg += `*Pembelian:* ${g.tanggal_pembelian || '-'}\n`;
+            msg += `*Status:* ${statusMkt}\n`;
+            //msg += `*Status FA:* ${statusFa}\n`;
+            if (g.tanggal_pembelian && g.lama_garansi) {
+              const tglBeli = new Date(g.tanggal_pembelian);
+              let durasiBulan = 0;
+              if (g.lama_garansi.includes('6 Bulan')) durasiBulan = 6;
+              else if (g.lama_garansi.includes('1 Tahun')) durasiBulan = 12;
+              else if (g.lama_garansi.includes('2 Tahun')) durasiBulan = 24;
+              else if (g.lama_garansi.includes('3 Tahun')) durasiBulan = 36;
+
+              if (durasiBulan > 0) {
+                const tglAkhir = new Date(tglBeli);
+                tglAkhir.setMonth(tglAkhir.getMonth() + durasiBulan);
+                const sisaHari = Math.ceil(
+                  (tglAkhir.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                );
+                const tglAkhirFormatted = tglAkhir.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+                if (sisaHari > 0) {
+                  msg += `*Sisa Garansi:* ${sisaHari} hari\n`;
+                  msg += `*Akhir Garansi:* ${tglAkhirFormatted}\n`;
+                }
+              }
+            }
             if (g.jenis_garansi) msg += `*Jenis Garansi:* ${g.jenis_garansi}\n`;
-            if (g.lama_garansi) msg += `*Durasi:* ${g.lama_garansi}\n`;
+            //if (g.lama_garansi) msg += `*Durasi:* ${g.lama_garansi}\n`;
             if (g.catatan_mkt) msg += `*Catatan:* ${g.catatan_mkt}\n`;
             if (g.id_claim) msg += `\n_Terhubung dengan pengajuan Claim Promo._\n`;
             msg += `\nKetik *MENU* untuk kembali ke menu utama.`;
