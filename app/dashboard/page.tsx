@@ -2390,6 +2390,7 @@ ${kode ? `
             ...warrantyForm,
             link_kartu_garansi: garansiUrl,
             link_nota_pembelian: notaUrl,
+            nomor_wa_update: warrantyForm.nomor_wa_update || warrantyForm.nomor_wa || '',
          };
 
          if (modalAction === 'create') {
