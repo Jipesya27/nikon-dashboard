@@ -4,5 +4,7 @@
   "less.lint.unknownAtRules": "ignore",
   "files.associations": {
     "*.css": "tailwindcss"
-  }
+  },
+  "idf.customExtraVars": {},
+  "idf.currentSetup": "C:\\esp\\v6.0.2\\esp-idf"
 }
