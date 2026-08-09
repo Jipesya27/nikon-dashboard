@@ -278,6 +278,7 @@ export default function NikonDashboard() {
    const [searchClaim, setSearchClaim] = useState('');
    const [filterStatusWarna, setFilterStatusWarna] = useState<string>('Semua');
    const [filterDuplikat, setFilterDuplikat] = useState(false);
+   const [filterDuplikatGaransi, setFilterDuplikatGaransi] = useState(false);
    const [filterColClaims, setFilterColClaims] = useState<Record<string, string>>({});
    // tanggal_cetak kini disimpan permanen di kolom claim_promo.tanggal_cetak (Supabase)
    // — tidak lagi pakai localStorage
@@ -3799,8 +3800,9 @@ ${kode ? `
    const filteredWarranties = useMemo(() => warranties.filter((w: Garansi) => {
       const matchSearch = (w.nomor_seri || '').toLowerCase().includes(searchGaransi.toLowerCase());
       const matchStatus = filterStatusGaransi === 'Semua' || (w.status_validasi || 'Belum') === filterStatusGaransi;
-      return matchSearch && matchStatus;
-   }), [warranties, searchGaransi, filterStatusGaransi]);
+      const matchDuplikat = !filterDuplikatGaransi || (w.id_garansi ? duplicateGaransiIds.has(w.id_garansi) : false);
+      return matchSearch && matchStatus && matchDuplikat;
+   }), [warranties, searchGaransi, filterStatusGaransi, filterDuplikatGaransi, duplicateGaransiIds]);
 
    const sortedWarranties = useMemo(() => {
       const sortableItems = [...filteredWarranties];
@@ -4988,6 +4990,12 @@ ${kode ? `
                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                            <input type="text" title="Cari Garansi" aria-label="Cari Garansi" placeholder="Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full pl-8 pr-3 py-2 border border-gray-200 bg-white text-gray-800 rounded-lg outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-xs" />
                         </div>
+                        <button
+                           onClick={() => setFilterDuplikatGaransi(v => !v)}
+                           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold whitespace-nowrap transition ${filterDuplikatGaransi ? 'bg-red-500 text-white border-red-500' : 'bg-white text-red-600 border-red-200 hover:border-red-400'}`}
+                        >
+                           Duplikat <span className={`font-bold px-1 py-0.5 rounded-full ${filterDuplikatGaransi ? 'bg-white/20' : 'bg-red-100'}`}>{duplicateGaransiIds.size}</span>
+                        </button>
                         <div className="flex items-center gap-1.5 flex-wrap">
                            {[
                               { key: 'Semua',  label: 'Semua',          count: warranties.length,                    activeClass: 'bg-gray-700 text-white',     inactiveClass: 'bg-gray-100 text-gray-600 hover:bg-gray-200' },
