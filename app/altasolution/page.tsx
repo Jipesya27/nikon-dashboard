@@ -56,24 +56,21 @@ export default function AltaSolutionPage() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
-      {/* Navbar */}
-      <nav className="fixed top-0 inset-x-0 z-50 bg-white border-b border-gray-100 shadow-sm px-4 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="bg-black rounded-lg px-2 py-1.5 flex items-center">
-            <img src="/ALTA_baru.png" alt="Alta Nikindo" className="h-7 object-contain" />
+      <div>
+        {/* Header (hitam, sampai ke atas layar) */}
+        <div className="bg-black text-white">
+          <nav className="px-4 h-14 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="bg-black rounded-lg px-2 py-1.5 flex items-center">
+                <img src="/ALTA_baru.png" alt="Alta Nikindo" className="h-7 object-contain" />
+              </div>
+            </div>
+            <a href="/nikon" className="text-xs text-white/70 hover:text-white transition">Kembali ke Beranda</a>
+          </nav>
+          <div className="px-4 pb-10 pt-2 text-center">
+            <h1 className="text-2xl sm:text-3xl font-black leading-tight">AltaSolution</h1>
+            <p className="mt-2 text-white/60 text-sm max-w-lg mx-auto">Solusi produk & aksesoris fotografi dari Alta Nikindo</p>
           </div>
-        </div>
-        <a href="/nikon" className="text-xs text-gray-400 hover:text-gray-700 transition">Kembali ke Beranda</a>
-      </nav>
-
-      <div className="pt-14">
-        {/* Header */}
-        <div className="bg-black text-white px-4 py-10 text-center">
-          <div className="inline-block bg-[#FFE500] text-black text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full mb-3">
-            Marketplace
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black leading-tight">AltaSolution</h1>
-          <p className="mt-2 text-white/60 text-sm max-w-lg mx-auto">Solusi produk & aksesoris fotografi dari Alta Nikindo — distributor resmi Nikon Indonesia</p>
         </div>
 
         {/* Product Grid */}
