@@ -2154,7 +2154,10 @@ ${kode ? `
                password: ''
             } : {});
          } else {
-            setKaryawanForm((item as Karyawan) || { role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
+            // Jangan prefill password dengan hash tersimpan — kalau tidak, hash lama
+            // ikut ter-submit sebagai "password baru" dan di-hash ulang (double-hash),
+            // mengunci akun karyawan meski admin cuma edit field lain.
+            setKaryawanForm((item as Karyawan) ? { ...(item as Karyawan), password: '' } : { role: 'Karyawan', status_aktif: true, akses_halaman: ['messages'] });
          }
          setEditingId((item as Karyawan)?.id_karyawan || null);
       }
@@ -6596,7 +6599,7 @@ ${kode ? `
                                  <input id="karyawan-wa" type="text" value={karyawanForm.nomor_wa || ''} onChange={e => setKaryawanForm({ ...karyawanForm, nomor_wa: e.target.value })} className="input-form" required />
                               </div>
                               <div>
-                                 <label htmlFor="karyawan-password" className="label-form">Password {modalAction === 'create' ? '(Otomatis jika kosong)' : ''}</label>
+                                 <label htmlFor="karyawan-password" className="label-form">Password {modalAction === 'create' ? '(Otomatis jika kosong)' : '(Kosongkan jika tidak ingin ubah password)'}</label>
                                  <input id="karyawan-password" type="text" value={karyawanForm.password || ''} onChange={e => setKaryawanForm({ ...karyawanForm, password: e.target.value })} className="input-form" />
                               </div>
                               <div>
