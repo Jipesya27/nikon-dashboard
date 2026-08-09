@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ConfirmModal from '@/app/components/ConfirmModal';
+import RichTextEditor from '@/app/components/RichTextEditor';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -610,14 +611,12 @@ export default function PromoDatacolorTab({ currentUser }: { currentUser: Curren
             </div>
             <div>
               <label className={labelCls}>Deskripsi Event</label>
-              <textarea
+              <RichTextEditor
                 value={promoForm.deskripsi}
-                onChange={e => setPromoForm(f => ({ ...f, deskripsi: e.target.value }))}
+                onChange={html => setPromoForm(f => ({ ...f, deskripsi: html }))}
                 placeholder="Tuliskan syarat, ketentuan, atau cara mendapatkan promo ini..."
-                rows={5}
-                className={inputCls + ' resize-none'}
               />
-              <p className="text-[11px] text-gray-400 mt-1">Ditampilkan sebagai "Deskripsi Event" di halaman publik. Baris baru dihargai.</p>
+              <p className="text-[11px] text-gray-400 mt-1">Ditampilkan sebagai &ldquo;Deskripsi Event&rdquo; di halaman publik.</p>
             </div>
             <div className="flex items-center gap-3">
               <label className="relative inline-flex items-center cursor-pointer">

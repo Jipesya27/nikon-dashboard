@@ -384,7 +384,10 @@ export default function PromoPage() {
               <div className="max-w-3xl mx-auto px-4 py-8">
                 <h2 className="text-center text-gray-400 text-[11px] uppercase tracking-widest mb-5 font-semibold">Deskripsi Event</h2>
                 <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6">
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{promo.deskripsi}</p>
+                  <div
+                    className="rich-content text-sm text-gray-700 leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: promo.deskripsi }}
+                  />
                 </div>
               </div>
             )}
