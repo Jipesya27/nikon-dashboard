@@ -3633,7 +3633,6 @@ ${kode ? `
    }, [claims]);
 
    useEffect(() => {
-   const duplicateGaransiIds = useMemo(() => { // eslint-disable-line
       const serialCounts = new Map<string, string[]>();
       // 'garansis' adalah state yang berisi semua data garansi
       for (const garansi of warranties) {
@@ -3643,7 +3642,7 @@ ${kode ? `
             serialCounts.set(garansi.nomor_seri, list);
          }
       }
- 
+
       const duplicates = new Set<string>();
       for (const ids of serialCounts.values()) {
          if (ids.length > 1) {
@@ -3651,7 +3650,6 @@ ${kode ? `
          }
       }
       setDuplicateGaransiIds(duplicates);
-      return duplicates;
    }, [warranties]);
 
    const filteredClaims = useMemo(() => claims.filter((c: ClaimPromo) => {
@@ -3905,6 +3903,7 @@ ${kode ? `
             { id: 'admin_events', label: '🗂️ Validasi Pembayaran Event', count: undefined },
             { id: 'admin_deposit', label: '💰 Deposit & Refund Event', count: undefined },
             { id: 'admin_attendance', label: '📋 Absensi Event', count: undefined },
+            { id: 'altasolution', label: '🛒 AltaSolution', count: undefined },
          ]
       }
    ], [messages.length, consumersList.length, promos.length, claims.length, warranties.length, services.length, budgets.length, lendingRecords.length, karyawans.length, botSettings.length, events.length, eventRegistrations.length, dealerSheet?.rows.length, affiliates.length]);
@@ -4065,12 +4064,14 @@ ${kode ? `
                            admin_events:       'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
                            admin_deposit:      'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 0V5m0 2c-1.11 0-2.08.402-2.599 1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
                            admin_attendance:   'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+                           altasolution:       'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z',
                         };
                         const defaultIcon = 'M4 6h16M4 12h16M4 18h16';
                         const adminPageUrls: Record<string, string> = {
                            admin_events: '/admin/events',
                            admin_deposit: '/admin/events/deposit',
                            admin_attendance: '/admin/events/attendance',
+                           altasolution: '/admin/altasolution',
                         };
 
                         return groupedVisibleTabs.map(group => (
@@ -5032,7 +5033,6 @@ ${kode ? `
                                        'Valid': 'bg-emerald-100 text-emerald-700',
                                        'Belum': 'bg-amber-100 text-amber-700',
                                        'Menunggu': 'bg-amber-100 text-amber-700',
-                                       'Menunggu': 'bg-amber-100 text-amber-700',
                                        'Ditolak': 'bg-red-100 text-red-700',
                                     };
                                     const pillClass = statusColor[w.status_validasi] ?? 'bg-gray-100 text-gray-600';
@@ -5101,7 +5101,6 @@ ${kode ? `
                               const statusColor: Record<string, string> = {
                                  'Valid': 'bg-emerald-100 text-emerald-700',
                                  'Belum': 'bg-amber-100 text-amber-700',
-                                 'Menunggu': 'bg-amber-100 text-amber-700',
                                  'Menunggu': 'bg-amber-100 text-amber-700',
                                  'Ditolak': 'bg-red-100 text-red-700',
                               };
