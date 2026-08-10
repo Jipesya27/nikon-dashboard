@@ -9,7 +9,11 @@ type Product = {
   harga: number;
   harga_promo?: number | null;
   link_pembelian?: string | null;
+  kategori?: string | null;
+  brand?: string | null;
 };
+
+type Taxonomy = { id: string; nama: string };
 
 function fmtRp(n: number) {
   return 'Rp ' + n.toLocaleString('id-ID');
@@ -23,14 +27,24 @@ function driveThumb(url?: string | null) {
 
 export default function AltaSolutionPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Taxonomy[]>([]);
+  const [brands, setBrands] = useState<Taxonomy[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Product | null>(null);
   const [waNumber, setWaNumber] = useState('62');
 
+  const [search, setSearch] = useState('');
+  const [kategoriFilter, setKategoriFilter] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
+
   useEffect(() => {
     fetch('/api/altasolution/data')
       .then(r => r.json())
-      .then(d => setProducts(d.products || []))
+      .then(d => {
+        setProducts(d.products || []);
+        setCategories(d.categories || []);
+        setBrands(d.brands || []);
+      })
       .finally(() => setLoading(false));
 
     fetch('/api/nikon-config')
@@ -38,6 +52,13 @@ export default function AltaSolutionPage() {
       .then(d => setWaNumber(d?.config?.wa_number || '62'))
       .catch(() => {});
   }, []);
+
+  const filteredProducts = products.filter(p => {
+    if (search.trim() && !p.nama_produk.toLowerCase().includes(search.trim().toLowerCase())) return false;
+    if (kategoriFilter && p.kategori !== kategoriFilter) return false;
+    if (brandFilter && p.brand !== brandFilter) return false;
+    return true;
+  });
 
   function buyLink(p: Product) {
     if (p.link_pembelian) return p.link_pembelian;
@@ -75,15 +96,72 @@ export default function AltaSolutionPage() {
 
         {/* Product Grid */}
         <div className="max-w-6xl mx-auto px-4 py-10">
+          {/* Search & Filter Toolbar */}
+          {products.length > 0 && (
+            <div className="mb-6 space-y-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Cari nama produk..."
+                    className="w-full border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 bg-white"
+                  />
+                </div>
+                {categories.length > 0 && (
+                  <select
+                    value={kategoriFilter}
+                    onChange={e => setKategoriFilter(e.target.value)}
+                    className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:border-[#FFE500] sm:w-52 shrink-0"
+                  >
+                    <option value="">Semua Kategori</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.nama}>{c.nama}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {brands.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setBrandFilter('')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${brandFilter === '' ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}
+                  >
+                    Semua Brand
+                  </button>
+                  {brands.map(b => (
+                    <button
+                      key={b.id}
+                      onClick={() => setBrandFilter(f => (f === b.nama ? '' : b.nama))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${brandFilter === b.nama ? 'bg-[#FFE500] text-black border-[#FFE500]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}
+                    >
+                      {b.nama}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {products.length === 0 ? (
             <div className="text-center py-20">
               <div className="text-5xl mb-4">🔍</div>
               <h2 className="text-xl font-bold mb-2 text-gray-800">Belum ada produk tersedia</h2>
               <p className="text-gray-400 text-sm">Pantau terus halaman ini untuk produk terbaru.</p>
             </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="text-5xl mb-4">🙁</div>
+              <h2 className="text-xl font-bold mb-2 text-gray-800">Produk tidak ditemukan</h2>
+              <p className="text-gray-400 text-sm">Coba ubah kata kunci pencarian atau filter.</p>
+            </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-              {products.map(p => {
+              {filteredProducts.map(p => {
                 const hasPromo = p.harga_promo != null && p.harga_promo > 0 && p.harga_promo < p.harga;
                 const disc = hasPromo ? Math.round((1 - (p.harga_promo as number) / p.harga) * 100) : 0;
                 return (

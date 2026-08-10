@@ -39,9 +39,13 @@ type Product = {
   harga: number;
   harga_promo?: number | null;
   link_pembelian?: string | null;
+  kategori?: string | null;
+  brand?: string | null;
   is_active: boolean;
   urutan: number;
 };
+
+type Taxonomy = { id: string; created_at: string; nama: string; urutan: number };
 
 function fmtRp(n: number) {
   return 'Rp ' + n.toLocaleString('id-ID');
@@ -56,7 +60,7 @@ function driveThumb(url?: string | null) {
 const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 bg-white';
 const labelCls = 'block text-xs font-semibold text-gray-500 mb-1';
 
-const emptyForm = { nama_produk: '', detail: '', harga: '', harga_promo: '', link_pembelian: '', gambar_url: '', is_active: true, urutan: '' };
+const emptyForm = { nama_produk: '', detail: '', harga: '', harga_promo: '', link_pembelian: '', gambar_url: '', kategori: '', brand: '', is_active: true, urutan: '' };
 
 export default function AltaSolutionAdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -75,6 +79,13 @@ export default function AltaSolutionAdminPage() {
   const askConfirm = (message: string, fn: () => void) => setConfirmModal({ open: true, message, onConfirm: fn });
   const closeConfirm = () => setConfirmModal(m => ({ ...m, open: false }));
 
+  const [categories, setCategories] = useState<Taxonomy[]>([]);
+  const [brands, setBrands] = useState<Taxonomy[]>([]);
+  const [showTaxonomyModal, setShowTaxonomyModal] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
+  const [newBrand, setNewBrand] = useState('');
+  const [savingTaxonomy, setSavingTaxonomy] = useState(false);
+
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from('altasolution_products').select('*').order('urutan').order('created_at', { ascending: false });
@@ -82,7 +93,56 @@ export default function AltaSolutionAdminPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  const fetchTaxonomy = useCallback(async () => {
+    const [{ data: cats }, { data: brs }] = await Promise.all([
+      supabase.from('altasolution_categories').select('*').order('urutan').order('nama'),
+      supabase.from('altasolution_brands').select('*').order('urutan').order('nama'),
+    ]);
+    setCategories(cats || []);
+    setBrands(brs || []);
+  }, []);
+
+  useEffect(() => { fetchProducts(); fetchTaxonomy(); }, [fetchProducts, fetchTaxonomy]);
+
+  async function addCategory() {
+    const nama = newCategory.trim();
+    if (!nama) return;
+    setSavingTaxonomy(true);
+    const { error } = await sbWrite({ action: 'insert', table: 'altasolution_categories', data: { nama, urutan: categories.length + 1 } });
+    setSavingTaxonomy(false);
+    if (error) { alert(error.message); return; }
+    setNewCategory('');
+    fetchTaxonomy();
+  }
+
+  function deleteCategory(id: string) {
+    askConfirm('Hapus kategori ini? Produk yang memakai kategori ini tidak akan terhapus, hanya perlu diedit ulang.', async () => {
+      closeConfirm();
+      const { error } = await sbWrite({ action: 'delete', table: 'altasolution_categories', match: { id } });
+      if (error) { alert(error.message); return; }
+      fetchTaxonomy();
+    });
+  }
+
+  async function addBrand() {
+    const nama = newBrand.trim();
+    if (!nama) return;
+    setSavingTaxonomy(true);
+    const { error } = await sbWrite({ action: 'insert', table: 'altasolution_brands', data: { nama, urutan: brands.length + 1 } });
+    setSavingTaxonomy(false);
+    if (error) { alert(error.message); return; }
+    setNewBrand('');
+    fetchTaxonomy();
+  }
+
+  function deleteBrand(id: string) {
+    askConfirm('Hapus brand ini? Produk yang memakai brand ini tidak akan terhapus, hanya perlu diedit ulang.', async () => {
+      closeConfirm();
+      const { error } = await sbWrite({ action: 'delete', table: 'altasolution_brands', match: { id } });
+      if (error) { alert(error.message); return; }
+      fetchTaxonomy();
+    });
+  }
 
   async function uploadFile(file: File): Promise<string> {
     const fd = new FormData();
@@ -103,6 +163,8 @@ export default function AltaSolutionAdminPage() {
           harga_promo: p.harga_promo != null ? String(p.harga_promo) : '',
           link_pembelian: p.link_pembelian || '',
           gambar_url: p.gambar_url || '',
+          kategori: p.kategori || '',
+          brand: p.brand || '',
           is_active: p.is_active,
           urutan: String(p.urutan ?? (products.length + 1)),
         }
@@ -115,6 +177,9 @@ export default function AltaSolutionAdminPage() {
   async function saveProduct() {
     if (!form.nama_produk.trim()) { alert('Nama produk wajib diisi'); return; }
     if (!form.harga) { alert('Harga wajib diisi'); return; }
+    const urutanNum = Number(form.urutan) || 1;
+    const dup = products.find(p => p.urutan === urutanNum && p.id !== editing?.id);
+    if (dup) { alert(`Urutan tampil #${urutanNum} sudah dipakai oleh "${dup.nama_produk}". Pilih nomor urutan lain.`); return; }
     setSaving(true);
     try {
       let gambar_url = form.gambar_url;
@@ -127,6 +192,8 @@ export default function AltaSolutionAdminPage() {
         harga_promo: form.harga_promo !== '' ? Number(form.harga_promo) : null,
         link_pembelian: form.link_pembelian.trim() || null,
         gambar_url: gambar_url || null,
+        kategori: form.kategori.trim() || null,
+        brand: form.brand.trim() || null,
         is_active: form.is_active,
         urutan: Number(form.urutan) || 1,
       };
@@ -180,6 +247,10 @@ export default function AltaSolutionAdminPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={() => setShowTaxonomyModal(true)}
+              className="text-xs text-gray-600 hover:text-gray-900 font-semibold border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 transition shrink-0">
+              🏷️ Kelola Kategori &amp; Brand
+            </button>
             <a href="/altasolution" target="_blank" rel="noopener noreferrer"
               className="text-xs text-blue-500 hover:text-blue-700 font-semibold border border-blue-200 rounded-lg px-3 py-2 hover:bg-blue-50 transition">
               Lihat Halaman Publik →
@@ -235,6 +306,12 @@ export default function AltaSolutionAdminPage() {
                   </div>
                   <div className="p-3 flex flex-col flex-1 gap-1">
                     <h3 className="font-bold text-sm text-gray-900 leading-snug">{p.nama_produk}</h3>
+                    {(p.kategori || p.brand) && (
+                      <div className="flex flex-wrap gap-1">
+                        {p.kategori && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{p.kategori}</span>}
+                        {p.brand && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#FFE500]/20 text-[#b8a000]">{p.brand}</span>}
+                      </div>
+                    )}
                     {p.detail && <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2 flex-1">{p.detail}</p>}
                     <div className="flex items-center justify-between mt-1">
                       <div>
@@ -276,7 +353,16 @@ export default function AltaSolutionAdminPage() {
                 </div>
                 <div>
                   <label className={labelCls}>Urutan Tampil</label>
-                  <input type="number" min={1} value={form.urutan} onChange={e => setForm(f => ({ ...f, urutan: e.target.value }))} className={inputCls} />
+                  <select value={form.urutan} onChange={e => setForm(f => ({ ...f, urutan: e.target.value }))} className={inputCls}>
+                    {Array.from({ length: products.length + 1 }, (_, i) => i + 1).map(n => {
+                      const taken = products.find(p => p.urutan === n && p.id !== editing?.id);
+                      return (
+                        <option key={n} value={n} disabled={!!taken}>
+                          {n}{taken ? ` (dipakai: ${taken.nama_produk})` : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
               </div>
 
@@ -284,6 +370,28 @@ export default function AltaSolutionAdminPage() {
                 <label className={labelCls}>Detail Produk</label>
                 <textarea rows={4} value={form.detail} onChange={e => setForm(f => ({ ...f, detail: e.target.value }))} placeholder="Deskripsi, spesifikasi, fitur, dll." className={inputCls + ' resize-none'} />
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Kategori</label>
+                  <select value={form.kategori} onChange={e => setForm(f => ({ ...f, kategori: e.target.value }))} className={inputCls}>
+                    <option value="">— Tanpa kategori —</option>
+                    {categories.map(c => <option key={c.id} value={c.nama}>{c.nama}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Brand</label>
+                  <select value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} className={inputCls}>
+                    <option value="">— Tanpa brand —</option>
+                    {brands.map(b => <option key={b.id} value={b.nama}>{b.nama}</option>)}
+                  </select>
+                </div>
+              </div>
+              {(categories.length === 0 || brands.length === 0) && (
+                <p className="text-[11px] text-amber-600 -mt-2">
+                  Belum ada {categories.length === 0 && brands.length === 0 ? 'kategori maupun brand' : categories.length === 0 ? 'kategori' : 'brand'}. Klik &quot;Kelola Kategori &amp; Brand&quot; di header untuk menambahkan.
+                </p>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -349,6 +457,80 @@ export default function AltaSolutionAdminPage() {
                   {saving ? 'Menyimpan...' : 'Simpan Produk'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Kelola Kategori & Brand */}
+      {showTaxonomyModal && (
+        <div className="fixed inset-0 z-[999] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowTaxonomyModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl z-10">
+              <h3 className="font-black text-gray-900">Kelola Kategori &amp; Brand</h3>
+              <button onClick={() => setShowTaxonomyModal(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+            </div>
+            <div className="p-6 grid sm:grid-cols-2 gap-6">
+              <div>
+                <label className={labelCls}>Kategori</label>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    value={newCategory}
+                    onChange={e => setNewCategory(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') addCategory(); }}
+                    placeholder="Nama kategori baru"
+                    className={inputCls}
+                  />
+                  <button onClick={addCategory} disabled={savingTaxonomy || !newCategory.trim()}
+                    className="bg-[#FFE500] hover:bg-yellow-300 text-black px-3 py-2 rounded-lg text-sm font-bold transition disabled:opacity-50 shrink-0">
+                    + Tambah
+                  </button>
+                </div>
+                {categories.length === 0 ? (
+                  <p className="text-xs text-gray-400">Belum ada kategori.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {categories.map(c => (
+                      <li key={c.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                        <span className="text-sm text-gray-800">{c.nama}</span>
+                        <button onClick={() => deleteCategory(c.id)} className="text-red-400 hover:text-red-600 text-xs font-semibold">Hapus</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <label className={labelCls}>Brand</label>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    value={newBrand}
+                    onChange={e => setNewBrand(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') addBrand(); }}
+                    placeholder="Nama brand baru"
+                    className={inputCls}
+                  />
+                  <button onClick={addBrand} disabled={savingTaxonomy || !newBrand.trim()}
+                    className="bg-[#FFE500] hover:bg-yellow-300 text-black px-3 py-2 rounded-lg text-sm font-bold transition disabled:opacity-50 shrink-0">
+                    + Tambah
+                  </button>
+                </div>
+                {brands.length === 0 ? (
+                  <p className="text-xs text-gray-400">Belum ada brand.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {brands.map(b => (
+                      <li key={b.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                        <span className="text-sm text-gray-800">{b.nama}</span>
+                        <button onClick={() => deleteBrand(b.id)} className="text-red-400 hover:text-red-600 text-xs font-semibold">Hapus</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+            <div className="px-6 pb-6">
+              <p className="text-[11px] text-gray-400">Kategori tampil sebagai dropdown dan brand sebagai tombol filter di halaman publik altanikindo.com/altasolution.</p>
             </div>
           </div>
         </div>
