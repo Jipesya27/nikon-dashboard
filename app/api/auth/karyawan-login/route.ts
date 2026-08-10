@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import { buildSessionToken, buildIdentityToken, SESSION_MAX_AGE_SECONDS } from '@/app/lib/session';
 import { checkRateLimit, resetRateLimit } from '@/app/lib/rateLimit';
+import { logSystemError } from '@/app/lib/errorLog';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,68 +27,75 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
   }
 
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  try {
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-  const { data: karyawan } = await supabase
-    .from('karyawan')
-    .select('*')
-    .eq('username', username)
-    .single();
+    const { data: karyawan } = await supabase
+      .from('karyawan')
+      .select('*')
+      .eq('username', username)
+      .single();
 
-  if (!karyawan) {
-    return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
-  }
-  if (karyawan.status_aktif === false) {
-    return NextResponse.json({ error: 'Akun dinonaktifkan. Silakan hubungi Admin.' }, { status: 403 });
-  }
-
-  const storedPw: string = karyawan.password || '';
-  const isHashed = storedPw.startsWith('$2');
-  let valid = false;
-
-  if (isHashed) {
-    valid = await bcrypt.compare(password, storedPw);
-  } else {
-    // Legacy plaintext — auto-migrate ke bcrypt saat login berhasil
-    valid = storedPw === password;
-    if (valid) {
-      const hash = await bcrypt.hash(password, 12);
-      await supabase.from('karyawan').update({ password: hash }).eq('id_karyawan', karyawan.id_karyawan);
+    if (!karyawan) {
+      return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
     }
+    if (karyawan.status_aktif === false) {
+      return NextResponse.json({ error: 'Akun dinonaktifkan. Silakan hubungi Admin.' }, { status: 403 });
+    }
+
+    const storedPw: string = karyawan.password || '';
+    const isHashed = storedPw.startsWith('$2');
+    let valid = false;
+
+    if (isHashed) {
+      valid = await bcrypt.compare(password, storedPw);
+    } else {
+      // Legacy plaintext — auto-migrate ke bcrypt saat login berhasil
+      valid = storedPw === password;
+      if (valid) {
+        const hash = await bcrypt.hash(password, 12);
+        await supabase.from('karyawan').update({ password: hash }).eq('id_karyawan', karyawan.id_karyawan);
+      }
+    }
+
+    if (!valid) {
+      return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
+    }
+
+    // Reset rate limit — fail-safe
+    try { await resetRateLimit(ip); } catch { /* abaikan */ }
+
+    const { password: _pw, ...safeKaryawan } = karyawan;
+    void _pw;
+
+    const secret = process.env.ADMIN_PASSWORD || process.env.SESSION_SECRET!;
+    const sessionToken = await buildSessionToken(secret);
+    const identityToken = await buildIdentityToken({
+      nama: karyawan.nama_karyawan,
+      username: karyawan.username,
+      role: karyawan.role,
+    });
+
+    const res = NextResponse.json({ success: true, karyawan: safeKaryawan });
+    res.cookies.set('admin_session', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: SESSION_MAX_AGE_SECONDS,
+      path: '/',
+    });
+    res.cookies.set('karyawan_identity', identityToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: SESSION_MAX_AGE_SECONDS,
+      path: '/',
+    });
+    return res;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[karyawan-login] exception:', msg);
+    void logSystemError({ source: 'api:karyawan-login', message: msg, detail: { username } });
+    return NextResponse.json({ error: 'Terjadi kesalahan pada server. Coba lagi.' }, { status: 500 });
   }
-
-  if (!valid) {
-    return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
-  }
-
-  // Reset rate limit — fail-safe
-  try { await resetRateLimit(ip); } catch { /* abaikan */ }
-
-  const { password: _pw, ...safeKaryawan } = karyawan;
-  void _pw;
-
-  const secret = process.env.ADMIN_PASSWORD || process.env.SESSION_SECRET!;
-  const sessionToken = await buildSessionToken(secret);
-  const identityToken = await buildIdentityToken({
-    nama: karyawan.nama_karyawan,
-    username: karyawan.username,
-    role: karyawan.role,
-  });
-
-  const res = NextResponse.json({ success: true, karyawan: safeKaryawan });
-  res.cookies.set('admin_session', sessionToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: SESSION_MAX_AGE_SECONDS,
-    path: '/',
-  });
-  res.cookies.set('karyawan_identity', identityToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: SESSION_MAX_AGE_SECONDS,
-    path: '/',
-  });
-  return res;
 }

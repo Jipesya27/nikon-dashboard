@@ -1,7 +1,22 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const WHATSAPP_ACCESS_TOKEN   = Deno.env.get("WHATSAPP_ACCESS_TOKEN")   || "";
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") || "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://hfqnlttxxrqarmpvtnhu.supabase.co";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") ?? "";
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+async function logErrorToDB(message: string, detail: unknown) {
+  try {
+    await supabase.from('system_error_log').insert({
+      source: 'wa-bot:send-wa',
+      severity: 'error',
+      message,
+      detail: { detail },
+    });
+  } catch (_) { /* silent — jangan sampai logging loop */ }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,11 +105,16 @@ serve(async (req) => {
 
     const result = await response.json();
 
+    if (!response.ok) {
+      await logErrorToDB('WhatsApp Graph API menolak pesan', { target: to, status: response.status, result });
+    }
+
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: response.ok ? 200 : 500,
     });
   } catch (error) {
+    await logErrorToDB((error as Error).message, { stack: (error as Error).stack });
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import ErrorLogPanel from '@/app/components/ErrorLogPanel';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -490,6 +491,7 @@ export default function MonitoringPage() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [refreshInterval, setRefreshInterval] = useState(4);
   const [paused, setPaused] = useState(false);
+  const [view, setView] = useState<'infra' | 'errors'>('infra');
 
   const stbPrevNet = useRef<{ iface: string; rx: number; tx: number; ts: number } | null>(null);
 
@@ -589,45 +591,67 @@ export default function MonitoringPage() {
         </div>
       </div>
 
-      {/* Error banners */}
-      {stbError && (
-        <div className="mx-4 mt-3 px-3 py-2 rounded bg-red-950 border border-red-800 text-red-300 text-xs font-mono">
-          STB: {stbError}
-        </div>
-      )}
-      {synError && (
-        <div className="mx-4 mt-3 px-3 py-2 rounded bg-red-950 border border-red-800 text-red-300 text-xs font-mono">
-          Synology: {synError}
-        </div>
-      )}
-
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 max-w-6xl mx-auto">
-        {/* STB column */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <StatusDot online={stbOnline} />
-            <h2 className="font-semibold text-sm text-gray-300">HG680-P · STB</h2>
-            <span className="text-xs text-gray-600">Armbian · S905X</span>
-          </div>
-          <StbPanel data={stbData} prevNet={stbPrevNet} online={stbOnline} />
-        </div>
-
-        {/* Synology column */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <StatusDot online={synOnline} />
-            <h2 className="font-semibold text-sm text-gray-300">Synology DS223J · NAS</h2>
-            <span className="text-xs text-gray-600">DiskStation</span>
-          </div>
-          <SynologyPanel data={synData} online={synOnline} />
-        </div>
+      {/* View tabs */}
+      <div className="px-4 pt-3 flex items-center gap-2 border-b border-gray-800">
+        <button
+          onClick={() => setView('infra')}
+          className={`px-3 py-1.5 text-xs font-semibold rounded-t border-b-2 transition-colors ${view === 'infra' ? 'border-[#FFE500] text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+        >
+          🖥️ Infrastruktur
+        </button>
+        <button
+          onClick={() => setView('errors')}
+          className={`px-3 py-1.5 text-xs font-semibold rounded-t border-b-2 transition-colors ${view === 'errors' ? 'border-[#FFE500] text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+        >
+          ⚠️ Log Error Aplikasi
+        </button>
       </div>
 
-      {/* Footer hint */}
-      <div className="px-4 pb-6 text-center text-xs text-gray-700">
-        Auto-refresh setiap {refreshInterval}s · Data dari jaringan lokal 192.168.18.x
-      </div>
+      {view === 'errors' ? (
+        <ErrorLogPanel />
+      ) : (
+        <>
+          {/* Error banners */}
+          {stbError && (
+            <div className="mx-4 mt-3 px-3 py-2 rounded bg-red-950 border border-red-800 text-red-300 text-xs font-mono">
+              STB: {stbError}
+            </div>
+          )}
+          {synError && (
+            <div className="mx-4 mt-3 px-3 py-2 rounded bg-red-950 border border-red-800 text-red-300 text-xs font-mono">
+              Synology: {synError}
+            </div>
+          )}
+
+          {/* Main grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 max-w-6xl mx-auto">
+            {/* STB column */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <StatusDot online={stbOnline} />
+                <h2 className="font-semibold text-sm text-gray-300">HG680-P · STB</h2>
+                <span className="text-xs text-gray-600">Armbian · S905X</span>
+              </div>
+              <StbPanel data={stbData} prevNet={stbPrevNet} online={stbOnline} />
+            </div>
+
+            {/* Synology column */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <StatusDot online={synOnline} />
+                <h2 className="font-semibold text-sm text-gray-300">Synology DS223J · NAS</h2>
+                <span className="text-xs text-gray-600">DiskStation</span>
+              </div>
+              <SynologyPanel data={synData} online={synOnline} />
+            </div>
+          </div>
+
+          {/* Footer hint */}
+          <div className="px-4 pb-6 text-center text-xs text-gray-700">
+            Auto-refresh setiap {refreshInterval}s · Data dari jaringan lokal 192.168.18.x
+          </div>
+        </>
+      )}
     </div>
   );
 }

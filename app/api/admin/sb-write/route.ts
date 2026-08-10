@@ -17,6 +17,7 @@ import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { verifyAdminSession } from '@/app/lib/session';
 import { getAuditUser, writeAuditLog } from '@/app/lib/audit';
+import { logSystemError } from '@/app/lib/errorLog';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,6 +108,11 @@ export async function POST(req: NextRequest) {
       const { data: returnedData, error } = await baseQ.select(select);
       if (error) {
         console.error(`[sb-write] ${action} ${table} error:`, JSON.stringify(error));
+        void logSystemError({
+          source: `api:sb-write:${table}`,
+          message: error.message || error.details || error.hint || JSON.stringify(error),
+          detail: { action, table, match, user: auditUser },
+        });
         return NextResponse.json(
           { error: error.message || error.details || error.hint || JSON.stringify(error) },
           { status: 400 }
@@ -124,6 +130,11 @@ export async function POST(req: NextRequest) {
     const { error } = await baseQ;
     if (error) {
       console.error(`[sb-write] ${action} ${table} error:`, JSON.stringify(error));
+      void logSystemError({
+        source: `api:sb-write:${table}`,
+        message: error.message || error.details || error.hint || JSON.stringify(error),
+        detail: { action, table, match, user: auditUser },
+      });
       return NextResponse.json(
         { error: error.message || error.details || error.hint || JSON.stringify(error) },
         { status: 400 }
@@ -138,6 +149,12 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[sb-write] ${action} ${table} exception:`, msg);
+    void logSystemError({
+      source: `api:sb-write:${table}`,
+      severity: 'error',
+      message: msg,
+      detail: { action, table, match, user: auditUser, exception: true },
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

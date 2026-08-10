@@ -25,14 +25,31 @@ export default function RoleGate({ children, title = 'Admin Area', requiredAcces
       const res = await fetch('/api/admin/auth', { cache: 'no-store' });
       if (!res.ok) { setStatus('unauth'); return; }
 
-      // Cookie valid — cek role dari localStorage
+      // Cookie valid — cek role dari data karyawan
       if (requiredAccess.length === 0) { setStatus('auth'); return; }
 
       try {
         const raw = localStorage.getItem('nikon_karyawan');
         if (!raw) { setStatus('auth'); return; } // login lama (password), tidak ada data role → izinkan
 
-        const karyawan = JSON.parse(raw) as { role?: string; nama_karyawan?: string; akses_halaman?: string[] };
+        let karyawan = JSON.parse(raw) as { username?: string; role?: string; nama_karyawan?: string; akses_halaman?: string[] };
+
+        // Refresh dari DB agar akses_halaman/role terbaru (jangan percaya snapshot localStorage
+        // yang bisa basi jika Admin baru saja mengubah akses karyawan ini)
+        try {
+          const meUrl = karyawan.username
+            ? `/api/auth/me?username=${encodeURIComponent(karyawan.username)}`
+            : '/api/auth/me';
+          const meRes = await fetch(meUrl, { cache: 'no-store' });
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            if (meData.karyawan) {
+              karyawan = { ...karyawan, ...meData.karyawan };
+              localStorage.setItem('nikon_karyawan', JSON.stringify(karyawan));
+            }
+          }
+        } catch { /* gunakan data localStorage jika /me gagal */ }
+
         setKaryawanName(karyawan.nama_karyawan || '');
 
         const role = karyawan.role || '';

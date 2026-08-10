@@ -94,6 +94,14 @@ async function logErrorToDB(context: string, message: string, detail: unknown) {
       { onConflict: 'nama_pengaturan' }
     );
   } catch (_) { /* silent — jangan sampai logging loop */ }
+  try {
+    await supabase.from('system_error_log').insert({
+      source: `wa-bot:meta-bot:${context}`,
+      severity: 'error',
+      message,
+      detail: { detail },
+    });
+  } catch (_) { /* silent — jangan sampai logging loop */ }
 }
 
 async function logSuccessToDB() {

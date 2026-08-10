@@ -352,6 +352,14 @@ export async function sendTelegramMessage(chatId: string, message: string): Prom
   await sendTelegram(chatId, message);
 }
 
+/**
+ * Kirim email langsung, tanpa terikat pengaturan notif_channel (yang mengatur
+ * notifikasi konsumen). Gunakan untuk alur internal seperti reset password.
+ */
+export async function sendEmailDirect(to: string, subject: string, message: string, customHtml?: string): Promise<void> {
+  await sendEmail(to, subject, message, customHtml);
+}
+
 // ─── Email via SMTP ─────────────────────────────────────────────────────────
 
 function waMarkdownToHtml(text: string): string {

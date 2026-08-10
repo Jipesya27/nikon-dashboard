@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifyAdminSession } from '@/app/lib/session';
+import { logSystemError } from '@/app/lib/errorLog';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
@@ -150,6 +151,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, url });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal error';
+    void logSystemError({ source: 'api:upload-google-drive', message, detail: { method: 'POST' } });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -171,6 +173,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: true, message: 'File deleted' });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal error';
+    void logSystemError({ source: 'api:upload-google-drive', message, detail: { method: 'DELETE' } });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
