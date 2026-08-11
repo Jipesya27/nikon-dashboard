@@ -86,7 +86,7 @@ export default function AltaSolutionPage() {
                 <img src="/ALTA_baru.png" alt="Alta Nikindo" className="h-7 object-contain" />
               </div>
             </div>
-            <a href="/nikon" className="text-xs text-white/70 hover:text-white transition">Kembali ke Beranda</a>
+            <a href="https://www.altanikindo.com" className="text-xs text-white/70 hover:text-white transition">Kembali ke Beranda</a>
           </nav>
           <div className="px-4 pb-10 pt-2 text-center">
             <h1 className="text-2xl sm:text-3xl font-black leading-tight">AltaSolution</h1>
@@ -194,7 +194,7 @@ export default function AltaSolutionPage() {
 
         {/* Footer */}
         <div className="border-t border-gray-100 py-8 text-center text-gray-400 text-xs">
-          <p>PT. Alta Nikindo · Distributor Resmi Nikon Indonesia</p>
+          <p>PT. Alta Nikindo</p>
           <p className="mt-1"><a href="https://altanikindo.com" className="hover:text-gray-600 transition">altanikindo.com</a></p>
         </div>
       </div>
