@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Alta Nikindo Dashboard",
+  title: "Alta Nikindo",
   description: "Alta Nikindo web dashboard by jps",
 };
 
