@@ -229,7 +229,7 @@ export async function POST(req: Request) {
     // Ambil detail event
     const { data: event } = await supabase
       .from('events')
-      .select('id, event_title, event_status, event_partisipant_stock, event_payment_tipe, event_date')
+      .select('id, event_title, event_status, event_partisipant_stock, event_payment_tipe, event_date, registration_close_date')
       .eq('id', event_id)
       .maybeSingle();
 
@@ -239,9 +239,17 @@ export async function POST(req: Request) {
     if (event.event_status === 'close') {
       return NextResponse.json({ error: 'Pendaftaran event ini sudah ditutup.' }, { status: 400 });
     }
-    const evtDate = parseIdDate(event.event_date);
-    if (evtDate && evtDate < new Date()) {
-      return NextResponse.json({ error: 'Event sudah selesai.' }, { status: 400 });
+    // registration_close_date, kalau diisi, jadi patokan akhir pendaftaran (bisa lebih lama dari event_date).
+    if (event.registration_close_date) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (todayStr > event.registration_close_date) {
+        return NextResponse.json({ error: 'Pendaftaran event ini sudah ditutup.' }, { status: 400 });
+      }
+    } else {
+      const evtDate = parseIdDate(event.event_date);
+      if (evtDate && evtDate < new Date()) {
+        return NextResponse.json({ error: 'Event sudah selesai.' }, { status: 400 });
+      }
     }
 
     // Cek kuota
