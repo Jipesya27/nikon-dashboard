@@ -346,8 +346,8 @@ export default function HomePage() {
               <Link href="/nikon" className="flex items-center justify-center p-8 rounded-2xl border-2 border-[#FFE500] hover:shadow-lg transition-all hover:scale-[1.02] bg-white cursor-pointer" style={{ minHeight: 240, minWidth: 220 }}>
                 <Image src="/brand-nikon.png" alt="Nikon" width={200} height={120} className="w-44 h-auto object-contain" />
               </Link>
-              {/* 4 brand lain — grid 2x2 */}
-              <div href="/altasolution" className="grid grid-cols-2 gap-4 flex-1">
+              {/* 4 brand lain — grid 2x2, klik ke Altasolution */}
+              <Link href="/altasolution" className="grid grid-cols-2 gap-4 flex-1">
                 {[
                   { src: '/brand-athabasca.png', alt: 'Athabasca' },
                   { src: '/brand-datacolor.png', alt: 'Datacolor' },
@@ -358,7 +358,7 @@ export default function HomePage() {
                     <Image src={b.src} alt={b.alt} width={120} height={60} className="h-12 w-auto object-contain" />
                   </div>
                 ))}
-              </div>
+              </Link>
             </div>
           </FadeIn>
         </div>
