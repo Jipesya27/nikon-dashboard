@@ -116,7 +116,11 @@ export async function GET() {
     const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
     const mapped = (events || []).map(e => {
       const evtDate = parseIdDate(e.event_date);
-      const isPast = !!(evtDate && evtDate < now);
+      // registration_close_date, kalau diisi, jadi patokan akhir acara (bisa lebih lama dari event_date).
+      // Kalau tidak diisi, fallback ke event_date.
+      const isPast = e.registration_close_date
+        ? todayStr > e.registration_close_date
+        : !!(evtDate && evtDate < now);
       const isFull = e.event_partisipant_stock > 0 && (counts[e.id] || 0) >= e.event_partisipant_stock;
       const isClosed = e.event_status === 'close' || e.event_status === 'Out of stock';
 

@@ -154,10 +154,18 @@ function parseIdDate(str: string): Date | null {
    if (isNaN(d) || m === undefined || isNaN(y)) return null;
    return new Date(y, m, d);
 }
-function getEventClosedStatus(evt: { status: string; stock: number; date: string }, regCount: number): { closed: boolean; reason: string } {
+function getEventClosedStatus(evt: { status: string; stock: number; date: string; registration_close_date?: string | null }, regCount: number): { closed: boolean; reason: string } {
    if (evt.status === 'close') return { closed: true, reason: 'Ditutup Admin' };
    if (evt.stock > 0 && regCount >= evt.stock) return { closed: true, reason: 'Kuota Penuh' };
-   // Cek tanggal: event dianggap selesai jika tanggal acara sudah lewat (hari ini masih aktif, besok baru tidak aktif)
+   // Cek tanggal: event dianggap selesai jika sudah lewat batas akhirnya.
+   // Jika registration_close_date diisi, itu yang jadi patokan akhir acara (bisa lebih lama dari tanggal acara utama).
+   // Kalau tidak diisi, pakai tanggal acara (evt.date) sebagai fallback.
+   if (evt.registration_close_date) {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const closeDate = new Date(evt.registration_close_date);
+      if (closeDate < today) return { closed: true, reason: 'Acara Selesai' };
+      return { closed: false, reason: 'Aktif' };
+   }
    const evtDate = parseIdDate(evt.date);
    if (evtDate) {
       const today = new Date();
