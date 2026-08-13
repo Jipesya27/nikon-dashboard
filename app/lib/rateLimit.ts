@@ -5,7 +5,11 @@ const WINDOW_MS = 15 * 60 * 1000; // 15 menit
 /**
  * Rate limiter berbasis Supabase — persistent & shared across semua Vercel instances.
  *
- * Menggunakan upsert sehingga 1 baris per IP, window di-reset otomatis saat expired.
+ * Memanggil RPC `check_rate_limit` (SQL function di migration 20260814000000)
+ * yang melakukan upsert + increment atomik. Race read-modify-write versi lama
+ * (dua request paralel baca count yang sama, keduanya update ke N+1) sudah
+ * dihilangkan karena serialisasi di Postgres row lock.
+ *
  * Returns true jika request boleh dilanjutkan, false jika harus ditolak.
  */
 export async function checkRateLimit(ip: string, maxAttempts: number): Promise<boolean> {
@@ -14,46 +18,20 @@ export async function checkRateLimit(ip: string, maxAttempts: number): Promise<b
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  const now = new Date();
-  const resetAt = new Date(now.getTime() + WINDOW_MS);
+  const { data, error } = await supabase.rpc('check_rate_limit', {
+    p_ip: ip,
+    p_max_attempts: maxAttempts,
+    p_window_ms: WINDOW_MS,
+  });
 
-  // Baca state saat ini
-  const { data: existing } = await supabase
-    .from('login_attempts')
-    .select('count, reset_at')
-    .eq('ip', ip)
-    .maybeSingle();
-
-  if (existing) {
-    const windowExpired = new Date(existing.reset_at) <= now;
-
-    if (windowExpired) {
-      // Window lama sudah expired — mulai ulang hitungan
-      await supabase
-        .from('login_attempts')
-        .update({ count: 1, reset_at: resetAt.toISOString() })
-        .eq('ip', ip);
-      return true;
-    }
-
-    if (existing.count >= maxAttempts) {
-      // Masih dalam window & sudah melebihi batas
-      return false;
-    }
-
-    // Masih dalam window & belum melebihi batas — increment
-    await supabase
-      .from('login_attempts')
-      .update({ count: existing.count + 1 })
-      .eq('ip', ip);
+  if (error) {
+    // Fail-safe: RPC belum di-deploy / DB error — biarkan request lolos,
+    // konsisten dengan pola lama (login tetap jalan kalau tabel belum ada).
+    console.warn('[rateLimit] check_rate_limit RPC failed:', error.message);
     return true;
   }
 
-  // Baris belum ada — insert baru
-  await supabase
-    .from('login_attempts')
-    .insert({ ip, count: 1, reset_at: resetAt.toISOString() });
-  return true;
+  return data === true;
 }
 
 /** Reset hitungan setelah login berhasil (opsional — hindari lockout karyawan yang valid) */

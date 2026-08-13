@@ -1,6 +1,7 @@
 // Uses Web Crypto (crypto.subtle) — works in Edge Runtime AND Node.js
 
 const MAX_SESSION_AGE_MS = 2 * 24 * 60 * 60 * 1000; // 2 hari
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000; // toleransi clock skew 5 menit
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 2;
 
 export interface KaryawanIdentity {
@@ -78,20 +79,19 @@ export async function verifyAdminSession(
   if (!secret) return false;
 
   const dotIdx = session.indexOf('.');
-
-  // Format lama (tanpa titik): terima untuk backward compat, expired sendiri setelah 2 hari
-  if (dotIdx === -1) {
-    const key = sessionKey();
-    const expected = await computeHmac(key, secret);
-    return safeEqual(session, expected);
-  }
+  if (dotIdx === -1) return false;
 
   const issuedAtStr = session.substring(0, dotIdx);
   const hex = session.substring(dotIdx + 1);
 
   const issuedAt = parseInt(issuedAtStr, 10);
   if (isNaN(issuedAt)) return false;
-  if (Date.now() - issuedAt > MAX_SESSION_AGE_MS) return false;
+
+  const now = Date.now();
+  // Reject tokens dari masa depan (di luar toleransi skew) — tanpa ini,
+  // issuedAt > now membuat (now - issuedAt) negatif dan lolos age check
+  if (issuedAt - now > MAX_CLOCK_SKEW_MS) return false;
+  if (now - issuedAt > MAX_SESSION_AGE_MS) return false;
 
   const key = sessionKey();
   const expected = await computeHmac(key, secret + issuedAtStr);

@@ -48,9 +48,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Pesan media tidak bisa diedit' }, { status: 400 });
   }
 
-  // Cek window 15 menit
+  // Cek window 15 menit — timestamp invalid (NaN) juga ditolak agar tidak lolos check
   const sentAt = new Date(pesan.waktu_pesan).getTime();
-  if (Date.now() - sentAt > EDIT_WINDOW_MS) {
+  if (!Number.isFinite(sentAt) || Date.now() - sentAt > EDIT_WINDOW_MS) {
     return NextResponse.json({ error: 'Pesan hanya bisa diedit dalam 15 menit setelah dikirim' }, { status: 400 });
   }
 
