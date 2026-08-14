@@ -27,6 +27,19 @@ import DealerTab from '@/app/components/DealerTab';
 import LendingTab from '@/app/components/LendingTab';
 import BotSettingsTab from '@/app/components/BotSettingsTab';
 import ClaimsTab from '@/app/components/ClaimsTab';
+import AssetsTab from '@/app/components/AssetsTab';
+import ImportTab from '@/app/components/ImportTab';
+import PromosTab from '@/app/components/PromosTab';
+import WarrantiesTab from '@/app/components/WarrantiesTab';
+import ServicesTab from '@/app/components/ServicesTab';
+import BudgetsTab from '@/app/components/BudgetsTab';
+import EventRegistrationsTab from '@/app/components/EventRegistrationsTab';
+import EventsTab from '@/app/components/EventsTab';
+import KonsumenTab from '@/app/components/KonsumenTab';
+import UserRoleTab from '@/app/components/UserRoleTab';
+import AutocompleteTab from '@/app/components/AutocompleteTab';
+import InfrastrukturTab from '@/app/components/InfrastrukturTab';
+import DashboardTab from '@/app/components/DashboardTab';
 import ConfirmModal from '@/app/components/ConfirmModal';
 import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield, IconCheck, IconPrint, IconKey } from '@/app/components/GradientActionBtn';
 
@@ -4293,354 +4306,40 @@ ${kode ? `
                <main className={activeTab === 'messages' ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto px-5 md:px-7 py-5 md:py-6 space-y-5"}>
 
                {/* ======================= DASHBOARD OVERVIEW ======================= */}
-               {activeTab === 'dashboard' && (() => {
-                  const now = new Date();
-                  const hour = parseInt(now.toLocaleString('id-ID', { hour: 'numeric', hour12: false, timeZone: 'Asia/Jakarta' }));
-                  const greeting = hour < 11 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 18 ? 'Selamat sore' : 'Selamat malam';
-                  const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
+               {activeTab === 'dashboard' && (
+                  <DashboardTab
+                     currentUser={currentUser}
+                     consumersList={consumersList}
+                     claims={claims}
+                     warranties={warranties}
+                     events={events}
+                     eventRegistrations={eventRegistrations}
+                     eventRegistrationsCount={eventRegistrationsCount}
+                     lendingRecords={lendingRecords}
+                     messages={messages}
+                     messagesCount={messagesCount}
+                     botSettings={botSettings}
+                     claimStatusCounts={claimStatusCounts}
+                     getEventClosedStatus={getEventClosedStatus}
+                     showAllActivities={showAllActivities}
+                     setShowAllActivities={setShowAllActivities}
+                     dbChecking={dbChecking}
+                     setDbChecking={setDbChecking}
+                     dbCheckResult={dbCheckResult}
+                     setDbCheckResult={setDbCheckResult}
+                     onNavigate={setActiveTab}
+                  />
+               )}
 
-                  // "Perlu perhatian" count
-                  const needsAttention = [
-                     eventRegistrations.filter(r => r.status_pendaftaran === 'menunggu_validasi').length,
-                     claimStatusCounts.Pink ?? 0,
-                     lendingRecords.filter(l => l.status_peminjaman === 'aktif').length,
-                  ].reduce((a, b) => a + b, 0);
-
-                  // Stats
-                  const pendingValidasi = eventRegistrations.filter(r => r.status_pendaftaran === 'menunggu_validasi').length;
-                  const now2 = new Date();
-                  const thisMonth = now2.toLocaleString('id-ID', { month: '2-digit', year: 'numeric', timeZone: 'Asia/Jakarta' }).replace(' ', '/');
-                  const claimsTungguResi = claimStatusCounts.Pink ?? 0;
-
-                  // Recent registrations (last 6)
-                  const recentRegs = [...eventRegistrations]
-                     .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-                     .slice(0, 6);
-
-                  const initials2 = (name: string) => (name || '?').split(/\s+/).map(w => w[0] || '').filter(Boolean).slice(0, 2).join('').toUpperCase();
-                  const avatarColors = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#ef4444','#6366f1'];
-                  const avatarColor = (s: string) => avatarColors[s.charCodeAt(0) % avatarColors.length];
-
-                  const regStatusLabel = (s: string) => s === 'menunggu_validasi' ? 'Validasi' : s === 'terdaftar' ? 'Terdaftar' : 'Ditolak';
-                  const regStatusStyle = (s: string) => s === 'menunggu_validasi'
-                     ? 'bg-orange-100 text-orange-700'
-                     : s === 'terdaftar' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600';
-
-                  // Activity feed — built from recent data across tables
-                  type ActivityItem = { icon: string; iconBg: string; title: string; sub: string; timeMs: number };
-                  const activities: ActivityItem[] = [];
-
-                  // Recent registrations as activity
-                  recentRegs.slice(0, 3).forEach(r => {
-                     activities.push({
-                        icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-                        iconBg: '#eff6ff',
-                        title: r.status_pendaftaran === 'menunggu_validasi' ? 'Registrasi baru masuk' : r.status_pendaftaran === 'terdaftar' ? 'Pembayaran divalidasi' : 'Registrasi ditolak',
-                        sub: `${r.nama_lengkap} · ${r.event_name || '-'}`,
-                        timeMs: new Date(r.created_at || 0).getTime(),
-                     });
-                  });
-
-                  // Recent claims with resi
-                  claims.filter(c => c.nama_jasa_pengiriman && c.resi_sent_at).slice(0, 2).forEach(c => {
-                     activities.push({
-                        icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
-                        iconBg: '#f0fdf4',
-                        title: 'Resi dikirim ke konsumen',
-                        sub: `${c.nama_pendaftar || c.nama_penerima_claim || '-'} · ${c.nama_jasa_pengiriman}`,
-                        timeMs: new Date(c.resi_sent_at || 0).getTime(),
-                     });
-                  });
-
-                  // Claims tunggu resi
-                  if (claimsTungguResi > 0) {
-                     activities.push({
-                        icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-                        iconBg: '#fff7ed',
-                        title: `${claimsTungguResi} claim tunggu resi`,
-                        sub: 'Perlu diisi nomor resi pengiriman',
-                        timeMs: Date.now() - 3600000,
-                     });
-                  }
-
-                  // Pending validasi
-                  if (pendingValidasi > 0) {
-                     activities.push({
-                        icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-                        iconBg: '#fffbeb',
-                        title: `${pendingValidasi} registrasi menunggu validasi`,
-                        sub: 'Perlu di-approve atau ditolak',
-                        timeMs: Date.now() - 7200000,
-                     });
-                  }
-
-                  activities.sort((a, b) => b.timeMs - a.timeMs);
-
-                  const timeAgo = (ms: number) => {
-                     const diff = Date.now() - ms;
-                     if (diff < 60000) return 'Baru saja';
-                     if (diff < 3600000) return `${Math.floor(diff / 60000)}m lalu`;
-                     if (diff < 86400000) return `${Math.floor(diff / 3600000)}j lalu`;
-                     return `${Math.floor(diff / 86400000)}h lalu`;
-                  };
-
-                  // Active events
-                  const activeEvents = events
-                     .filter(e => { const { closed } = getEventClosedStatus(e, eventRegistrationsCount[e.title] || 0); return !closed; })
-                     .slice(0, 3);
-
-                  // Bot WA status
-                  const botWaOn = botSettings.some(s => s.nama_pengaturan === 'bot_aktif' && s.url_file === 'true') || botSettings.length > 0;
-
-                  return (
-                     <div className="animate-fade-in space-y-4">
-                        {/* HEADER ROW */}
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                           <div>
-                              <h2 className="text-xl font-bold text-gray-900">{greeting}, {currentUser?.nama_karyawan?.split(' ')[0]}</h2>
-                              <p className="text-sm text-gray-400 mt-0.5">{dateStr}{needsAttention > 0 && <span className="ml-2 text-orange-500 font-medium">· {needsAttention} item perlu perhatian</span>}</p>
-                           </div>
-                           <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm self-start sm:self-auto">
-                              {(['Hari Ini', 'Minggu', 'Bulan'] as const).map((p, i) => (
-                                 <button key={p} className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${i === 0 ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{p}</button>
-                              ))}
-                           </div>
-                        </div>
-
-                        {/* STAT CARDS */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                           {[
-                              { label: 'Total Konsumen', value: consumersList.length, sub: consumersList.length > 0 ? '+8.2%' : null, subColor: 'text-green-600', onClick: () => setActiveTab('konsumen') },
-                              { label: 'Perlu Validasi', value: pendingValidasi, sub: pendingValidasi > 0 ? 'Segera' : 'Semua clear', subColor: pendingValidasi > 0 ? 'text-orange-500' : 'text-green-600', onClick: () => setActiveTab('eventregistrations') },
-                              { label: 'Pesan WA', value: messagesCount || messages.length, sub: '+8%', subColor: 'text-green-600', onClick: () => setActiveTab('messages') },
-                              { label: 'Resi Bulan Ini', value: claims.filter(c => c.resi_sent_at && c.resi_sent_at.startsWith(thisMonth.split('/').reverse().join('-').substring(0,7))).length, sub: `+${claimsTungguResi} tunggu`, subColor: 'text-blue-500', onClick: () => setActiveTab('claims') },
-                           ].map(s => (
-                              <button key={s.label} onClick={s.onClick} className="bg-white rounded-xl border border-gray-200 p-4 text-left hover:border-gray-300 hover:shadow-sm transition-all group">
-                                 <p className="text-xs text-gray-400 font-medium mb-2">{s.label}</p>
-                                 <p className="text-2xl font-bold text-gray-900">{s.value.toLocaleString('id-ID')}</p>
-                                 {s.sub && <p className={`text-xs font-semibold mt-1.5 flex items-center gap-1 ${s.subColor}`}><span>↑</span>{s.sub}</p>}
-                              </button>
-                           ))}
-                        </div>
-
-                        {/* MAIN GRID */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                           {/* REGISTRASI TERBARU */}
-                           <div className="bg-white rounded-xl border border-gray-200 p-4">
-                              <div className="flex items-center justify-between mb-3">
-                                 <h3 className="text-sm font-semibold text-gray-800">Registrasi Terbaru</h3>
-                                 <button onClick={() => setActiveTab('eventregistrations')} className="text-xs text-blue-600 hover:underline font-medium">Semua</button>
-                              </div>
-                              {recentRegs.length === 0 ? (
-                                 <p className="text-sm text-gray-400 py-4 text-center">Belum ada registrasi</p>
-                              ) : (
-                                 <div className="space-y-2.5">
-                                    {recentRegs.map(r => (
-                                       <div key={r.id} className="flex items-center gap-3">
-                                          <div className="w-8 h-8 rounded-md flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: avatarColor(r.nama_lengkap || '?') }}>
-                                             {initials2(r.nama_lengkap || '?')}
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                             <p className="text-sm font-semibold text-gray-800 truncate">{r.nama_lengkap}</p>
-                                             <p className="text-xs text-gray-400 truncate">{r.event_name} · {r.tipe_kamera || '-'}</p>
-                                          </div>
-                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${regStatusStyle(r.status_pendaftaran || '')}`}>
-                                             {regStatusLabel(r.status_pendaftaran || '')}
-                                          </span>
-                                       </div>
-                                    ))}
-                                 </div>
-                              )}
-                           </div>
-
-                           {/* AKTIVITAS TERKINI */}
-                           <div className="bg-white rounded-xl border border-gray-200 p-4">
-                              <div className="flex items-center justify-between mb-3">
-                                 <h3 className="text-sm font-semibold text-gray-800">Aktivitas Terkini</h3>
-                                 {activities.length > 7 && (
-                                    <button onClick={() => setShowAllActivities(v => !v)} className="text-xs text-blue-600 hover:underline font-medium">
-                                       {showAllActivities ? 'Ringkas' : `Semua (${activities.length})`}
-                                    </button>
-                                 )}
-                              </div>
-                              {activities.length === 0 ? (
-                                 <p className="text-sm text-gray-400 py-4 text-center">Tidak ada aktivitas terbaru</p>
-                              ) : (
-                                 <div className="space-y-3">
-                                    {(showAllActivities ? activities : activities.slice(0, 7)).map((a, i) => (
-                                       <div key={i} className="flex items-start gap-3">
-                                          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: a.iconBg }}>
-                                             <svg className="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={a.icon} />
-                                             </svg>
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                             <p className="text-xs font-semibold text-gray-800 truncate">{a.title}</p>
-                                             <p className="text-[11px] text-gray-400 truncate">{a.sub}</p>
-                                          </div>
-                                          <span className="text-[10px] text-gray-400 shrink-0 mt-0.5">{timeAgo(a.timeMs)}</span>
-                                       </div>
-                                    ))}
-                                 </div>
-                              )}
-                           </div>
-                        </div>
-
-                        {/* BOTTOM GRID */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                           {/* EVENT AKTIF */}
-                           <div className="bg-white rounded-xl border border-gray-200 p-4">
-                              <div className="flex items-center justify-between mb-3">
-                                 <h3 className="text-sm font-semibold text-gray-800">Event Aktif</h3>
-                                 <button onClick={() => setActiveTab('events')} className="text-xs text-blue-600 hover:underline font-medium">Semua</button>
-                              </div>
-                              {activeEvents.length === 0 ? (
-                                 <p className="text-sm text-gray-400 py-4 text-center">Tidak ada event aktif</p>
-                              ) : (
-                                 <div className="space-y-4">
-                                    {activeEvents.map(evt => {
-                                       const count = eventRegistrationsCount[evt.title] || 0;
-                                       const pct = evt.stock > 0 ? Math.min(100, Math.round(count / evt.stock * 100)) : 0;
-                                       const evtDate = evt.date ? new Date(evt.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' }) : '-';
-                                       return (
-                                          <div key={evt.id}>
-                                             <div className="flex items-center justify-between mb-1">
-                                                <p className="text-sm font-semibold text-gray-800">{evt.title}</p>
-                                                <span className="text-xs text-gray-500 font-medium">{count}/{evt.stock}</span>
-                                             </div>
-                                             <div className="w-full h-1.5 bg-gray-100 rounded-md overflow-hidden">
-                                                <div className="h-full rounded-md bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
-                                             </div>
-                                             <p className="text-[11px] text-gray-400 mt-1">{evtDate}</p>
-                                          </div>
-                                       );
-                                    })}
-                                 </div>
-                              )}
-                           </div>
-
-                           {/* STATUS SISTEM */}
-                           <div className="bg-white rounded-xl border border-gray-200 p-4">
-                              <h3 className="text-sm font-semibold text-gray-800 mb-3">Status Sistem</h3>
-                              <div className="space-y-2.5">
-                                 {[
-                                    { label: 'Bot WA', ok: botWaOn },
-                                    { label: 'Database', ok: true },
-                                    { label: 'Google Drive', ok: true },
-                                 ].map(s => (
-                                    <div key={s.label} className="flex items-center justify-between">
-                                       <span className="text-sm text-gray-600 flex items-center gap-2">
-                                          <span className={`w-2 h-2 rounded-md ${s.ok ? 'bg-green-400' : 'bg-red-400'}`} />
-                                          {s.label}
-                                       </span>
-                                       <span className={`text-xs font-semibold ${s.ok ? 'text-green-600' : 'text-red-500'}`}>{s.ok ? 'Online' : 'Offline'}</span>
-                                    </div>
-                                 ))}
-                                 <div className="pt-2 mt-1 border-t border-gray-100 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                       <span className="text-xs text-gray-400">Claim promo</span>
-                                       <span className="text-xs font-semibold text-gray-700">{claims.length} total</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                       <span className="text-xs text-gray-400">Garansi aktif</span>
-                                       <span className="text-xs font-semibold text-gray-700">{warranties.filter(w => w.status_validasi === 'Valid').length} valid</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                       <span className="text-xs text-gray-400">Peminjaman aktif</span>
-                                       <span className="text-xs font-semibold text-gray-700">{lendingRecords.filter(l => l.status_peminjaman === 'aktif').length} unit</span>
-                                    </div>
-                                 </div>
-                                 <button
-                                    onClick={async () => {
-                                       setDbChecking(true);
-                                       try {
-                                          const res = await fetch('/api/admin/data-check', { cache: 'no-store' });
-                                          const json = await res.json();
-                                          setDbCheckResult(json);
-                                       } catch (e) { setDbCheckResult({ error: String(e) }); }
-                                       finally { setDbChecking(false); }
-                                    }}
-                                    disabled={dbChecking}
-                                    className="mt-1 text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors w-full"
-                                 >{dbChecking ? 'Memeriksa...' : 'Cek koneksi DB'}</button>
-                                 {dbCheckResult && (
-                                    <div className="text-xs font-mono mt-1 space-y-0.5">
-                                       {dbCheckResult.error ? (
-                                          <p className="text-red-600">❌ {String(dbCheckResult.error)}</p>
-                                       ) : (
-                                          <p className="text-green-600">✅ Terhubung — service key {dbCheckResult.serviceKeySet ? 'OK' : 'MISSING'}</p>
-                                       )}
-                                    </div>
-                                 )}
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-                  );
-               })()}
-
-               {/* ======================= IMPORT DATA TAB ======================= */}
                {activeTab === 'import' && (
-                  <div className="space-y-8 animate-fade-in text-gray-900">
-                     <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-md">
-                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-3">
-                           <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                              <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                           </div>
-                           Pusat Upload &amp; Update Database
-                        </h2>
-                        <p className="text-gray-600 mb-6 text-sm">Pilih tabel target, unduh template untuk menyesuaikan kolom, lalu unggah file CSV Anda. Sistem akan melakukan *Upsert* (Update jika data sudah ada, Insert jika data baru).</p>
-                        <p className="font-semibold text-gray-800 mb-3">Urutan template yang diupload :</p>
-                        <ul className="list-disc list-inside text-gray-600 text-sm mb-6">
-                           <li>Template 1: Tabel Konsumen (Wajib jika data konsumen belum ada, jika sudah bisa lanjut ke upload lainnya)</li>
-                           <li>Template 2: Tabel Claim Promo</li>
-                           <li>Template 3: Tabel Garansi</li>
-                           <li>Template 2: Tabel Garansi</li>
-                           <li>Template 3: Tabel Claim Promo</li>
-                           <li>Template 4: Tabel Status Service</li>
-                        </ul>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
-                           <div>
-                              <label htmlFor="import-target-select" className="block text-sm font-bold mb-2">1. Pilih Tabel Database</label>
-                              <select id="import-target-select" value={importTarget} onChange={e => setImportTarget(e.target.value as typeof importTarget)} className="w-full border border-gray-300 p-3 rounded-md bg-white text-gray-900 outline-none focus:ring-2 focus:ring-black">
-                                 <option value="claim_promo">Tabel Claim Promo</option>
-                                 <option value="garansi">Tabel Garansi</option>
-                                 <option value="konsumen">Tabel Konsumen</option>
-                                 <option value="status_service">Tabel Status Service</option>
-                              </select>
-                           </div>
-                           <div>
-                              <button onClick={downloadTemplate} className="w-full bg-gray-800 text-white p-3 rounded-md font-bold hover:bg-gray-700 transition">
-                                 <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>Unduh Template CSV
-                              </button>
-                           </div>
-                        </div>
-
-                        <div className="mt-10 p-10 border-2 border-dashed border-gray-300 rounded-xl text-center bg-gray-50">
-                           <div className="mb-4 w-14 h-14 mx-auto rounded-xl bg-gray-100 flex items-center justify-center">
-                              <svg className="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
-                           </div>
-                           <h3 className="font-bold text-lg mb-1">Upload File CSV</h3>
-                           <p className="text-gray-500 text-sm mb-6">Pastikan file bertipe .csv dan mengikuti format template.</p>
-                           <button onClick={() => fileInputRef.current?.click()} disabled={isSubmitting} className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 disabled:bg-slate-300 transition shadow-md">
-                              {isSubmitting ? 'Sedang Memproses...' : 'Pilih File & Upload'}
-                           </button>
-                           <input type="file" ref={fileInputRef} className="hidden" accept=".csv" aria-label="Upload file CSV" onChange={handleCentralUpload} />
-                        </div>
-                     </div>
-
-                     <div className="bg-blue-50 p-6 rounded-lg border border-blue-100">
-                        <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-1.5">
-                           <svg className="w-4 h-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                           Tips Penting:
-                        </h4>
-                        <ul className="text-sm text-black list-disc ml-5 space-y-1 font-medium">
-                           <li>Kolom ID adalah kunci utama. Jika ingin mengupdate data lama, sertakan ID aslinya.</li>
-                           <li>Sistem secara otomatis akan mengisi <b>created_at</b>, <b>updated_at</b>, dan men-generate ID unik jika tidak diisi.</li>
-                           <li>Gunakan aplikasi Excel atau Google Sheets untuk mengedit file template, lalu &quot;Save As&quot; sebagai CSV.</li>
-                        </ul>
-                     </div>
-                  </div>
+                  <ImportTab
+                     importTarget={importTarget}
+                     setImportTarget={setImportTarget}
+                     isSubmitting={isSubmitting}
+                     downloadTemplate={downloadTemplate}
+                     handleCentralUpload={handleCentralUpload}
+                     fileInputRef={fileInputRef}
+                  />
                )}
 
                {/* ======================= OTHER TABS FILTER HEADER ======================= */}
@@ -4745,257 +4444,37 @@ ${kode ? `
                   />
                )}
 
-               {activeTab === 'konsumen' && (() => {
-                  // Stats
-                  const totalKonsumen = consumersList.length;
-                  const konsumenWithClaim = consumersList.filter(k => claims.some(c => c.nomor_wa === k.nomor_wa)).length;
-                  const konsumenLengkap = consumersList.filter(k => k.nik && k.nik !== 'BELUM_DIISI' && k.alamat_rumah && k.alamat_rumah !== 'BELUM_DIISI').length;
-                  const initials = (name: string) => (name || '?').split(/\s+/).map(w => w[0] || '').filter(Boolean).slice(0, 2).join('').toUpperCase();
-                  const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500', 'bg-amber-500', 'bg-cyan-500', 'bg-rose-500', 'bg-indigo-500'];
-                  const colorFor = (s: string) => colors[s.charCodeAt(0) % colors.length] || 'bg-gray-500';
-                  return (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     {/* Stat cards */}
-                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-                           <p className="text-[11px] uppercase tracking-wider font-bold text-gray-600">Total Konsumen</p>
-                           <p className="text-2xl font-black text-gray-900 mt-1">{totalKonsumen}</p>
-                        </div>
-                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-                           <p className="text-[11px] uppercase tracking-wider font-bold text-gray-600">Punya Claim</p>
-                           <p className="text-2xl font-black text-green-700 mt-1">{konsumenWithClaim}</p>
-                           <p className="text-[10px] text-gray-700 font-medium">{totalKonsumen ? Math.round(konsumenWithClaim / totalKonsumen * 100) : 0}% dari total</p>
-                        </div>
-                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-                           <p className="text-[11px] uppercase tracking-wider font-bold text-gray-600">Data Lengkap</p>
-                           <p className="text-2xl font-black text-blue-700 mt-1">{konsumenLengkap}</p>
-                           <p className="text-[10px] text-gray-700 font-medium">NIK + Alamat terisi</p>
-                        </div>
-                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-                           <p className="text-[11px] uppercase tracking-wider font-bold text-gray-600">Total Claim</p>
-                           <p className="text-2xl font-black text-amber-700 mt-1">{claims.length}</p>
-                        </div>
-                     </div>
-
-                     {/* Toolbar: search + view toggle + actions */}
-                     <div className="bg-white rounded-xl border border-gray-200 p-3 flex flex-wrap gap-3 items-center">
-                        <div className="relative flex-1 min-w-50">
-                           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                           <input
-                              type="text"
-                              title="Cari Konsumen"
-                              aria-label="Cari Konsumen"
-                              placeholder="Cari Nama, No. WA, ID Konsumen, atau NIK..."
-                              value={searchKonsumen}
-                              onChange={e => setSearchKonsumen(e.target.value)}
-                              className="w-full pl-10 pr-3 py-2.5 border-2 border-gray-300 bg-white text-gray-900 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-2 focus:ring-[#FFE500]/40 text-sm font-medium"
-                           />
-                        </div>
-                        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                           <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${viewMode === 'table' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}>📋 Tabel</button>
-                           <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${viewMode === 'card' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}>🪪 Kartu</button>
-                        </div>
-                        <button onClick={() => openModal('create', 'konsumen')} className="bg-[#FFE500] hover:bg-[#E5CE00] text-black px-4 py-2.5 rounded-lg font-bold text-sm transition shadow-sm whitespace-nowrap">+ Tambah Konsumen</button>
-                        <button onClick={() => openModal('create', 'claim')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm transition shadow-sm whitespace-nowrap">+ Tambah Claim</button>
-                     </div>
-
-                     {/* Empty state */}
-                     {sortedConsumers.length === 0 && (
-                        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                           <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gray-100 flex items-center justify-center">
-                              {searchKonsumen ? (
-                                 <svg className="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803 7.5 7.5 0 0015.803 15.803z"/></svg>
-                              ) : (
-                                 <svg className="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
-                              )}
-                           </div>
-                           <p className="text-gray-900 font-bold mb-1">{searchKonsumen ? 'Tidak ada konsumen ditemukan' : 'Belum ada konsumen'}</p>
-                           <p className="text-sm text-gray-700">{searchKonsumen ? 'Coba ubah kata kunci pencarian.' : 'Klik tombol "+ Tambah Konsumen" untuk menambah konsumen baru.'}</p>
-                        </div>
-                     )}
-
-                     {/* TABLE VIEW */}
-                     {viewMode === 'table' && sortedConsumers.length > 0 && (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[70vh] overflow-y-auto relative">
-                           <table className="w-full text-sm whitespace-normal wrap-break-word">
-                              <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                                 <tr>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-12">#</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer" onClick={() => handleSort(sortConfigKonsumen, setSortConfigKonsumen, 'nama_lengkap')}>Konsumen {sortConfigKonsumen.column === 'nama_lengkap' && (<span>{sortConfigKonsumen.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Kontak</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Alamat</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">NIK</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Claim</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th>
-                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                 {sortedConsumers.map((k: KonsumenData) => {
-                                    const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
-                                    const alamatLengkap = [k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos].filter(v => v && v !== 'BELUM_DIISI').join(', ');
-                                    return (
-                                       <tr key={k.nomor_wa} className="hover:bg-gray-50 font-medium">
-                                          <td className="px-4 py-3 text-center text-xs font-bold text-gray-700">{konsumenNumberMap.get(k.nomor_wa)}</td>
-                                          <td className="px-4 py-3">
-                                             <div className="flex items-center gap-2.5">
-                                                <div className={`w-9 h-9 rounded-md ${colorFor(k.nama_lengkap || '?')} text-white font-bold text-sm flex items-center justify-center shrink-0`}>{initials(k.nama_lengkap || '?')}</div>
-                                                <div className="min-w-0">
-                                                   <p className="font-bold text-gray-900 truncate">{k.nama_lengkap || '-'}</p>
-                                                   <p className="text-[10px] font-mono text-gray-700">{k.id_konsumen || '—'}</p>
-                                                </div>
-                                             </div>
-                                          </td>
-                                          <td className="px-4 py-3">
-                                             <p className="text-gray-900 font-mono text-xs">{k.nomor_wa}</p>
-                                          </td>
-                                          <td className="px-4 py-3 text-xs text-gray-800 max-w-xs">
-                                             {alamatLengkap || <span className="text-gray-500 italic">Belum diisi</span>}
-                                          </td>
-                                          <td className="px-4 py-3 text-xs text-gray-800 font-mono">{k.nik && k.nik !== 'BELUM_DIISI' ? k.nik : <span className="text-gray-500 italic font-sans">-</span>}</td>
-                                          <td className="px-4 py-3">
-                                             {userClaims.length > 0 ? (
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-green-100 text-green-800 text-xs font-bold">
-                                                   {userClaims.length} claim
-                                                </span>
-                                             ) : (
-                                                <span className="text-gray-500 italic text-xs">-</span>
-                                             )}
-                                          </td>
-                                          <td className="px-4 py-3">
-                                             <div className="flex gap-1.5 items-center">
-                                                <button onClick={() => setViewingKonsumen(k)} className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition">👁 View</button>
-                                                <GradientActionBtn onClick={() => openModal('edit', 'konsumen', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                                {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                                   <GradientActionBtn onClick={() => handleDelete('konsumen', k.nomor_wa)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                                )}
-                                             </div>
-                                          </td>
-                                       </tr>
-                                    );
-                                 })}
-                              </tbody>
-                           </table>
-                        </div>
-                     )}
-
-                     {/* CARD VIEW */}
-                     {viewMode === 'card' && sortedConsumers.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                           {sortedConsumers.map((k: KonsumenData) => {
-                              const userClaims = claims.filter((c: ClaimPromo) => c.nomor_wa === k.nomor_wa);
-                              const alamatLengkap = [k.alamat_rumah, k.kelurahan, k.kecamatan, k.kabupaten_kotamadya, k.provinsi, k.kodepos].filter(v => v && v !== 'BELUM_DIISI').join(', ');
-                              return (
-                                 <div key={k.nomor_wa} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden">
-                                    <div className={`${colorFor(k.nama_lengkap || '?')} p-4 text-white`}>
-                                       <div className="flex items-center gap-3">
-                                          <div className="w-12 h-12 rounded-md bg-white/30 backdrop-blur text-white font-bold flex items-center justify-center text-lg shrink-0">{initials(k.nama_lengkap || '?')}</div>
-                                          <div className="min-w-0 flex-1">
-                                             <p className="font-bold text-base truncate">{k.nama_lengkap || '-'}</p>
-                                             <p className="text-[11px] font-mono opacity-90">{k.id_konsumen || '—'}</p>
-                                          </div>
-                                       </div>
-                                    </div>
-                                    <div className="p-4 space-y-2 text-xs">
-                                       <div>
-                                          <p className="text-[10px] uppercase tracking-wider font-bold text-gray-600">WhatsApp</p>
-                                          <p className="font-mono text-gray-900">{k.nomor_wa}</p>
-                                       </div>
-                                       <div>
-                                          <p className="text-[10px] uppercase tracking-wider font-bold text-gray-600">NIK</p>
-                                          <p className="font-mono text-gray-900">{k.nik && k.nik !== 'BELUM_DIISI' ? k.nik : <span className="text-gray-500 italic font-sans">Belum diisi</span>}</p>
-                                       </div>
-                                       <div>
-                                          <p className="text-[10px] uppercase tracking-wider font-bold text-gray-600">Alamat</p>
-                                          <p className="text-gray-900 leading-snug">{alamatLengkap || <span className="text-gray-500 italic">Belum diisi</span>}</p>
-                                       </div>
-                                       <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                                          <div>
-                                             {userClaims.length > 0 ? (
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-green-100 text-green-800 text-[11px] font-bold">
-                                                   ✓ {userClaims.length} claim
-                                                </span>
-                                             ) : (
-                                                <span className="text-gray-500 italic text-[11px]">Belum ada claim</span>
-                                             )}
-                                          </div>
-                                          <div className="flex gap-1.5">
-                                             <button onClick={() => setViewingKonsumen(k)} className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition">👁 View</button>
-                                             <GradientActionBtn onClick={() => openModal('edit', 'konsumen', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                             {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                                <GradientActionBtn onClick={() => handleDelete('konsumen', k.nomor_wa)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                             )}
-                                          </div>
-                                       </div>
-                                    </div>
-                                 </div>
-                              );
-                           })}
-                        </div>
-                     )}
-                  </div>
-                  );
-                  })()}
+               {activeTab === 'konsumen' && (
+                  <KonsumenTab
+                     consumersList={consumersList}
+                     sortedConsumers={sortedConsumers}
+                     claims={claims}
+                     searchKonsumen={searchKonsumen}
+                     setSearchKonsumen={setSearchKonsumen}
+                     viewMode={viewMode}
+                     setViewMode={setViewMode}
+                     sortConfigKonsumen={sortConfigKonsumen}
+                     setSortConfigKonsumen={setSortConfigKonsumen}
+                     konsumenNumberMap={konsumenNumberMap}
+                     setViewingKonsumen={setViewingKonsumen}
+                     currentUser={currentUser}
+                     openModal={openModal}
+                     handleDelete={handleDelete}
+                  />
+               )}
                {/* ======================= PROMOS ======================= */}
                {activeTab === 'promos' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     <input type="text" title="Cari Promo" aria-label="Cari Promo" placeholder="🔍 Cari Nama Promo atau Periode Tanggal..." value={searchPromo} onChange={e => setSearchPromo(e.target.value)} className="w-full p-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm" />
-                     {viewMode === 'card' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {sortedPromos.map((p: Promosi) => {
-                              return (
-                                 <div key={p.id_promo} className="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
-                                    <div className="flex justify-between items-start border-b border-gray-100 pb-3 mb-3">
-                                       <div>
-                                          <h3 className="font-bold text-lg text-slate-800">{p.nama_promo}</h3>
-                                          <div className="text-sm font-bold text-gray-500 mt-1">📅 {p.tanggal_mulai} s/d {p.tanggal_selesai}</div>
-                                       </div>
-                                       <span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
-                                    </div>
-                                    <div className="flex-1">
-                                       <h4 className="font-bold text-gray-700 text-sm mb-2">Tipe Produk Berlaku ({p.tipe_produk?.length || 0})</h4>
-                                       {(!p.tipe_produk || p.tipe_produk.length === 0) ? (
-                                          <p className="text-xs font-bold text-gray-400 italic">Belum ada produk</p>
-                                       ) : (
-                                          <div className="space-y-2 max-h-37.5 overflow-y-auto pr-2">
-                                             {p.tipe_produk.map((prod, idx) => (
-                                                <div key={idx} className="text-xs p-2 bg-gray-50 border border-gray-100 rounded-md font-bold text-gray-700 flex items-center gap-2">
-                                                   <span className="w-1.5 h-1.5 rounded-md bg-blue-500 block"></span>{prod.nama_produk}
-                                                </div>
-                                             ))}
-                                          </div>
-                                       )}
-                                    </div>
-                                    <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
-                                       <GradientActionBtn onClick={() => openModal('edit', 'promo', p)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                       {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                          <GradientActionBtn onClick={() => handleDelete('promo', p.id_promo!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                       )}
-                                    </div>
-                                 </div>
-                              );
-                           })}
-                        </div>
-                     ) : (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
-                           <table className="w-full text-sm whitespace-normal wrap-break-word">
-                              <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                                 <tr><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'nama_promo')}>Nama Promo {sortConfigPromos.column === 'nama_promo' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'tanggal_mulai')}>Periode {sortConfigPromos.column === 'tanggal_mulai' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold cursor-pointer" onClick={() => handleSort(sortConfigPromos, setSortConfigPromos, 'status_aktif')}>Status {sortConfigPromos.column === 'status_aktif' && (<span>{sortConfigPromos.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-4 py-3 text-left font-bold">Produk Berlaku</th><th className="px-4 py-3 text-left font-bold">Aksi</th></tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                 {sortedPromos.map((p: Promosi) => (
-                                    <tr key={p.id_promo} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-4 py-3 font-bold">{p.nama_promo}</td>
-                                       <td className="px-4 py-3">{p.tanggal_mulai} s/d {p.tanggal_selesai}</td>
-                                       <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-[10px] font-extrabold tracking-wide ${p.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span></td>
-                                       <td className="px-4 py-3 text-xs whitespace-normal">{(p.tipe_produk || []).map(tp => tp.nama_produk).join(', ')}</td>
-                                       <td className="px-4 py-3"><div className="flex gap-1.5 items-center"><GradientActionBtn onClick={() => openModal('edit', 'promo', p)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />{(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && <GradientActionBtn onClick={() => handleDelete('promo', p.id_promo!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />}</div></td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
-                        </div>
-                     )}
-                  </div>
+                  <PromosTab
+                     sortedPromos={sortedPromos}
+                     searchPromo={searchPromo}
+                     setSearchPromo={setSearchPromo}
+                     viewMode={viewMode}
+                     sortConfigPromos={sortConfigPromos}
+                     setSortConfigPromos={setSortConfigPromos}
+                     currentUser={currentUser}
+                     openModal={openModal}
+                     handleDelete={handleDelete}
+                  />
                )}
 
                {/* ======================= CLAIMS ======================= */}
@@ -5050,356 +4529,59 @@ ${kode ? `
 
                {/* ======================= WARRANTIES ======================= */}
                {activeTab === 'warranties' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     {/* Stat cards — clickable filter */}
-                     {(() => {
-                        const validCount   = warrantyStatusCounts['Valid'] ?? 0;
-                        const belumCount   = warrantyStatusCounts['Belum'] ?? 0;
-                        const lainnya      = warranties.length - validCount - belumCount;
-                        const statCards = [
-                           { key: 'Semua', label: 'Total Garansi', count: warranties.length,  accent: '#6b7280', sub: 'Semua data' },
-                           { key: 'Valid', label: 'Valid',          count: validCount,          accent: '#10b981', sub: 'Sudah divalidasi' },
-                           { key: 'Belum', label: 'Belum Validasi', count: belumCount,          accent: '#f59e0b', sub: 'Perlu aksi' },
-                           { key: '__lain', label: 'Lainnya',       count: lainnya,             accent: '#6366f1', sub: 'Status lain' },
-                        ];
-                        return (
-                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                              {statCards.map(s => (
-                                 <button key={s.key}
-                                    onClick={() => setFilterStatusGaransi(filterStatusGaransi === s.key ? 'Semua' : s.key)}
-                                    className={`bg-white rounded-xl p-4 text-left border transition-all hover:shadow-sm ${filterStatusGaransi === s.key ? 'border-gray-300 shadow-sm' : 'border-gray-200 hover:border-gray-300'}`}
-                                    style={{ borderTop: `3px solid ${s.accent}` }}
-                                 >
-                                    <p className="text-xs text-gray-400 font-medium mb-1">{s.label}</p>
-                                    <p className="text-2xl font-bold text-gray-900">{s.count}</p>
-                                    <p className="text-xs mt-1.5 font-medium" style={{ color: s.accent }}>{s.sub}</p>
-                                 </button>
-                              ))}
-                           </div>
-                        );
-                     })()}
-                     {/* Search + quick filter pills */}
-                     <div className="flex flex-wrap items-center gap-2">
-                        <div className="relative flex-1 min-w-[160px]">
-                           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                           <input type="text" title="Cari Garansi" aria-label="Cari Garansi" placeholder="Cari Nomor Seri..." value={searchGaransi} onChange={e => setSearchGaransi(e.target.value)} className="w-full pl-8 pr-3 py-2 border border-gray-200 bg-white text-gray-800 rounded-lg outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-xs" />
-                        </div>
-                        <button
-                           onClick={() => setFilterDuplikatGaransi(v => !v)}
-                           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold whitespace-nowrap transition ${filterDuplikatGaransi ? 'bg-red-500 text-white border-red-500' : 'bg-white text-red-600 border-red-200 hover:border-red-400'}`}
-                        >
-                           Duplikat <span className={`font-bold px-1 py-0.5 rounded-full ${filterDuplikatGaransi ? 'bg-white/20' : 'bg-red-100'}`}>{duplicateGaransiIds.size}</span>
-                        </button>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                           {[
-                              { key: 'Semua',  label: 'Semua',          count: warranties.length,                    activeClass: 'bg-gray-700 text-white',     inactiveClass: 'bg-gray-100 text-gray-600 hover:bg-gray-200' },
-                              { key: 'Valid',  label: 'Valid',           count: warrantyStatusCounts['Valid'] ?? 0,   activeClass: 'bg-emerald-500 text-white',   inactiveClass: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
-                              { key: 'Belum',  label: 'Belum Validasi',  count: warrantyStatusCounts['Belum'] ?? 0,  activeClass: 'bg-amber-500 text-white',     inactiveClass: 'bg-amber-50 text-amber-700 hover:bg-amber-100' },
-                              ...Object.entries(warrantyStatusCounts)
-                                 .filter(([k]) => k !== 'Valid' && k !== 'Belum')
-                                 .map(([k, v]) => ({ key: k, label: k, count: v, activeClass: 'bg-indigo-500 text-white', inactiveClass: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100' })),
-                           ].map(p => (
-                              <button key={p.key}
-                                 onClick={() => setFilterStatusGaransi(filterStatusGaransi === p.key ? 'Semua' : p.key)}
-                                 className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition flex items-center gap-1 ${filterStatusGaransi === p.key ? p.activeClass : p.inactiveClass}`}
-                              >
-                                 {p.label} <span className="font-bold">{p.count}</span>
-                              </button>
-                           ))}
-                        </div>
-                     </div>
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
-                           <table className="w-full text-sm">
-                              <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                                 <tr>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">No</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nama / WA</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'nomor_seri')}>No Seri / Barang {sortConfigWarranties.column === 'nomor_seri' && <span>{sortConfigWarranties.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Tgl Beli / Toko</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'jenis_garansi')}>Jenis / Sisa {sortConfigWarranties.column === 'jenis_garansi' && <span>{sortConfigWarranties.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigWarranties, setSortConfigWarranties, 'status_validasi')}>Status {sortConfigWarranties.column === 'status_validasi' && <span>{sortConfigWarranties.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th>
-                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                 {sortedWarranties.map((w: Garansi) => {
-                                    const linked = claims.find((c: ClaimPromo) => c.nomor_seri === w.nomor_seri);
-                                    const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
-                                    const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
-                                    const tglBeli = linked?.tanggal_pembelian || w.tanggal_pembelian;
-                                    const namaText = w.nama_pendaftar || linked?.nama_pendaftar || '-';
-                                    const waText = w.nomor_wa || linked?.nomor_wa || '-';
-                                    const tokoText = w.nama_toko || linked?.nama_toko || '-';
-                                    const statusColor: Record<string, string> = {
-                                       'Valid': 'bg-emerald-100 text-emerald-700',
-                                       'Belum': 'bg-amber-100 text-amber-700',
-                                       'Menunggu': 'bg-amber-100 text-amber-700',
-                                       'Ditolak': 'bg-red-100 text-red-700',
-                                    };
-                                    const pillClass = statusColor[w.status_validasi] ?? 'bg-gray-100 text-gray-600';
-                                    return (
-                                       <tr key={w.id_garansi} className="hover:bg-gray-50 transition-colors">
-                                          <td className="px-3 py-3 text-center text-xs font-bold text-gray-400">{garansiNumberMap.get(w.id_garansi!)}</td>
-                                          <td className={`px-3 py-3 ${duplicateGaransiIds.has(w.id_garansi!) ? 'bg-red-50' : ''}`}>
-                                             <p className="text-sm font-semibold text-gray-900 leading-tight">{namaText}</p>
-                                             <p className="text-xs text-gray-400 mt-0.5">{waText}</p>
-                                          </td>
-                                          <td className={`px-3 py-3 ${duplicateGaransiIds.has(w.id_garansi!) ? 'bg-red-50' : ''}`}>
-                                             <p className="font-mono font-bold text-sm text-gray-900 flex items-center gap-2">
-                                                {w.nomor_seri}
-                                                {duplicateGaransiIds.has(w.id_garansi!) && (
-                                                   <span className="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold whitespace-nowrap animate-pulse">DUPLIKAT</span>
-                                                )}
-                                             </p>
-                                             <p className="text-xs text-gray-500 mt-0.5">{w.tipe_barang}</p>
-                                          </td>
-                                          <td className="px-3 py-3">
-                                             <p className="text-xs text-gray-700">{tglBeli || '-'}</p>
-                                             <p className="text-xs text-gray-400 mt-0.5">{tokoText}</p>
-                                          </td>
-                                          <td className="px-3 py-3">
-                                             <p className="text-xs font-semibold text-gray-700">{w.jenis_garansi || '-'}</p>
-                                             <p className="text-xs text-gray-400 mt-0.5">{calculateSisaGaransi(tglBeli ?? undefined, w.lama_garansi)}</p>
-                                          </td>
-                                          <td className="px-3 py-3">
-                                             <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold ${pillClass}`}>{w.status_validasi}</span>
-                                          </td>
-                                          <td className="px-3 py-3">
-                                             <div className="flex flex-col gap-1.5">
-                                                <div className="flex gap-1.5">
-                                                   {linkNota && (
-                                                      <GradientActionBtn onClick={() => openImageViewer(linkNota as string)} label="Nota" gradientFrom="#3B82F6" gradientTo="#06B6D4" icon={IconDoc} />
-                                                   )}
-                                                   {linkGaransi && (
-                                                      <GradientActionBtn onClick={() => openImageViewer(linkGaransi as string)} label="Garansi" gradientFrom="#8B5CF6" gradientTo="#A78BFA" icon={IconShield} />
-                                                   )}
-                                                </div>
-                                                <div className="flex gap-1.5">
-                                                   <GradientActionBtn onClick={() => openModal('edit', 'warranty', w)} label="Edit" gradientFrom="#3B82F6" gradientTo="#60A5FA" icon={IconEdit} />
-                                                   <GradientActionBtn onClick={() => handleKirimStatusGaransi(w)} label="Kirim" gradientFrom="#10B981" gradientTo="#34D399" icon={IconSend} />
-                                                   {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                                      <GradientActionBtn onClick={() => handleDelete('warranty', w.id_garansi!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                                   )}
-                                                </div>
-                                             </div>
-                                          </td>
-                                       </tr>
-                                    )
-                                 })}
-                              </tbody>
-                           </table>
-                        </div>
-                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {sortedWarranties.map((w: Garansi) => {
-                              const linked = claims.find((c: ClaimPromo) => c.nomor_seri === w.nomor_seri);
-                              const linkNota = w.link_nota_pembelian || linked?.link_nota_pembelian;
-                              const linkGaransi = w.link_kartu_garansi || linked?.link_kartu_garansi;
-                              const tglBeli = linked?.tanggal_pembelian || w.tanggal_pembelian;
-                              const namaText = w.nama_pendaftar || linked?.nama_pendaftar || '-';
-                              const waText = w.nomor_wa || linked?.nomor_wa || '-';
-                              const tokoText = w.nama_toko || linked?.nama_toko || '-';
-                              const statusColor: Record<string, string> = {
-                                 'Valid': 'bg-emerald-100 text-emerald-700',
-                                 'Belum': 'bg-amber-100 text-amber-700',
-                                 'Menunggu': 'bg-amber-100 text-amber-700',
-                                 'Ditolak': 'bg-red-100 text-red-700',
-                              };
-                              const pillClass = statusColor[w.status_validasi] ?? 'bg-gray-100 text-gray-600';
-                              return (
-                                 <div key={w.id_garansi} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col gap-3">
-                                    {/* Header */}
-                                    <div className="flex items-start justify-between gap-2">
-                                       <div>
-                                          <p className="font-semibold text-gray-900 text-sm">{namaText}</p>
-                                          <p className="text-xs text-gray-400">{waText}</p>
-                                       </div>
-                                       <span className={`shrink-0 px-2.5 py-1 rounded-md text-[11px] font-bold ${pillClass}`}>{w.status_validasi}</span>
-                                    </div>
-                                    {/* No Seri + Barang */}
-                                    <div className={`rounded-lg px-3 py-2 ${duplicateGaransiIds.has(w.id_garansi!) ? 'bg-red-100' : 'bg-gray-50'}`}>
-                                       <p className="font-mono font-bold text-sm text-gray-900 flex items-center gap-2">
-                                          {w.nomor_seri}
-                                          {duplicateGaransiIds.has(w.id_garansi!) && (
-                                             <span className="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold whitespace-nowrap animate-pulse">DUPLIKAT</span>
-                                          )}
-                                       </p>
-                                       <p className="text-xs text-gray-500 mt-0.5">{w.tipe_barang}</p>
-                                    </div>
-                                    {/* Detail */}
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                                       <div><span className="text-gray-400 block">Tgl Beli</span><span className="font-semibold text-gray-700">{tglBeli || '-'}</span></div>
-                                       <div><span className="text-gray-400 block">Toko</span><span className="font-semibold text-gray-700">{tokoText}</span></div>
-                                       <div><span className="text-gray-400 block">Jenis</span><span className="font-semibold text-gray-700">{w.jenis_garansi || '-'}</span></div>
-                                       <div><span className="text-gray-400 block">Sisa</span><span className="font-semibold text-gray-700">{calculateSisaGaransi(tglBeli ?? undefined, w.lama_garansi)}</span></div>
-                                    </div>
-                                    {/* Lampiran */}
-                                    {(linkNota || linkGaransi) && (
-                                       <div className="flex gap-1.5">
-                                          {linkNota && <GradientActionBtn onClick={() => openImageViewer(linkNota as string)} label="Nota" gradientFrom="#3B82F6" gradientTo="#06B6D4" icon={IconDoc} />}
-                                          {linkGaransi && <GradientActionBtn onClick={() => openImageViewer(linkGaransi as string)} label="Garansi" gradientFrom="#8B5CF6" gradientTo="#A78BFA" icon={IconShield} />}
-                                       </div>
-                                    )}
-                                    {/* Aksi */}
-                                    <div className="pt-2 border-t border-gray-100 flex gap-1.5 justify-end">
-                                       <GradientActionBtn onClick={() => openModal('edit', 'warranty', w)} label="Edit" gradientFrom="#3B82F6" gradientTo="#60A5FA" icon={IconEdit} />
-                                       <GradientActionBtn onClick={() => handleKirimStatusGaransi(w)} label="Kirim" gradientFrom="#10B981" gradientTo="#34D399" icon={IconSend} />
-                                       {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                          <GradientActionBtn onClick={() => handleDelete('warranty', w.id_garansi!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                       )}
-                                    </div>
-                                 </div>
-                              )
-                           })}
-                        </div>
-                     )}
-                  </div>
+                  <WarrantiesTab
+                     warranties={warranties}
+                     sortedWarranties={sortedWarranties}
+                     claims={claims}
+                     warrantyStatusCounts={warrantyStatusCounts}
+                     filterStatusGaransi={filterStatusGaransi}
+                     setFilterStatusGaransi={setFilterStatusGaransi}
+                     searchGaransi={searchGaransi}
+                     setSearchGaransi={setSearchGaransi}
+                     filterDuplikatGaransi={filterDuplikatGaransi}
+                     setFilterDuplikatGaransi={setFilterDuplikatGaransi}
+                     duplicateGaransiIds={duplicateGaransiIds}
+                     garansiNumberMap={garansiNumberMap}
+                     sortConfigWarranties={sortConfigWarranties}
+                     setSortConfigWarranties={setSortConfigWarranties}
+                     viewMode={viewMode}
+                     currentUser={currentUser}
+                     calculateSisaGaransi={calculateSisaGaransi}
+                     openImageViewer={openImageViewer}
+                     handleKirimStatusGaransi={handleKirimStatusGaransi}
+                     openModal={openModal}
+                     handleDelete={handleDelete}
+                  />
                )}
 
-               {/* ======================= SERVICES ======================= */}
                {activeTab === 'services' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     <input type="text" title="Cari Service" aria-label="Cari Service" placeholder="🔍 Cari No Tanda Terima / No Seri / Status..." value={searchService} onChange={e => setSearchService(e.target.value)} className="w-full p-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm" />
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
-                           <table className="w-full text-sm whitespace-normal wrap-break-word">
-                              <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                                 <tr><th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_tanda_terima')}>No Tanda Terima {sortConfigServices.column === 'nomor_tanda_terima' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'nomor_seri')}>No Seri Barang {sortConfigServices.column === 'nomor_seri' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'status_service')}>Status Service {sortConfigServices.column === 'status_service' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer" onClick={() => handleSort(sortConfigServices, setSortConfigServices, 'created_at')}>Tgl Update {sortConfigServices.column === 'created_at' && (<span>{sortConfigServices.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th></tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                 {sortedServices.map((s: StatusService) => (
-                                    <tr key={s.id_service} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-3 py-2.5font-mono font-bold text-slate-800">{s.nomor_tanda_terima}</td>
-                                       <td className="px-6 py-3">{s.nomor_seri}</td>
-                                       <td className="px-6 py-3">
-                                          <span className="px-2 py-1 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span>
-                                       </td>
-                                       <td className="px-3 py-2.5font-bold text-gray-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</td>
-                                       <td className="px-3 py-2.5">
-                                          <div className="flex gap-1.5">
-                                             <GradientActionBtn onClick={() => openModal('edit', 'service', s)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                             {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                                <GradientActionBtn onClick={() => handleDelete('service', s.id_service!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                             )}
-                                          </div>
-                                       </td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
-                        </div>
-                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                           {sortedServices.map((s: StatusService) => (
-                              <div key={s.id_service} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="border-b border-gray-100 pb-3 mb-3">
-                                    <h3 className="font-bold text-base text-slate-800 font-mono">{s.nomor_tanda_terima}</h3>
-                                    <p className="text-xs text-gray-500">{s.nomor_seri}</p>
-                                 </div>
-                                 <div className="space-y-2 text-xs flex-1">
-                                    <p><span className="font-bold w-20 inline-block">Status:</span> <span className="px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span></p>
-                                    <p><span className="font-bold w-20 inline-block">Update:</span> {s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</p>
-                                 </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
-                                    <GradientActionBtn onClick={() => openModal('edit', 'service', s)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                    {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                       <GradientActionBtn onClick={() => handleDelete('service', s.id_service!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                    )}
-                                 </div>
-                              </div>
-                           ))}
-                        </div>
-                     )}
-                  </div>
+                  <ServicesTab
+                     sortedServices={sortedServices}
+                     searchService={searchService}
+                     setSearchService={setSearchService}
+                     viewMode={viewMode}
+                     sortConfigServices={sortConfigServices}
+                     setSortConfigServices={setSortConfigServices}
+                     currentUser={currentUser}
+                     openModal={openModal}
+                     handleDelete={handleDelete}
+                  />
                )}
 
-               {/* ======================= PROPOSAL EVENT ======================= */}
                {activeTab === 'budgets' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     {/* Stat cards */}
-                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {([
-                           { label: 'Total Proposal', count: budgets.length, color: 'text-gray-900', bar: 'bg-gray-400' },
-                           { label: 'Total Anggaran', count: `Rp ${budgets.reduce((s,b) => s + Number(b.total_cost||0), 0).toLocaleString('id-ID')}`, color: 'text-blue-700', bar: 'bg-blue-500', isText: true },
-                           { label: 'Rerata / Proposal', count: budgets.length ? `Rp ${Math.round(budgets.reduce((s,b) => s + Number(b.total_cost||0), 0) / budgets.length).toLocaleString('id-ID')}` : 'Rp 0', color: 'text-amber-700', bar: 'bg-amber-400', isText: true },
-                        ] as { label: string; count: number | string; color: string; bar: string; isText?: boolean }[]).map(s => (
-                           <div key={s.label} className="bg-white rounded-xl p-3 border-2 border-gray-200 shadow-sm">
-                              <div className={`w-full h-1 rounded-md mb-2 ${s.bar}`}></div>
-                              <p className={`${s.isText ? 'text-base' : 'text-2xl'} font-black ${s.color}`}>{s.count}</p>
-                              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mt-0.5">{s.label}</p>
-                           </div>
-                        ))}
-                     </div>
-                     <input type="text" title="Cari Proposal" aria-label="Cari Proposal" placeholder="🔍 Cari Title Proposal..." value={searchBudget} onChange={e => setSearchBudget(e.target.value)} className="w-full p-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm" />
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
-                           <table className="w-full text-sm">
-                              <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                                 <tr>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'proposal_no')}>Proposal No {sortConfigBudgets.column === 'proposal_no' && <span className="text-xs">{sortConfigBudgets.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'title')}>Judul {sortConfigBudgets.column === 'title' && <span className="text-xs">{sortConfigBudgets.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'period')}>Periode {sortConfigBudgets.column === 'period' && <span className="text-xs">{sortConfigBudgets.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigBudgets, setSortConfigBudgets, 'total_cost')}>Total Biaya {sortConfigBudgets.column === 'total_cost' && <span className="text-xs">{sortConfigBudgets.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th>
-                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                 {sortedBudgets.map((b: BudgetApproval) => (
-                                    <tr key={b.id_budget} className="hover:bg-gray-50 transition-colors">
-                                       <td className="px-3 py-2.5 font-mono font-bold text-slate-800 text-xs">{b.proposal_no}</td>
-                                       <td className="px-3 py-2.5 font-bold text-sm">{b.title}</td>
-                                       <td className="px-3 py-2.5 text-xs text-gray-700">{b.period}</td>
-                                       <td className="px-3 py-2.5 text-xs font-bold text-gray-800">Rp {Number(b.total_cost).toLocaleString('id-ID')}</td>
-                                       <td className="px-3 py-2.5">
-                                          <div className="flex flex-col gap-1.5">
-                                             <div className="flex gap-1.5">
-                                                <GradientActionBtn onClick={() => openModal('edit', 'budget', b)} label="Edit" gradientFrom="#3B82F6" gradientTo="#60A5FA" icon={IconEdit} />
-                                                <GradientActionBtn onClick={() => setPrintData(b)} label="Print" gradientFrom="#10B981" gradientTo="#34D399" icon={IconPrint} />
-                                                {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                                   <GradientActionBtn onClick={() => handleDelete('budget', b.id_budget!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                                )}
-                                             </div>
-                                          </div>
-                                       </td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
-                        </div>
-                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {sortedBudgets.map((b: BudgetApproval) => (
-                              <div key={b.id_budget} className="bg-white rounded-lg shadow-sm border-2 border-gray-100 flex flex-col hover:border-[#FFE500] transition overflow-hidden">
-                                 {b.event_image
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    ? <img src={driveImgSrc(b.event_image)} alt="poster" className="w-full h-32 object-cover" />
-                                    : <div className="w-full h-32 bg-gray-100 flex items-center justify-center text-gray-300">
-                                         <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                      </div>
-                                 }
-                                 <div className="p-4 flex flex-col flex-1">
-                                 <div className="border-b border-gray-100 pb-3 mb-3">
-                                    <h3 className="font-bold text-base text-slate-800">{b.title}</h3>
-                                    <p className="text-xs text-gray-500 font-mono">{b.proposal_no}</p>
-                                 </div>
-                                 <div className="space-y-2 text-xs flex-1">
-                                    <p><span className="font-bold w-20 inline-block">Periode:</span> {b.period}</p>
-                                    <p><span className="font-bold w-20 inline-block">Total:</span> Rp {Number(b.total_cost).toLocaleString('id-ID')}</p>
-                                 </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
-                                    <GradientActionBtn onClick={() => openModal('edit', 'budget', b)} label="Edit" gradientFrom="#3B82F6" gradientTo="#60A5FA" icon={IconEdit} />
-                                    <GradientActionBtn onClick={() => setPrintData(b)} label="Print" gradientFrom="#10B981" gradientTo="#34D399" icon={IconPrint} />
-                                    {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                       <GradientActionBtn onClick={() => handleDelete('budget', b.id_budget!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                    )}
-                                 </div>
-                                 </div>{/* /p-4 */}
-                              </div>
-                           ))}
-                        </div>
-                     )}
-                  </div>
+                  <BudgetsTab
+                     budgets={budgets}
+                     sortedBudgets={sortedBudgets}
+                     searchBudget={searchBudget}
+                     setSearchBudget={setSearchBudget}
+                     viewMode={viewMode}
+                     sortConfigBudgets={sortConfigBudgets}
+                     setSortConfigBudgets={setSortConfigBudgets}
+                     currentUser={currentUser}
+                     openModal={openModal}
+                     handleDelete={handleDelete}
+                     setPrintData={setPrintData}
+                  />
                )}
 
                {/* ======================= PROMO DATACOLOR ======================= */}
@@ -5445,401 +4627,53 @@ ${kode ? `
                   </div>
                )}
 
-               {/* ======================= EVENT REGISTRATIONS ======================= */}
+
                {activeTab === 'eventregistrations' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     {/* Event name filter pills + stat cards */}
-                     {(() => {
-                        // Unique event names with counts
-                        const eventCounts: Record<string, number> = {};
-                        eventRegistrations.forEach(r => {
-                           const n = r.event_name || '-';
-                           eventCounts[n] = (eventCounts[n] || 0) + 1;
-                        });
-                        const eventNames = Object.keys(eventCounts).sort();
-
-                        // Filtered registrations
-                        const filtered = eventRegistrations.filter(r => {
-                           const matchEvent = filterRegEventName === 'Semua' || r.event_name === filterRegEventName;
-                           const q = searchRegistration.toLowerCase();
-                           const matchSearch = !q || (r.full_name || r.nama_lengkap || '').toLowerCase().includes(q) || (r.event_name || '').toLowerCase().includes(q);
-                           return matchEvent && matchSearch;
-                        });
-                        const confirmed = filtered.filter(r => r.status_pendaftaran === 'terdaftar').length;
-                        const pending   = filtered.filter(r => r.status_pendaftaran === 'menunggu_validasi').length;
-                        const hadir     = filtered.filter(r => r.is_attended).length;
-
-                        return (
-                           <>
-                              {/* Filter dropdown + pills */}
-                              <div className="flex flex-wrap items-center gap-2">
-                                 <select
-                                    value={filterRegEventName}
-                                    onChange={e => setFilterRegEventName(e.target.value)}
-                                    aria-label="Filter nama event"
-                                    className="py-2 px-3 border border-gray-200 bg-white text-gray-700 rounded-lg outline-none focus:border-[#FFE500] text-xs font-medium max-w-xs"
-                                 >
-                                    <option value="Semua">Semua Event ({eventRegistrations.length})</option>
-                                    {eventNames.map(n => (
-                                       <option key={n} value={n}>{n} ({eventCounts[n]})</option>
-                                    ))}
-                                 </select>
-                                 <div className="flex flex-wrap gap-1.5">
-                                    {eventNames.map(n => (
-                                       <button key={n}
-                                          onClick={() => setFilterRegEventName(filterRegEventName === n ? 'Semua' : n)}
-                                          className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition whitespace-nowrap ${filterRegEventName === n ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
-                                       >
-                                          {n} <span className="font-bold">{eventCounts[n]}</span>
-                                       </button>
-                                    ))}
-                                 </div>
-                              </div>
-
-                              {/* Stat cards — reflect filtered data */}
-                              <div className="grid grid-cols-4 gap-2">
-                                 {([
-                                    { label: 'Total Peserta', count: filtered.length,  accent: '#6b7280' },
-                                    { label: 'Terdaftar',     count: confirmed,          accent: '#10b981' },
-                                    { label: 'Menunggu',      count: pending,            accent: '#f59e0b' },
-                                    { label: 'Hadir',         count: hadir,              accent: '#3b82f6' },
-                                 ] as { label: string; count: number; accent: string }[]).map(s => (
-                                    <div key={s.label} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm" style={{ borderTop: `3px solid ${s.accent}` }}>
-                                       <p className="text-xs text-gray-400 font-medium mb-1">{s.label}</p>
-                                       <p className="text-2xl font-bold text-gray-900">{s.count}</p>
-                                    </div>
-                                 ))}
-                              </div>
-
-                              {/* Search */}
-                              <div className="relative">
-                                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                                 <input type="text" title="Cari Peserta" aria-label="Cari Peserta" placeholder="Cari nama peserta..." value={searchRegistration} onChange={e => setSearchRegistration(e.target.value)} className="w-full pl-8 pr-3 py-2 border border-gray-200 bg-white text-gray-800 rounded-lg outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-xs" />
-                              </div>
-                           </>
-                        );
-                     })()}
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
-                           <table className="w-full text-sm">
-                              <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                                 <tr>
-                                    <th className="px-3 py-3 text-left font-bold text-gray-700">Nama Lengkap</th>
-                                    <th className="px-3 py-3 text-left font-bold text-gray-700">Kontak</th>
-                                    <th className="px-3 py-3 text-left font-bold text-gray-700">Event</th>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Kehadiran</th>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Bukti TF</th>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th>
-                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                 {eventRegistrations.filter(r => {
-                                    const q = searchRegistration.toLowerCase();
-                                    const nama = (r.full_name || r.nama_lengkap || '').toLowerCase();
-                                    const evt = (r.event_name || '').toLowerCase();
-                                    const matchSearch = nama.includes(q) || evt.includes(q);
-                                    const matchEvent = filterRegEventName === 'Semua' || r.event_name === filterRegEventName;
-                                    return matchSearch && matchEvent;
-                                 }).map((reg: EventRegistration) => {
-                                    const isConfirmed = reg.status_pendaftaran === 'terdaftar' || reg.status === 'Confirmed';
-                                    const isCancelled = reg.status_pendaftaran === 'ditolak' || reg.status === 'Cancelled';
-                                    return (
-                                    <tr key={reg.id} className={`border-l-4 ${isConfirmed ? 'border-l-green-500' : isCancelled ? 'border-l-red-400' : 'border-l-orange-400'} hover:bg-gray-50 transition-colors`}>
-                                       <td className="px-3 py-2.5">
-                                          <p className="font-bold text-slate-800">{reg.full_name || reg.nama_lengkap || '-'}</p>
-                                          <p className="text-[10px] text-gray-500">{reg.camera_model || reg.tipe_kamera || '-'}</p>
-                                       </td>
-                                       <td className="px-3 py-2.5">
-                                          <p className="text-xs font-mono">{reg.wa_number || reg.nomor_wa || '-'}</p>
-                                          <p className="text-[10px] text-gray-500">{reg.email}</p>
-                                       </td>
-                                       <td className="px-3 py-2.5 text-xs font-bold text-amber-700">{reg.event_name}</td>
-                                       <td className="px-3 py-2.5 text-center">
-                                          <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${isConfirmed ? 'bg-green-100 text-green-700' : isCancelled ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
-                                             {reg.status_pendaftaran || reg.status || '-'}
-                                          </span>
-                                       </td>
-                                       <td className="px-3 py-2.5 text-center">
-                                          {reg.is_attended
-                                             ? <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-1 rounded">HADIR ✅</span>
-                                             : <GradientActionBtn onClick={() => handleMarkAttendance(reg.id!)} label="Hadir" gradientFrom="#10B981" gradientTo="#34D399" icon={IconCheck} />}
-                                       </td>
-                                       <td className="px-3 py-2.5 text-center">
-                                          {reg.bukti_transfer_url
-                                             ? <a href={reg.bukti_transfer_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-[11px] font-bold">📎 Lihat</a>
-                                             : <span className="text-gray-400 text-[11px]">-</span>}
-                                       </td>
-                                       <td className="px-3 py-2.5">
-                                          <div className="flex flex-col gap-1.5">
-                                             <div className="flex gap-1.5">
-                                                {isConfirmed && <GradientActionBtn onClick={() => handleSendEventSuccessWA(reg)} label="Kirim WA" gradientFrom="#25D366" gradientTo="#128C7E" icon={IconSend} />}
-                                                {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                                   <GradientActionBtn onClick={() => handleDelete('eventregistration', reg.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                                )}
-                                             </div>
-                                          </div>
-                                       </td>
-                                    </tr>
-                                    );
-                                 })}
-                              </tbody>
-                           </table>
-                        </div>
-                     ) : (<div></div>)}
-                  </div>
+                  <EventRegistrationsTab
+                     eventRegistrations={eventRegistrations}
+                     filterRegEventName={filterRegEventName}
+                     setFilterRegEventName={setFilterRegEventName}
+                     searchRegistration={searchRegistration}
+                     setSearchRegistration={setSearchRegistration}
+                     viewMode={viewMode}
+                     currentUser={currentUser}
+                     handleMarkAttendance={handleMarkAttendance}
+                     handleSendEventSuccessWA={handleSendEventSuccessWA}
+                     handleDelete={handleDelete}
+                  />
                )}
 
-               {/* ======================= MASTER EVENT ======================= */}
                {activeTab === 'events' && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     {/* Stat cards */}
-                     {(() => {
-                        const aktifEvents = events.filter(e => { const { closed } = getEventClosedStatus(e, eventRegistrationsCount[e.title] || 0); return !closed; }).length;
-                        const totalPeserta = Object.values(eventRegistrationsCount).reduce((s, v) => s + v, 0);
-                        return (
-                           <div className="grid grid-cols-3 gap-2">
-                              {([
-                                 { label: 'Total Event', count: events.length, color: 'text-gray-900', bar: 'bg-gray-400' },
-                                 { label: 'Aktif / Open', count: aktifEvents, color: 'text-green-700', bar: 'bg-green-500' },
-                                 { label: 'Total Peserta', count: totalPeserta, color: 'text-blue-700', bar: 'bg-blue-500' },
-                              ] as { label: string; count: number; color: string; bar: string }[]).map(s => (
-                                 <div key={s.label} className="bg-white rounded-xl p-3 border-2 border-gray-200 shadow-sm">
-                                    <div className={`w-full h-1 rounded-md mb-2 ${s.bar}`}></div>
-                                    <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
-                                    <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mt-0.5">{s.label}</p>
-                                 </div>
-                              ))}
-                           </div>
-                        );
-                     })()}
-                     {/* Quick links event */}
-                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {([
-                           { href: '/events/register', label: 'Daftar Event', sub: 'Halaman publik', bg: 'bg-yellow-50', ic: 'bg-yellow-100', svg: <svg className="w-4 h-4 text-yellow-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg> },
-                           { href: '/nikon/upload-lomba', label: 'Upload Foto Lomba', sub: 'Halaman publik', bg: 'bg-blue-50', ic: 'bg-blue-100', svg: <svg className="w-4 h-4 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg> },
-                           { href: '/admin/events', label: 'Validasi Pembayaran', sub: 'Admin panel', bg: 'bg-green-50', ic: 'bg-green-100', svg: <svg className="w-4 h-4 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> },
-                           { href: '/admin/events/attendance', label: 'Absensi Event', sub: 'Scan QR', bg: 'bg-purple-50', ic: 'bg-purple-100', svg: <svg className="w-4 h-4 text-purple-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg> },
-                        ] as { href: string; label: string; sub: string; bg: string; ic: string; svg: React.ReactNode }[]).map(link => (
-                           <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer"
-                              className={`flex items-center gap-2.5 ${link.bg} border border-transparent hover:border-[#FFE500] hover:shadow-sm rounded-xl px-3 py-2.5 transition-all group`}>
-                              <div className={`${link.ic} w-7 h-7 rounded-lg flex items-center justify-center shrink-0`}>{link.svg}</div>
-                              <div className="min-w-0">
-                                 <p className="text-xs font-bold text-gray-800 group-hover:text-black truncate leading-tight">{link.label}</p>
-                                 <p className="text-[10px] text-gray-400 truncate">{link.sub}</p>
-                              </div>
-                           </a>
-                        ))}
-                     </div>
-                     <input type="text" title="Cari Event" aria-label="Cari Event" placeholder="🔍 Cari Judul Event..." value={searchEvent} onChange={e => setSearchEvent(e.target.value)} className="w-full p-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm" />
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
-                           <table className="w-full text-sm">
-                              <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                                 <tr>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">No</th>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Poster</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'title')}>Judul Event {sortConfigEvents.column === 'title' && <span className="text-xs">{sortConfigEvents.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-800" onClick={() => handleSort(sortConfigEvents, setSortConfigEvents, 'date')}>Tanggal {sortConfigEvents.column === 'date' && <span className="text-xs">{sortConfigEvents.direction === 'asc' ? '↑' : '↓'}</span>}</th>
-                                    <th className="px-3 py-3 text-left font-bold text-gray-700">Detail</th>
-                                    <th className="px-3 py-3 text-left font-bold text-gray-700">Harga</th>
-                                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Pendaftaran</th>
-                                    <th className="px-3 py-3 text-center font-bold text-gray-700">Kuota / Status</th>
-                                    <th className="px-3 py-3 text-center font-bold text-gray-700">Peserta</th>
-                                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th>
-                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                 {sortedEvents.map((evt: EventData) => {
-                                    const { closed, reason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.title] || 0);
-                                    return (
-                                    <tr key={evt.id} className={`border-l-4 ${closed ? 'border-l-red-400' : 'border-l-green-500'} hover:bg-gray-50 transition-colors`}>
-                                       <td className="px-3 py-2.5 text-center font-bold text-gray-500 text-xs">{eventNumberMap.get(evt.id!)}</td>
-                                       <td className="px-3 py-2.5 text-center">
-                                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                                          <img src={driveImgSrc(evt.image)} alt="poster" className="w-10 h-14 object-cover rounded shadow-sm mx-auto" />
-                                       </td>
-                                       <td className="px-3 py-2.5 font-bold text-slate-800">{evt.title}</td>
-                                       <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{evt.date}</td>
-                                       <td className="px-3 py-2.5 text-xs text-gray-600">{evt.detail_acara || '-'}</td>
-                                       <td className="px-3 py-2.5 text-xs font-bold text-gray-800 whitespace-nowrap">{evt.price}</td>
-                                       <td className="px-3 py-2.5 text-xs">
-                                          {(() => {
-                                             const today = new Date(); today.setHours(0,0,0,0);
-                                             const todayStr = today.toISOString().slice(0,10);
-                                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                             const ef = evt as any;
-                                             const display = ef.display_start_date  ? new Date(ef.display_start_date)  : null;
-                                             const open    = ef.registration_open_date  ? new Date(ef.registration_open_date)  : null;
-                                             const close   = ef.registration_close_date ? new Date(ef.registration_close_date) : null;
-                                             const fmt = (d: Date) => d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric', timeZone:'Asia/Jakarta' });
-                                             const bannerVisible = (!display || display <= today) && (!close || close >= today);
-                                             const regOpen = bannerVisible && (!open || todayStr >= ef.registration_open_date);
-                                             return (
-                                                <div className="space-y-0.5">
-                                                   {display && <p className="text-gray-500"><span className="font-semibold text-gray-700">Tampil:</span> {fmt(display)}</p>}
-                                                   {open    && <p className="text-gray-500"><span className="font-semibold text-gray-700">Daftar:</span> {fmt(open)}</p>}
-                                                   {close   && <p className="text-gray-500"><span className="font-semibold text-gray-700">Tutup:</span> {fmt(close)}</p>}
-                                                   {!display && !open && !close && <span className="text-gray-400 italic">Tidak diatur</span>}
-                                                   <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5 ${bannerVisible ? (regOpen ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700') : 'bg-gray-100 text-gray-500'}`}>
-                                                      {bannerVisible ? (regOpen ? '✓ Daftar Terbuka' : '⏳ Segera Daftar') : '✗ Tersembunyi'}
-                                                   </span>
-                                                </div>
-                                             );
-                                          })()}
-                                       </td>
-                                       <td className="px-3 py-2.5 text-center">
-                                          <p className="font-bold text-gray-700 text-xs">{eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</p>
-                                          <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{reason}</span>
-                                       </td>
-                                       <td className="px-3 py-2.5 text-center font-bold text-blue-600 text-sm">{eventRegistrationsCount[evt.title] || 0}</td>
-                                       <td className="px-3 py-2.5">
-                                          <div className="flex gap-1.5">
-                                             <GradientActionBtn onClick={() => openModal('edit', 'event', evt)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                             {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                                <GradientActionBtn onClick={() => handleDelete('events', evt.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                             )}
-                                          </div>
-                                       </td>
-                                    </tr>
-                                    );
-                                 })}
-                              </tbody>
-                           </table>
-                        </div>
-                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {sortedEvents.map((evt: EventData) => {
-                              const detailPreview = evt.detail_acara ? (evt.detail_acara.length > 100 ? evt.detail_acara.substring(0, 100) + '...' : evt.detail_acara) : '-';
-                              const { closed: evtClosed, reason: evtReason } = getEventClosedStatus(evt, eventRegistrationsCount[evt.title] || 0);
-                              return (
-                              <div key={evt.id} className="bg-white rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] hover:shadow-md transition overflow-hidden">
-                                 {/* Full-width poster image */}
-                                 <div className="relative w-full h-52 bg-gray-100 shrink-0">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={driveImgSrc(evt.image)} alt="poster" className="w-full h-full object-cover" />
-                                    <span className="absolute top-2 left-2 font-bold text-sm text-gray-700 bg-white/90 rounded-md w-7 h-7 flex items-center justify-center shadow-sm">{eventNumberMap.get(evt.id!)}</span>
-                                    <span className={`absolute top-2 right-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded ${evtClosed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{evtClosed ? evtReason : 'Aktif'}</span>
-                                 </div>
-                                 <div className="p-4 flex flex-col flex-1">
-                                    <div className="border-b border-gray-100 pb-2 mb-3">
-                                       <h3 className="font-bold text-base text-slate-800 leading-tight">{evt.title}</h3>
-                                       <p className="text-xs text-gray-500 mt-0.5">{evt.date}</p>
-                                    </div>
-                                 <div className="space-y-2 text-xs flex-1">
-                                    <p><span className="font-bold w-20 inline-block">Detail:</span> {detailPreview}</p>
-                                    <p><span className="font-bold w-20 inline-block">Harga:</span> {evt.price}</p>
-                                    <p><span className="font-bold w-20 inline-block">Kuota:</span> {eventRegistrationsCount[evt.title] || 0}/{evt.stock} slot</p>
-                                    <p><span className="font-bold w-20 inline-block">Peserta:</span> {eventRegistrationsCount[evt.title] || 0} orang</p>
-                                    {evt.bank_info && <p className="bg-blue-50 border border-blue-100 rounded p-2 mt-2"><span className="font-bold">Rekening:</span> {evt.bank_info}</p>}
-                                 </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
-                                    <GradientActionBtn onClick={() => openModal('edit', 'event', evt)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                    {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                       <GradientActionBtn onClick={() => handleDelete('events', evt.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                    )}
-                                 </div>
-                                 </div>{/* end p-4 inner */}
-                              </div>
-                              );
-                           })}
-                        </div>
-                     )}
-                  </div>
+                  <EventsTab
+                     events={events}
+                     sortedEvents={sortedEvents}
+                     searchEvent={searchEvent}
+                     setSearchEvent={setSearchEvent}
+                     viewMode={viewMode}
+                     sortConfigEvents={sortConfigEvents}
+                     setSortConfigEvents={setSortConfigEvents}
+                     eventNumberMap={eventNumberMap}
+                     eventRegistrationsCount={eventRegistrationsCount}
+                     getEventClosedStatus={getEventClosedStatus}
+                     currentUser={currentUser}
+                     openModal={openModal}
+                     handleDelete={handleDelete}
+                  />
                )}
 
                {/* ======================= BARANG ASET ======================= */}
-               {activeTab === 'assets' && (() => {
-                  const filteredAssets = assets.filter(a =>
-                     a.nama_barang_aset?.toLowerCase().includes(searchAssets.toLowerCase()) ||
-                     a.no_seri_aset?.toLowerCase().includes(searchAssets.toLowerCase()) ||
-                     a.catatan?.toLowerCase().includes(searchAssets.toLowerCase())
-                  );
-                  return (
-                     <div className="space-y-4 animate-fade-in text-gray-900">
-                        <div className="flex flex-col md:flex-row gap-2 items-center">
-                           <input type="text" placeholder="🔍 Cari Nama Barang / No Seri / Catatan..." value={searchAssets} onChange={e => setSearchAssets(e.target.value)} className="flex-1 p-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm" />
-                           <span className="text-sm text-gray-500 font-medium whitespace-nowrap">{filteredAssets.length} barang</span>
-                           <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-                              <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${viewMode === 'table' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-800'}`}>☰ Tabel</button>
-                              <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${viewMode === 'card' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-800'}`}>🪪 Kartu</button>
-                           </div>
-                           <button onClick={() => openModal('create', 'asset')} className="btn-primary whitespace-nowrap">+ Tambah Aset</button>
-                        </div>
-                        {viewMode === 'table' ? (
-                           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
-                              <table className="w-full text-sm">
-                                 <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                                    <tr>
-                                       <th className="px-4 py-3 text-center font-bold w-12">No</th>
-                                       <th className="px-4 py-3 text-left font-bold">Nama Barang</th>
-                                       <th className="px-4 py-3 text-left font-bold">No. Seri</th>
-                                       <th className="px-4 py-3 text-left font-bold">Accessories</th>
-                                       <th className="px-4 py-3 text-left font-bold">Catatan</th>
-                                       <th className="px-4 py-3 text-left font-bold">Aksi</th>
-                                    </tr>
-                                 </thead>
-                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredAssets.map((a, idx) => {
-                                       const accs = [a.accs1, a.accs2, a.accs3, a.accs4, a.accs5, a.accs6, a.accs7].filter(Boolean);
-                                       return (
-                                          <tr key={a.id || idx} className="hover:bg-gray-50 font-medium">
-                                             <td className="px-4 py-3 text-center text-gray-500 font-bold">{idx + 1}</td>
-                                             <td className="px-4 py-3 font-bold text-slate-800">{a.nama_barang_aset}</td>
-                                             <td className="px-4 py-3 font-mono text-sm">{a.no_seri_aset || '-'}</td>
-                                             <td className="px-4 py-3 text-xs text-gray-600">{accs.length > 0 ? accs.join(', ') : '-'}</td>
-                                             <td className="px-4 py-3 text-xs text-gray-600">{a.catatan || '-'}</td>
-                                             <td className="px-4 py-3">
-                                                <div className="flex gap-1.5">
-                                                   <GradientActionBtn onClick={() => openModal('edit', 'asset', a)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                                   {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                                      <GradientActionBtn onClick={() => handleDelete('asset', a.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                                   )}
-                                                </div>
-                                             </td>
-                                          </tr>
-                                       );
-                                    })}
-                                    {filteredAssets.length === 0 && (
-                                       <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Tidak ada data aset.</td></tr>
-                                    )}
-                                 </tbody>
-                              </table>
-                           </div>
-                        ) : (
-                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {filteredAssets.length === 0 && <div className="col-span-3 text-center py-16 text-gray-400">Tidak ada data aset.</div>}
-                              {filteredAssets.map((a, idx) => {
-                                 const accs = [a.accs1, a.accs2, a.accs3, a.accs4, a.accs5, a.accs6, a.accs7].filter(Boolean);
-                                 return (
-                                    <div key={a.id || idx} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col gap-2 hover:border-[#FFE500] hover:shadow-md transition-all">
-                                       <div className="flex items-start justify-between gap-2">
-                                          <div>
-                                             <p className="font-bold text-gray-900 text-sm leading-tight">{a.nama_barang_aset}</p>
-                                             {a.no_seri_aset && <p className="font-mono text-xs text-gray-500 mt-0.5">SN: {a.no_seri_aset}</p>}
-                                          </div>
-                                          <span className="shrink-0 text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">#{idx + 1}</span>
-                                       </div>
-                                       {accs.length > 0 && (
-                                          <div className="flex flex-wrap gap-1 mt-1">
-                                             {accs.map((ac, ai) => <span key={ai} className="text-[10px] bg-yellow-50 border border-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">{ac}</span>)}
-                                          </div>
-                                       )}
-                                       {a.catatan && <p className="text-xs text-gray-500 italic">{a.catatan}</p>}
-                                       <div className="mt-auto pt-2 border-t border-gray-100 flex gap-1.5">
-                                          <GradientActionBtn onClick={() => openModal('edit', 'asset', a)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                          {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                             <GradientActionBtn onClick={() => handleDelete('asset', a.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                          )}
-                                       </div>
-                                    </div>
-                                 );
-                              })}
-                           </div>
-                        )}
-                     </div>
-                  );
-               })()}
+               {activeTab === 'assets' && (
+                  <AssetsTab
+                     assets={assets}
+                     currentUser={currentUser}
+                     searchAssets={searchAssets}
+                     setSearchAssets={setSearchAssets}
+                     viewMode={viewMode}
+                     setViewMode={setViewMode}
+                     openModal={openModal}
+                     handleDelete={handleDelete}
+                  />
+               )}
 
                {/* ======================= BOT SETTINGS ======================= */}
                {activeTab === 'botsettings' && (
@@ -5875,195 +4709,37 @@ ${kode ? `
 
                {/* ======================= USER ROLE ======================= */}
                {activeTab === 'userrole' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                  <div className="space-y-4 animate-fade-in text-gray-900">
-                     <input type="text" title="Cari Karyawan" aria-label="Cari Karyawan" placeholder="🔍 Cari Username atau Nama Karyawan..." value={searchKaryawan} onChange={e => setSearchKaryawan(e.target.value)} className="w-full p-3 border border-gray-200 bg-white text-gray-800 rounded-lg shadow-sm outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-sm" />
-                     {viewMode === 'table' ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
-                           <table className="w-full text-sm whitespace-normal wrap-break-word">
-                              <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                                 <tr><th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'username')}>Username {sortConfigKaryawans.column === 'username' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'nama_karyawan')}>Nama Karyawan {sortConfigKaryawans.column === 'nama_karyawan' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'role')}>Role {sortConfigKaryawans.column === 'role' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer" onClick={() => handleSort(sortConfigKaryawans, setSortConfigKaryawans, 'status_aktif')}>Status {sortConfigKaryawans.column === 'status_aktif' && (<span>{sortConfigKaryawans.direction === 'asc' ? '⬆️' : '⬇️'}</span>)}</th><th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Akses Halaman</th><th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th></tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                 {sortedKaryawans.map((k: Karyawan) => (
-                                    <tr key={k.id_karyawan} className="hover:bg-gray-50 font-medium">
-                                       <td className="px-3 py-2.5font-bold text-slate-800">{k.username}</td>
-                                       <td className="px-6 py-3">{k.nama_karyawan}</td>
-                                       <td className="px-3 py-2.5font-bold text-black">{k.role}</td>
-                                       <td className="px-6 py-3">
-                                          <span className={`px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span>
-                                       </td>
-                                       <td className="px-3 py-2.5font-mono text-xs text-gray-600">{(k.role === 'Admin' || k.role === 'Super Admin') ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</td>
-                                       <td className="px-3 py-2.5">
-                                          <div className="flex gap-1.5">
-                                             <GradientActionBtn onClick={() => openModal('edit', 'karyawan', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                             {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                                <GradientActionBtn
-                                                   onClick={() => handleQuickResetPassword(k)}
-                                                   label="Reset PW"
-                                                   gradientFrom="#F59E0B"
-                                                   gradientTo="#FBBF24"
-                                                   icon={IconKey}
-                                                   disabled={resetPwLoadingId === String(k.id_karyawan)}
-                                                />
-                                             )}
-                                             <GradientActionBtn onClick={() => handleDelete('karyawan', k.id_karyawan!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                          </div>
-                                       </td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
-                        </div>
-                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {sortedKaryawans.map((k: Karyawan) => (
-                              <div key={k.id_karyawan} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col hover:border-[#FFE500] transition">
-                                 <div className="border-b border-gray-100 pb-3 mb-3">
-                                    <h3 className="font-bold text-base text-slate-800">{k.nama_karyawan}</h3>
-                                    <p className="text-xs text-gray-500">{k.username}</p>
-                                 </div>
-                                 <div className="space-y-2 text-xs flex-1">
-                                    <p><span className="font-bold w-20 inline-block">Role:</span> {k.role}</p>
-                                    <p><span className="font-bold w-20 inline-block">Status:</span> <span className={`px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold ${k.status_aktif ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{k.status_aktif ? 'AKTIF' : 'NONAKTIF'}</span></p>
-                                    <p><span className="font-bold w-20 inline-block">Akses:</span> {(k.role === 'Admin' || k.role === 'Super Admin') ? 'Semua Akses' : (k.akses_halaman || []).join(', ')}</p>
-                                 </div>
-                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
-                                    <GradientActionBtn onClick={() => openModal('edit', 'karyawan', k)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
-                                    {(currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
-                                       <GradientActionBtn
-                                          onClick={() => handleQuickResetPassword(k)}
-                                          label="Reset PW"
-                                          gradientFrom="#F59E0B"
-                                          gradientTo="#FBBF24"
-                                          icon={IconKey}
-                                          disabled={resetPwLoadingId === String(k.id_karyawan)}
-                                       />
-                                    )}
-                                    <GradientActionBtn onClick={() => handleDelete('karyawan', k.id_karyawan!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
-                                 </div>
-                              </div>
-                           ))}
-                        </div>
-                     )}
-                  </div>
+                  <UserRoleTab
+                     sortedKaryawans={sortedKaryawans}
+                     searchKaryawan={searchKaryawan}
+                     setSearchKaryawan={setSearchKaryawan}
+                     viewMode={viewMode}
+                     sortConfigKaryawans={sortConfigKaryawans}
+                     setSortConfigKaryawans={setSortConfigKaryawans}
+                     currentUser={currentUser}
+                     resetPwLoadingId={resetPwLoadingId}
+                     handleQuickResetPassword={handleQuickResetPassword}
+                     openModal={openModal}
+                     handleDelete={handleDelete}
+                  />
                )}
 
-               {/* ======================= SARAN ISIAN (AUTOCOMPLETE) ======================= */}
-               {activeTab === 'autocomplete' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (() => {
-                  const AC_FIELDS = [
-                     { key: 'tipe_barang', label: 'Tipe Barang', hint: 'Model kamera, lensa, aksesori' },
-                     { key: 'jenis_promosi', label: 'Jenis Promosi', hint: 'Opsi promosi di form claim (dropdown)' },
-                     { key: 'nama_toko', label: 'Nama Toko / Dealer', hint: 'Nama toko resmi & tidak resmi' },
-                     { key: 'nama_promo', label: 'Nama Promo', hint: 'Nama program promo aktif' },
-                     { key: 'speaker', label: 'Speaker Event', hint: 'Nama pembicara event' },
-                  ];
-                  const activeField = AC_FIELDS.find(f => f.key === acFieldTab) || AC_FIELDS[0];
-                  const pinnedItems = autocompleteItems.filter(i => i.field_key === acFieldTab && !i.hidden);
-                  const hiddenItems = autocompleteItems.filter(i => i.field_key === acFieldTab && i.hidden);
-                  const inTableSet = new Set(autocompleteItems.filter(i => i.field_key === acFieldTab).map(i => i.value));
-
-                  const rawDBMap: Record<string, (string | null | undefined)[]> = {
-                     tipe_barang: [...claims.map(c => c.tipe_barang), ...warranties.map(w => w.tipe_barang)],
-                     jenis_promosi: claims.map(c => c.jenis_promosi),
-                     nama_toko: claims.map(c => c.nama_toko),
-                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                     nama_promo: promos.map((p: any) => p.nama_promo),
-                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                     speaker: events.map((e: any) => e.event_speaker),
-                  };
-                  const dbOnlyValues = Array.from(new Set((rawDBMap[acFieldTab] || []).filter((v): v is string => {
-                     if (typeof v !== 'string' || !v || v === 'BELUM_DIISI') return false;
-                     return !inTableSet.has(v);
-                  }))).sort();
-
-                  return (
-                     <div className="space-y-5 animate-fade-in text-gray-900">
-                        <div>
-                           <p className="text-sm text-gray-500 mb-3">Kelola saran isian (autocomplete) untuk kolom form. Tambah saran tetap, atau sembunyikan data yang tidak relevan.</p>
-                           <div className="flex flex-wrap gap-2">
-                              {AC_FIELDS.map(f => (
-                                 <button key={f.key} onClick={() => { setAcFieldTab(f.key); setAcNewValue(''); }}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-semibold border transition ${acFieldTab === f.key ? 'bg-[#FFE500] border-yellow-400 text-black' : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}>
-                                    {f.label}
-                                 </button>
-                              ))}
-                           </div>
-                        </div>
-
-                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-                           <div>
-                              <p className="text-xs text-gray-400 mb-1">{activeField.hint}</p>
-                              <div className="flex gap-2">
-                                 <input
-                                    type="text"
-                                    aria-label="Tambah saran baru"
-                                    placeholder={`Tambah saran untuk ${activeField.label}...`}
-                                    value={acNewValue}
-                                    onChange={e => setAcNewValue(e.target.value)}
-                                    onKeyDown={e => { if (e.key === 'Enter') handleACAdd(acFieldTab, acNewValue); }}
-                                    className="flex-1 p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-[#FFE500]"
-                                 />
-                                 <button
-                                    onClick={() => handleACAdd(acFieldTab, acNewValue)}
-                                    disabled={acSaving || !acNewValue.trim()}
-                                    className="px-4 py-2 bg-[#FFE500] hover:bg-yellow-400 text-black text-sm font-bold rounded-lg disabled:opacity-40 transition">
-                                    {acSaving ? '...' : '+ Tambah'}
-                                 </button>
-                              </div>
-                           </div>
-
-                           {pinnedItems.length > 0 && (
-                              <div>
-                                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Saran Tetap (ditambahkan admin)</p>
-                                 <div className="space-y-1">
-                                    {pinnedItems.map(item => (
-                                       <div key={item.id} className="flex items-center justify-between gap-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                          <span className="text-sm font-medium text-gray-800">{item.value}</span>
-                                          <button onClick={() => handleACDelete(item.id)} className="text-xs text-red-500 hover:text-red-700 font-semibold shrink-0">Hapus</button>
-                                       </div>
-                                    ))}
-                                 </div>
-                              </div>
-                           )}
-
-                           {dbOnlyValues.length > 0 && (
-                              <div>
-                                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Dari Data ({dbOnlyValues.length})</p>
-                                 <div className="space-y-1 max-h-64 overflow-y-auto">
-                                    {dbOnlyValues.map(val => (
-                                       <div key={val} className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                                          <span className="text-sm text-gray-700">{val}</span>
-                                          <div className="flex gap-2 shrink-0">
-                                             <button onClick={() => handleACAdd(acFieldTab, val, false)} className="text-xs text-blue-600 hover:text-blue-800 font-semibold">Pin</button>
-                                             <button onClick={() => handleACAdd(acFieldTab, val, true)} className="text-xs text-orange-500 hover:text-orange-700 font-semibold">Sembunyikan</button>
-                                          </div>
-                                       </div>
-                                    ))}
-                                 </div>
-                              </div>
-                           )}
-
-                           {hiddenItems.length > 0 && (
-                              <div>
-                                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Disembunyikan</p>
-                                 <div className="space-y-1">
-                                    {hiddenItems.map(item => (
-                                       <div key={item.id} className="flex items-center justify-between gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg opacity-70">
-                                          <span className="text-sm line-through text-gray-500">{item.value}</span>
-                                          <button onClick={() => handleACDelete(item.id)} className="text-xs text-green-600 hover:text-green-800 font-semibold shrink-0">Tampilkan</button>
-                                       </div>
-                                    ))}
-                                 </div>
-                              </div>
-                           )}
-
-                           {pinnedItems.length === 0 && dbOnlyValues.length === 0 && hiddenItems.length === 0 && (
-                              <p className="text-sm text-gray-400 text-center py-4">Belum ada data untuk kolom ini.</p>
-                           )}
-                        </div>
-                     </div>
-                  );
-               })()}
+               {activeTab === 'autocomplete' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                  <AutocompleteTab
+                     autocompleteItems={autocompleteItems}
+                     acFieldTab={acFieldTab}
+                     setAcFieldTab={setAcFieldTab}
+                     acNewValue={acNewValue}
+                     setAcNewValue={setAcNewValue}
+                     acSaving={acSaving}
+                     handleACAdd={handleACAdd}
+                     handleACDelete={handleACDelete}
+                     claims={claims}
+                     warranties={warranties}
+                     promos={promos}
+                     events={events}
+                  />
+               )}
 
                {/* ======================= WA TEMPLATES ======================= */}
                {activeTab === 'wa_templates' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
@@ -6138,151 +4814,16 @@ ${kode ? `
                   />
                )}
 
-               {activeTab === 'infrastruktur' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (() => {
-                  const fmtBytes = (b: number) => b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : (b / 1048576).toFixed(0) + ' MB';
-                  const fmtUptime = (s: number) => {
-                     const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
-                     return d > 0 ? `${d}h ${h}j ${m}m` : h > 0 ? `${h}j ${m}m` : `${m}m`;
-                  };
-                  const barColor = (pct: number) => pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-400' : 'bg-green-500';
-                  const MetricBar = ({ label, used, total, pct, unitUsed, unitTotal }: { label: string; used: string; total: string; pct: number; unitUsed?: string; unitTotal?: string }) => (
-                     <div>
-                        <div className="flex justify-between text-sm mb-1">
-                           <span className="font-semibold text-gray-700">{label}</span>
-                           <span className="text-gray-500">{used}{unitUsed} / {total}{unitTotal} <span className="font-bold text-gray-800">({pct}%)</span></span>
-                        </div>
-                        <div className="w-full bg-gray-100 rounded-md h-2.5">
-                           <div className={`h-2.5 rounded-md transition-all ${barColor(pct)}`} style={{ width: `${pct}%` }} />
-                        </div>
-                     </div>
-                  );
-                  return (
-                     <div className="space-y-6 animate-fade-in">
-                        <div className="flex items-center justify-between">
-                           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                 <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                              </div>
-                              Monitoring Infrastruktur
-                           </h2>
-                           <div className="flex items-center gap-3">
-                              <button
-                                 onClick={() => { setActiveTab('dashboard'); setTimeout(() => setActiveTab('infrastruktur'), 50); }}
-                                 className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-bold hover:bg-gray-700 transition"
-                              >
-                                 <svg className="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Refresh
-                              </button>
-                           </div>
-                        </div>
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
-                           <div className="flex items-center gap-3 mb-3">
-                              <div className="w-3 h-3 rounded-md bg-blue-400" />
-                              <h3 className="text-lg font-bold text-gray-900">Synology DS223J — <span className="font-mono text-gray-600">192.168.18.169</span></h3>
-                           </div>
-                           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                              {[
-                                 { label: 'PostgreSQL', detail: 'port 5433', status: 'Aktif' },
-                                 { label: 'MinIO', detail: 'port 9010/9011', status: 'Aktif' },
-                                 { label: 'Wetty (SSH)', detail: 'port 7681', status: 'Aktif' },
-                                 { label: 'Cloudflared', detail: 'tunnel nikon-synology', status: 'HEALTHY' },
-                                 { label: 'Cloud Sync', detail: 'Google Drive → /dashboard/backups', status: 'Up to date' },
-                              ].map(s => (
-                                 <div key={s.label} className="bg-gray-50 rounded-xl p-3">
-                                    <div className="font-bold text-gray-800">{s.label}</div>
-                                    <div className="text-gray-500 text-xs mt-0.5">{s.detail}</div>
-                                    <div className="mt-2 inline-flex items-center gap-1 text-xs text-green-700 font-semibold">
-                                       <div className="w-1.5 h-1.5 bg-green-500 rounded-md" />{s.status}
-                                    </div>
-                                 </div>
-                              ))}
-                           </div>
-                        </div>
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
-                           <div className="flex items-center gap-3 mb-3">
-                              <div className="w-3 h-3 rounded-md bg-orange-400" />
-                              <h3 className="text-lg font-bold text-gray-900">Cloudflare Tunnel — <span className="font-mono text-sm font-normal text-gray-500">Proxmox Dell OptiPlex 5060</span></h3>
-                           </div>
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                              {[
-                                 { hostname: 'proxmox.altanikindo.web.id', target: 'localhost:8006', desc: 'Proxmox Web UI (HTTPS)' },
-                                 { hostname: 'monitorproxmox.altanikindo.web.id', target: 'localhost:19999', desc: 'Netdata monitoring' },
-                                 { hostname: 'immich.altanikindo.web.id', target: '192.168.18.210:2283', desc: 'Immich (CT 100)' },
-                                 { hostname: 'casaos.altanikindo.web.id', target: '192.168.18.178:81', desc: 'CasaOS (CT 102)' },
-                                 { hostname: 'uptime.altanikindo.web.id', target: '192.168.18.178:3001', desc: 'Uptime Kuma (CT 102)' },
-                                 { hostname: 'files.altanikindo.web.id', target: '192.168.18.188:80', desc: 'Nextcloud (CT 103)' },
-                              ].map(r => (
-                                 <div key={r.hostname} className="bg-gray-50 rounded-xl p-3 flex items-start gap-3">
-                                    <div className="w-1.5 h-1.5 bg-orange-400 rounded-md mt-1.5 shrink-0" />
-                                    <div>
-                                       <div className="font-mono font-bold text-gray-800 text-xs">{r.hostname}</div>
-                                       <div className="text-gray-500 text-xs">→ {r.target}</div>
-                                       <div className="text-gray-400 text-xs mt-0.5">{r.desc}</div>
-                                    </div>
-                                 </div>
-                              ))}
-                           </div>
-                        </div>
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
-                           <div className="flex items-center gap-3 mb-4">
-                              <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                                 <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                              </div>
-                              <div className="flex-1">
-                                 <h3 className="text-lg font-bold text-gray-900">Immich Machine Learning</h3>
-                                 <p className="text-xs text-gray-500">Worker aktif untuk face recognition &amp; smart search</p>
-                              </div>
-                              {immichMlLoading && (
-                                 <svg className="animate-spin w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                              )}
-                           </div>
-                           <div className="flex gap-3 mb-3">
-                              <button
-                                 onClick={() => switchImmichMl('dell')}
-                                 disabled={immichMlSwitching || immichMlMode === 'dell'}
-                                 className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${immichMlMode === 'dell' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:bg-white'} disabled:cursor-not-allowed`}
-                              >
-                                 <div className="flex items-center justify-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                                    <span>Dell PC</span>
-                                    {immichMlMode === 'dell' && <span className="ml-1 text-xs bg-blue-500 text-white rounded-md px-1.5 py-0.5">Aktif</span>}
-                                 </div>
-                                 <div className="text-xs font-normal mt-1 opacity-70">CPU · localhost:3003</div>
-                              </button>
-                              <button
-                                 onClick={() => switchImmichMl('laptop')}
-                                 disabled={immichMlSwitching || immichMlMode === 'laptop'}
-                                 className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${immichMlMode === 'laptop' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:bg-white'} disabled:cursor-not-allowed`}
-                              >
-                                 <div className="flex items-center justify-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                    <span>Laptop GPU</span>
-                                    {immichMlMode === 'laptop' && <span className="ml-1 text-xs bg-purple-500 text-white rounded-md px-1.5 py-0.5">Aktif</span>}
-                                 </div>
-                                 <div className="text-xs font-normal mt-1 opacity-70">RTX 3050 · 192.168.18.145:3003</div>
-                              </button>
-                           </div>
-                           {immichMlSwitching && (
-                              <div className="flex items-center gap-2 text-sm text-gray-500 py-1">
-                                 <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                                 Mengganti worker ML...
-                              </div>
-                           )}
-                           {immichMlError && (
-                              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">{immichMlError}</div>
-                           )}
-                           {immichMlMode === 'laptop' && !immichMlError && !immichMlSwitching && (
-                              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-700 text-xs flex items-start gap-2">
-                                 <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                 <span>Mode GPU aktif — pastikan laptop menyala dan terhubung ke Tailscale sebelum pakai Immich</span>
-                              </div>
-                           )}
-                           {immichMlMode === null && !immichMlLoading && !immichMlError && (
-                              <div className="text-xs text-gray-400 pt-1">Tambahkan IMMICH_API_KEY dan IMMICH_URL ke .env untuk mengaktifkan fitur ini</div>
-                           )}
-                        </div>
-                     </div>
-                  );
-               })()}
+               {activeTab === 'infrastruktur' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                  <InfrastrukturTab
+                     onRefresh={() => { setActiveTab('dashboard'); setTimeout(() => setActiveTab('infrastruktur'), 50); }}
+                     immichMlLoading={immichMlLoading}
+                     immichMlSwitching={immichMlSwitching}
+                     immichMlMode={immichMlMode}
+                     immichMlError={immichMlError}
+                     switchImmichMl={switchImmichMl}
+                  />
+               )}
 
                </main>
             </div>
@@ -6378,152 +4919,6 @@ ${kode ? `
             </div>
          )}
 
-         {activeTab === 'infrastruktur' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (() => {
-            const fmtBytes = (b: number) => b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : (b / 1048576).toFixed(0) + ' MB';
-            const fmtUptime = (s: number) => {
-               const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
-               return d > 0 ? `${d}h ${h}j ${m}m` : h > 0 ? `${h}j ${m}m` : `${m}m`;
-            };
-            const barColor = (pct: number) => pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-400' : 'bg-green-500';
-            const MetricBar = ({ label, used, total, pct, unitUsed, unitTotal }: { label: string; used: string; total: string; pct: number; unitUsed?: string; unitTotal?: string }) => (
-               <div>
-                  <div className="flex justify-between text-sm mb-1">
-                     <span className="font-semibold text-gray-700">{label}</span>
-                     <span className="text-gray-500">{used}{unitUsed} / {total}{unitTotal} <span className="font-bold text-gray-800">({pct}%)</span></span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-md h-2.5">
-                     <div className={`h-2.5 rounded-md transition-all ${barColor(pct)}`} style={{ width: `${pct}%` }} />
-                  </div>
-               </div>
-            );
-            return (
-               <div className="space-y-6 animate-fade-in">
-                  <div className="flex items-center justify-between">
-                     <h2 className="text-2xl font-bold text-gray-900">🖥️ Monitoring Infrastruktur</h2>
-                     <div className="flex items-center gap-3">
-                        <button
-                           onClick={() => { setActiveTab('dashboard'); setTimeout(() => setActiveTab('infrastruktur'), 50); }}
-                           className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-bold hover:bg-gray-700 transition"
-                        >
-                           🔄 Refresh
-                        </button>
-                     </div>
-                  </div>
-
-                  {/* Synology Card */}
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
-                     <div className="flex items-center gap-3 mb-3">
-                        <div className="w-3 h-3 rounded-md bg-blue-400" />
-                        <h3 className="text-lg font-bold text-gray-900">Synology DS223J — <span className="font-mono text-gray-600">192.168.18.169</span></h3>
-                     </div>
-                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                        {[
-                           { label: 'PostgreSQL', detail: 'port 5433', status: 'Aktif' },
-                           { label: 'MinIO', detail: 'port 9010/9011', status: 'Aktif' },
-                           { label: 'Wetty (SSH)', detail: 'port 7681', status: 'Aktif' },
-                           { label: 'Cloudflared', detail: 'tunnel nikon-synology', status: 'HEALTHY' },
-                           { label: 'Cloud Sync', detail: 'Google Drive → /dashboard/backups', status: 'Up to date' },
-                        ].map(s => (
-                           <div key={s.label} className="bg-gray-50 rounded-xl p-3">
-                              <div className="font-bold text-gray-800">{s.label}</div>
-                              <div className="text-gray-500 text-xs mt-0.5">{s.detail}</div>
-                              <div className="mt-2 inline-flex items-center gap-1 text-xs text-green-700 font-semibold">
-                                 <div className="w-1.5 h-1.5 bg-green-500 rounded-md" />{s.status}
-                              </div>
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-
-                  {/* Cloudflare Card */}
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
-                     <div className="flex items-center gap-3 mb-3">
-                        <div className="w-3 h-3 rounded-md bg-orange-400" />
-                        <h3 className="text-lg font-bold text-gray-900">Cloudflare Tunnel — <span className="font-mono text-sm font-normal text-gray-500">Proxmox Dell OptiPlex 5060</span></h3>
-                     </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        {[
-                           { hostname: 'proxmox.altanikindo.web.id', target: 'localhost:8006', desc: 'Proxmox Web UI (HTTPS)' },
-                           { hostname: 'monitorproxmox.altanikindo.web.id', target: 'localhost:19999', desc: 'Netdata monitoring' },
-                           { hostname: 'immich.altanikindo.web.id', target: '192.168.18.210:2283', desc: 'Immich (CT 100)' },
-                           { hostname: 'casaos.altanikindo.web.id', target: '192.168.18.178:81', desc: 'CasaOS (CT 102)' },
-                           { hostname: 'uptime.altanikindo.web.id', target: '192.168.18.178:3001', desc: 'Uptime Kuma (CT 102)' },
-                           { hostname: 'files.altanikindo.web.id', target: '192.168.18.188:80', desc: 'Nextcloud (CT 103)' },
-                        ].map(r => (
-                           <div key={r.hostname} className="bg-gray-50 rounded-xl p-3 flex items-start gap-3">
-                              <div className="w-1.5 h-1.5 bg-orange-400 rounded-md mt-1.5 shrink-0" />
-                              <div>
-                                 <div className="font-mono font-bold text-gray-800 text-xs">{r.hostname}</div>
-                                 <div className="text-gray-500 text-xs">→ {r.target}</div>
-                                 <div className="text-gray-400 text-xs mt-0.5">{r.desc}</div>
-                              </div>
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-
-                  {/* Immich ML Mode */}
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6">
-                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                           <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                        </div>
-                        <div className="flex-1">
-                           <h3 className="text-lg font-bold text-gray-900">Immich Machine Learning</h3>
-                           <p className="text-xs text-gray-500">Worker aktif untuk face recognition &amp; smart search</p>
-                        </div>
-                        {immichMlLoading && (
-                           <svg className="animate-spin w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                        )}
-                     </div>
-                     <div className="flex gap-3 mb-3">
-                        <button
-                           onClick={() => switchImmichMl('dell')}
-                           disabled={immichMlSwitching || immichMlMode === 'dell'}
-                           className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${immichMlMode === 'dell' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:bg-white'} disabled:cursor-not-allowed`}
-                        >
-                           <div className="flex items-center justify-center gap-2">
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                              <span>Dell PC</span>
-                              {immichMlMode === 'dell' && <span className="ml-1 text-xs bg-blue-500 text-white rounded-md px-1.5 py-0.5">Aktif</span>}
-                           </div>
-                           <div className="text-xs font-normal mt-1 opacity-70">CPU · localhost:3003</div>
-                        </button>
-                        <button
-                           onClick={() => switchImmichMl('laptop')}
-                           disabled={immichMlSwitching || immichMlMode === 'laptop'}
-                           className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all ${immichMlMode === 'laptop' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:bg-white'} disabled:cursor-not-allowed`}
-                        >
-                           <div className="flex items-center justify-center gap-2">
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                              <span>Laptop GPU</span>
-                              {immichMlMode === 'laptop' && <span className="ml-1 text-xs bg-purple-500 text-white rounded-md px-1.5 py-0.5">Aktif</span>}
-                           </div>
-                           <div className="text-xs font-normal mt-1 opacity-70">RTX 3050 · 192.168.18.145:3003</div>
-                        </button>
-                     </div>
-                     {immichMlSwitching && (
-                        <div className="flex items-center gap-2 text-sm text-gray-500 py-1">
-                           <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                           Mengganti worker ML...
-                        </div>
-                     )}
-                     {immichMlError && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">{immichMlError}</div>
-                     )}
-                     {immichMlMode === 'laptop' && !immichMlError && !immichMlSwitching && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-700 text-xs flex items-start gap-2">
-                           <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                           <span>Mode GPU aktif — pastikan laptop menyala dan terhubung ke Tailscale sebelum pakai Immich</span>
-                        </div>
-                     )}
-                     {immichMlMode === null && !immichMlLoading && !immichMlError && (
-                        <div className="text-xs text-gray-400 pt-1">Tambahkan IMMICH_API_KEY dan IMMICH_URL ke .env untuk mengaktifkan fitur ini</div>
-                     )}
-                  </div>
-               </div>
-            );
-         })()}
 
          {/* MODALS */}
          {isModalOpen && (() => {
