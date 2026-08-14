@@ -35,6 +35,33 @@ const supabase = createClient(
 ```
 Admin pages proxy through `/api/admin/sb` — jangan hardcode URL Supabase langsung.
 
+### ⚠️ Client ini hanya untuk READ
+Proxy `/api/admin/sb` **HTTP 500 untuk PATCH** — jadi `supabase.from(...).update()/.delete()/.insert()`
+gagal diam-diam di dashboard. `.select()` aman.
+
+Semua WRITE wajib lewat helper di `app/dashboard/page.tsx`:
+- `sbRead({ table, select?, filters?, order?, limit?, offset?, count? })` → `POST /api/admin/sb-read`
+- `sbWrite({ action, table, data?, match?, filters?, onConflict?, select? })` → `POST /api/admin/sb-write`
+
+Keduanya pakai `service_role` di server + `verifyAdminSession`.
+
+`match` = kondisi equality; `filters` = `{ col, op, val }[]` untuk operator lain
+(`eq|neq|gte|lte|gt|lt|like|ilike|in|is`), digabung AND. Contoh cleanup sesi CS:
+```ts
+await sbWrite({
+  action: 'update', table: 'riwayat_pesan', data: { bicara_dengan_cs: false },
+  filters: [
+    { col: 'bicara_dengan_cs', op: 'eq', val: true },
+    { col: 'waktu_pesan', op: 'lt', val: yesterday.toISOString() },
+  ],
+});
+```
+`update`/`delete` tanpa `match` maupun `filters` ditolak 400 (guard anti mass-update).
+
+### Format pesan error
+Jangan pakai `err instanceof Error ? err.message : String(err)` — `PostgrestError` bukan
+instance `Error`, hasilnya `[object Object]`. Pakai `errMsg(err)` dari `app/lib/uiHelpers.ts`.
+
 ## File Penting
 | File | Keterangan |
 |---|---|
