@@ -63,6 +63,9 @@ ruvector.db
 *.db
 .claude/settings.local.json
 
+# Output knowledge graph dari skill graphify
+/graphify-out/
+
 # Scripts with credentials (must never be committed)
 scripts/backup-nikon.sh
 gen-apikey.sh
