@@ -43,7 +43,7 @@ import InfrastrukturTab from '@/app/components/InfrastrukturTab';
 import DashboardTab from '@/app/components/DashboardTab';
 import ConfirmModal from '@/app/components/ConfirmModal';
 import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield, IconCheck, IconPrint, IconKey } from '@/app/components/GradientActionBtn';
-import { SortConfig, handleSort, driveImgSrc } from '@/app/lib/uiHelpers';
+import { SortConfig, handleSort, driveImgSrc, errMsg } from '@/app/lib/uiHelpers';
 import { useBackGuard } from '@/app/lib/useBackGuard';
 
 // Client-side: proxy through /api/admin/sb (validates admin session, uses service_role).
@@ -106,7 +106,7 @@ async function sbRead<T = unknown>(opts: {
     if (!res.ok) return { data: null, count: null, error: { message: out.error || JSON.stringify(out) } };
     return { data: (out.data as T[]) ?? null, count: out.count ?? null, error: null };
   } catch (err) {
-    return { data: null, count: null, error: { message: err instanceof Error ? err.message : String(err) } };
+    return { data: null, count: null, error: { message: errMsg(err) } };
   }
 }
 
@@ -118,7 +118,10 @@ async function sbWrite<T = unknown>(opts: {
   action: 'insert' | 'update' | 'delete' | 'upsert';
   table: string;
   data?: unknown;
+  /** kondisi equality untuk update/delete */
   match?: Record<string, unknown>;
+  /** kondisi dengan operator (lt/gte/in/...) untuk update/delete; digabung AND dengan match */
+  filters?: { col: string; op: 'eq'|'neq'|'gte'|'lte'|'gt'|'lt'|'like'|'ilike'|'in'|'is'; val: unknown }[];
   onConflict?: string;
   /** kolom-kolom yg ingin dikembalikan setelah operasi, contoh: "id, nama" */
   select?: string;
@@ -135,7 +138,7 @@ async function sbWrite<T = unknown>(opts: {
     }
     return { data: (out.data as T[]) ?? null, error: null };
   } catch (err) {
-    return { data: null, error: { message: err instanceof Error ? err.message : String(err) } };
+    return { data: null, error: { message: errMsg(err) } };
   }
 }
 
@@ -1164,7 +1167,7 @@ function NikonDashboardInner() {
          alert('✅ Kehadiran Berhasil Dikonfirmasi!');
          fetchEventRegistrations();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal konfirmasi kehadiran: ' + message);
       }
    }, [fetchEventRegistrations]);
@@ -1215,7 +1218,7 @@ function NikonDashboardInner() {
          );
       } catch (err) {
          setScannerStatus('error');
-         setScannerError('Gagal membuka kamera: ' + (err instanceof Error ? err.message : String(err)));
+         setScannerError('Gagal membuka kamera: ' + (errMsg(err)));
       }
    }, [handleMarkAttendance]);
 
@@ -1677,7 +1680,7 @@ function NikonDashboardInner() {
             setForgotPwMessage(j.error || 'Gagal memproses reset password.');
          }
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          setForgotPwMessage('Gagal memproses reset password: ' + message);
       } finally {
          setIsSubmitting(false);
@@ -1703,7 +1706,7 @@ function NikonDashboardInner() {
             setForgotPwMessage(j.error || 'Gagal mengirim password baru.');
          }
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          setForgotPwMessage('Gagal mengirim password baru: ' + message);
       } finally {
          setIsSubmitting(false);
@@ -2320,7 +2323,7 @@ ${kode ? `
          fetchConsumers();
          closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal simpan konsumen: ' + message);
       } finally {
          setIsSubmitting(false);
@@ -2446,7 +2449,7 @@ ${kode ? `
          fetchConsumers(); // refresh konsumen list karena claim form bisa upsert konsumen
          closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal: ' + message);
       } finally {
          setIsSubmitting(false);
@@ -2498,7 +2501,7 @@ ${kode ? `
 
          fetchWarranties(); closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal: ' + message);
       } finally {
          setIsSubmitting(false); }
@@ -2518,7 +2521,7 @@ ${kode ? `
          fetchPromos();
          closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal: ' + message); }
       finally { setIsSubmitting(false); }
    };
@@ -2537,7 +2540,7 @@ ${kode ? `
          fetchServices();
          closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal: ' + message); }
       finally { setIsSubmitting(false); }
    };
@@ -2643,7 +2646,7 @@ ${kode ? `
 
          fetchBudgets(); closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal: ' + message);
       } finally {
          setIsSubmitting(false); }
@@ -2691,7 +2694,7 @@ ${kode ? `
          }
          fetchKaryawans(); closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal: ' + message);
       } finally {
          setIsSubmitting(false); }
@@ -2715,7 +2718,7 @@ ${kode ? `
             password: karyawanForm.password,
          });
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal: ' + message);
       } finally {
          setIsSubmitting(false); }
@@ -2746,7 +2749,7 @@ ${kode ? `
             password: newPassword,
          });
       } catch (err: unknown) {
-         alert('Gagal: ' + (err instanceof Error ? err.message : String(err)));
+         alert('Gagal: ' + (errMsg(err)));
       } finally {
          setResetPwLoadingId(null);
       }
@@ -2889,7 +2892,7 @@ ${kode ? `
          fetchLendingRecords();
          closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal: ' + message);
       } finally {
          setIsSubmitting(false); }
@@ -2920,7 +2923,7 @@ ${kode ? `
          fetchEvents();
          closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal: ' + message);
       } finally {
          setIsSubmitting(false);
@@ -2969,7 +2972,7 @@ ${kode ? `
          fetchEvents();
          closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal menyimpan event: ' + message);
       } finally {
          setIsSubmitting(false);
@@ -2991,7 +2994,7 @@ ${kode ? `
          fetchBotSettings();
          closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal menyimpan pengaturan bot: ' + message);
       } finally {
          setIsSubmitting(false); }
@@ -3035,7 +3038,7 @@ ${kode ? `
          setNotifChannelMsg({ ok: true, text: 'Berhasil disimpan!' });
          setTimeout(() => setNotifChannelMsg(null), 3000);
       } catch (err: unknown) {
-         setNotifChannelMsg({ ok: false, text: 'Gagal: ' + (err instanceof Error ? err.message : String(err)) });
+         setNotifChannelMsg({ ok: false, text: 'Gagal: ' + (errMsg(err)) });
       } finally {
          setNotifChannelSaving(false);
       }
@@ -3056,7 +3059,7 @@ ${kode ? `
          }
          setChatbotTemplates(prev => ({ ...prev, [key]: text }));
       } catch (err: unknown) {
-         alert('Gagal menyimpan: ' + (err instanceof Error ? err.message : String(err)));
+         alert('Gagal menyimpan: ' + (errMsg(err)));
       } finally {
          setChatbotSaving(prev => ({ ...prev, [key]: false }));
       }
@@ -3300,7 +3303,7 @@ ${kode ? `
          alert('Notifikasi berhasil dikirim!');
          fetchMessages();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal mengirim pesan: ' + message);
       }
    };
@@ -3420,7 +3423,7 @@ ${kode ? `
          fetchLendingRecords();
          closeModal();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
+         const message = errMsg(err);
          alert('Gagal mengembalikan barang: ' + message);
       } finally {
          setIsSubmitting(false); }
@@ -3432,18 +3435,21 @@ ${kode ? `
       try {
          const yesterday = new Date();
          yesterday.setDate(yesterday.getDate() - 1);
-         const { error } = await supabase
-            .from('riwayat_pesan')
-            .update({ bicara_dengan_cs: false })
-            .eq('bicara_dengan_cs', true)
-            .lt('waktu_pesan', yesterday.toISOString());
-            
-         if (error) throw error;
+         // Lewat sbWrite (service_role): proxy /api/admin/sb tidak bisa meneruskan PATCH.
+         const { error } = await sbWrite({
+            action: 'update',
+            table: 'riwayat_pesan',
+            data: { bicara_dengan_cs: false },
+            filters: [
+               { col: 'bicara_dengan_cs', op: 'eq', val: true },
+               { col: 'waktu_pesan', op: 'lt', val: yesterday.toISOString() },
+            ],
+         });
+         if (error) throw new Error(error.message);
          alert('Sesi inaktif berhasil dibersihkan.');
          fetchMessages();
       } catch (err: unknown) {
-         const message = err instanceof Error ? err.message : String(err);
-         alert('Gagal membersihkan sesi: ' + message);
+         alert('Gagal membersihkan sesi: ' + errMsg(err));
       } finally {
          setIsSubmitting(false); }
    };

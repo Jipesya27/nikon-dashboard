@@ -8,9 +8,13 @@
  *   action: 'insert' | 'update' | 'delete' | 'upsert',
  *   table: string,
  *   data?: object | object[],   // required for insert/update/upsert
- *   match?: Record<string, unknown>,  // required for update/delete
+ *   match?: Record<string, unknown>,  // equality filters for update/delete
+ *   filters?: { col, op, val }[],     // operator filters (lt/gte/in/...) for update/delete
  *   onConflict?: string,         // optional for upsert
  * }
+ *
+ * update/delete wajib punya minimal satu kondisi (match atau filters) —
+ * tanpa itu PostgREST akan mengenai SELURUH tabel.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -34,14 +38,49 @@ const sbAdmin = createClient(
 );
 
 type WriteAction = 'insert' | 'update' | 'delete' | 'upsert';
+interface WriteFilter {
+  col: string;
+  op: 'eq' | 'neq' | 'gte' | 'lte' | 'gt' | 'lt' | 'like' | 'ilike' | 'in' | 'is';
+  val: unknown;
+}
 interface WritePayload {
   action: WriteAction;
   table: string;
   data?: Record<string, unknown> | Record<string, unknown>[];
   match?: Record<string, unknown>;
+  filters?: WriteFilter[];
   onConflict?: string;
   /** kolom-kolom yg ingin dikembalikan setelah operasi, contoh: "id, nama" */
   select?: string;
+}
+
+/** Terapkan match (equality) + filters (operator) ke query update/delete. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyConditions<Q extends { eq: (c: string, v: any) => Q }>(
+  q: Q,
+  match: Record<string, unknown> | undefined,
+  filters: WriteFilter[],
+): Q {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let out: any = q;
+  for (const [col, val] of Object.entries(match ?? {})) out = out.eq(col, val);
+  for (const f of filters) {
+    switch (f.op) {
+      case 'eq':    out = out.eq(f.col, f.val); break;
+      case 'neq':   out = out.neq(f.col, f.val); break;
+      case 'gte':   out = out.gte(f.col, f.val); break;
+      case 'lte':   out = out.lte(f.col, f.val); break;
+      case 'gt':    out = out.gt(f.col, f.val); break;
+      case 'lt':    out = out.lt(f.col, f.val); break;
+      case 'like':  out = out.like(f.col, f.val as string); break;
+      case 'ilike': out = out.ilike(f.col, f.val as string); break;
+      case 'in':    out = out.in(f.col, f.val as unknown[]); break;
+      case 'is':    out = out.is(f.col, f.val as null | boolean); break;
+      default:
+        throw new Error(`Operator filter tidak dikenal: ${(f as WriteFilter).op}`);
+    }
+  }
+  return out as Q;
 }
 
 export async function POST(req: NextRequest) {
@@ -59,11 +98,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { action, table, data, match, onConflict, select } = payload;
+  const { action, table, data, match, filters = [], onConflict, select } = payload;
 
   if (!action || !table) {
     return NextResponse.json({ error: 'action dan table wajib diisi' }, { status: 400 });
   }
+
+  // Guard mass-update/delete: update/delete tanpa kondisi apa pun mengenai seluruh tabel.
+  const hasCondition = Object.keys(match ?? {}).length > 0 || filters.length > 0;
 
   try {
     let baseQ;
@@ -74,21 +116,14 @@ export async function POST(req: NextRequest) {
         break;
       }
       case 'update': {
-        if (!data || !match) return NextResponse.json({ error: 'data dan match wajib untuk update' }, { status: 400 });
-        let updateQ = sbAdmin.from(table).update(data as Record<string, unknown>);
-        for (const [col, val] of Object.entries(match)) {
-          updateQ = updateQ.eq(col, val as never);
-        }
-        baseQ = updateQ;
+        if (!data) return NextResponse.json({ error: 'data wajib untuk update' }, { status: 400 });
+        if (!hasCondition) return NextResponse.json({ error: 'match atau filters wajib untuk update' }, { status: 400 });
+        baseQ = applyConditions(sbAdmin.from(table).update(data as Record<string, unknown>), match, filters);
         break;
       }
       case 'delete': {
-        if (!match) return NextResponse.json({ error: 'match wajib untuk delete' }, { status: 400 });
-        let deleteQ = sbAdmin.from(table).delete();
-        for (const [col, val] of Object.entries(match)) {
-          deleteQ = deleteQ.eq(col, val as never);
-        }
-        baseQ = deleteQ;
+        if (!hasCondition) return NextResponse.json({ error: 'match atau filters wajib untuk delete' }, { status: 400 });
+        baseQ = applyConditions(sbAdmin.from(table).delete(), match, filters);
         break;
       }
       case 'upsert': {
@@ -100,7 +135,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
     }
 
-    const recordId = match ? JSON.stringify(match) : action === 'insert' ? '(new)' : '(unknown)';
+    const recordId = hasCondition
+      ? JSON.stringify({ ...(match ?? {}), ...(filters.length ? { filters } : {}) })
+      : action === 'insert' ? '(new)' : '(unknown)';
     const newValues = data ? (Array.isArray(data) ? data[0] : data) : {};
 
     // Jika diminta return data
