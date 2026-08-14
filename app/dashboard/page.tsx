@@ -1,7 +1,8 @@
 ﻿﻿'use client';
 
-import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback, Suspense } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -42,15 +43,8 @@ import InfrastrukturTab from '@/app/components/InfrastrukturTab';
 import DashboardTab from '@/app/components/DashboardTab';
 import ConfirmModal from '@/app/components/ConfirmModal';
 import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield, IconCheck, IconPrint, IconKey } from '@/app/components/GradientActionBtn';
-
-/** Konversi Google Drive URL ke proxy lokal agar gambar bisa tampil di dashboard.
- *  drive.google.com tidak bisa di-load langsung karena CORS + domain whitelist Next.js. */
-function driveImgSrc(url?: string | null): string {
-  if (!url) return '';
-  const m = url.match(/[?&]id=([a-zA-Z0-9_-]{10,})/) || url.match(/\/d\/([a-zA-Z0-9_-]{10,})\//);
-  if (m) return `/api/events/image?id=${m[1]}`;
-  return url; // fallback: URL non-Drive (sudah berupa URL publik langsung)
-}
+import { SortConfig, handleSort, driveImgSrc } from '@/app/lib/uiHelpers';
+import { useBackGuard } from '@/app/lib/useBackGuard';
 
 // Client-side: proxy through /api/admin/sb (validates admin session, uses service_role).
 // SSR/prerender: fall back to real URL (no queries happen server-side; all fetches are in useEffect).
@@ -247,7 +241,10 @@ const sendWhatsAppMessage = async (
    return { wamid: data.wamid };
 };
 
-export default function NikonDashboard() {
+/** Tab default saat URL tidak punya `?tab=`. URL-nya sengaja dibiarkan bersih (`/dashboard`). */
+const DEFAULT_TAB = 'dashboard';
+
+function NikonDashboardInner() {
 
    // LOGIN & FORGOT PASSWORD STATES
    const [currentUser, setCurrentUser] = useState<Karyawan | null>(null);
@@ -283,7 +280,7 @@ export default function NikonDashboard() {
    const [viewingKonsumen, setViewingKonsumen] = useState<KonsumenData | null>(null);
    const [events, setEvents] = useState<EventData[]>([]);
    const [searchEvent, setSearchEvent] = useState('');
-   const [sortConfigEvents, setSortConfigEvents] = useState<{ column: string; direction: 'asc' | 'desc' | null }>({ column: '', direction: null });
+   const [sortConfigEvents, setSortConfigEvents] = useState<SortConfig>({ column: '', direction: null });
    const [eventRegistrationsCount, setEventRegistrationsCount] = useState<Record<string, number>>({});
    const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]);
    const [searchRegistration, setSearchRegistration] = useState('');
@@ -367,9 +364,7 @@ export default function NikonDashboard() {
    const [searchKaryawan, setSearchKaryawan] = useState('');
    const [searchLending, setSearchLending] = useState('');
 
-   // SORTING STATES
-   type SortDirection = 'asc' | 'desc' | null;
-   interface SortConfig { column: string; direction: SortDirection; }
+   // SORTING STATES — tipe & helper-nya di app/lib/uiHelpers.ts
    const [sortConfigKonsumen, setSortConfigKonsumen] = useState<SortConfig>({ column: '', direction: null });
    const [sortConfigPromos, setSortConfigPromos] = useState<SortConfig>({ column: '', direction: null });
    const [sortConfigClaims, setSortConfigClaims] = useState<SortConfig>({ column: '', direction: null });
@@ -418,11 +413,37 @@ export default function NikonDashboard() {
    const [dataLoadError, setDataLoadError] = useState<string | null>(null);
    const [dbCheckResult, setDbCheckResult] = useState<Record<string, unknown> | null>(null);
    const [dbChecking, setDbChecking] = useState(false);
-   const [activeTab, setActiveTab] = useState('dashboard');
+   // Tab aktif diturunkan dari URL (`/dashboard?tab=claims`), bukan useState, supaya tombol
+   // back/forward browser berpindah antar tab — bukan keluar dari dashboard. Lihat juga setActiveTab.
+   const searchParams = useSearchParams();
+   const activeTab = searchParams.get('tab') || DEFAULT_TAB;
+
+   /**
+    * Pengganti setter useState yang lama — signature-nya sengaja dibuat kompatibel
+    * (`(tab: string) => void`) supaya seluruh call-site lama tidak perlu diubah.
+    *
+    * Memakai History API native, bukan router.push: Next menyinkronkan pushState/replaceState
+    * ke useSearchParams tanpa round-trip server dan tanpa me-remount komponen, jadi semua data
+    * yang sudah ter-fetch di state tetap utuh saat pindah tab.
+    *
+    * `replace: true` untuk perpindahan yang BUKAN hasil aksi user (mis. fallback role,
+    * force-remount) supaya tidak menumpuk entry history sampah yang bikin back nyangkut.
+    */
+   const setActiveTab = useCallback((tab: string, opts?: { replace?: boolean }) => {
+      const params = new URLSearchParams(window.location.search);
+      const current = params.get('tab') || DEFAULT_TAB;
+      if (tab === current && !opts?.replace) return; // hindari entry duplikat saat tab diklik ulang
+      if (tab === DEFAULT_TAB) params.delete('tab'); else params.set('tab', tab);
+      const qs = params.toString();
+      const url = `${window.location.pathname}${qs ? `?${qs}` : ''}`;
+      if (opts?.replace) window.history.replaceState(null, '', url);
+      else window.history.pushState(null, '', url);
+   }, []);
+
    const [returnTab, setReturnTab] = useState<string | null>(null);
    const [isRefreshing, setIsRefreshing] = useState(false);
    const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-   const activeTabRef = useRef('dashboard');
+   const activeTabRef = useRef(DEFAULT_TAB);
    const [dateRange, setDateRange] = useState({ start: '2024-01-01', end: new Date().toISOString().split('T')[0] });
 
    // MODAL STATES
@@ -589,14 +610,6 @@ export default function NikonDashboard() {
    };
 
    // --- SORTING LOGIC ---
-   const handleSort = (sortConfig: SortConfig, setSortConfig: React.Dispatch<React.SetStateAction<SortConfig>>, column: string) => {
-      let direction: SortDirection = 'asc';
-      if (sortConfig.column === column && sortConfig.direction === 'asc') {
-         direction = 'desc';
-      }
-      setSortConfig({ column, direction });
-   };
-
    const getSortFunction = useCallback((sortConfig: SortConfig, consumersMap: Record<string, string> | null = null) => {
       return (a: unknown, b: unknown): number => {
          if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) {
@@ -2270,6 +2283,26 @@ ${kode ? `
          setReturnTab(null);
       }
    };
+
+   // --- TOMBOL BACK MENUTUP OVERLAY ---
+   // Di HP, back adalah refleks untuk "kembali"/"batal". Tanpa ini, back saat modal isian
+   // terbuka akan berpindah tab (atau keluar dashboard) dan isian yang belum disimpan hilang.
+   // Urutan pemanggilan di bawah TIDAK menentukan prioritas — yang menutup lebih dulu adalah
+   // overlay yang paling belakangan dibuka (LIFO di dalam useBackGuard).
+   useBackGuard(isModalOpen, closeModal);
+   useBackGuard(isImageViewerOpen, closeImageViewer);
+   useBackGuard(isDualDocOpen, () => setIsDualDocOpen(false));
+   useBackGuard(isScannerOpen, () => setIsScannerOpen(false));
+   useBackGuard(isNewChatModalOpen, () => setIsNewChatModalOpen(false));
+   useBackGuard(isChangePwOpen, () => setIsChangePwOpen(false));
+   useBackGuard(viewingKonsumen !== null, () => setViewingKonsumen(null));
+   useBackGuard(resiModal !== null, () => setResiModal(null));
+   useBackGuard(waPasswordMsg !== null, () => setWaPasswordMsg(null));
+   useBackGuard(confirmModal.open, closeConfirm);
+   // Thread WA di tab Pesan: layar penuh di mobile, jadi back harus kembali ke daftar kontak.
+   useBackGuard(selectedWa !== null, () => setSelectedWa(null));
+   // Sidebar mobile (di desktop selalu tampil dan sidebarOpen tidak dipakai).
+   useBackGuard(sidebarOpen, () => setSidebarOpen(false));
 
    // --- CRUD HANDLERS ---
    // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -3987,10 +4020,12 @@ ${kode ? `
 
    useEffect(() => {
       if (currentUser && groupedVisibleTabs.length > 0 && !groupedVisibleTabs.flatMap(g => g.tabs).find(t => t.id === activeTab)) {
-         // eslint-disable-next-line react-hooks/set-state-in-effect
-         setActiveTab(groupedVisibleTabs[0].tabs[0].id);
+         // replace, bukan push: user tidak pernah "menuju" ke sini — ini koreksi karena `?tab=`
+         // di URL tidak valid / di luar hak akses. Kalau di-push, back akan balik ke URL tak
+         // valid itu lalu dikoreksi lagi → back terjebak dalam loop.
+         setActiveTab(groupedVisibleTabs[0].tabs[0].id, { replace: true });
       }
-   }, [currentUser, activeTab, groupedVisibleTabs]);
+   }, [currentUser, activeTab, groupedVisibleTabs, setActiveTab]);
 
    // --- UI RENDER ---
 
@@ -4495,7 +4530,6 @@ ${kode ? `
                      setClaimColFilter={setClaimColFilter}
                      claimColOptions={claimColOptions}
                      sortConfigClaims={sortConfigClaims} setSortConfigClaims={setSortConfigClaims}
-                     handleSort={handleSort}
                      selectedClaimIds={selectedClaimIds} setSelectedClaimIds={setSelectedClaimIds}
                      claimNumberMap={claimNumberMap}
                      getClaimStatusColor={getClaimStatusColor}
@@ -4610,7 +4644,6 @@ ${kode ? `
                      setViewMode={v => setViewMode(v)}
                      sortConfigLending={sortConfigLending}
                      setSortConfigLending={setSortConfigLending}
-                     handleSort={handleSort}
                      openModal={openModal as (mode: string, type: string, data?: unknown) => void}
                      openImageViewer={openImageViewer}
                      handleDelete={handleDelete as (type: string, id: string) => void}
@@ -4816,7 +4849,9 @@ ${kode ? `
 
                {activeTab === 'infrastruktur' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                   <InfrastrukturTab
-                     onRefresh={() => { setActiveTab('dashboard'); setTimeout(() => setActiveTab('infrastruktur'), 50); }}
+                     // Trik force-remount: pindah sesaat ke tab lain lalu balik supaya tab ini fetch
+                     // ulang. Keduanya replace agar tidak menyisakan 2 entry history sampah.
+                     onRefresh={() => { setActiveTab(DEFAULT_TAB, { replace: true }); setTimeout(() => setActiveTab('infrastruktur', { replace: true }), 50); }}
                      immichMlLoading={immichMlLoading}
                      immichMlSwitching={immichMlSwitching}
                      immichMlMode={immichMlMode}
@@ -7872,5 +7907,21 @@ ${kode ? `
       })()}
       <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
       </>
+   );
+}
+
+/**
+ * useSearchParams memaksa subtree di bawahnya dirender di client. Karena /dashboard
+ * di-prerender saat build, Next mewajibkan Suspense boundary di atasnya — tanpa ini build gagal.
+ */
+export default function NikonDashboard() {
+   return (
+      <Suspense fallback={
+         <div className="flex items-center justify-center min-h-screen bg-gray-50 text-gray-500 text-sm">
+            Memuat dashboard…
+         </div>
+      }>
+         <NikonDashboardInner />
+      </Suspense>
    );
 }

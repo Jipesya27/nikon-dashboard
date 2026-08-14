@@ -3,9 +3,7 @@
 import React from 'react';
 import { PeminjamanBarang } from '@/app/index';
 import { GradientActionBtn, IconEdit, IconTrash, IconPrint } from '@/app/components/GradientActionBtn';
-
-type SortDirection = 'asc' | 'desc' | null;
-interface SortConfig { column: string; direction: SortDirection; }
+import { SortConfig, handleSort } from '@/app/lib/uiHelpers';
 
 export interface LendingTabProps {
   lendingRecords: PeminjamanBarang[];
@@ -16,7 +14,6 @@ export interface LendingTabProps {
   setViewMode: (v: 'table' | 'card') => void;
   sortConfigLending: SortConfig;
   setSortConfigLending: React.Dispatch<React.SetStateAction<SortConfig>>;
-  handleSort: (config: SortConfig, setter: React.Dispatch<React.SetStateAction<SortConfig>>, column: string) => void;
   openModal: (mode: string, type: string, data?: unknown) => void;
   openImageViewer: (urlOrFile: string | File) => void;
   handleDelete: (type: string, id: string) => void;
@@ -28,7 +25,7 @@ export default function LendingTab({
   lendingRecords, sortedLendingRecords,
   searchLending, setSearchLending,
   viewMode, setViewMode,
-  sortConfigLending, setSortConfigLending, handleSort,
+  sortConfigLending, setSortConfigLending,
   openModal, openImageViewer, handleDelete, handlePrintPeminjamanPDF,
   proxyImg,
 }: LendingTabProps) {

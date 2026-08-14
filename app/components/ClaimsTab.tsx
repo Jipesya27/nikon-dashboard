@@ -3,9 +3,7 @@ import React from 'react';
 import { ClaimPromo, KonsumenData, Karyawan } from '@/app/index';
 import { GradientActionBtn, IconLabel, IconPin, IconSend, IconBox, IconCheck, IconEdit, IconTrash } from '@/app/components/GradientActionBtn';
 import { GlassButton } from '@/app/components/GlassButton';
-
-type SortDirection = 'asc' | 'desc' | null;
-interface SortConfig { column: string; direction: SortDirection; }
+import { SortConfig, handleSort } from '@/app/lib/uiHelpers';
 
 export interface ClaimsTabProps {
   claims: ClaimPromo[];
@@ -28,7 +26,6 @@ export interface ClaimsTabProps {
   claimColOptions: { tipe: string[]; promo: string[]; mkt: string[]; fa: string[] };
   sortConfigClaims: SortConfig;
   setSortConfigClaims: React.Dispatch<React.SetStateAction<SortConfig>>;
-  handleSort: (config: SortConfig, setter: React.Dispatch<React.SetStateAction<SortConfig>>, column: string) => void;
   selectedClaimIds: Set<string>;
   setSelectedClaimIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   claimNumberMap: Map<string, number>;
@@ -65,7 +62,7 @@ export default function ClaimsTab({
   filterStatusWarna, setFilterStatusWarna, filterDuplikat, setFilterDuplikat,
   duplicateClaimIds, hasActiveColFilters, setFilterColClaims, claimStatusCounts,
   viewMode, setViewMode, filterColClaims, setClaimColFilter, claimColOptions,
-  sortConfigClaims, setSortConfigClaims, handleSort,
+  sortConfigClaims, setSortConfigClaims,
   selectedClaimIds, setSelectedClaimIds, claimNumberMap,
   getClaimStatusColor, getBadgeStyle, getBadgeLabel, consumers,
   isGoogleDriveLink, openImageViewer, formatTglBeli, formatSubmitDate,
