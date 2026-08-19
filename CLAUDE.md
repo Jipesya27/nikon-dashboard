@@ -334,12 +334,46 @@ Utility classes tersedia tanpa npm tambahan:
 - `occ config:app:set files max_chunk_size --value 0` (unlimited chunk)
 - 2FA enforcement: **disabled** (`twofactor_enforced=false`) — perlu untuk WebDAV/Synology
 - Mount points di CT 103: `/mnt/hdd-bulk` (hdd-bulk), `/mnt/hdd-backup`, `/mnt/hdd-files`
-- External Storage "Team Files": `/mnt/hdd-bulk/team` → path di CT: `/mnt/hdd-bulk/team`
-- www-data UID di CT 103 = 33 → host UID = 100033. Path hdd-bulk/team harus `chown 100033:100033`
+- www-data UID di CT 103 = 33 → host UID = 100033 (dari CT), UID numerik `33:33` (dari dalam CT)
 - Users: jipesya (admin), Adhi (untuk Synology sync)
 - **Cloudflare Tunnel limit**: upload max ~100MB via `files.altanikindo.web.id` — jangan pakai untuk file besar
 - Reset brute force: `occ security:bruteforce:reset <IP>`
-- Reset password user: `occ user:resetpassword <username>`
+- Reset password user (dari dalam CT 103, root): `cd /var/www/nextcloud && su -s /bin/bash www-data -c "php occ user:resetpassword <username>"`
+  - **Jangan pakai `sudo`** — di CT 103 tidak ada `sudo`, sudah otomatis root via `pct enter 103`. Pakai `su -s /bin/bash www-data -c "..."` untuk jalanin sebagai user `www-data`
+  - Semua command `occ` wajib dijalankan dari `/var/www/nextcloud` (relative path `occ`), kalau lupa `cd` dulu → error `Could not open input file: occ`
+
+#### Filosofi storage: Nextcloud = jembatan akses ke HDD, bukan storage sendiri
+Semua data (personal Files tiap user maupun shared) HARUS fisiknya ada di HDD (`/mnt/hdd-bulk`), **bukan** di rootfs container CT 103 yang kecil. Rootfs cuma untuk aplikasi Nextcloud sendiri (kode, cache, DB).
+
+- **`datadirectory`** (folder personal "Files" SEMUA user) sudah dipindah ke HDD:
+  ```
+  'datadirectory' => '/mnt/hdd-bulk/nextcloud-data',
+  ```
+  (sebelumnya default `/var/www/nextcloud/data` di rootfs — pernah bikin CT 103 disk-full 100% karena user upload banyak ke folder personal)
+- **External Storage "Team Files"**: mount `1`, path `/mnt/hdd-bulk/team`, applicable **All** users — folder shared/team
+- **External Storage "HDD Files"**: mount `2`, path `/mnt/hdd-files`, applicable **hanya `jipesya`** (admin) — akses HDD kedua (1TB) khusus admin
+- Cara lihat/atur external storage: `occ files_external:list`, `occ files_external:create`, `occ files_external:applicable <id> --add-user/--remove-all`
+
+#### Cara migrasi datadirectory (kalau perlu lagi / referensi ke CT lain)
+```bash
+cd /var/www/nextcloud
+su -s /bin/bash www-data -c "php occ maintenance:mode --on"
+systemctl stop apache2
+mkdir -p /mnt/hdd-bulk/nextcloud-data
+rsync -aHAX --info=progress2 /var/www/nextcloud/data/ /mnt/hdd-bulk/nextcloud-data/
+# verifikasi ukuran sama: du -sh /var/www/nextcloud/data vs du -sh /mnt/hdd-bulk/nextcloud-data
+sed -i "s#'datadirectory' => '/var/www/nextcloud/data',#'datadirectory' => '/mnt/hdd-bulk/nextcloud-data',#" config/config.php
+chown -R 33:33 /mnt/hdd-bulk/nextcloud-data
+mv /var/www/nextcloud/data /var/www/nextcloud/data.bak   # backup, hapus setelah dicek normal
+systemctl start apache2
+su -s /bin/bash www-data -c "php occ maintenance:mode --off"
+```
+
+#### Disk-full troubleshooting (CT 103 rootfs)
+- Kalau rootfs penuh (`No space left on device`, termasuk saat `occ` command gagal aneh kayak `Fail to create file sequence directory` di `/tmp`), cek dulu: `df -h /`
+- Cari penyebab: `du -h --max-depth=3 /var/www 2>/dev/null | sort -rh | head -20`
+- Resize cepat kalau `local-lvm` masih ada ruang (dari Proxmox host): `pct resize 103 rootfs +30G`, cek dulu ruang tersedia: `pvesm status`
+- Fix permanen: pastikan `datadirectory` sudah di HDD (lihat atas), bukan rootfs — supaya tidak kejadian lagi siapapun user-nya
 
 ### Netdata Monitoring (`monitorproxmox.altanikindo.web.id`)
 - Versi: v2.10.0-549-nightly
