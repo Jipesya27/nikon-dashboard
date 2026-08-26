@@ -26,21 +26,20 @@ export type StatusValidasiGaransi = typeof STATUS_VALIDASI_GARANSI_OPTIONS[numbe
 
 // ============ JENIS GARANSI ============
 export const JENIS_GARANSI_OPTIONS = [
-  { value: 'Jasa 30%',        label: 'Jasa 30%' },
-  { value: '1 Tahun',         label: '1 Tahun' },
-  { value: 'Extended 2 Years', label: 'Extended 2 Years' },
+  { value: 'Jasa 30%',         label: 'Jasa 30% (setelah garansi normal habis, maks. 2 tahun)' },
+  { value: '1 Tahun',          label: 'Garansi Normal 1 Tahun' },
+  { value: 'Extended 2 Years', label: 'Garansi Extended 2 Tahun' },
 ] as const;
 export type JenisGaransi = typeof JENIS_GARANSI_OPTIONS[number]['value'];
 
+// Auto-selaraskan lama_garansi saat jenis_garansi dipilih (kecuali 'Jasa 30%' yang durasinya bebas/manual)
 export const JENIS_GARANSI_LAMA_MAP: Record<string, string> = {
-  'Jasa 30%':        '0 Tahun',
-  '1 Tahun':         '1 Tahun',
+  '1 Tahun':          '1 Tahun',
   'Extended 2 Years': '2 Tahun',
 };
 
 // ============ LAMA GARANSI ============
 export const LAMA_GARANSI_OPTIONS = [
-  { value: '0 Tahun', label: '0 Tahun' },
   { value: '6 Bulan', label: '6 Bulan' },
   { value: '1 Tahun', label: '1 Tahun' },
   { value: '2 Tahun', label: '2 Tahun' },

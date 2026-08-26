@@ -6059,14 +6059,14 @@ ${kode ? `
                                     <label className="label-form">Validasi Marketing (MKT)</label>
                                     <select aria-label="Validasi MKT" value={warrantyForm.validasi_by_mkt || ''} onChange={e => setWarrantyForm({ ...warrantyForm, validasi_by_mkt: e.target.value || null })} className="input-form">
                                        <option value="">-- belum diisi --</option>
-                                       {STATUS_VALIDASI_GARANSI_OPTIONS.filter(o => o.value !== 'Menunggu').map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                       {VALIDASI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                  </div>
                                  <div>
                                     <label className="label-form">Validasi Finance (FA)</label>
                                     <select aria-label="Validasi FA" value={warrantyForm.validasi_by_fa || ''} onChange={e => setWarrantyForm({ ...warrantyForm, validasi_by_fa: e.target.value || null })} className="input-form">
                                        <option value="">-- belum diisi --</option>
-                                       {STATUS_VALIDASI_GARANSI_OPTIONS.filter(o => o.value !== 'Menunggu').map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                       {VALIDASI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
                                  </div>
                                  <div>
