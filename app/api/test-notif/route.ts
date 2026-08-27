@@ -110,7 +110,7 @@ export async function GET(req: Request) {
       email: to,
       phone: '',
       message: 'Test notifikasi dari sistem Nikon.\n\nJika email ini masuk, berarti konfigurasi email berfungsi dengan benar ✅',
-      subject: '✅ Test Notifikasi Nikon — ' + new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+      subject: '✅ Test Notifikasi Nikon — ' + new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }),
     });
     return NextResponse.json({ success: true, sent_to: to, env: result });
   } catch (e) {

@@ -120,7 +120,7 @@ const content = [
   }),
   new Paragraph({
     children: [new TextRun({
-      text: `Version 1.0\nCreated: ${new Date().toLocaleDateString('id-ID')}`,
+      text: `Version 1.0\nCreated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}`,
       size: 20,
       color: "999999"
     })],
@@ -696,7 +696,7 @@ const content = [
   }),
   new Paragraph({
     children: [new TextRun({
-      text: `Dokumentasi ini dibuat pada ${new Date().toLocaleDateString('id-ID')}\nversi 1.0 | Nikon Dashboard`,
+      text: `Dokumentasi ini dibuat pada ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}\nversi 1.0 | Nikon Dashboard`,
       size: 20,
       color: "999999"
     })],

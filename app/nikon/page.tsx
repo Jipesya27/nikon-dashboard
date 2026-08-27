@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import Link from 'next/link';
 import { DEFAULT_NIKON_CONFIG, NikonPageConfig } from '@/app/lib/homepageTypes';
+import { formatEventDate } from '@/app/lib/dateUtils';
 
 function buildWaLinks(waNumber: string) {
   const base = `https://wa.me/${waNumber}`;
@@ -199,7 +200,7 @@ function CekStatusModal({ type, onClose }: { type: ModalType; onClose: () => voi
 
   function fmtDate(iso: string) {
     if (!iso || iso === '-') return '-';
-    try { return new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
+    try { return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
     catch { return iso; }
   }
 
@@ -636,7 +637,7 @@ function EventsSection() {
                 badge: 'Photo Walk',
                 badgeBg: 'bg-white text-black',
                 img: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-                date: '02 Juni 2026 • Bandung',
+                date: '02 Jun 2026 • Bandung',
                 title: 'Urban Street dengan Nikon Zfc',
                 desc: 'Jelajahi sudut kota dengan gaya klasik modern. Hands-on langsung kamera Zfc terbaru bersama komunitas.',
                 cta: 'Daftar Sekarang',
@@ -695,7 +696,7 @@ function EventsSection() {
                   </div>
                   <div className="p-6 md:w-3/5 flex flex-col justify-center">
                     <div className="flex items-center text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3 gap-2">
-                      <IconCalendar size={14} /> {ev.event_date}
+                      <IconCalendar size={14} /> {formatEventDate(ev.event_date)}
                     </div>
                     <h3 className="text-2xl font-bold mb-3 leading-tight group-hover:text-[#ffe000] transition-colors text-white line-clamp-2">
                       {ev.event_title}
@@ -709,7 +710,7 @@ function EventsSection() {
                           <span className="text-zinc-500 font-bold text-xs uppercase tracking-wider block mb-0.5">Segera Hadir</span>
                           {ev.registration_open_date && (
                             <span className="text-zinc-400 text-xs">
-                              Daftar mulai {new Date(ev.registration_open_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })}
+                              Daftar mulai {new Date(ev.registration_open_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}
                             </span>
                           )}
                         </div>

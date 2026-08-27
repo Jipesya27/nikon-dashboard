@@ -45,6 +45,7 @@ import ConfirmModal from '@/app/components/ConfirmModal';
 import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield, IconCheck, IconPrint, IconKey } from '@/app/components/GradientActionBtn';
 import { SortConfig, handleSort, driveImgSrc, errMsg } from '@/app/lib/uiHelpers';
 import { useBackGuard } from '@/app/lib/useBackGuard';
+import { formatEventDate } from '@/app/lib/dateUtils';
 
 // Client-side: proxy through /api/admin/sb (validates admin session, uses service_role).
 // SSR/prerender: fall back to real URL (no queries happen server-side; all fetches are in useEffect).
@@ -1807,7 +1808,7 @@ function NikonDashboardInner() {
          return;
       }
       const selected = sortedClaims.filter((c: ClaimPromo) => c.id_claim && selectedClaimIds.has(c.id_claim));
-      const tglFormatted = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit', timeZone: 'Asia/Jakarta' }).replace(/ /g, '-');
+      const tglFormatted = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }).replace(/ /g, '-');
 
       const rows = selected.map((c: ClaimPromo, idx: number) => {
          const konsumen = consumersList.find(k => k.nomor_wa === c.nomor_wa);
@@ -1957,10 +1958,10 @@ function NikonDashboardInner() {
 
    const handlePrintPeminjamanPDF = (l: PeminjamanBarang) => {
       const tglPinjam = l.tanggal_peminjaman
-         ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
-         : new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+         ? new Date(l.tanggal_peminjaman).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })
+         : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
       const tglEstimasi = l.tanggal_estimasi_pengembalian
-         ? new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+         ? new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })
          : '-';
       const kode = l.kode_peminjaman || '';
       const perimbaURL = kode ? `${window.location.origin}/penerima?kode=${kode}` : '';
@@ -2859,7 +2860,7 @@ ${kode ? `
             if (docRes.ok) {
                const { viewUrl } = await docRes.json();
                const estLabel = lendingForm.tanggal_estimasi_pengembalian
-                  ? new Date(lendingForm.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
+                  ? new Date(lendingForm.tanggal_estimasi_pengembalian).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })
                   : '-';
                const itemList = formatLendingItemsForWA(lendingForm.items_dipinjam ?? [], 'pinjam');
                await sendWhatsAppMessage(waNumber, '', {
@@ -3387,7 +3388,7 @@ ${kode ? `
                });
                if (docRes.ok) {
                   const { viewUrl } = await docRes.json();
-                  const tglLabel = new Date(tglKembali).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
+                  const tglLabel = new Date(tglKembali).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
                   const itemList = formatLendingItemsForWA(itemsWithAccsNotes, 'kembali');
                   const returnTemplateName = newStatusPeminjaman === 'partial'
                      ? 'notif_lending_return_partial'
@@ -3527,7 +3528,7 @@ ${kode ? `
       ctx.fillStyle = '#000000';
       ctx.font = '14px Arial';
       ctx.textAlign = 'right';
-      const dateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
+      const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
       ctx.fillText(dateStr, canvas.width - 30, 45);
       ctx.textAlign = 'left';
       const nama = (consumer?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa).toUpperCase();
@@ -3593,7 +3594,7 @@ ${kode ? `
       a.click();
       document.body.removeChild(a);
       if (c.id_claim) {
-         const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
+         const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
          const newDates = [...(c.tanggal_cetak || []), today];
          // Update lokal langsung (feedback instan)
          setClaims(prev => prev.map(cl => cl.id_claim === c.id_claim ? { ...cl, tanggal_cetak: newDates } : cl));
@@ -3691,7 +3692,7 @@ ${kode ? `
 
    // ── Sidebar actionable counts ──────────────────────────────────────────────
    const sidebarCounts = useMemo(() => {
-      const todayStr = new Date().toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' });
+      const todayStr = new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' });
       // Pesan: thread WA yang masih dalam mode CS (belum resolve)
       const csUnresolved = (() => {
          const perWa = new Map<string, boolean>();
@@ -3701,7 +3702,7 @@ ${kode ? `
       // Konsumen baru hari ini
       const konsumenBaru = consumersList.filter(k => {
          if (!k.created_at) return false;
-         const d = new Date(k.created_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' });
+         const d = new Date(k.created_at).toLocaleDateString('en-GB', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' });
          return d === todayStr;
       }).length;
       // Claim belum di cek
@@ -3876,14 +3877,14 @@ ${kode ? `
       if (!createdAt) return '-';
       const d = new Date(createdAt);
       if (isNaN(d.getTime())) return '-';
-      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
    };
 
    const formatTglBeli = (val?: string) => {
       if (!val) return '-';
       const d = new Date(val);
       if (isNaN(d.getTime())) return val;
-      const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+      const bulan = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       const dd = String(d.getDate()).padStart(2, '0');
       return `${dd} ${bulan[d.getMonth()]} ${d.getFullYear()}`;
    };
@@ -5271,7 +5272,7 @@ ${kode ? `
                                                 <option value="">-- Pilih event dari daftar --</option>
                                                 {events.map(evt => (
                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                   <option key={evt.id} value={evt.id}>{(evt as any).event_title || (evt as any).title} — {(evt as any).event_date || (evt as any).date}</option>
+                                                   <option key={evt.id} value={evt.id}>{(evt as any).event_title || (evt as any).title} — {formatEventDate((evt as any).event_date || (evt as any).date)}</option>
                                                 ))}
                                              </select>
                                           </div>
@@ -5370,7 +5371,7 @@ ${kode ? `
                                           </div>
                                           {registrationForm.is_attended && registrationForm.attended_at && (
                                              <div className="md:col-span-2">
-                                                <p className="text-[11px] text-green-700 font-bold">✓ Tercatat hadir pada: {new Date(registrationForm.attended_at).toLocaleString('id-ID')}</p>
+                                                <p className="text-[11px] text-green-700 font-bold">✓ Tercatat hadir pada: {new Date(registrationForm.attended_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}</p>
                                              </div>
                                           )}
                                        </div>
@@ -6634,11 +6635,11 @@ ${kode ? `
                                  </div>
                                  <div className="text-right">
                                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Tgl Pinjam</p>
-                                    <p className="text-xs text-white font-bold mt-0.5">{lendingForm.tanggal_peminjaman ? new Date(lendingForm.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</p>
+                                    <p className="text-xs text-white font-bold mt-0.5">{lendingForm.tanggal_peminjaman ? new Date(lendingForm.tanggal_peminjaman).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-'}</p>
                                     {lendingForm.tanggal_estimasi_pengembalian && (
                                        <>
                                           <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mt-2">Estimasi</p>
-                                          <p className="text-xs text-amber-300 font-bold mt-0.5">{new Date(lendingForm.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID')}</p>
+                                          <p className="text-xs text-amber-300 font-bold mt-0.5">{new Date(lendingForm.tanggal_estimasi_pengembalian).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}</p>
                                        </>
                                     )}
                                  </div>
@@ -7009,7 +7010,7 @@ ${kode ? `
                               />
                               <p className="text-[11px] text-gray-800 mt-1 font-medium">📅 Reminder WhatsApp akan otomatis dikirim ke peminjam <strong>3 hari sebelum</strong> tanggal ini.</p>
                               {lendingForm.reminder_sent_at && (
-                                 <p className="text-[11px] text-green-700 font-bold mt-1">✓ Reminder sudah terkirim pada {new Date(lendingForm.reminder_sent_at).toLocaleString('id-ID')}</p>
+                                 <p className="text-[11px] text-green-700 font-bold mt-1">✓ Reminder sudah terkirim pada {new Date(lendingForm.reminder_sent_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}</p>
                               )}
                            </div>
                            <div>
@@ -7836,7 +7837,7 @@ ${kode ? `
                            </div>
                            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Terdaftar</p>
-                              <p className="text-sm text-gray-900">{vk.created_at ? new Date(vk.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-'}</p>
+                              <p className="text-sm text-gray-900">{vk.created_at ? new Date(vk.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-'}</p>
                            </div>
                         </div>
                      </section>

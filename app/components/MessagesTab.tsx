@@ -320,7 +320,7 @@ export default function MessagesTab({
             const isToday = msgTime.toDateString() === new Date().toDateString();
             const timeStr = isToday
               ? msgTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-              : msgTime.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+              : msgTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
             return (
               <div
                 key={c.nomor_wa}
@@ -565,7 +565,7 @@ export default function MessagesTab({
                           {msg.is_edited && <span className="italic">Diedit</span>}
                           {(() => {
                             const d = new Date(msg.waktu_pesan || msg.created_at || 0);
-                            return isNaN(d.getTime()) ? '-' : `${d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+                            return isNaN(d.getTime()) ? '-' : `${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
                           })()}
                         </div>
                       </div>
@@ -778,13 +778,13 @@ export default function MessagesTab({
                 {firstMsg && (
                   <div>
                     <p className="text-[10px] text-gray-400">Created at</p>
-                    <p className="text-xs text-gray-700">{new Date(firstMsg.waktu_pesan || firstMsg.created_at || 0).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                    <p className="text-xs text-gray-700">{new Date(firstMsg.waktu_pesan || firstMsg.created_at || 0).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                 )}
                 {lastMsg && (
                   <div>
                     <p className="text-[10px] text-gray-400">Last seen</p>
-                    <p className="text-xs text-gray-700">{new Date(lastMsg.waktu_pesan || lastMsg.created_at || 0).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                    <p className="text-xs text-gray-700">{new Date(lastMsg.waktu_pesan || lastMsg.created_at || 0).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                 )}
                 <div>

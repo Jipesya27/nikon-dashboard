@@ -349,7 +349,7 @@ export async function POST(req: Request) {
       `📧 *Email:* ${email || '-'}\n` +
       `📷 *Kamera:* ${tipe_kamera}\n` +
       `📍 *Kota:* ${kabupaten_kotamadya}\n` +
-      `⏰ *Waktu Daftar:* ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n\n` +
+      `⏰ *Waktu Daftar:* ${new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}\n\n` +
       `Status: *${isGratis ? 'Terdaftar (Gratis)' : 'Menunggu Validasi'}* — silakan cek tab Event di dashboard.`;
 
     // konversi 08... ke 62... untuk WA

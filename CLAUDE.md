@@ -180,6 +180,18 @@ Pengaturan bot lain (URL file promo, dealer, dll)
 - Proxy via `/api/events/image?id=<drive-file-id>` atau `/api/drive-file?id=<id>`
 - Helper `driveImgSrc(url)` di `app/nikon/page.tsx` mengekstrak ID dan mengubah ke proxy URL
 
+## Format Tanggal (WAJIB konsisten — "DD MMM YYYY", contoh `05 Aug 2026`)
+- Tanggal angka semua (`27/08/2026`, `2026-08-27`) **dilarang tampil ke user** — sering salah baca
+- **Locale `en-GB`** untuk semua tanggal (bulan Inggris 3 huruf: Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec) — biar rapi saat di-export ke Excel
+- Opsi Intl kanonik: `.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })`
+- Kalau ada jam: `.toLocaleString('en-GB', { …, hour: '2-digit', minute: '2-digit' })`
+- **Jangan** pakai `month: 'long'`, `month: 'numeric'`, `year: '2-digit'`, `toLocale*` tanpa opsi, atau locale `id-ID` untuk tanggal
+- Array bulan manual (di PDF/edge function): `['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']`
+- Helper di `app/lib/dateUtils.ts`: `formatDate`, `formatDateTime`, `formatTime`
+- **`events.event_date`** (& `garansi.tanggal_pembelian`) = kolom free-text (data lama campur ISO / "5 Juni 2026" / "05 Jun 2026").
+  Saat menampilkannya **selalu** bungkus `formatEventDate(str)` dari `app/lib/dateUtils.ts`
+- Pengecualian: `toLocaleTimeString` (jam saja) & key perbandingan internal (`thisMonth`, `todayStr`) boleh tetap `id-ID`
+
 ## Timezone
 - Semua format tanggal/waktu wajib `timeZone: 'Asia/Jakarta'` di opsi Intl
 - **Hanya berlaku untuk Date** — `toLocaleDateString`, `toLocaleString`, `toLocaleTimeString` pada `new Date(...)`
@@ -187,7 +199,7 @@ Pengaturan bot lain (URL file promo, dealer, dll)
 
 ## Tab Klaim Biaya (`app/components/ExpenseClaimTab.tsx`)
 - Modal "Buat Klaim Baru": From/To/Tanggal + tabel baris pengeluaran + catatan
-- Field tanggal: `DatePickerInput` wrapper — tampilan DD MMM YYYY (en-GB), klik memanggil `showPicker()` via ref
+- Field tanggal: `DatePickerInput` wrapper — tampilan `DD MMM YYYY` (bulan Inggris: `_MONTHS_EN_SHORT`), klik memanggil `showPicker()` via ref
 - Kolom **Bukti** di tiap baris → klik 📎 membuka **sub-modal upload** (z-60, di atas modal utama)
 - Sub-modal: frame gambar besar (aspect 4:3) + field Tanggal/Keterangan/Nominal + tombol Simpan
   - Zoom: scroll/wheel (1×–5×), pinch mobile, drag saat zoom>1, double-click reset

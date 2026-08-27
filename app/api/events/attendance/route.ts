@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: false,
         alreadyAttended: true,
-        message: `${reg.nama_lengkap} sudah dicatat hadir pada ${reg.attended_at ? new Date(reg.attended_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) + ' WIB' : 'sebelumnya'}.`,
+        message: `${reg.nama_lengkap} sudah dicatat hadir pada ${reg.attended_at ? new Date(reg.attended_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB' : 'sebelumnya'}.`,
         registration: reg,
       });
     }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { formatEventDate } from '@/app/lib/dateUtils';
 
 /* ─────────────────────────────────────────────────────────── types */
 type EventOption = { id: string; event_title: string; event_date: string };
@@ -269,7 +270,7 @@ export default function UploadLombaPage() {
                 <option value="">— Pilih Event —</option>
                 {events.map(ev => (
                   <option key={ev.id} value={ev.id}>
-                    {ev.event_title} {ev.event_date ? `(${ev.event_date})` : ''}
+                    {ev.event_title} {ev.event_date ? `(${formatEventDate(ev.event_date)})` : ''}
                   </option>
                 ))}
               </select>

@@ -346,7 +346,7 @@ export default function KurirPage() {
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {l.items_dipinjam?.length || 0} barang
-                      {l.tanggal_estimasi_pengembalian && ` • Est. ${new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID')}`}
+                      {l.tanggal_estimasi_pengembalian && ` • Est. ${new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}`}
                     </p>
                   </div>
                 </div>
@@ -512,7 +512,7 @@ export default function KurirPage() {
                           ✅ Pengiriman telah selesai
                           {l.tanggal_dikirim && (
                             <p className="text-xs font-normal text-green-600 mt-1">
-                              {new Date(l.tanggal_dikirim).toLocaleString('id-ID')}
+                              {new Date(l.tanggal_dikirim).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
                             </p>
                           )}
                         </div>

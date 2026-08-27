@@ -4,6 +4,7 @@ import React from 'react';
 import { EventData, Karyawan } from '@/app/index';
 import { GradientActionBtn, IconEdit, IconTrash } from '@/app/components/GradientActionBtn';
 import { SortConfig, handleSort, driveImgSrc } from '@/app/lib/uiHelpers';
+import { formatEventDate } from '@/app/lib/dateUtils';
 
 export interface EventsTabProps {
   events: EventData[];
@@ -113,7 +114,7 @@ export default function EventsTab({
                       <img src={driveImgSrc(evt.image)} alt="poster" className="w-10 h-14 object-cover rounded shadow-sm mx-auto" />
                     </td>
                     <td className="px-3 py-2.5 font-bold text-slate-800">{evt.title}</td>
-                    <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{evt.date}</td>
+                    <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{formatEventDate(evt.date)}</td>
                     <td className="px-3 py-2.5 text-xs text-gray-600">{evt.detail_acara || '-'}</td>
                     <td className="px-3 py-2.5 text-xs font-bold text-gray-800 whitespace-nowrap">{evt.price}</td>
                     <td className="px-3 py-2.5 text-xs">
@@ -125,7 +126,7 @@ export default function EventsTab({
                         const display = ef.display_start_date ? new Date(ef.display_start_date) : null;
                         const open = ef.registration_open_date ? new Date(ef.registration_open_date) : null;
                         const close = ef.registration_close_date ? new Date(ef.registration_close_date) : null;
-                        const fmt = (d: Date) => d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
+                        const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
                         const bannerVisible = (!display || display <= today) && (!close || close >= today);
                         const regOpen = bannerVisible && (!open || todayStr >= ef.registration_open_date);
                         return (
@@ -177,7 +178,7 @@ export default function EventsTab({
                 <div className="p-4 flex flex-col flex-1">
                   <div className="border-b border-gray-100 pb-2 mb-3">
                     <h3 className="font-bold text-base text-slate-800 leading-tight">{evt.title}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">{evt.date}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{formatEventDate(evt.date)}</p>
                   </div>
                   <div className="space-y-2 text-xs flex-1">
                     <p><span className="font-bold w-20 inline-block">Detail:</span> {detailPreview}</p>

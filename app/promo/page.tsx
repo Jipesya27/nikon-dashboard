@@ -51,7 +51,7 @@ function fmtRp(n: number) {
 
 function fmtDate(d?: string) {
   if (!d) return '-';
-  return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 }
 
 function driveThumb(url?: string) {

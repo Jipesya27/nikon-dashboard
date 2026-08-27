@@ -84,7 +84,7 @@ export default function ServiceScreen({
           const curIdx    = STATUS_FLOW.indexOf(s.status_service);
           const isTerminal = TERMINAL.includes(s.status_service);
           const tgl = s.created_at ? new Date(s.created_at) : null;
-          const tglStr = tgl ? tgl.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' }) : '—';
+          const tglStr = tgl ? tgl.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '—';
           const days = tgl ? Math.floor((Date.now() - tgl.getTime()) / 86400000) : 0;
           const durasiColor = days > 7 ? '#DC2626' : days > 3 ? '#D97706' : '#15803D';
           return (

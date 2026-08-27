@@ -4,6 +4,7 @@ import React from 'react';
 import { Garansi, ClaimPromo, Karyawan } from '@/app/index';
 import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield } from '@/app/components/GradientActionBtn';
 import { SortConfig, handleSort } from '@/app/lib/uiHelpers';
+import { formatEventDate } from '@/app/lib/dateUtils';
 
 export interface WarrantiesTabProps {
   warranties: Garansi[];
@@ -165,7 +166,7 @@ export default function WarrantiesTab({
                       <p className="text-xs text-gray-500 mt-0.5">{w.tipe_barang}</p>
                     </td>
                     <td className="px-3 py-3">
-                      <p className="text-xs text-gray-700">{tglBeli || '-'}</p>
+                      <p className="text-xs text-gray-700">{tglBeli ? formatEventDate(tglBeli) : '-'}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{tokoText}</p>
                     </td>
                     <td className="px-3 py-3">
@@ -226,7 +227,7 @@ export default function WarrantiesTab({
                 </div>
                 {/* Detail */}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                  <div><span className="text-gray-400 block">Tgl Beli</span><span className="font-semibold text-gray-700">{tglBeli || '-'}</span></div>
+                  <div><span className="text-gray-400 block">Tgl Beli</span><span className="font-semibold text-gray-700">{tglBeli ? formatEventDate(tglBeli) : '-'}</span></div>
                   <div><span className="text-gray-400 block">Toko</span><span className="font-semibold text-gray-700">{tokoText}</span></div>
                   <div><span className="text-gray-400 block">Jenis</span><span className="font-semibold text-gray-700">{w.jenis_garansi || '-'}</span></div>
                   <div><span className="text-gray-400 block">Sisa</span><span className="font-semibold text-gray-700">{calculateSisaGaransi(tglBeli ?? undefined, w.lama_garansi)}</span></div>

@@ -17,22 +17,22 @@ function fmtDate(s: string) {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 }
 
+const _MONTHS_EN_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 function fmtDateShort(s: string) {
-  // For PDF: "21-Apr-26"
+  // For PDF: "21 Apr 2026"
   if (!s) return '-';
   const d = new Date(s + 'T00:00:00');
   const day = String(d.getDate()).padStart(2, '0');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const yr = String(d.getFullYear()).slice(2);
-  return `${day}-${months[d.getMonth()]}-${yr}`;
+  return `${day} ${_MONTHS_EN_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function fmtDateHeader(s: string) {
-  // For PDF header: "8 May 2026"
+  // For PDF header: "08 May 2026"
   if (!s) return '-';
   const d = new Date(s + 'T00:00:00');
-  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${day} ${_MONTHS_EN_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function extractDriveId(url: string): string | null {
@@ -86,11 +86,10 @@ function DatePickerInput({ value, onChange, className }: {
   className?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const displayValue = value ? (() => {
     const d = new Date(value + 'T00:00:00');
     const day = String(d.getDate()).padStart(2, '0');
-    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    return `${day} ${_MONTHS_EN_SHORT[d.getMonth()]} ${d.getFullYear()}`;
   })() : '';
   return (
     <div className={`relative ${className ?? ''}`}>

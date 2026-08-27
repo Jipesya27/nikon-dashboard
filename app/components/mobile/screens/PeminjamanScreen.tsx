@@ -29,7 +29,7 @@ function Icon({ name, size = 20, color = '#5f6368' }: { name: string; size?: num
 
 function fmtDate(d?: string | null) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' });
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 }
 
 export default function PeminjamanScreen({

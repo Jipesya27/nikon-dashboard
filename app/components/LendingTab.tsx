@@ -177,14 +177,14 @@ export default function LendingTab({
                       })}
                     </ul>
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</td>
+                  <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-'}</td>
                   <td className="px-3 py-2.5 text-xs whitespace-nowrap">
                     {l.tanggal_estimasi_pengembalian ? (
-                      <><p className="text-gray-700">{new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID')}</p>
+                      <><p className="text-gray-700">{new Date(l.tanggal_estimasi_pengembalian).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}</p>
                       {l.reminder_sent_at && <p className="text-[10px] text-green-600 font-bold">✓ Reminder terkirim</p>}</>
                     ) : <span className="text-gray-400 italic">-</span>}
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</td>
+                  <td className="px-3 py-2.5 text-xs text-gray-700 whitespace-nowrap">{l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-'}</td>
                   <td className="px-3 py-2.5 text-center">
                     <span className={`px-2 py-1 rounded text-[10px] font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : l.status_peminjaman === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
                   </td>
@@ -227,8 +227,8 @@ export default function LendingTab({
                 <span className={`mt-2 inline-block px-2 py-1 rounded text-[10px] tracking-wide font-extrabold ${l.status_peminjaman === 'aktif' ? 'bg-orange-100 text-orange-800' : l.status_peminjaman === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>{l.status_peminjaman.toUpperCase()}</span>
               </div>
               <div className="space-y-2 text-xs flex-1">
-                <p><span className="font-bold w-24 inline-block">Tgl Pinjam:</span> {l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('id-ID') : '-'}</p>
-                <p><span className="font-bold w-24 inline-block">Tgl Kembali:</span> {l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('id-ID') : '-'}</p>
+                <p><span className="font-bold w-24 inline-block">Tgl Pinjam:</span> {l.tanggal_peminjaman ? new Date(l.tanggal_peminjaman).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-'}</p>
+                <p><span className="font-bold w-24 inline-block">Tgl Kembali:</span> {l.tanggal_pengembalian ? new Date(l.tanggal_pengembalian).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-'}</p>
                 <div className="font-bold mt-2">Barang:</div>
                 <ul className="pl-2 space-y-1.5">
                   {l.items_dipinjam.map((item, idx) => {

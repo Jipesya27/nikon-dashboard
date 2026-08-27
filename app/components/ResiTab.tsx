@@ -40,7 +40,7 @@ function isAdminRole(role: string) { return ADMIN_ROLES.includes(role); }
 
 function fmtDate(d: string) {
   if (!d) return '-';
-  return new Date(d + 'T00:00:00').toLocaleDateString('id-ID', {
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta',
   });
 }

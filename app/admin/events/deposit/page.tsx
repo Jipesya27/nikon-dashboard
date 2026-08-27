@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
+import { formatEventDate } from '@/app/lib/dateUtils';
 
 const supabase = createClient(
   typeof window !== 'undefined' ? (window.location.origin + '/api/admin/sb') : (process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
@@ -137,7 +138,7 @@ export default function AdminDepositPage() {
     const esc = (s: string | null | undefined) => `"${(s ?? '').replace(/"/g, '""')}"`;
     const fmtDate = (iso: string | null | undefined) => {
       if (!iso) return '';
-      return new Date(iso).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' });
+      return new Date(iso).toLocaleDateString('en-GB', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' });
     };
     const statusLabel = (r: typeof filtered[0]) => {
       if (r.status_pengembalian_deposit === 'Processed') return 'Sudah Dikembalikan';
@@ -156,10 +157,10 @@ export default function AdminDepositPage() {
       esc(r.nomor_wa),
       esc(r.kabupaten_kotamadya),
       esc(r.event?.event_title || r.event_name),
-      esc(r.event?.event_date || ''),
+      esc(formatEventDate(r.event?.event_date) || ''),
       esc(r.event?.deposit_amount || ''),
       esc(r.is_attended ? 'Hadir' : 'Tidak Hadir'),
-      esc(r.attended_at ? new Date(r.attended_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB' : ''),
+      esc(r.attended_at ? new Date(r.attended_at).toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB' : ''),
       esc(statusLabel(r)),
       esc(r.nama_bank),
       esc(r.no_rekening),
@@ -289,14 +290,14 @@ export default function AdminDepositPage() {
                           ) : (
                             <span className="text-xs px-2.5 py-0.5 rounded-full border font-semibold bg-gray-100 text-gray-600 border-gray-300">Belum Isi Rekening</span>
                           )}
-                          <span className="text-[11px] text-gray-400">Daftar: {new Date(reg.created_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                          <span className="text-[11px] text-gray-400">Daftar: {new Date(reg.created_at).toLocaleDateString('en-GB', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' })}</span>
                           {reg.refund_requested_at && (
-                            <span className="text-[11px] text-gray-400">· Isi rekening: {new Date(reg.refund_requested_at).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short' })}</span>
+                            <span className="text-[11px] text-gray-400">· Isi rekening: {new Date(reg.refund_requested_at).toLocaleDateString('en-GB', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' })}</span>
                           )}
                         </div>
 
                         <h3 className="font-bold text-gray-900 text-lg leading-tight">{reg.event?.event_title || reg.event_name}</h3>
-                        <p className="text-gray-500 text-sm mt-0.5">📅 {reg.event?.event_date || '-'}</p>
+                        <p className="text-gray-500 text-sm mt-0.5">📅 {formatEventDate(reg.event?.event_date) || '-'}</p>
                         {reg.event?.deposit_amount && (
                           <p className="text-orange-600 text-sm font-bold mt-1">💵 {reg.event.deposit_amount}</p>
                         )}

@@ -285,7 +285,7 @@ ${pages.join('')}
           {(dateFrom || dateTo) && (
             <p className="text-xs text-gray-400">
               Menampilkan <b className="text-gray-700">{filteredDealer.length}</b> baris
-              {dateFrom && dateTo ? ` dari ${new Date(dateFrom).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} s/d ${new Date(dateTo).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
+              {dateFrom && dateTo ? ` dari ${new Date(dateFrom).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })} s/d ${new Date(dateTo).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}` : ''}
             </p>
           )}
         </div>

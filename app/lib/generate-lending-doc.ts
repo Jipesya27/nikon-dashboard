@@ -12,8 +12,8 @@ function sanitize(s: string): string {
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '-';
-  return new Date(iso).toLocaleDateString('id-ID', {
-    day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta',
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta',
   });
 }
 

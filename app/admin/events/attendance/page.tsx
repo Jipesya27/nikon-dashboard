@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { formatEventDate } from '@/app/lib/dateUtils';
 
 const supabase = createClient(
   typeof window !== 'undefined' ? (window.location.origin + '/api/admin/sb') : (process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
@@ -190,9 +191,9 @@ export default function AdminAttendancePage() {
       r.nomor_wa,
       r.kabupaten_kotamadya || '',
       r.tipe_kamera || '',
-      r.attended_at ? new Date(r.attended_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : '',
+      r.attended_at ? new Date(r.attended_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) : '',
       r.attended_by || '',
-      new Date(r.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+      new Date(r.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }),
     ]);
     const csv = [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -242,7 +243,7 @@ export default function AdminAttendancePage() {
             className="bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-[#FFE800] focus:ring-1 focus:ring-[#FFE800] shadow-sm"
           >
             <option value="all">Semua Event</option>
-            {events.map(ev => <option key={ev.id} value={ev.id}>{ev.event_title} — {ev.event_date}</option>)}
+            {events.map(ev => <option key={ev.id} value={ev.id}>{ev.event_title} — {formatEventDate(ev.event_date)}</option>)}
           </select>
           <input
             type="text"
@@ -359,7 +360,7 @@ export default function AdminAttendancePage() {
                   <p className="text-gray-400 text-xs">📱 {scanResult.reg.nomor_wa}</p>
                   {scanResult.reg.tipe_kamera && <p className="text-gray-400 text-xs">📷 {scanResult.reg.tipe_kamera}</p>}
                   {scanResult.reg.is_attended && scanResult.reg.attended_at && (
-                    <p className="text-green-600 text-xs mt-2">✓ Hadir: {new Date(scanResult.reg.attended_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}{scanResult.reg.attended_by ? ` oleh ${scanResult.reg.attended_by}` : ''}</p>
+                    <p className="text-green-600 text-xs mt-2">✓ Hadir: {new Date(scanResult.reg.attended_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}{scanResult.reg.attended_by ? ` oleh ${scanResult.reg.attended_by}` : ''}</p>
                   )}
                 </div>
               )}
@@ -450,7 +451,7 @@ export default function AdminAttendancePage() {
                         <td className="px-4 py-3 text-xs text-gray-500">
                           {r.attended_at ? (
                             <>
-                              {new Date(r.attended_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              {new Date(r.attended_at).toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                               {r.attended_by && <span className="block text-[10px] text-gray-400">oleh {r.attended_by}</span>}
                             </>
                           ) : '-'}

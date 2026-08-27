@@ -518,7 +518,7 @@ serve(async (req)=>{
                 const sisaHari = Math.ceil(
                   (tglAkhir.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
                 );
-                const tglAkhirFormatted = tglAkhir.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                const tglAkhirFormatted = tglAkhir.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
                 if (sisaHari > 0) {
                   msg += `*Sisa Garansi:* ${sisaHari} hari\n`;

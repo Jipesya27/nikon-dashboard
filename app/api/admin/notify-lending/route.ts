@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '-';
-  return new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 async function getTelegramChatId(): Promise<string> {

@@ -110,7 +110,7 @@ export default function AffiliateTab({
       const nom = p.harga_barang * p.persentase / 100;
       runPrint -= nom;
       const tgl = p.tanggal_transaksi
-        ? new Date(p.tanggal_transaksi).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })
+        ? new Date(p.tanggal_transaksi).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })
         : '-';
       return `<tr>
         <td class="c">${i + 1}</td>
@@ -449,7 +449,7 @@ ${fotoSection ? `<p class="subtitle">Foto Barang Affiliator</p>${fotoSection}` :
                   <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
                     <td className="px-3 py-2 text-gray-400">{i + 1}</td>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap text-xs">
-                      {p.tanggal_transaksi ? new Date(p.tanggal_transaksi).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : <span className="text-gray-300">-</span>}
+                      {p.tanggal_transaksi ? new Date(p.tanggal_transaksi).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : <span className="text-gray-300">-</span>}
                     </td>
                     <td className="px-3 py-2">{p.barang}</td>
                     <td className="px-3 py-2 text-right font-mono">{fmtRp(p.harga_barang)}</td>

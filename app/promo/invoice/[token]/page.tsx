@@ -32,8 +32,8 @@ function fmtRp(n: number) {
 }
 
 function fmtDatetime(d: string) {
-  return new Date(d).toLocaleString('id-ID', {
-    day: 'numeric', month: 'long', year: 'numeric',
+  return new Date(d).toLocaleString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
     timeZone: 'Asia/Jakarta',
   }) + ' WIB';

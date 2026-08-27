@@ -293,7 +293,7 @@ export default function ClaimsTab({
                       {c.resi_sent_at ? (
                         <span className="inline-flex flex-col gap-0.5">
                           <span className="text-teal-700 font-bold">✅ Terkirim</span>
-                          <span className="text-gray-500">{new Date(c.resi_sent_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit', timeZone: 'Asia/Jakarta' })}</span>
+                          <span className="text-gray-500">{new Date(c.resi_sent_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}</span>
                           <span className="text-gray-500">{new Date(c.resi_sent_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}</span>
                         </span>
                       ) : <span className="text-gray-400 italic">Belum</span>}

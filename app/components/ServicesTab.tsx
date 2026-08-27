@@ -53,7 +53,7 @@ export default function ServicesTab({
                   <td className="px-6 py-3">
                     <span className="px-2 py-1 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span>
                   </td>
-                  <td className="px-3 py-2.5font-bold text-gray-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</td>
+                  <td className="px-3 py-2.5font-bold text-gray-500">{s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-'}</td>
                   <td className="px-3 py-2.5">
                     <div className="flex gap-1.5">
                       <GradientActionBtn onClick={() => openModal('edit', 'service', s)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />
@@ -77,7 +77,7 @@ export default function ServicesTab({
               </div>
               <div className="space-y-2 text-xs flex-1">
                 <p><span className="font-bold w-20 inline-block">Status:</span> <span className="px-2 py-0.5 rounded text-[10px] tracking-wide font-extrabold bg-blue-100 text-blue-800 uppercase">{s.status_service}</span></p>
-                <p><span className="font-bold w-20 inline-block">Update:</span> {s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}</p>
+                <p><span className="font-bold w-20 inline-block">Update:</span> {s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-'}</p>
               </div>
               <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1.5 justify-end">
                 <GradientActionBtn onClick={() => openModal('edit', 'service', s)} label="Edit" gradientFrom="#64748B" gradientTo="#94A3B8" icon={IconEdit} />

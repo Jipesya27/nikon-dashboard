@@ -115,7 +115,7 @@ export default function ErrorLogPanel() {
               <span className="text-[11px] font-mono text-gray-500 shrink-0">{row.source}</span>
               <span className="text-xs text-gray-200 truncate flex-1">{row.message}</span>
               <span className="text-[11px] text-gray-600 font-mono shrink-0">
-                {new Date(row.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}
+                {new Date(row.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}
               </span>
               <button
                 onClick={e => { e.stopPropagation(); toggleResolved(row); }}

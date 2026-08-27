@@ -150,7 +150,7 @@ export default function AdminEventsPage() {
         STATUS_LABELS[r.status_pendaftaran] || r.status_pendaftaran,
         `"${(r.rejection_reason || '').replace(/"/g, '""')}"`,
         r.ticket_url || '',
-        new Date(r.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+        new Date(r.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }),
       ].join(',')),
     ];
 
@@ -348,7 +348,7 @@ export default function AdminEventsPage() {
                       {reg.payment_type === 'deposit' && (
                         <span className="text-xs px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-300 font-semibold">DEPOSIT</span>
                       )}
-                      <span className="text-xs text-gray-400">{new Date(reg.created_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB</span>
+                      <span className="text-xs text-gray-400">{new Date(reg.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB</span>
                     </div>
 
                     <h3 className="font-bold text-gray-900 text-lg">{reg.nama_lengkap}</h3>

@@ -40,11 +40,20 @@ const MONTH_MAP: Record<string, number> = {
 };
 function parseIdDate(str: string): Date | null {
   if (!str) return null;
+  // Format ISO: "2026-07-25"
+  const iso = str.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]);
   const p = str.trim().toLowerCase().split(/\s+/);
   if (p.length < 3) return null;
   const d = parseInt(p[0]), m = MONTH_MAP[p[1]], y = parseInt(p[2]);
   if (isNaN(d) || m === undefined || isNaN(y)) return null;
   return new Date(y, m, d);
+}
+/** Tampilkan event_date (free-text DB) selalu sebagai "DD MMM YYYY"; fallback ke string asli. */
+function fmtEventDate(str: string): string {
+  const d = parseIdDate(str);
+  if (!d || isNaN(d.getTime())) return str;
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 }
 function daysUntil(dateStr: string): number | null {
   const d = parseIdDate(dateStr);
@@ -417,7 +426,7 @@ export default function EventRegisterPage() {
                     <div className="mt-2 space-y-0.5">
                       <p className="text-xs text-gray-700 flex items-center gap-1">
                         <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        {evt.event_date}
+                        {fmtEventDate(evt.event_date)}
                         {sisaHari !== null && sisaHari >= 0 && sisaHari <= 30 && (
                           <span className="ml-1 text-[10px] text-red-600 font-bold">· {sisaHari === 0 ? 'Hari ini' : `${sisaHari}h lagi`}</span>
                         )}
@@ -460,7 +469,7 @@ export default function EventRegisterPage() {
                           <p className="text-[10px] font-bold text-zinc-500 uppercase">Pendaftaran dibuka</p>
                           {evt.registration_open_date && (
                             <p className="text-[10px] text-zinc-600 font-semibold">
-                              {new Date(evt.registration_open_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}
+                              {new Date(evt.registration_open_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}
                             </p>
                           )}
                         </div>
@@ -518,7 +527,7 @@ export default function EventRegisterPage() {
                       <h3 className="font-bold text-sm text-gray-500 leading-snug line-clamp-2">{evt.event_title}</h3>
                       <div className="flex items-center gap-1 text-[11px] text-gray-400">
                         <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        {evt.event_date}
+                        {fmtEventDate(evt.event_date)}
                       </div>
                       {evt.event_speaker && (
                         <div className="flex items-center gap-1 text-[11px] text-gray-400">
@@ -585,7 +594,7 @@ export default function EventRegisterPage() {
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-gray-600">
                   <span className="flex items-center gap-1.5">
                     <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    {descEvent.event_date}
+                    {fmtEventDate(descEvent.event_date)}
                   </span>
                   {descEvent.event_speaker && (
                     <span className="flex items-center gap-1.5">
@@ -620,7 +629,7 @@ export default function EventRegisterPage() {
                 ) : descEvent.registration_not_open ? (
                   <div className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-500 text-sm font-bold text-center">
                     {descEvent.registration_open_date
-                      ? `Buka ${new Date(descEvent.registration_open_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', timeZone: 'Asia/Jakarta' })}`
+                      ? `Buka ${new Date(descEvent.registration_open_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}`
                       : 'Pendaftaran belum dibuka'}
                   </div>
                 ) : (
@@ -665,7 +674,7 @@ export default function EventRegisterPage() {
                 <div>
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Event Dipilih</p>
                   <h3 className="text-base font-bold text-gray-900 mt-1">{selectedEvent.event_title}</h3>
-                  <p className="text-sm text-gray-700 mt-0.5">📅 {selectedEvent.event_date} · 💰 {selectedEvent.event_price}</p>
+                  <p className="text-sm text-gray-700 mt-0.5">📅 {fmtEventDate(selectedEvent.event_date)} · 💰 {selectedEvent.event_price}</p>
                   {selectedEvent.event_payment_tipe === 'deposit' && (
                     <p className="text-xs text-amber-700 mt-1 font-medium">⚠️ Event ini berbayar deposit (bisa di-refund setelah hadir)</p>
                   )}

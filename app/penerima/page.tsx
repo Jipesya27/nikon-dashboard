@@ -254,13 +254,13 @@ function PenerimaInner() {
             {lending.tanggal_estimasi_pengembalian && (
               <div className="flex justify-between">
                 <span className="text-gray-500">Est. Kembali</span>
-                <span className="font-medium text-gray-900">{new Date(lending.tanggal_estimasi_pengembalian).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
+                <span className="font-medium text-gray-900">{new Date(lending.tanggal_estimasi_pengembalian).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}</span>
               </div>
             )}
             {lending.tanggal_dikirim && (
               <div className="flex justify-between">
                 <span className="text-gray-500">Tgl Dikirim</span>
-                <span className="font-medium text-gray-900">{new Date(lending.tanggal_dikirim).toLocaleString('id-ID')}</span>
+                <span className="font-medium text-gray-900">{new Date(lending.tanggal_dikirim).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}</span>
               </div>
             )}
           </div>
@@ -305,7 +305,7 @@ function PenerimaInner() {
           <section className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
             <div className="text-2xl mb-1">✅</div>
             <p className="font-bold text-green-800 text-sm">Konfirmasi sudah dikirim</p>
-            <p className="text-xs text-green-600 mt-1">{new Date(lending.tanggal_diterima!).toLocaleString('id-ID')}</p>
+            <p className="text-xs text-green-600 mt-1">{new Date(lending.tanggal_diterima!).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}</p>
             {lending.catatan_penerima && (
               <p className="text-xs text-gray-600 mt-2 italic">&ldquo;{lending.catatan_penerima}&rdquo;</p>
             )}

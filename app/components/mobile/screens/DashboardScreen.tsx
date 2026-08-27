@@ -97,7 +97,7 @@ export default function DashboardScreen({
         onMenuOpen={onDrawerOpen}
         rightSlot={
           <div style={{ fontSize: 11, color: '#9aa0a6', fontWeight: 600 }}>
-            {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+            {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
           </div>
         }
       />

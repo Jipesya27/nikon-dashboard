@@ -12,6 +12,7 @@ import {
   PengaturanBot,
   RiwayatPesan,
 } from '@/app/index';
+import { formatEventDate } from '@/app/lib/dateUtils';
 
 const AVATAR_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#ef4444', '#6366f1'];
 
@@ -88,7 +89,7 @@ export default function DashboardTab({
   const now = new Date();
   const hour = parseInt(now.toLocaleString('id-ID', { hour: 'numeric', hour12: false, timeZone: 'Asia/Jakarta' }));
   const greeting = hour < 11 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 18 ? 'Selamat sore' : 'Selamat malam';
-  const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
+  const dateStr = now.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
   const pendingValidasi = eventRegistrations.filter(r => r.status_pendaftaran === 'menunggu_validasi').length;
   const claimsTungguResi = claimStatusCounts.Pink ?? 0;
@@ -265,7 +266,7 @@ export default function DashboardTab({
               {activeEvents.map(evt => {
                 const count = eventRegistrationsCount[evt.title] || 0;
                 const pct = evt.stock > 0 ? Math.min(100, Math.round(count / evt.stock * 100)) : 0;
-                const evtDate = evt.date ? new Date(evt.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' }) : '-';
+                const evtDate = evt.date ? formatEventDate(evt.date) : '-';
                 return (
                   <div key={evt.id}>
                     <div className="flex items-center justify-between mb-1">
