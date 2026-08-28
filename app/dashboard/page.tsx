@@ -3531,7 +3531,9 @@ ${kode ? `
       const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\s/g, '-');
       ctx.fillText(dateStr, canvas.width - 30, 45);
       ctx.textAlign = 'left';
-      const nama = (consumer?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa).toUpperCase();
+      // Nama & alamat pada label = data form Claim Promo (info utama), bukan data konsumen.
+      // Konsumen hanya dipakai sebagai fallback kalau field claim kosong.
+      const nama = (c.nama_pendaftar || c.nama_penerima_claim || consumer?.nama_lengkap || consumers[c.nomor_wa] || c.nomor_wa).toUpperCase();
       const noWa = c.nomor_wa;
       ctx.font = '14px Arial';
       ctx.fillText('Kepada :', 40, 94);
