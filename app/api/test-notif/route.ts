@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { sendNotif, sendTelegramMessage, sendWA } from '@/app/lib/notify';
 import { whatsappMessages } from '@/app/whatsappMessages';
+import { verifyAdminSession } from '@/app/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  const cookieStore = await cookies();
+  if (!(await verifyAdminSession(cookieStore))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const to = searchParams.get('to') || process.env.ADMIN_EMAIL || '';
   const testTelegram = searchParams.get('telegram') === '1';
