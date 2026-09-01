@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { generateTicket } from '@/app/lib/generate-ticket';
+import { verifyAdminSession } from '@/app/lib/session';
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await verifyAdminSession(await cookies()))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     if (!body.registrationId || !body.fullName || !body.eventTitle) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

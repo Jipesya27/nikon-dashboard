@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
+import { verifyAdminSession } from '@/app/lib/session';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,6 +12,10 @@ const PREFIX = 'event_report_';
 
 export async function GET(req: NextRequest) {
   try {
+    if (!(await verifyAdminSession(await cookies()))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const eventId = req.nextUrl.searchParams.get('eventId');
     if (eventId) {
       const { data } = await supabase
@@ -36,6 +42,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await verifyAdminSession(await cookies()))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { eventId, report } = await req.json();
     const { error } = await supabase
       .from('pengaturan_bot')
@@ -52,6 +62,10 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    if (!(await verifyAdminSession(await cookies()))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const eventId = req.nextUrl.searchParams.get('eventId');
     if (!eventId) return NextResponse.json({ error: 'Missing eventId' }, { status: 400 });
     await supabase.from('pengaturan_bot').delete().eq('nama_pengaturan', `${PREFIX}${eventId}`);

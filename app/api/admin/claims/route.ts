@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
+import { verifyAdminSession } from '@/app/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +19,11 @@ function getSupabase() {
 
 export async function GET(req: Request) {
   try {
+    const cookieStore = await cookies();
+    if (!(await verifyAdminSession(cookieStore))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const supabase = getSupabase();
     const { searchParams } = new URL(req.url);
     const status   = searchParams.get('status') || 'all';
