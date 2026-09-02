@@ -58,7 +58,7 @@ Dashboard memiliki sidebar kiri dengan menu utama:
 | 📦 Resi | Track pengiriman barang |
 | 🎖️ Garansi | Kelola garansi produk |
 | 🔄 Lending | Sistem peminjaman barang |
-| 📊 Monitoring | Dashboard monitoring STB |
+| 📊 Monitoring | Dashboard monitoring infrastruktur (Synology) |
 
 ---
 
@@ -510,7 +510,7 @@ Dashboard untuk monitoring kesehatan sistem infrastruktur.
 ### Metrik yang Dimonitor
 
 #### 1. Server Status
-- Status STB (Set Top Box) Nikon
+- Status server infrastruktur Nikon
 - Uptime & downtime
 - Kualitas koneksi
 

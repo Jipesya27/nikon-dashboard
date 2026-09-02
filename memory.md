@@ -202,27 +202,11 @@ Semua notifikasi ke admin (claim promo, garansi, event, CS request) dikirim via 
 
 ---
 
-## 8. Infrastruktur Backup â€” STB HG680P + Synology DS223J
+## 8. Infrastruktur Backup - Synology DS223J
 
-### Arsitektur
+STB HG680P sudah tidak dipakai lagi - backup/failover lokal sudah pindah ke Proxmox VE (lihat CLAUDE.md untuk detail lengkap: hardware, LXC containers, network, dan service Proxmox).
 
-**Active-Passive Failover**: jika GitHub/Supabase/Vercel bermasalah, traffic dialihkan ke sistem lokal.
-
-```
-Internet â†’ backup.altanikindo.web.id
-         â†’ Cloudflare Tunnel (nikon-synology)
-         â†’ cloudflared di Synology (192.168.18.169)
-         â†’ STB di LAN (192.168.18.63:3000)
-```
-
-### Hardware
-
-| Perangkat | IP | Spesifikasi |
-|---|---|---|
-| STB HG680P | 192.168.18.63 | AML S905X, Cortex-A53 (ARM64), Armbian |
-| Synology DS223J | 192.168.18.169 | Realtek RTD1619B (ARM64) |
-
-### Synology â€” Google Drive Backup
+### Synology - Google Drive Backup
 
 - **Tool**: Synology Cloud Sync
 - **Akun**: WebMarketingAlta (Google Drive)
@@ -230,93 +214,15 @@ Internet â†’ backup.altanikindo.web.id
 - **Local path**: `/dashboard/backups`
 - **Status**: Up to date (sync otomatis)
 
-### Synology â€” Docker Containers
+### Synology - Docker Containers
 
 | Container | Image | Port |
 |---|---|---|
 | postgres | postgres:15 | **5433** (bukan 5432, konflik dengan Synology internal) |
 | minio | minio/minio | 9010 (API), 9011 (Console) |
-| wetty | wettyoss/wetty | 7681 |
-| cloudflared | cloudflare/cloudflared | â€” |
+| cloudflared | cloudflare/cloudflared | - |
 
 **docker-compose path**: `/volume1/docker/nikon/docker-compose.yml`
-
-### STB â€” Next.js via PM2
-
-- **Node.js**: v20 (install via NodeSource)
-- **Repo path**: `/opt/nikon-dashboard`
-- **Build**: `npm run build` (standalone output)
-- **Static files**: setelah build wajib copy manual:
-  ```bash
-  cp -r .next/static .next/standalone/.next/static
-  cp -r public .next/standalone/public
-  ```
-- **Env vars**: disimpan di `/opt/nikon-dashboard/.env.local` â€” wajib ada: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD`, dan semua env lainnya sama dengan Vercel
-- **Start command** (env vars harus di-load saat start):
-  ```bash
-  set -a && source /opt/nikon-dashboard/.env.local && set +a
-  pm2 start /opt/nikon-dashboard/.next/standalone/server.js --name nikon-dashboard
-  pm2 save
-  ```
-- **PENTING**: `export $(grep -v '^#' .env.local | xargs)` tidak berfungsi untuk JWT token (ada karakter spesial). Gunakan `set -a; source` sebagai gantinya.
-- **Auto-start**: `pm2 startup` sudah dikonfigurasi (systemd)
-- **Status**: Online di port 3000
-
-### Monitoring Infrastruktur
-
-- **Tab**: ðŸ–¥ï¸ Infrastruktur di dashboard (kategori Manajemen) â€” hanya Admin & Super Admin
-- **API**: `/api/infrastruktur/stb` â€” return CPU load avg, RAM, disk, uptime (Node.js `os` module + `df`)
-- **Polling**: otomatis setiap 30 detik, dipanggil dari `backup.altanikindo.web.id/api/infrastruktur/stb`
-- **CSP**: `backup.altanikindo.web.id` sudah ditambahkan ke `connect-src` di `next.config.ts`
-
-### Akses Super Admin di Sidebar
-
-- ðŸ–¥ï¸ **Backup Dashboard** â†’ `https://backup.altanikindo.web.id/dashboard` (buka tab baru)
-- ðŸ’» **Terminal SSH** â†’ `https://terminal.altanikindo.web.id` (buka tab baru)
-- Hanya muncul untuk role **Super Admin** di bagian "Halaman Lain" sidebar
-
-### Database Replication
-
-- **Script**: `/opt/nikon-backup/backup.sh` (di STB)
-- **Alur**: `pg_dump` dari Supabase â†’ `pg_restore` ke PostgreSQL lokal (Synology port 5433)
-- **Jadwal**: setiap 6 jam â€” `0 */6 * * *`
-- **Retention**: 3 dump terakhir di `/opt/nikon-backup/dumps/`
-- **Log**: `/opt/nikon-backup/backup.log`
-
-### Cloudflare Tunnel
-
-- **Nama**: `nikon-synology`
-- **Status**: HEALTHY
-- **Connector**: Latief-Family (linux_arm64) â€” berjalan di Synology
-
-| Hostname | Target | Keterangan |
-|---|---|---|
-| `terminal.altanikindo.web.id` | `http://localhost:7681` | Wetty â†’ SSH ke STB |
-| `backup.altanikindo.web.id` | `http://192.168.18.63:3000` | Next.js di STB (backup site) |
-
-- Hostname diatur di tab **Published application routes** di Cloudflare Zero Trust â†’ Networks â†’ Tunnels â†’ nikon-synology
-- DNS record dibuat otomatis oleh Cloudflare
-
-### `next.config.ts`
-
-- `output: 'standalone'` â€” wajib untuk deploy di Docker/PM2 tanpa node_modules penuh
-
-### `Dockerfile`
-
-- Multi-stage: `deps` â†’ `builder` â†’ `runner`
-- Base image: `node:20-alpine`
-- User: `nextjs` (non-root)
-- Port: 3000
-- CMD: `node server.js`
-
-### Status Phase
-
-| Phase | Keterangan | Status |
-|---|---|---|
-| Phase 1 | Synology setup (Docker containers) | âœ… Selesai |
-| Phase 2 | DB replication (pg_dump cron) | âœ… Selesai |
-| Phase 3 | Deploy Next.js di STB via PM2 | âœ… Selesai |
-| Phase 4 | Cloudflare Tunnel + failover routing | âœ… Selesai |
 
 ---
 
@@ -343,3 +249,14 @@ Semua file disimpan di root `GOOGLE_DRIVE_FOLDER_ID`. Subfolder dibuat otomatis 
 | Upload foto lomba | `Upload File Lomba` | â€” |
 | Dokumen penerima barang | `Penerima_Barang` | â€” |
 | Attachment WhatsApp | `message_attachment` | â€” |
+
+---
+
+## 10. Android App - Status & Catatan
+
+- **Status**: aplikasi Android (`android-app/`) belum jalan / belum dipakai production. Jangan buru-buru "perbaiki" fitur yang datanya putus - cukup dicatat, prioritas rendah sampai app ini benar-benar dipakai.
+- **InfraScreen** (`android-app/src/screens/InfraScreen.tsx`): layar "Infrastruktur & Monitoring" di drawer menu, khusus Admin/Super Admin. Menampilkan gauge CPU/RAM/Disk + uptime + list status layanan (list layanan masih hardcode `ok: true`, bukan hasil cek asli).
+  - Data diambil via `fetchInfraMetrics()`, tapi endpoint sumber datanya **tidak ketemu** di source app maupun di compiled bundle (`android/app/src/main/assets/index.android.bundle`) saat ditelusuri.
+  - Dokumentasi lama (`FIGMA_MOBILE_BRIEF.md`, dan bagian STB yang sudah dihapus dari section 8 di atas) menyebut sumbernya `https://backup.altanikindo.web.id/api/infrastruktur/stb` - endpoint ini sudah dihapus (STB HG680P retired, infra pindah ke Proxmox VE, lihat CLAUDE.md).
+  - Efek: layar ini sekarang akan selalu jatuh ke fallback "Tidak dapat terhubung ke server" - tidak crash, cuma fitur mati.
+  - **Kalau nanti mau diperbaiki**: perlu endpoint monitoring baru berbasis Proxmox (butuh API token/agent Proxmox yang bisa diakses dari server Next.js) untuk menggantikan data STB yang lama.
