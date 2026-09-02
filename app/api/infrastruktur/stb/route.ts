@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import os from 'os';
 import { execSync } from 'child_process';
 
@@ -14,7 +14,31 @@ function getDiskUsage() {
   }
 }
 
-export async function GET() {
+// CORS preflight — this endpoint is polled cross-origin (e.g. from
+// backup.altanikindo.web.id), so browsers send an OPTIONS request first
+// because of the custom x-infra-secret header.
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'x-infra-secret',
+    },
+  });
+}
+
+export async function GET(req: NextRequest) {
+  // Cross-origin caller (different domain than this deployment) — cookies
+  // can't be used here (sameSite:strict admin_session never reaches a
+  // different domain), so this route is gated by a shared secret instead,
+  // same pattern as app/api/internal/lychee-notify. Fails closed: with no
+  // secret configured, nobody gets in.
+  const secret = req.headers.get('x-infra-secret');
+  if (!process.env.INFRA_MONITOR_SECRET || secret !== process.env.INFRA_MONITOR_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const totalMem = os.totalmem();
   const freeMem = os.freemem();
   const disk = getDiskUsage();
