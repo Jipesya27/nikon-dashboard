@@ -249,3 +249,14 @@ Semua file disimpan di root `GOOGLE_DRIVE_FOLDER_ID`. Subfolder dibuat otomatis 
 | Upload foto lomba | `Upload File Lomba` | â€” |
 | Dokumen penerima barang | `Penerima_Barang` | â€” |
 | Attachment WhatsApp | `message_attachment` | â€” |
+
+---
+
+## 10. Android App - Status & Catatan
+
+- **Status**: aplikasi Android (`android-app/`) belum jalan / belum dipakai production. Jangan buru-buru "perbaiki" fitur yang datanya putus - cukup dicatat, prioritas rendah sampai app ini benar-benar dipakai.
+- **InfraScreen** (`android-app/src/screens/InfraScreen.tsx`): layar "Infrastruktur & Monitoring" di drawer menu, khusus Admin/Super Admin. Menampilkan gauge CPU/RAM/Disk + uptime + list status layanan (list layanan masih hardcode `ok: true`, bukan hasil cek asli).
+  - Data diambil via `fetchInfraMetrics()`, tapi endpoint sumber datanya **tidak ketemu** di source app maupun di compiled bundle (`android/app/src/main/assets/index.android.bundle`) saat ditelusuri.
+  - Dokumentasi lama (`FIGMA_MOBILE_BRIEF.md`, dan bagian STB yang sudah dihapus dari section 8 di atas) menyebut sumbernya `https://backup.altanikindo.web.id/api/infrastruktur/stb` - endpoint ini sudah dihapus (STB HG680P retired, infra pindah ke Proxmox VE, lihat CLAUDE.md).
+  - Efek: layar ini sekarang akan selalu jatuh ke fallback "Tidak dapat terhubung ke server" - tidak crash, cuma fitur mati.
+  - **Kalau nanti mau diperbaiki**: perlu endpoint monitoring baru berbasis Proxmox (butuh API token/agent Proxmox yang bisa diakses dari server Next.js) untuk menggantikan data STB yang lama.
