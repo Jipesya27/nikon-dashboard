@@ -8,9 +8,9 @@ Membangun ulang Homepage publik Nikon Indonesia yang terintegrasi langsung denga
 
 Frontend (Public): Di-host di Vercel (Next.js/React) untuk kecepatan muat global.
 
-Backend & Compute Node (Local): Menggunakan Cluster STB HG680P (Armbian Linux Ubuntu 22.04 Jammy, Kernel 5.15/6.1 CLI). Berisi Docker container untuk API dan Node.js.
+Backend & Compute Node (Local): Menggunakan cluster Proxmox VE (LXC containers). Berisi container untuk API dan Node.js.
 
-Storage Node (Local): Synology DS223j terhubung via NFS ke STB. Menjalankan MinIO (S3 Local) untuk menyimpan foto struk/label pengiriman dan Database PostgreSQL.
+Storage Node (Local): Synology DS223j menjalankan MinIO (S3 Local) untuk menyimpan foto struk/label pengiriman dan Database PostgreSQL.
 
 Failover (Cloud): Cloudflare Tunnels (db.domain.com) untuk routing aman, dengan replikasi database ke Supabase dan backup file ke Google Drive (Cloud Sync) untuk jaga-jaga saat mati lampu.
 
@@ -20,6 +20,6 @@ Smart OCR Claim: Konsumen memfoto struk/nota, AI (Vision API) otomatis mengekstr
 
 Automated Label Printing: Pembuatan label pengiriman berformat PNG menggunakan HTML5 Canvas.
 
-WhatsApp Notification Gateway: Memanfaatkan HP Android lokal untuk mengirim notifikasi WhatsApp ke konsumen saat status klaim berubah (via Tasker/Webhook API dari STB).
+WhatsApp Notification Gateway: Memanfaatkan HP Android lokal untuk mengirim notifikasi WhatsApp ke konsumen saat status klaim berubah (via Tasker/Webhook API).
 
 Event QR Ticketing: Registrasi "Nikon School" di homepage menghasilkan tiket QR Code otomatis.

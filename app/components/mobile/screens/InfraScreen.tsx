@@ -61,7 +61,7 @@ export default function InfraScreen({ onDrawerOpen }: InfraScreenProps) {
     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
       <MobileHeader
         title="Infrastruktur"
-        subtitle="Monitor server STB"
+        subtitle="Monitor server"
         onMenuOpen={onDrawerOpen}
         rightSlot={
           <button onClick={fetchMetrics} style={{ lineHeight: 0, background: 'none', border: 'none' }}>

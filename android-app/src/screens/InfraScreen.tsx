@@ -62,7 +62,7 @@ export default function InfraScreen() {
     >
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Penggunaan Sistem STB</Text>
+          <Text style={styles.cardTitle}>Penggunaan Sistem</Text>
           {lastUpdated && (
             <Text style={styles.time}>{lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</Text>
           )}

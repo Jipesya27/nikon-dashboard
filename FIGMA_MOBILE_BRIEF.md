@@ -255,7 +255,7 @@ Sebagai shortcut 5 menu terpenting:
 - Badge suhu CPU (merah jika >70°C)
 - Uptime server
 - Tombol Refresh (atas kanan)
-- Data dari real API `https://backup.altanikindo.web.id/api/infrastruktur/stb`
+- Data dari API monitoring infrastruktur (Proxmox VE — STB HG680P sudah tidak dipakai; endpoint baru belum tersedia)
 
 ---
 

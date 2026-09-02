@@ -1,54 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ErrorLogPanel from '@/app/components/ErrorLogPanel';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface StbDisk {
-  filesystem: string;
-  mount: string;
-  total_kb: number;
-  used_kb: number;
-  free_kb: number;
-  percent: number;
-  error?: string;
-}
-
-interface StbNetIface {
-  rx_bytes: number;
-  tx_bytes: number;
-  rx_packets: number;
-  tx_packets: number;
-}
-
-interface DockerContainer {
-  name: string;
-  status: string;
-  image: string;
-  ports: string;
-  running: boolean;
-  error?: string;
-}
-
-interface StbData {
-  cpu_percent: number;
-  memory: {
-    total_kb: number;
-    used_kb: number;
-    available_kb: number;
-    cached_kb: number;
-    percent: number;
-  };
-  disks: StbDisk[];
-  network: Record<string, StbNetIface>;
-  temperature: { zones: Record<string, number>; cpu_freq_mhz: number | null };
-  load: { load1: number; load5: number; load15: number };
-  uptime_seconds: number;
-  docker: DockerContainer[];
-  hostname: string;
-  timestamp: number;
-}
 
 interface SynologyData {
   utilization: {
@@ -77,15 +32,6 @@ function fmtBytes(bytes: number, decimals = 1) {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
-}
-
-function fmtUptime(secs: number) {
-  const d = Math.floor(secs / 86400);
-  const h = Math.floor((secs % 86400) / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  if (d > 0) return `${d}h ${h}j ${m}m`;
-  if (h > 0) return `${h}j ${m}m`;
-  return `${m}m`;
 }
 
 function pctColor(pct: number) {
@@ -160,169 +106,6 @@ function Card({ title, badge, children, className = '' }: {
         {badge}
       </div>
       {children}
-    </div>
-  );
-}
-
-// ─── STB Panel ────────────────────────────────────────────────────────────────
-
-function StbPanel({ data, prevNet, online }: {
-  data: StbData | null;
-  prevNet: React.MutableRefObject<{ iface: string; rx: number; tx: number; ts: number } | null>;
-  online: boolean;
-}) {
-  const [cpuHistory, setCpuHistory] = useState<number[]>([]);
-  const [netHistory, setNetHistory] = useState<{ rx: number[]; tx: number[] }>({ rx: [], tx: [] });
-  const [netRate, setNetRate] = useState<{ rxBps: number; txBps: number } | null>(null);
-
-  useEffect(() => {
-    if (!data) return;
-
-    setCpuHistory(h => [...h.slice(-(SPARKLINE_LEN - 1)), data.cpu_percent]);
-
-    // network rate
-    const ifaces = Object.keys(data.network).filter(n => n !== 'lo');
-    const iface = ifaces.find(n => n.startsWith('eth')) ?? ifaces[0];
-    if (iface) {
-      const net = data.network[iface];
-      const now = data.timestamp;
-      if (prevNet.current && prevNet.current.iface === iface) {
-        const dt = now - prevNet.current.ts;
-        if (dt > 0) {
-          const rxBps = (net.rx_bytes - prevNet.current.rx) / dt;
-          const txBps = (net.tx_bytes - prevNet.current.tx) / dt;
-          setNetRate({ rxBps, txBps });
-          setNetHistory(h => ({
-            rx: [...h.rx.slice(-(SPARKLINE_LEN - 1)), rxBps],
-            tx: [...h.tx.slice(-(SPARKLINE_LEN - 1)), txBps],
-          }));
-        }
-      }
-      prevNet.current = { iface, rx: net.rx_bytes, tx: net.tx_bytes, ts: now };
-    }
-  }, [data, prevNet]);
-
-  const mainTemp = data
-    ? Math.max(...Object.values(data.temperature.zones))
-    : null;
-
-  const mainIface = data
-    ? (Object.keys(data.network).find(n => n.startsWith('eth')) ?? Object.keys(data.network)[0])
-    : null;
-
-  return (
-    <div className="space-y-3">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <StatusDot online={online} />
-        <span className="text-xs text-gray-400 font-mono">
-          {data?.hostname ?? 'HG680-P'} · 192.168.18.63
-        </span>
-        {data && (
-          <span className="ml-auto text-xs text-gray-500">
-            ↑ {fmtUptime(data.uptime_seconds)}
-          </span>
-        )}
-      </div>
-
-      {!data && (
-        <div className="text-center py-8 text-gray-500 text-sm">
-          {online ? 'Memuat...' : 'Tidak dapat terhubung ke STB'}
-        </div>
-      )}
-
-      {data && (
-        <>
-          {/* CPU + Temp row */}
-          <div className="grid grid-cols-2 gap-3">
-            <Card title="CPU">
-              <GaugeBar pct={data.cpu_percent} label="" sub={`Load ${data.load.load1.toFixed(2)}`} />
-              <Sparkline values={cpuHistory} color="#FFE500" />
-            </Card>
-            <Card title="Suhu">
-              <div className="flex flex-col items-center justify-center py-1">
-                <span className="text-3xl font-bold font-mono" style={{ color: mainTemp ? tempColor(mainTemp) : '#6b7280' }}>
-                  {mainTemp != null ? `${mainTemp}°` : '--'}
-                </span>
-                <span className="text-xs text-gray-500 mt-1">
-                  {data.temperature.cpu_freq_mhz ? `${data.temperature.cpu_freq_mhz} MHz` : 'CPU'}
-                </span>
-                {Object.entries(data.temperature.zones).map(([zone, t]) => (
-                  <div key={zone} className="text-xs text-gray-600 font-mono">
-                    {zone}: {t}°C
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-
-          {/* RAM */}
-          <Card title="RAM">
-            <GaugeBar
-              pct={data.memory.percent}
-              label=""
-              sub={`${fmtBytes(data.memory.used_kb * 1024)} / ${fmtBytes(data.memory.total_kb * 1024)} · Cache ${fmtBytes(data.memory.cached_kb * 1024)}`}
-            />
-          </Card>
-
-          {/* Disks */}
-          <Card title="Storage">
-            <div className="space-y-2">
-              {data.disks.filter(d => !d.error).map(disk => (
-                <GaugeBar
-                  key={disk.mount}
-                  pct={disk.percent}
-                  label={disk.mount}
-                  sub={`${fmtBytes(disk.used_kb * 1024)} / ${fmtBytes(disk.total_kb * 1024)}`}
-                />
-              ))}
-            </div>
-          </Card>
-
-          {/* Network */}
-          {mainIface && (
-            <Card title={`Network · ${mainIface}`}>
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <div>
-                  <div className="text-xs text-gray-500">↓ Download</div>
-                  <div className="text-sm font-mono font-semibold text-green-400">
-                    {netRate ? `${fmtBytes(netRate.rxBps)}/s` : '--'}
-                  </div>
-                  <Sparkline values={netHistory.rx} color="#22c55e" />
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">↑ Upload</div>
-                  <div className="text-sm font-mono font-semibold text-blue-400">
-                    {netRate ? `${fmtBytes(netRate.txBps)}/s` : '--'}
-                  </div>
-                  <Sparkline values={netHistory.tx} color="#60a5fa" />
-                </div>
-              </div>
-              {mainIface && data.network[mainIface] && (
-                <div className="text-xs text-gray-600 font-mono">
-                  Total RX: {fmtBytes(data.network[mainIface].rx_bytes)} · TX: {fmtBytes(data.network[mainIface].tx_bytes)}
-                </div>
-              )}
-            </Card>
-          )}
-
-          {/* Docker */}
-          <Card title="Docker Containers">
-            <div className="space-y-1">
-              {data.docker.filter(c => !c.error).map(c => (
-                <div key={c.name} className="flex items-center gap-2 py-1 border-b border-gray-800 last:border-0">
-                  <span className={`text-xs ${c.running ? 'text-green-400' : 'text-gray-500'}`}>●</span>
-                  <span className="text-xs font-mono text-gray-300 flex-1 truncate">{c.name}</span>
-                  <span className="text-xs text-gray-500 truncate max-w-[120px]">{c.status}</span>
-                </div>
-              ))}
-              {data.docker.length === 0 && (
-                <div className="text-xs text-gray-600">Tidak ada container</div>
-              )}
-            </div>
-          </Card>
-        </>
-      )}
     </div>
   );
 }
@@ -480,10 +263,6 @@ function SynologyPanel({ data, online }: { data: SynologyData | null; online: bo
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function MonitoringPage() {
-  const [stbData, setStbData] = useState<StbData | null>(null);
-  const [stbOnline, setStbOnline] = useState(false);
-  const [stbError, setStbError] = useState<string | null>(null);
-
   const [synData, setSynData] = useState<SynologyData | null>(null);
   const [synOnline, setSynOnline] = useState(false);
   const [synError, setSynError] = useState<string | null>(null);
@@ -492,26 +271,6 @@ export default function MonitoringPage() {
   const [refreshInterval, setRefreshInterval] = useState(4);
   const [paused, setPaused] = useState(false);
   const [view, setView] = useState<'infra' | 'errors'>('infra');
-
-  const stbPrevNet = useRef<{ iface: string; rx: number; tx: number; ts: number } | null>(null);
-
-  const fetchStb = useCallback(async () => {
-    try {
-      const res = await fetch('/api/monitoring/stb', { cache: 'no-store' });
-      const json = await res.json();
-      if (json.ok) {
-        setStbData(json.data);
-        setStbOnline(true);
-        setStbError(null);
-      } else {
-        setStbOnline(false);
-        setStbError(json.error);
-      }
-    } catch {
-      setStbOnline(false);
-      setStbError('Fetch failed');
-    }
-  }, []);
 
   const fetchSynology = useCallback(async () => {
     try {
@@ -532,9 +291,9 @@ export default function MonitoringPage() {
   }, []);
 
   const refresh = useCallback(async () => {
-    await Promise.all([fetchStb(), fetchSynology()]);
+    await fetchSynology();
     setLastUpdate(new Date());
-  }, [fetchStb, fetchSynology]);
+  }, [fetchSynology]);
 
   useEffect(() => {
     refresh();
@@ -611,12 +370,7 @@ export default function MonitoringPage() {
         <ErrorLogPanel />
       ) : (
         <>
-          {/* Error banners */}
-          {stbError && (
-            <div className="mx-4 mt-3 px-3 py-2 rounded bg-red-950 border border-red-800 text-red-300 text-xs font-mono">
-              STB: {stbError}
-            </div>
-          )}
+          {/* Error banner */}
           {synError && (
             <div className="mx-4 mt-3 px-3 py-2 rounded bg-red-950 border border-red-800 text-red-300 text-xs font-mono">
               Synology: {synError}
@@ -624,17 +378,7 @@ export default function MonitoringPage() {
           )}
 
           {/* Main grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 max-w-6xl mx-auto">
-            {/* STB column */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <StatusDot online={stbOnline} />
-                <h2 className="font-semibold text-sm text-gray-300">HG680-P · STB</h2>
-                <span className="text-xs text-gray-600">Armbian · S905X</span>
-              </div>
-              <StbPanel data={stbData} prevNet={stbPrevNet} online={stbOnline} />
-            </div>
-
+          <div className="grid grid-cols-1 gap-4 p-4 max-w-3xl mx-auto">
             {/* Synology column */}
             <div>
               <div className="flex items-center gap-2 mb-3">
