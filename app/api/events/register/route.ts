@@ -143,6 +143,7 @@ export async function GET() {
         event_payment_tipe: e.event_payment_tipe,
         deposit_amount: e.deposit_amount,
         bank_info: e.bank_info,
+        external_wa_number: e.external_wa_number ?? null,
         event_partisipant_stock: e.event_partisipant_stock,
         display_start_date: e.display_start_date ?? null,
         registration_open_date: e.registration_open_date ?? null,
@@ -195,6 +196,10 @@ export async function POST(req: Request) {
       .eq('id', event_id)
       .maybeSingle();
     const isGratis = eventEarly?.event_payment_tipe === 'gratis';
+
+    if (eventEarly?.event_payment_tipe === 'external') {
+      return NextResponse.json({ error: 'Event ini pendaftarannya diarahkan ke WhatsApp pihak lain, bukan lewat form ini.' }, { status: 400 });
+    }
 
     if (!isGratis && !fileBukti) {
       return NextResponse.json({ error: 'Bukti transfer wajib diunggah.' }, { status: 400 });

@@ -2949,6 +2949,7 @@ ${kode ? `
             event_status: ef.event_status ?? ef.status ?? 'In stock',
             bank_info: ef.bank_info ?? null,
             event_payment_tipe: ef.event_payment_tipe ?? 'regular',
+            external_wa_number: ef.external_wa_number ?? null,
             event_speaker: ef.event_speaker ?? null,
             event_speaker_genre: ef.event_speaker_genre ?? null,
             deposit_amount: ef.deposit_amount ?? null,
@@ -6463,6 +6464,7 @@ ${kode ? `
                               const ef = eventForm as any;
                               const getVal = (k: string, alt?: string) => ef[k] ?? (alt ? ef[alt] : '') ?? '';
                               const setField = (k: string, v: unknown) => setEventForm({ ...eventForm, [k]: v });
+                              const isExternalPayment = (getVal('event_payment_tipe') || 'regular') === 'external';
                               return (
                                  <>
                                     <div>
@@ -6577,15 +6579,28 @@ ${kode ? `
                                              {PAYMENT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                           </select>
                                        </div>
+                                       {!isExternalPayment && (
+                                          <div>
+                                             <label className="label-form">Jumlah Deposit (jika deposit)</label>
+                                             <input type="text" value={getVal('deposit_amount')} onChange={e => setField('deposit_amount', e.target.value)} className="input-form" list="dl-deposit-amount" placeholder="Contoh: 50000" />
+                                          </div>
+                                       )}
+                                    </div>
+                                    {isExternalPayment ? (
                                        <div>
-                                          <label className="label-form">Jumlah Deposit (jika deposit)</label>
-                                          <input type="text" value={getVal('deposit_amount')} onChange={e => setField('deposit_amount', e.target.value)} className="input-form" list="dl-deposit-amount" placeholder="Contoh: 50000" />
+                                          <label className="label-form">Nomor WA Tujuan (pihak pengelola event)</label>
+                                          <input type="text" value={getVal('external_wa_number')} onChange={e => setField('external_wa_number', e.target.value)} className="input-form" placeholder="Contoh: 6281234567890" />
+                                          <p className="text-xs text-gray-500 mt-1">Tombol &quot;Daftar&quot; akan langsung membuka WhatsApp ke nomor ini, bukan form pendaftaran internal.</p>
+                                          {typeof getVal('redirect_click_count') === 'number' && (
+                                             <p className="text-xs text-gray-500 mt-1">Sudah diklik {getVal('redirect_click_count')} kali.</p>
+                                          )}
                                        </div>
-                                    </div>
-                                    <div>
-                                       <label className="label-form">Info Rekening Pembayaran</label>
-                                       <input type="text" value={getVal('bank_info')} onChange={e => setField('bank_info', e.target.value)} className="input-form" list="dl-bank-info" placeholder="Contoh: BCA 123456789 a.n. Nikon Indonesia" />
-                                    </div>
+                                    ) : (
+                                       <div>
+                                          <label className="label-form">Info Rekening Pembayaran</label>
+                                          <input type="text" value={getVal('bank_info')} onChange={e => setField('bank_info', e.target.value)} className="input-form" list="dl-bank-info" placeholder="Contoh: BCA 123456789 a.n. Nikon Indonesia" />
+                                       </div>
+                                    )}
                                     <div>
                                        <label className="label-form">Jam Acara</label>
                                        <input type="text" value={getVal('event_time')} onChange={e => setField('event_time', e.target.value)} className="input-form" placeholder="Contoh: 09.00 WIB - Selesai" />

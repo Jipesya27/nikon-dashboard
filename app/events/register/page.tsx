@@ -11,9 +11,10 @@ type EventItem = {
   event_description?: string;
   event_speaker?: string;
   event_speaker_genre?: string;
-  event_payment_tipe: 'regular' | 'deposit' | 'gratis';
+  event_payment_tipe: 'regular' | 'deposit' | 'gratis' | 'external';
   deposit_amount?: string;
   bank_info?: string;
+  external_wa_number?: string | null;
   event_partisipant_stock: number;
   registered_count: number;
   registration_not_open?: boolean;
@@ -93,7 +94,7 @@ export default function EventRegisterPage() {
 
   // Marketplace filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterPayment, setFilterPayment] = useState<'all' | 'regular' | 'deposit' | 'gratis'>('all');
+  const [filterPayment, setFilterPayment] = useState<'all' | 'regular' | 'deposit' | 'gratis' | 'external'>('all');
   const [filterGenre, setFilterGenre] = useState<string>('Semua');
   const [sortBy, setSortBy] = useState<'newest' | 'soonest' | 'price_asc' | 'price_desc'>('soonest');
   const [descEvent, setDescEvent] = useState<EventItem | null>(null);
@@ -127,12 +128,34 @@ export default function EventRegisterPage() {
   }
 
   function pilihEvent(evt: EventItem) {
+    if (evt.event_payment_tipe === 'external') {
+      redirectKeWA(evt);
+      return;
+    }
     setSelectedEvent(evt);
     setStep('form');
     setErrorMsg('');
     setFormData(EMPTY_FORM);
     setFileBukti(null);
     setPreviewBukti(null);
+  }
+
+  /** Event tipe 'external': tidak ada form internal — langsung arahkan ke WA pihak pengelola event. */
+  function redirectKeWA(evt: EventItem) {
+    if (!evt.external_wa_number) {
+      setErrorMsg('Nomor WA tujuan belum diatur untuk event ini. Hubungi admin.');
+      return;
+    }
+    // Catat klik, fire-and-forget — tidak menghalangi redirect kalau gagal.
+    fetch('/api/events/redirect-click', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_id: evt.id }),
+    }).catch(() => {});
+
+    const pesan = `Halo, saya ingin mendaftar untuk event "${evt.event_title}" (${fmtEventDate(evt.event_date)}). Mohon info lebih lanjut.`;
+    const nomor = evt.external_wa_number.replace(/[^0-9]/g, '');
+    window.open(`https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`, '_blank');
   }
 
   // Daftar genre unik dari events
@@ -309,6 +332,7 @@ export default function EventRegisterPage() {
                 { v: 'regular', l: 'Regular',    i: '🎫' },
                 { v: 'deposit', l: 'Deposit',    i: '💎' },
                 { v: 'gratis',  l: 'Gratis',     i: '🎁' },
+                { v: 'external', l: 'Via WA',     i: '↗️' },
               ] as const).map(opt => {
                 const active = filterPayment === opt.v;
                 return (
@@ -410,6 +434,11 @@ export default function EventRegisterPage() {
                           🎁 Gratis
                         </span>
                       )}
+                      {evt.event_payment_tipe === 'external' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[10px] font-bold uppercase shadow-md">
+                          ↗️ Daftar via WA
+                        </span>
+                      )}
                     </div>
                     {tampilSisa && (
                       <span className={`absolute top-2 right-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold shadow-md ${sisa! <= 3 ? 'bg-red-500 text-white' : 'bg-orange-500 text-white'}`}>
@@ -478,7 +507,7 @@ export default function EventRegisterPage() {
                           onClick={() => pilihEvent(evt)}
                           className="bg-black text-[#FFE500] px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-gray-800 transition shadow-md whitespace-nowrap"
                         >
-                          Daftar →
+                          {evt.event_payment_tipe === 'external' ? 'Daftar via WA ↗' : 'Daftar →'}
                         </button>
                       )}
                     </div>

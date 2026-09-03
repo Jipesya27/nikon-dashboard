@@ -106,6 +106,7 @@ export const PAYMENT_TYPE_OPTIONS = [
   { value: 'regular', label: 'Regular (Non-refundable)' },
   { value: 'deposit', label: 'Deposit (Refundable setelah hadir)' },
   { value: 'gratis', label: 'Gratis (Tidak perlu bayar)' },
+  { value: 'external', label: 'Redirect ke Pihak Lain (WA)' },
 ] as const;
 export type PaymentType = typeof PAYMENT_TYPE_OPTIONS[number]['value'];
 
