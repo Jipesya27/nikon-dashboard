@@ -545,8 +545,8 @@ export default function EventRegisterPage() {
                         </div>
                       )}
                       {/* Badge SELESAI */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="bg-black/70 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">✓ Selesai</span>
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2">
+                        <span className="bg-red-600 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider shadow-md">✓ Selesai</span>
                       </div>
                     </div>
                     <div className="p-3 flex flex-col gap-1 flex-1">
