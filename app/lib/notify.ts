@@ -360,6 +360,32 @@ export async function sendEmailDirect(to: string, subject: string, message: stri
   await sendEmail(to, subject, message, customHtml);
 }
 
+/**
+ * Sama seperti sendEmailDirect tapi MELEMPAR error kalau gagal — untuk alur di
+ * mana pemanggil perlu tahu berhasil/tidaknya (mis. tombol "kirim ke email" di UI).
+ */
+export async function sendEmailStrict(to: string, subject: string, message: string, customHtml?: string): Promise<void> {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!host || !user || !pass) throw new Error('SMTP belum dikonfigurasi di server');
+  if (!to) throw new Error('Alamat email tujuan kosong');
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: { user, pass },
+  } as Parameters<typeof nodemailer.createTransport>[0]);
+
+  await transporter.sendMail({
+    from: `"${process.env.SMTP_FROM_NAME || 'Nikon Service Center'}" <${process.env.SMTP_FROM || user}>`,
+    to,
+    subject,
+    html: buildEmailHtml(message, customHtml),
+  });
+}
+
 // ─── Email via SMTP ─────────────────────────────────────────────────────────
 
 function waMarkdownToHtml(text: string): string {

@@ -15,30 +15,37 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
 
+  let username: string, password: string;
+  try { ({ username, password } = await req.json()); }
+  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }); }
+
+  username = (username || '').trim();
+
+  if (!username || !password) {
+    return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
+  }
+
+  // Rate limit per (IP + username) — lihat catatan di karyawan-login/route.ts
+  const rlKey = `login:${ip}:${username.toLowerCase()}`;
   try {
-    if (!(await checkRateLimit(ip, 10))) {
+    if (!(await checkRateLimit(rlKey, 10))) {
       return NextResponse.json({ error: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' }, { status: 429 });
     }
   } catch {
     // Tabel login_attempts belum dibuat atau error DB — abaikan, jangan blokir login
   }
 
-  let username: string, password: string;
-  try { ({ username, password } = await req.json()); }
-  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }); }
-
-  if (!username || !password) {
-    return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
-  }
-
   try {
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-    const { data: karyawan } = await supabase
+    // Case-insensitive match (lihat karyawan-login/route.ts)
+    const { data: matches } = await supabase
       .from('karyawan')
       .select('*')
-      .eq('username', username)
-      .single();
+      .ilike('username', username);
+    const karyawan = (matches || []).find(
+      k => (k.username || '').trim().toLowerCase() === username.toLowerCase(),
+    );
 
     if (!karyawan) {
       return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
@@ -65,7 +72,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
     }
 
-    try { await resetRateLimit(ip); } catch { /* abaikan */ }
+    try { await resetRateLimit(rlKey); } catch { /* abaikan */ }
 
     const { password: _pw, ...safeKaryawan } = karyawan;
     void _pw;

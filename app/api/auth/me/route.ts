@@ -37,11 +37,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Username tidak ditemukan' }, { status: 400 });
   }
 
-  const { data: karyawan, error } = await sbAdmin
+  // Kolom foto_profil tidak ada di tabel karyawan — menyertakannya membuat
+  // query gagal total sehingga akses_halaman tidak pernah ter-refresh.
+  const { data: matches, error } = await sbAdmin
     .from('karyawan')
-    .select('id_karyawan, nama_karyawan, username, role, status_aktif, akses_halaman, nomor_wa, foto_profil')
-    .eq('username', username)
-    .single();
+    .select('id_karyawan, nama_karyawan, username, role, status_aktif, akses_halaman, nomor_wa, email')
+    .ilike('username', username.trim());
+  const karyawan = (matches || []).find(
+    k => (k.username || '').trim().toLowerCase() === username.trim().toLowerCase(),
+  );
 
   if (error || !karyawan) {
     return NextResponse.json({ error: 'Karyawan tidak ditemukan' }, { status: 404 });

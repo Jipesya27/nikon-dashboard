@@ -10,31 +10,43 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
 
-  // Rate limit — fail-safe: kalau tabel belum ada atau error, login tetap dilanjutkan
+  let username: string, password: string;
+  try { ({ username, password } = await req.json()); }
+  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }); }
+
+  // Normalisasi username: buang spasi di ujung. Pencocokan ke DB dilakukan
+  // case-insensitive (lihat di bawah) supaya karyawan dengan username berhuruf
+  // besar tidak terkunci hanya karena autofill/keyboard mobile mengubah kapitalisasi.
+  username = (username || '').trim();
+
+  if (!username || !password) {
+    return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
+  }
+
+  // Rate limit di-key per (IP + username) — bukan IP saja — supaya satu kantor
+  // yang berbagi satu IP publik (NAT) tidak saling mengunci saat beberapa orang
+  // salah ketik password di pagi hari. Fail-safe: kalau RPC/tabel error, login lanjut.
+  const rlKey = `login:${ip}:${username.toLowerCase()}`;
   try {
-    if (!(await checkRateLimit(ip, 10))) {
+    if (!(await checkRateLimit(rlKey, 10))) {
       return NextResponse.json({ error: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' }, { status: 429 });
     }
   } catch {
     // Tabel login_attempts belum dibuat atau error DB — abaikan, jangan blokir login
   }
 
-  let username: string, password: string;
-  try { ({ username, password } = await req.json()); }
-  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }); }
-
-  if (!username || !password) {
-    return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 });
-  }
-
   try {
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-    const { data: karyawan } = await supabase
+    // ilike = filter case-insensitive di DB; lalu verifikasi exact (case-insensitive)
+    // di JS agar wildcard (%/_) pada input tidak pernah cocok ke baris lain.
+    const { data: matches } = await supabase
       .from('karyawan')
       .select('*')
-      .eq('username', username)
-      .single();
+      .ilike('username', username);
+    const karyawan = (matches || []).find(
+      k => (k.username || '').trim().toLowerCase() === username.toLowerCase(),
+    );
 
     if (!karyawan) {
       return NextResponse.json({ error: 'Username atau Password salah!' }, { status: 401 });
@@ -63,7 +75,7 @@ export async function POST(req: Request) {
     }
 
     // Reset rate limit — fail-safe
-    try { await resetRateLimit(ip); } catch { /* abaikan */ }
+    try { await resetRateLimit(rlKey); } catch { /* abaikan */ }
 
     const { password: _pw, ...safeKaryawan } = karyawan;
     void _pw;

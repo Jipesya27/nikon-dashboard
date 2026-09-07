@@ -256,10 +256,10 @@ function NikonDashboardInner() {
    const [loginForm, setLoginForm] = useState({ username: '', password: '' });
    const [loginError, setLoginError] = useState('');
    const [isForgotPw, setIsForgotPw] = useState(false);
-   const [forgotPwUsername, setForgotPwUsername] = useState('');
+   const [forgotPwEmail, setForgotPwEmail] = useState('');
    const [forgotPwMessage, setForgotPwMessage] = useState('');
-   const [forgotPwStep, setForgotPwStep] = useState<'input' | 'choose' | 'done'>('input');
-   const [forgotPwChannels, setForgotPwChannels] = useState<{ wa?: string; email?: string }>({});
+   const [forgotPwError, setForgotPwError] = useState('');
+   const [forgotPwSent, setForgotPwSent] = useState(false);
    const [isChangePwOpen, setIsChangePwOpen] = useState(false);
    const [changePwForm, setChangePwForm] = useState({ current: '', newPw: '', confirm: '' });
    const [changePwError, setChangePwError] = useState('');
@@ -539,8 +539,10 @@ function NikonDashboardInner() {
    const [chatbotSaving, setChatbotSaving] = useState<Record<string, boolean>>({});
    const [isSubmitting, setIsSubmitting] = useState(false);
    const [resetPwLoadingId, setResetPwLoadingId] = useState<string | null>(null);
-   const [waPasswordMsg, setWaPasswordMsg] = useState<{ nama: string; username: string; password: string } | null>(null);
+   const [waPasswordMsg, setWaPasswordMsg] = useState<{ nama: string; username: string; password: string; email?: string | null; id_karyawan?: string } | null>(null);
    const [waPasswordMsgCopied, setWaPasswordMsgCopied] = useState(false);
+   const [waPasswordEmailState, setWaPasswordEmailState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+   const [waPasswordEmailMsg, setWaPasswordEmailMsg] = useState('');
 
    // NOTIFICATION CHANNEL
    const [notifChannel, setNotifChannel] = useState<'wa_only' | 'email_only' | 'wa_and_email'>('wa_only');
@@ -1647,7 +1649,7 @@ function NikonDashboardInner() {
          const res = await fetch('/api/auth/karyawan-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: loginForm.username, password: loginForm.password }),
+            body: JSON.stringify({ username: (loginForm.username || '').trim(), password: loginForm.password }),
          });
          const json = await res.json();
          if (res.ok && json.karyawan) {
@@ -1666,49 +1668,23 @@ function NikonDashboardInner() {
    const handleForgotPwSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setForgotPwMessage('');
+      setForgotPwError('');
       setIsSubmitting(true);
       try {
          const res = await fetch('/api/auth/forgot-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ step: 'lookup', username: forgotPwUsername }),
+            body: JSON.stringify({ email: forgotPwEmail.trim() }),
          });
          const j = await res.json();
-         if (res.ok && j.channels) {
-            setForgotPwChannels(j.channels);
-            setForgotPwStep('choose');
+         if (res.ok && j.success) {
+            setForgotPwSent(true);
+            setForgotPwMessage(j.message || 'Jika email terdaftar, link untuk membuat password baru sudah dikirim. Cek inbox dan folder spam Anda.');
          } else {
-            setForgotPwMessage(j.error || 'Gagal memproses reset password.');
+            setForgotPwError(j.error || 'Gagal memproses permintaan reset password.');
          }
       } catch (err: unknown) {
-         const message = errMsg(err);
-         setForgotPwMessage('Gagal memproses reset password: ' + message);
-      } finally {
-         setIsSubmitting(false);
-      }
-   };
-
-   const handleForgotPwSend = async (channel: 'wa' | 'email') => {
-      setForgotPwMessage('');
-      setIsSubmitting(true);
-      try {
-         const res = await fetch('/api/auth/forgot-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ step: 'send', username: forgotPwUsername, channel }),
-         });
-         const j = await res.json();
-         if (res.ok) {
-            setForgotPwMessage(channel === 'wa'
-               ? 'Password baru telah dikirim ke WhatsApp Anda!'
-               : 'Password baru telah dikirim ke email Anda!');
-            setForgotPwStep('done');
-         } else {
-            setForgotPwMessage(j.error || 'Gagal mengirim password baru.');
-         }
-      } catch (err: unknown) {
-         const message = errMsg(err);
-         setForgotPwMessage('Gagal mengirim password baru: ' + message);
+         setForgotPwError('Gagal memproses permintaan: ' + errMsg(err));
       } finally {
          setIsSubmitting(false);
       }
@@ -1716,10 +1692,10 @@ function NikonDashboardInner() {
 
    const resetForgotPwFlow = () => {
       setIsForgotPw(false);
+      setForgotPwEmail('');
       setForgotPwMessage('');
-      setForgotPwUsername('');
-      setForgotPwStep('input');
-      setForgotPwChannels({});
+      setForgotPwError('');
+      setForgotPwSent(false);
    };
 
    const handleChangePassword = async (e: React.FormEvent) => {
@@ -2713,10 +2689,13 @@ ${kode ? `
          if (!resetRes.ok) throw new Error('Gagal menyimpan password');
 
          fetchKaryawans(); closeModal();
+         setWaPasswordEmailState('idle'); setWaPasswordEmailMsg('');
          setWaPasswordMsg({
             nama: karyawanForm.nama_karyawan || karyawanForm.username || 'Karyawan',
             username: karyawanForm.username || '',
             password: karyawanForm.password,
+            email: karyawanForm.email || null,
+            id_karyawan: editingId || undefined,
          });
       } catch (err: unknown) {
          const message = errMsg(err);
@@ -2744,15 +2723,37 @@ ${kode ? `
          const json = await res.json();
          if (!res.ok) throw new Error(json.error || 'Gagal menyimpan password');
 
+         setWaPasswordEmailState('idle'); setWaPasswordEmailMsg('');
          setWaPasswordMsg({
             nama: k.nama_karyawan || k.username || 'Karyawan',
             username: k.username || '',
             password: newPassword,
+            email: k.email || null,
+            id_karyawan: k.id_karyawan,
          });
       } catch (err: unknown) {
          alert('Gagal: ' + (errMsg(err)));
       } finally {
          setResetPwLoadingId(null);
+      }
+   };
+
+   const handleSendPasswordEmail = async () => {
+      if (!waPasswordMsg?.id_karyawan || !waPasswordMsg.email) return;
+      setWaPasswordEmailState('sending'); setWaPasswordEmailMsg('');
+      try {
+         const res = await fetch('/api/admin/karyawan/notify-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_karyawan: waPasswordMsg.id_karyawan, password: waPasswordMsg.password }),
+         });
+         const json = await res.json();
+         if (!res.ok) throw new Error(json.error || 'Gagal mengirim email');
+         setWaPasswordEmailState('sent');
+         setWaPasswordEmailMsg(`Terkirim ke ${json.sentTo || waPasswordMsg.email}`);
+      } catch (err: unknown) {
+         setWaPasswordEmailState('error');
+         setWaPasswordEmailMsg(errMsg(err));
       }
    };
 
@@ -4071,62 +4072,25 @@ ${kode ? `
                         <button type="button" onClick={() => setIsForgotPw(true)} className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">Lupa Password?</button>
                      </div>
                   </form>
-               ) : forgotPwStep === 'input' ? (
+               ) : !forgotPwSent ? (
                   <form onSubmit={handleForgotPwSubmit} className="space-y-5 animate-fade-in">
-                     {forgotPwMessage && <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg text-sm font-medium mb-4">{forgotPwMessage}</div>}
+                     {forgotPwError && <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg text-sm font-medium mb-1">{forgotPwError}</div>}
+                     <p className="text-sm text-gray-600">Masukkan email yang terdaftar di akun Anda. Kami akan mengirim link untuk membuat password baru.</p>
                      <div>
-                        <label className="block text-sm font-bold mb-2 text-gray-800">Username</label>
-                        <input type="text" value={forgotPwUsername} onChange={e => setForgotPwUsername(e.target.value)} required className="input-modern" placeholder="Masukkan username Anda" />
+                        <label className="block text-sm font-bold mb-2 text-gray-800">Email</label>
+                        <input type="email" value={forgotPwEmail} onChange={e => setForgotPwEmail(e.target.value)} required className="input-modern" placeholder="nama@email.com" autoComplete="email" />
                      </div>
                      <button type="submit" disabled={isSubmitting} className="btn-secondary w-full">
-                        {isSubmitting ? '⏳ Memeriksa...' : 'Lanjutkan →'}
+                        {isSubmitting ? 'Mengirim...' : 'Kirim Link Reset'}
                      </button>
                      <div className="text-center mt-6">
                         <button type="button" onClick={resetForgotPwFlow} className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">← Kembali ke Login</button>
                      </div>
                   </form>
-               ) : forgotPwStep === 'choose' ? (
-                  <div className="space-y-5 animate-fade-in">
-                     {forgotPwMessage && <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg text-sm font-medium mb-4">{forgotPwMessage}</div>}
-                     <p className="text-sm text-gray-600 font-medium text-center">Password baru akan dikirim ke mana?</p>
-                     <div className="space-y-3">
-                        {forgotPwChannels.wa && (
-                           <button
-                              type="button"
-                              disabled={isSubmitting}
-                              onClick={() => handleForgotPwSend('wa')}
-                              className="w-full flex items-center justify-between px-4 py-3 border-2 border-gray-200 rounded-lg hover:border-[#FFE500] transition-colors text-left disabled:opacity-50"
-                           >
-                              <span>
-                                 <span className="block text-xs font-bold text-gray-500 uppercase tracking-wide">WhatsApp</span>
-                                 <span className="block text-sm font-semibold text-gray-900">{forgotPwChannels.wa}</span>
-                              </span>
-                              <span className="text-xl">📱</span>
-                           </button>
-                        )}
-                        {forgotPwChannels.email && (
-                           <button
-                              type="button"
-                              disabled={isSubmitting}
-                              onClick={() => handleForgotPwSend('email')}
-                              className="w-full flex items-center justify-between px-4 py-3 border-2 border-gray-200 rounded-lg hover:border-[#FFE500] transition-colors text-left disabled:opacity-50"
-                           >
-                              <span>
-                                 <span className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Email</span>
-                                 <span className="block text-sm font-semibold text-gray-900">{forgotPwChannels.email}</span>
-                              </span>
-                              <span className="text-xl">✉️</span>
-                           </button>
-                        )}
-                     </div>
-                     {isSubmitting && <p className="text-center text-xs text-gray-500">⏳ Mengirim...</p>}
-                     <div className="text-center mt-6">
-                        <button type="button" onClick={resetForgotPwFlow} className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">← Kembali ke Login</button>
-                     </div>
-                  </div>
                ) : (
                   <div className="space-y-5 animate-fade-in">
                      <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-lg text-sm font-medium">{forgotPwMessage}</div>
+                     <p className="text-xs text-gray-500">Link berlaku 1 jam. Jika tidak ada email masuk, cek folder spam atau hubungi Admin untuk memastikan email Anda sudah terdaftar.</p>
                      <div className="text-center mt-6">
                         <button type="button" onClick={resetForgotPwFlow} className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">← Kembali ke Login</button>
                      </div>
@@ -7788,6 +7752,37 @@ ${kode ? `
                         <><svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/></svg> Salin Pesan</>
                      )}
                   </button>
+
+                  {/* Kirim langsung ke email karyawan (kalau ada email di datanya) */}
+                  {waPasswordMsg.id_karyawan && (
+                     waPasswordMsg.email ? (
+                        <div className="pt-1">
+                           <button
+                              onClick={handleSendPasswordEmail}
+                              disabled={waPasswordEmailState === 'sending' || waPasswordEmailState === 'sent'}
+                              className={`w-full py-2.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 border ${
+                                 waPasswordEmailState === 'sent'
+                                    ? 'bg-green-500 text-white border-green-500'
+                                    : 'bg-white hover:bg-gray-50 text-gray-800 border-gray-300 disabled:opacity-60'
+                              }`}
+                           >
+                              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+                              {waPasswordEmailState === 'sending' ? 'Mengirim...'
+                                 : waPasswordEmailState === 'sent' ? 'Email Terkirim!'
+                                 : `Kirim ke Email (${waPasswordMsg.email})`}
+                           </button>
+                           {waPasswordEmailMsg && (
+                              <p className={`text-xs mt-1.5 ${waPasswordEmailState === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+                                 {waPasswordEmailMsg}
+                              </p>
+                           )}
+                        </div>
+                     ) : (
+                        <p className="text-xs text-gray-400 pt-1">
+                           Tambahkan email di data karyawan untuk bisa kirim reset lewat email.
+                        </p>
+                     )
+                  )}
                </div>
             </div>
          </div>

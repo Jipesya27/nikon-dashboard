@@ -1,105 +1,104 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcryptjs';
-import { sendWAOtpTemplate, sendEmailDirect } from '@/app/lib/notify';
+import { sendEmailStrict } from '@/app/lib/notify';
 import { checkRateLimit } from '@/app/lib/rateLimit';
 import { logSystemError } from '@/app/lib/errorLog';
+import { generateResetToken, hashResetToken, siteOrigin, RESET_TOKEN_TTL_MS } from '@/app/lib/resetToken';
 
 export const dynamic = 'force-dynamic';
 
-/** Generate password sementara yang cryptographically secure (8 karakter alphanumeric bersih) */
-function generateSecureTempPassword(): string {
-  const charset = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const bytes = new Uint8Array(8);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, b => charset[b % charset.length]).join('');
-}
+// Balasan generik — sama persis untuk "email ketemu" dan "email tidak ketemu",
+// supaya endpoint ini tidak bisa dipakai menebak email karyawan mana yang terdaftar.
+const GENERIC_OK = {
+  success: true,
+  message: 'Jika email tersebut terdaftar, kami sudah mengirim link untuk membuat password baru. Cek inbox dan folder spam Anda.',
+};
 
-function maskWa(nomor: string): string {
-  const digits = nomor.replace(/\D/g, '');
-  if (digits.length <= 6) return '****' + digits.slice(-2);
-  return digits.slice(0, 4) + '*'.repeat(Math.max(3, digits.length - 7)) + digits.slice(-3);
-}
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-function maskEmail(email: string): string {
-  const [user, domain] = email.split('@');
-  if (!domain) return '***';
-  const visible = user.slice(0, Math.min(2, user.length));
-  return `${visible}${'*'.repeat(Math.max(2, user.length - visible.length))}@${domain}`;
+function buildResetEmailHtml(nama: string, link: string): string {
+  return `<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#222">
+  <p>Halo ${nama || 'Karyawan'},</p>
+  <p>Kami menerima permintaan reset password untuk akun <b>Nikon Dashboard</b> Anda.
+  Klik tombol di bawah untuk membuat password baru. Link ini berlaku <b>1 jam</b> dan hanya bisa dipakai sekali.</p>
+  <p style="text-align:center;margin:28px 0">
+    <a href="${link}" style="background:#FFE500;color:#000;font-weight:bold;text-decoration:none;padding:12px 28px;border-radius:8px;display:inline-block">Buat Password Baru</a>
+  </p>
+  <p style="font-size:12px;color:#666">Kalau tombol tidak berfungsi, salin dan tempel link ini ke browser:<br>
+  <span style="word-break:break-all">${link}</span></p>
+  <p>Jika Anda tidak meminta reset ini, abaikan email ini — password Anda tidak berubah.</p>
+</div>`;
 }
 
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
 
-  // Strict: hanya 6x per 15 menit per IP (2 langkah per percobaan reset)
-  if (!(await checkRateLimit(`fp:${ip}`, 6))) {
+  if (!(await checkRateLimit(`fp:${ip}`, 8))) {
     return NextResponse.json({ error: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' }, { status: 429 });
   }
 
-  let body: { step?: string; username?: string; channel?: 'wa' | 'email' };
+  let body: { email?: string };
   try { body = await req.json(); }
-  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }); }
+  catch { return NextResponse.json({ error: 'Permintaan tidak valid' }, { status: 400 }); }
 
-  const { step, username, channel } = body;
-  if (!username) return NextResponse.json({ error: 'Username wajib diisi' }, { status: 400 });
+  const email = (body.email || '').trim().toLowerCase();
+  if (!email || !EMAIL_RE.test(email)) {
+    return NextResponse.json({ error: 'Masukkan alamat email yang valid.' }, { status: 400 });
+  }
 
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-  const { data: karyawan } = await supabase
+  // Lookup email case-insensitive
+  const { data: matches } = await supabase
     .from('karyawan')
-    .select('id_karyawan, nama_karyawan, nomor_wa, email')
-    .eq('username', username)
-    .single();
+    .select('id_karyawan, nama_karyawan, email, status_aktif')
+    .ilike('email', email);
+  const karyawan = (matches || []).find(k => (k.email || '').trim().toLowerCase() === email);
 
-  if (!karyawan) {
-    return NextResponse.json({ error: 'Username tidak ditemukan' }, { status: 404 });
+  // Akun tidak ada / dinonaktifkan → tetap balas generik (jangan bocorkan).
+  if (!karyawan || karyawan.status_aktif === false || !karyawan.email) {
+    return NextResponse.json(GENERIC_OK);
   }
 
-  // ── Step 1: lookup — tampilkan channel yang tersedia (masked) untuk dikonfirmasi user ──
-  if (step === 'lookup') {
-    const channels: { wa?: string; email?: string } = {};
-    if (karyawan.nomor_wa) channels.wa = maskWa(karyawan.nomor_wa);
-    if (karyawan.email) channels.email = maskEmail(karyawan.email);
+  const token = generateResetToken();
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString();
 
-    if (!channels.wa && !channels.email) {
-      return NextResponse.json({ error: 'Tidak ada kontak terdaftar untuk akun ini. Hubungi Admin.' }, { status: 400 });
-    }
-    return NextResponse.json({ success: true, channels });
+  // Batalkan semua link lama yang belum dipakai, lalu simpan yang baru.
+  await supabase
+    .from('password_reset_tokens')
+    .update({ used_at: new Date().toISOString() })
+    .eq('id_karyawan', karyawan.id_karyawan)
+    .is('used_at', null);
+
+  const { error: insErr } = await supabase
+    .from('password_reset_tokens')
+    .insert({ id_karyawan: karyawan.id_karyawan, token_hash: hashResetToken(token), expires_at: expiresAt });
+
+  if (insErr) {
+    void logSystemError({ source: 'api:forgot-password', message: insErr.message, detail: { email } });
+    return NextResponse.json({ error: 'Terjadi kesalahan di server. Coba lagi nanti.' }, { status: 500 });
   }
 
-  // ── Step 2: send — kirim password baru ke channel yang dipilih user ──
-  if (step === 'send') {
-    if (channel !== 'wa' && channel !== 'email') {
-      return NextResponse.json({ error: 'Channel tidak valid' }, { status: 400 });
-    }
-    if (channel === 'wa' && !karyawan.nomor_wa) {
-      return NextResponse.json({ error: 'Nomor WhatsApp tidak terdaftar untuk akun ini.' }, { status: 400 });
-    }
-    if (channel === 'email' && !karyawan.email) {
-      return NextResponse.json({ error: 'Email tidak terdaftar untuk akun ini.' }, { status: 400 });
-    }
+  const link = `${siteOrigin(req)}/reset-password?token=${token}`;
 
-    const tempPw = generateSecureTempPassword();
-    const hash = await bcrypt.hash(tempPw, 12);
-    await supabase.from('karyawan').update({ password: hash }).eq('id_karyawan', karyawan.id_karyawan);
-
-    try {
-      if (channel === 'wa') {
-        await sendWAOtpTemplate(karyawan.nomor_wa!, 'notif_kode_akun', tempPw);
-      } else {
-        await sendEmailDirect(
-          karyawan.email!,
-          'Reset Password — Nikon Dashboard',
-          `Halo ${karyawan.nama_karyawan},\n\nPassword baru Anda: *${tempPw}*\n\nSegera login dan ganti password Anda. Jika Anda tidak meminta reset ini, hubungi Admin.`,
-        );
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      void logSystemError({ source: 'api:forgot-password', message: msg, detail: { channel, username } });
-    }
-
-    return NextResponse.json({ success: true });
+  try {
+    await sendEmailStrict(
+      karyawan.email,
+      'Reset Password — Nikon Dashboard',
+      `Halo ${karyawan.nama_karyawan || 'Karyawan'},\n\n`
+        + `Kami menerima permintaan reset password untuk akun Nikon Dashboard Anda.\n\n`
+        + `Buka link berikut untuk membuat password baru (berlaku 1 jam, sekali pakai):\n${link}\n\n`
+        + `Jika Anda tidak meminta ini, abaikan email ini — password Anda tidak berubah.`,
+      buildResetEmailHtml(karyawan.nama_karyawan || '', link),
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    void logSystemError({ source: 'api:forgot-password', message: msg, detail: { email } });
+    return NextResponse.json(
+      { error: 'Gagal mengirim email. Coba lagi beberapa saat lagi atau hubungi Admin.' },
+      { status: 502 },
+    );
   }
 
-  return NextResponse.json({ error: 'step wajib diisi (lookup|send)' }, { status: 400 });
+  return NextResponse.json(GENERIC_OK);
 }

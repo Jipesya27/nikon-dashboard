@@ -166,7 +166,20 @@ Pengaturan bot lain (URL file promo, dealer, dll)
 - Contoh benar: `const cookieStore = await cookies(); return verifyAdminSession(cookieStore);`
 - `RoleGate` di `app/components/RoleGate.tsx` — roles admin events: `['admin_events', 'admin_deposit', 'admin_attendance', 'events', 'eventregistrations']`
 - Rate limiting login: tabel `login_attempts` di DB. Fail-safe — jika tabel belum ada, login tetap jalan (try-catch di route)
+  - Key rate limit login = `login:<ip>:<username lowercase>` (BUKAN IP saja) — supaya 1 kantor 1 IP publik (NAT) tidak saling mengunci saat beberapa orang salah ketik password
 - **Mobile login** (`/api/auth/mobile-login`): token dikembalikan di JSON body (`tokens.adminSession`, `tokens.karyawanIdentity`, `tokens.maxAge`) bukan Set-Cookie, agar bisa disimpan di Android SharedPreferences
+- **Username login = case-insensitive + trim**. Semua route (`karyawan-login`, `mobile-login`, `forgot-password`, `auth/me`) pakai pola `.ilike('username', u.trim())` lalu verifikasi exact `toLowerCase()===` di JS (aman dari wildcard `%`/`_`). Jangan balik ke `.eq('username', …)` — karyawan dengan username berhuruf besar (Benny/Cynthia/Firza/Ega/Larry) akan terkunci padahal password benar.
+- `karyawan` TIDAK punya kolom `foto_profil`. `GET /api/auth/me` dulu `select`-nya menyertakan `foto_profil` → query gagal total → `akses_halaman` tak pernah ter-refresh. Jangan tambahkan kolom yang tidak ada ke select.
+- **Reset password self-service (email + link reset — gaya situs umum)**:
+  - Login page → "Lupa Password?" → input **email** (bukan username lagi) → `POST /api/auth/forgot-password` `{ email }`.
+  - Route selalu balas generik (`{ success, message }`) walau email tidak ketemu — anti user-enumeration. Kalau ketemu: buat token acak 32-byte, simpan **SHA-256 hash**-nya di tabel `password_reset_tokens` (expired 1 jam, sekali pakai), token lama yang belum dipakai di-`used_at` semua, lalu kirim email berisi link `<origin>/reset-password?token=<raw>` (`sendEmailStrict`).
+  - `origin` dari `siteOrigin(req)` di `app/lib/resetToken.ts` — header `x-forwarded-host` → fallback `https://altanikindo.com` (atau `NEXT_PUBLIC_SITE_URL` kalau di-set).
+  - Halaman `app/reset-password/page.tsx` (server, baca `searchParams`) + `ResetPasswordForm.tsx` (client). `GET /api/auth/reset-password?token=` cek validitas; `POST { token, password }` set password (bcrypt 12) + tandai token & semua token lain user itu `used_at`.
+  - Tabel: `password_reset_tokens (id, id_karyawan FK, token_hash, expires_at, used_at, created_at)` — migration `20260907000000`, RLS service-role only. **Sudah di-push ke production.**
+  - Rate limit: `fp:<ip>` 8×/15m (forgot), `rp:<ip>` 30×/15m (reset).
+- **Reset password admin-initiated** (tidak berubah): setelah admin reset password (modal / quick-reset), modal "Pesan untuk Karyawan" — tombol Salin (WA pribadi) + tombol **Kirim ke Email** → `POST /api/admin/karyawan/notify-password` (admin-only, hanya kirim email password yang sudah di-set). Muncul hanya kalau `karyawan.email` ada.
+- `sendEmailStrict()` di `app/lib/notify.ts` = varian `sendEmailDirect` yang MELEMPAR error (untuk alur yang perlu tahu berhasil/tidak).
+- ⚠️ Per Sept 2026 semua 15 karyawan `email = NULL` — kolom email di form karyawan sudah ada, tinggal diisi admin. Tanpa email, self-service reset tidak bisa dipakai karyawan itu.
 
 ## Android App (`android-app/`)
 - Direktori Expo/React Native untuk aplikasi Android

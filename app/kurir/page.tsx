@@ -94,7 +94,7 @@ export default function KurirPage() {
       const res = await fetch('/api/auth/karyawan-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginUsername, password: loginPassword }),
+        body: JSON.stringify({ username: (loginUsername || '').trim(), password: loginPassword }),
       });
       const data = await res.json();
       if (!res.ok) { setLoginError(data.error || 'Login gagal'); return; }
