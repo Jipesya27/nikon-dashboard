@@ -10,7 +10,6 @@ export interface EventRegistrationsTabProps {
   setFilterRegEventName: (v: string) => void;
   searchRegistration: string;
   setSearchRegistration: (v: string) => void;
-  viewMode: 'table' | 'card';
   currentUser: Karyawan | null;
   handleMarkAttendance: (id: string) => Promise<void> | void;
   handleSendEventSuccessWA: (reg: EventRegistration) => Promise<void> | void;
@@ -23,7 +22,6 @@ export default function EventRegistrationsTab({
   setFilterRegEventName,
   searchRegistration,
   setSearchRegistration,
-  viewMode,
   currentUser,
   handleMarkAttendance,
   handleSendEventSuccessWA,
@@ -96,8 +94,7 @@ export default function EventRegistrationsTab({
         <input type="text" title="Cari Peserta" aria-label="Cari Peserta" placeholder="Cari nama peserta..." value={searchRegistration} onChange={e => setSearchRegistration(e.target.value)} className="w-full pl-8 pr-3 py-2 border border-gray-200 bg-white text-gray-800 rounded-lg outline-none focus:border-[#FFE500] focus:ring-1 focus:ring-[#FFE500]/30 text-xs" />
       </div>
 
-      {viewMode === 'table' ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto max-h-[72vh] overflow-y-auto relative">
           <table className="w-full text-sm">
             <thead className="bg-white border-b border-gray-100 sticky top-0 z-10">
               <tr>
@@ -155,8 +152,7 @@ export default function EventRegistrationsTab({
               })}
             </tbody>
           </table>
-        </div>
-      ) : (<div></div>)}
+      </div>
     </div>
   );
 }

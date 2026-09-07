@@ -47,6 +47,15 @@ import { SortConfig, handleSort, driveImgSrc, errMsg } from '@/app/lib/uiHelpers
 import { useBackGuard } from '@/app/lib/useBackGuard';
 import { formatEventDate } from '@/app/lib/dateUtils';
 
+// Tab yang punya UI/header sendiri — filter-header bersama (rentang tanggal +
+// toggle Baris/Kartu) tidak dirender sama sekali di atasnya.
+const SELF_CONTAINED_TABS = ['promo_datacolor', 'affiliate', 'resi', 'expense_claim', 'autocomplete', 'wa_templates', 'infrastruktur'];
+// Tab yang tetap pakai filter-header bersama tapi TANPA rentang tanggal.
+const NO_DATE_TABS = ['konsumen', 'budgets', 'userrole', 'eventregistrations', 'botsettings'];
+// Tab yang tetap pakai filter-header bersama tapi TANPA toggle Baris/Kartu
+// (Data Peserta & Bot Settings: header hanya untuk tombol aksi di sisi kanan).
+const NO_VIEWTOGGLE_TABS = ['konsumen', 'eventregistrations', 'botsettings'];
+
 // Client-side: proxy through /api/admin/sb (validates admin session, uses service_role).
 // SSR/prerender: fall back to real URL (no queries happen server-side; all fetches are in useEffect).
 const supabase = createClient(
@@ -4352,10 +4361,10 @@ ${kode ? `
                )}
 
                {/* ======================= OTHER TABS FILTER HEADER ======================= */}
-               {activeTab !== 'import' && activeTab !== 'lending' && activeTab !== 'messages' && activeTab !== 'eventreport' && activeTab !== 'claims' && (
+               {activeTab !== 'import' && activeTab !== 'lending' && activeTab !== 'messages' && activeTab !== 'eventreport' && activeTab !== 'claims' && !SELF_CONTAINED_TABS.includes(activeTab) && (
                   <div className="flex flex-wrap gap-3 justify-between items-center mb-5 text-gray-900">
                      <div className="flex flex-wrap gap-2 items-center">
-                        {activeTab !== 'konsumen' && activeTab !== 'budgets' && activeTab !== 'userrole' && (
+                        {!NO_DATE_TABS.includes(activeTab) && (
                            <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm">
                               <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                               <input aria-label="Dari Tanggal" type="date" value={dateRange.start} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} className="text-xs text-gray-700 bg-transparent outline-none border-0 w-28" />
@@ -4363,7 +4372,7 @@ ${kode ? `
                               <input aria-label="Sampai Tanggal" type="date" value={dateRange.end} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} className="text-xs text-gray-700 bg-transparent outline-none border-0 w-28" />
                            </div>
                         )}
-                        {activeTab !== 'konsumen' && (
+                        {!NO_VIEWTOGGLE_TABS.includes(activeTab) && (
                            <div className="flex items-center bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                               <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 text-xs font-semibold transition ${viewMode === 'table' ? 'bg-[#FFE500] text-black' : 'text-gray-500 hover:bg-gray-50'}`}>Baris</button>
                               <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 text-xs font-semibold transition ${viewMode === 'card' ? 'bg-[#FFE500] text-black' : 'text-gray-500 hover:bg-gray-50'}`}>Kartu</button>
@@ -4642,7 +4651,6 @@ ${kode ? `
                      setFilterRegEventName={setFilterRegEventName}
                      searchRegistration={searchRegistration}
                      setSearchRegistration={setSearchRegistration}
-                     viewMode={viewMode}
                      currentUser={currentUser}
                      handleMarkAttendance={handleMarkAttendance}
                      handleSendEventSuccessWA={handleSendEventSuccessWA}
