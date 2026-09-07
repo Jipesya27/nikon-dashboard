@@ -49,7 +49,7 @@ import { formatEventDate } from '@/app/lib/dateUtils';
 
 // Tab yang punya UI/header sendiri — filter-header bersama (rentang tanggal +
 // toggle Baris/Kartu) tidak dirender sama sekali di atasnya.
-const SELF_CONTAINED_TABS = ['promo_datacolor', 'affiliate', 'resi', 'expense_claim', 'autocomplete', 'wa_templates', 'infrastruktur'];
+const SELF_CONTAINED_TABS = ['dashboard', 'promo_datacolor', 'affiliate', 'resi', 'expense_claim', 'autocomplete', 'wa_templates', 'infrastruktur'];
 // Tab yang tetap pakai filter-header bersama tapi TANPA rentang tanggal.
 const NO_DATE_TABS = ['konsumen', 'budgets', 'userrole', 'eventregistrations', 'botsettings'];
 // Tab yang tetap pakai filter-header bersama tapi TANPA toggle Baris/Kartu
