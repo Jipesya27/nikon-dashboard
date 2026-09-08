@@ -79,6 +79,7 @@ instance `Error`, hasilnya `[object Object]`. Pakai `errMsg(err)` dari `app/lib/
 | `app/api/expense-claim/route.ts` | CRUD klaim biaya |
 | `app/api/expense-claim/[id]/route.ts` | Update status / delete klaim |
 | `app/api/auth/mobile-login/route.ts` | Login endpoint untuk Android app — return token di JSON body (bukan Set-Cookie) |
+| `app/admin/calendar/page.tsx` | Kalender & Tugas Tim — akses terbatas via RoleGate `['calendar']` |
 
 ## Tabel Database Utama
 
@@ -112,6 +113,9 @@ Data & status langkah konsumen (`status_langkah`)
 ### `pengaturan_bot`
 Pengaturan bot lain (URL file promo, dealer, dll)
 
+### `calendar_events` & `calendar_tasks`
+Lihat bagian **Kalender & Tugas Tim** di bawah.
+
 ## Halaman Admin Events
 | Path | Fungsi |
 |------|--------|
@@ -125,6 +129,26 @@ Pengaturan bot lain (URL file promo, dealer, dll)
 - `GET|POST|DELETE /api/events/attendance` — lookup & tandai hadir
 - `POST /api/events/deposit-refund` — proses refund deposit
 - `GET /api/events/register` — daftar event untuk publik
+
+## Kalender & Tugas Tim (`/admin/calendar`)
+Kalender pribadi tim — akses dibatasi hanya untuk karyawan terpilih (RoleGate `requiredAccess=['calendar']`, di-grant admin lewat checkbox "Akses Halaman" di tab User Role, sama seperti `admin_events` dkk).
+
+- **Layout**: `app/admin/calendar/layout.tsx` (RoleGate) + `app/admin/calendar/page.tsx` (halaman utama, toggle "Kalender" ⇄ "Tugas")
+- **Komponen**: `app/components/calendar/{types,utils,MonthGrid,EventModal,TaskModal,TaskSummary}.tsx`
+- **API**: `app/api/calendar/{events,tasks,people}` — auth via `verifyAdminSession` (cookie `admin_session`, sama dgn seluruh dashboard) + identitas dari cookie `karyawan_identity` (`app/lib/calendarAuth.ts::getCalendarUser`)
+
+### Fitur
+- **Jadwal**: waktu spesifik, sepanjang hari (`all_day`), atau multi-hari (`start_date`..`end_date`); kategori berwarna (meeting/event/deadline/reminder/holiday/other); lokasi; pengulangan mingguan/bulanan saat create (generate N baris dengan `series_id` yang sama, hapus bisa "ini saja" atau "seluruh seri")
+- **Tugas**: per tanggal jatuh tempo (`due_date` wajib, `due_time` opsional), prioritas (low/medium/high), status (todo/in_progress/done, klik lingkaran status untuk cycle), assignee (`assigned_to`), quick-add cepat
+- **Ringkasan Tugas**: kartu Terlambat / Hari Ini / Minggu Ini / Selesai (klik untuk filter) + breakdown "Beban Tugas per Orang" — `TaskSummary.tsx`
+- **Visibilitas per item**: `team` (semua yang punya akses kalender) atau `private` (hanya pembuat, dan untuk tugas juga yang ditugaskan; Admin/Super Admin selalu lihat semua) — difilter server-side di API, bukan cuma di UI
+- **Fitur tambahan**: pencarian jadwal+tugas, panel "Akan Datang" (30 hari), export `.ics` per event (`app/lib/ics.ts`, bisa diimpor ke Google/Outlook Calendar)
+- Ownership: event hanya bisa diedit/dihapus oleh pembuat atau admin; tugas bisa diedit oleh pembuat **atau** assignee (untuk update status), tapi hanya dihapus oleh pembuat/admin
+
+### Tabel
+- `calendar_events`: `id, created_by, created_by_nama, title, description, location, category, all_day, start_date, end_date, start_time, end_time, visibility, participants (text[]), series_id`
+- `calendar_tasks`: `id, created_by, created_by_nama, title, description, due_date, due_time, priority, status, assigned_to, assigned_to_nama, visibility, completed_at`
+- Migration: `supabase/migrations/20260907010000_calendar.sql`
 
 ## Notifikasi & Utilitas
 - WhatsApp: `sendWATemplate`, `sendNotif` dari `app/lib/notify.ts`
@@ -143,6 +167,7 @@ Pengaturan bot lain (URL file promo, dealer, dll)
 
 ## Access Control
 `RoleGate` di `app/components/RoleGate.tsx` — roles yang dibutuhkan untuk admin events: `['admin_events', 'admin_deposit', 'admin_attendance', 'events', 'eventregistrations']`
+Kalender & Tugas Tim: `['calendar']` (lihat bagian **Kalender & Tugas Tim** di atas)
 
 ## Bot WhatsApp (meta-bot)
 - Menu utama: 1–10, diakses dengan ketik angka
