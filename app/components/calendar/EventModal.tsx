@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { CalendarEvent, CalendarPerson, CalendarVisibility, EventCategory, CATEGORY_LIST, CATEGORY_CONF } from './types';
+import { addHoursToTime } from './utils';
 import { buildIcsForEvent, downloadIcs } from '@/app/lib/ics';
 
 export interface EventFormPayload {
@@ -145,7 +146,9 @@ export default function EventModal({ mode, initialEvent, prefillDate, people, sa
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label-form">Jam Mulai</label>
-                <input type="time" value={form.start_time} onChange={e => setForm({ ...form, start_time: e.target.value })} className="input-form" />
+                <input type="time" value={form.start_time}
+                  onChange={e => setForm(f => ({ ...f, start_time: e.target.value, end_time: addHoursToTime(e.target.value, 1) }))}
+                  className="input-form" />
               </div>
               <div>
                 <label className="label-form">Jam Selesai</label>

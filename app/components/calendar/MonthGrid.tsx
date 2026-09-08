@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { CalendarEvent, CalendarTask, CATEGORY_CONF } from './types';
 import { ymd } from './utils';
 
-const DAY_HEADERS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+const DAY_HEADERS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
 interface MonthGridProps {
   year: number;
@@ -20,7 +20,7 @@ interface MonthGridProps {
 export default function MonthGrid({ year, month, events, tasks, selectedDate, todayStr, onSelectDate, onOpenEvent }: MonthGridProps) {
   const cells = useMemo(() => {
     const firstOfMonth = new Date(year, month, 1);
-    const offset = (firstOfMonth.getDay() + 6) % 7; // Senin = 0
+    const offset = firstOfMonth.getDay(); // Minggu = 0 (standar internasional)
     const gridStart = new Date(year, month, 1 - offset);
     return Array.from({ length: 42 }, (_, i) => {
       const d = new Date(gridStart);
