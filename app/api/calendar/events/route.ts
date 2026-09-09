@@ -98,16 +98,21 @@ export async function POST(req: NextRequest) {
     participants,
   };
 
-  const daySpan = (new Date(endDate + 'T00:00:00').getTime() - new Date(startDate + 'T00:00:00').getTime()) / 86400000;
+  // Semua aritmetika tanggal dilakukan di UTC (suffix 'Z' + setUTC*) supaya
+  // `toISOString().slice(0, 10)` mengembalikan tanggal yang persis dipilih user.
+  // Tanpa ini, server ber-TZ Asia/Jakarta menggeser tanggal mundur 1 hari
+  // (mis. pilih 15 → tersimpan 14) karena new Date('...T00:00:00') = 17:00 UTC hari sebelumnya.
+  const startMs = Date.parse(startDate + 'T00:00:00Z');
+  const daySpan = Math.round((Date.parse(endDate + 'T00:00:00Z') - startMs) / 86400000);
   const seriesId = repeat !== 'none' && repeatCount > 1 ? randomUUID() : null;
 
   const rows = [];
   for (let i = 0; i < (repeat === 'none' ? 1 : repeatCount); i++) {
-    const start = new Date(startDate + 'T00:00:00');
-    if (repeat === 'weekly') start.setDate(start.getDate() + i * 7);
-    if (repeat === 'monthly') start.setMonth(start.getMonth() + i);
+    const start = new Date(startMs);
+    if (repeat === 'weekly') start.setUTCDate(start.getUTCDate() + i * 7);
+    if (repeat === 'monthly') start.setUTCMonth(start.getUTCMonth() + i);
     const end = new Date(start);
-    end.setDate(end.getDate() + daySpan);
+    end.setUTCDate(end.getUTCDate() + daySpan);
     rows.push({
       ...base,
       start_date: start.toISOString().slice(0, 10),
