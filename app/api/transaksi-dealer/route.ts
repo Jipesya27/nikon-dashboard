@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getGoogleAccessToken } from '@/app/lib/google-drive';
+import { requireAdmin } from '@/app/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,8 @@ function parseCsv(text: string): string[][] {
  * cukup scope https://www.googleapis.com/auth/drive yang sudah ada.
  */
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const accessToken = await getGoogleAccessToken();
 

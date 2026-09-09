@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkPublicRateLimit } from '@/app/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  // Kode + 4 digit terakhir WA = brute-forceable → batasi percobaan per IP.
+  if (!(await checkPublicRateLimit(req, 'penerima-verify', 20))) {
+    return NextResponse.json({ error: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' }, { status: 429 });
+  }
   let kode: string, wa_last4: string;
   try {
     ({ kode, wa_last4 } = await req.json());

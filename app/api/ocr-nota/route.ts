@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { checkPublicRateLimit } from '@/app/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,9 @@ function parseKartu(text: string) {
 }
 
 export async function POST(req: Request) {
+  if (!(await checkPublicRateLimit(req, 'ocr', 15))) {
+    return NextResponse.json({ error: 'Terlalu banyak permintaan OCR. Coba lagi dalam 15 menit.' }, { status: 429 });
+  }
   try {
     if (!OCR_SPACE_API_KEY) {
       return NextResponse.json(

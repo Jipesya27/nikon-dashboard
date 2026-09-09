@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { checkPublicRateLimit } from '@/app/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,9 @@ async function pickUniqueCode(): Promise<number> {
 
 // POST — buat order baru
 export async function POST(req: NextRequest) {
+  if (!(await checkPublicRateLimit(req, 'promoorder', 15))) {
+    return NextResponse.json({ error: 'Terlalu banyak order. Coba lagi dalam 15 menit.' }, { status: 429 });
+  }
   try {
     const body = await req.json();
     const { promo_item_id, nama_pembeli, nomor_wa, alamat, kodepos, nota_kamera_url, garansi_kamera_url } = body;

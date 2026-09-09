@@ -102,7 +102,23 @@ function formatDeploymentMessage(payload: VercelWebhookPayload): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = (await request.json()) as VercelWebhookPayload;
+    const rawBody = await request.text();
+
+    // Verifikasi x-vercel-signature (HMAC-SHA1 body pakai webhook secret).
+    // Di-ENFORCE hanya kalau VERCEL_WEBHOOK_SECRET di-set.
+    const secret = process.env.VERCEL_WEBHOOK_SECRET || '';
+    if (secret) {
+      const sig = request.headers.get('x-vercel-signature') || '';
+      const { createHmac, timingSafeEqual } = await import('crypto');
+      const expected = createHmac('sha1', secret).update(rawBody).digest('hex');
+      const a = Buffer.from(sig);
+      const b = Buffer.from(expected);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
+    }
+
+    const payload = JSON.parse(rawBody) as VercelWebhookPayload;
 
     // Validasi webhook dari Vercel
     if (payload.type !== 'deployment') {

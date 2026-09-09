@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/app/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,8 @@ function getSupabase() {
 }
 
 export async function GET(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const supabase = getSupabase();
     const { searchParams } = new URL(req.url);

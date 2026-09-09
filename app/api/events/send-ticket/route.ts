@@ -17,7 +17,7 @@ import { cookies } from 'next/headers';
 import { verifyAdminSession } from '@/app/lib/session';
 import { generateTicket } from '@/app/lib/generate-ticket';
 import { sendWATemplateStrict, sendNotif } from '@/app/lib/notify';
-import { getAuditUser, writeAuditLog } from '@/app/lib/audit';
+import { getAuditUserVerified, writeAuditLog } from '@/app/lib/audit';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     if (!(await verifyAdminSession(cookieStore))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const auditUser = getAuditUser(cookieStore);
+    const auditUser = await getAuditUserVerified(cookieStore);
 
     const { registrationId } = await req.json();
     if (!registrationId) {

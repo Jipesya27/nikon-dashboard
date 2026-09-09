@@ -35,7 +35,27 @@ export async function GET(req: Request) {
 // POST: Meta WhatsApp Business Cloud API incoming messages
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+
+    // Verifikasi X-Hub-Signature-256 dari Meta (HMAC-SHA256 body pakai App Secret).
+    // Hanya di-ENFORCE kalau META_APP_SECRET di-set — supaya tidak mematikan bot
+    // sebelum secret dikonfigurasi. Set env `META_APP_SECRET` untuk mengaktifkan.
+    const appSecret = process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || '';
+    if (appSecret) {
+      const sigHeader = req.headers.get('x-hub-signature-256') || '';
+      const { createHmac, timingSafeEqual } = await import('crypto');
+      const expected = 'sha256=' + createHmac('sha256', appSecret).update(rawBody).digest('hex');
+      const a = Buffer.from(sigHeader);
+      const b = Buffer.from(expected);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        console.warn('[wa-webhook] signature mismatch — request ditolak');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
+    } else {
+      console.warn('[wa-webhook] META_APP_SECRET belum di-set — signature TIDAK diverifikasi');
+    }
+
+    const body = JSON.parse(rawBody);
 
     if (body.object !== 'whatsapp_business_account') {
       return NextResponse.json({ success: true }, { status: 200 });

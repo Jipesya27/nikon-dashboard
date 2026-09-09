@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getAccessToken, getOrCreateFolder, ROOT_FOLDER_ID } from '@/app/lib/googleDrive';
+import { checkPublicRateLimit } from '@/app/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,9 @@ async function uploadFileToDrive(file: File, prefix: string, kode: string): Prom
 }
 
 export async function POST(req: Request) {
+  if (!(await checkPublicRateLimit(req, 'penerima', 20))) {
+    return NextResponse.json({ error: 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' }, { status: 429 });
+  }
   const formData = await req.formData();
 
   const kode = (formData.get('kode') as string || '').trim().toUpperCase();

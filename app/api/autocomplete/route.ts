@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/app/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,8 @@ export async function GET() {
 
 // POST: tambah/upsert item (pinned atau hidden)
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const supabase = getSupabase();
   const body = await req.json();
   const { field_key, value, hidden = false } = body;
@@ -42,6 +45,8 @@ export async function POST(req: Request) {
 
 // PATCH: toggle hidden state
 export async function PATCH(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const supabase = getSupabase();
   const { id, hidden } = await req.json();
   if (!id) return NextResponse.json({ error: 'id wajib.' }, { status: 400 });
@@ -57,6 +62,8 @@ export async function PATCH(req: Request) {
 
 // DELETE: hapus item
 export async function DELETE(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const supabase = getSupabase();
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id wajib.' }, { status: 400 });

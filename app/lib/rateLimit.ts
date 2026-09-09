@@ -34,6 +34,22 @@ export async function checkRateLimit(ip: string, maxAttempts: number): Promise<b
   return data === true;
 }
 
+/**
+ * Rate limit untuk endpoint PUBLIK (form submit, upload, OCR, dll) — key per IP.
+ * `bucket` memisahkan kuota antar-endpoint (mis. 'claim', 'ocr', 'register').
+ * Fail-open sama seperti checkRateLimit (RPC error → request lolos).
+ */
+export async function checkPublicRateLimit(req: Request, bucket: string, maxAttempts: number): Promise<boolean> {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-real-ip')
+    || 'unknown';
+  try {
+    return await checkRateLimit(`pub:${bucket}:${ip}`, maxAttempts);
+  } catch {
+    return true;
+  }
+}
+
 /** Reset hitungan setelah login berhasil (opsional — hindari lockout karyawan yang valid) */
 export async function resetRateLimit(ip: string): Promise<void> {
   const supabase = createClient(

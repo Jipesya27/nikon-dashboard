@@ -37,6 +37,15 @@ async function proxy(req: NextRequest, params: Promise<{ path: string[] }>) {
 
   const { path } = await params;
   const targetPath = path.join('/');
+
+  // Batasi ke PostgREST + Storage saja. Tanpa ini, admin manapun bisa memanggil
+  // endpoint Supabase Auth Admin (/auth/v1/admin/*) lewat service_role — mis.
+  // buat/list/hapus user auth, generate link, dsb.
+  const ALLOWED_PREFIXES = ['rest/v1/', 'storage/v1/'];
+  if (!ALLOWED_PREFIXES.some(p => targetPath === p.slice(0, -1) || targetPath.startsWith(p))) {
+    return NextResponse.json({ error: 'Forbidden path' }, { status: 403 });
+  }
+
   const search = req.nextUrl.search;
   const targetUrl = `${SB_URL}/${targetPath}${search}`;
 

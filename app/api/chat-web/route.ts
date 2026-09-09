@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { checkPublicRateLimit } from '@/app/lib/rateLimit';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,6 +45,9 @@ function isEmptyVal(v: string | null | undefined): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  if (!(await checkPublicRateLimit(req, 'chatweb', 40))) {
+    return NextResponse.json({ error: 'Terlalu banyak pesan. Coba lagi nanti.' }, { status: 429 });
+  }
   try {
     const body = await req.json();
     const { message, session_id, nama } = body as {

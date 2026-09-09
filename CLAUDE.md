@@ -186,6 +186,17 @@ Kalender pribadi tim — akses dibatasi hanya untuk karyawan terpilih (RoleGate 
 
 ## Access Control
 `RoleGate` di `app/components/RoleGate.tsx` — roles yang dibutuhkan untuk admin events: `['admin_events', 'admin_deposit', 'admin_attendance', 'events', 'eventregistrations']`
+
+## Keamanan (audit 2026-09-09 — lihat `SECURITY_AUDIT_2026-09-09.md`)
+- **RLS**: SEMUA tabel `public.*` sekarang RLS-ON (migration `20260909200000`). Anon key TIDAK bisa baca/tulis tabel apa pun kecuali `events` + `promosi` (policy `events_public_read` / `promosi_public_read`, disengaja). Semua API route pakai `SUPABASE_SERVICE_ROLE_KEY` (BYPASSRLS) → tidak terpengaruh. **Jangan bikin policy `USING(true)` tanpa `TO service_role`** — itu bocor ke anon.
+- **Auth rute**: helper `requireAdmin()` di `app/lib/apiAuth.ts` (`const denied = await requireAdmin(); if (denied) return denied;`). Middleware HANYA cek keberadaan cookie — tiap rute sensitif WAJIB verifikasi sendiri.
+- **Audit pelaku**: `getAuditUserVerified(cookieStore)` (async, verifikasi HMAC) untuk semua tulisan `data_log`. `getAuditUser` (unsafe) hanya untuk non-kritis.
+- **Rate limit publik**: `checkPublicRateLimit(req, bucket, max)` di `app/lib/rateLimit.ts` — dipakai di form submit publik (claim, garansi, event register, promo order, upload lomba, chat-web, ocr, penerima).
+- **Proxy `/api/admin/sb/[...path]`**: dibatasi ke `rest/v1/` + `storage/v1/`.
+- **XSS**: `/promo` sanitasi `deskripsi` pakai `isomorphic-dompurify`. Email HTML builder di `validate-payment` pakai `esc()`.
+- **`sessionKey()`**: throw di production kalau `SESSION_SECRET`/`ADMIN_PASSWORD` kosong (fail closed).
+- **Webhook signature**: `/api/webhook/whatsapp` & `/api/webhooks/vercel` verifikasi signature — aktif hanya kalau `META_APP_SECRET` / `VERCEL_WEBHOOK_SECRET` di-set di Vercel (belum di-set → skip + warning).
+- **PR**: security headers (`next.config.ts`) + HSTS `includeSubDomains` + COOP.
 Kalender & Tugas Tim: `['calendar']` (lihat bagian **Kalender & Tugas Tim** di atas)
 
 ## Bot WhatsApp (meta-bot)

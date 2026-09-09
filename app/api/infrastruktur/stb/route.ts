@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import os from 'os';
 import { execSync } from 'child_process';
+import { requireAdmin } from '@/app/lib/apiAuth';
 
 export const runtime = 'nodejs';
 
@@ -15,6 +16,8 @@ function getDiskUsage() {
 }
 
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const totalMem = os.totalmem();
   const freeMem = os.freemem();
   const disk = getDiskUsage();
@@ -47,9 +50,6 @@ export async function GET() {
     },
     timestamp: new Date().toISOString(),
   }, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'no-store',
-    },
+    headers: { 'Cache-Control': 'no-store' },
   });
 }

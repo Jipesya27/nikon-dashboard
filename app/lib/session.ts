@@ -36,7 +36,15 @@ async function computeHmac(key: string, data: string): Promise<string> {
 }
 
 function sessionKey(): string {
-  return process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || 'nikon-fallback-key';
+  const key = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || '';
+  if (!key) {
+    // Di produksi, tanpa secret = token bisa dipalsukan siapa saja → fail closed.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('SESSION_SECRET / ADMIN_PASSWORD belum di-set — auth dinonaktifkan demi keamanan.');
+    }
+    return 'nikon-dev-only-fallback-key';
+  }
+  return key;
 }
 
 // ── Base64url helpers (Edge + Node.js 18+ safe) ──────────────────────────────

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendWATemplate } from '@/app/lib/notify';
+import { requireAdmin } from '@/app/lib/apiAuth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,6 +25,8 @@ function parseQrData(raw: string): { registrationId: string; eventTitle: string 
 // GET /api/events/attendance?qr=<qrdata>
 // Lookup peserta tanpa mark attendance — buat preview/konfirmasi dulu
 export async function GET(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const url = new URL(req.url);
     const qr = url.searchParams.get('qr') || url.searchParams.get('id') || '';
@@ -54,6 +57,8 @@ export async function GET(req: NextRequest) {
 // Body: { qr: string, attendedBy?: string, sendWa?: boolean }
 // Mark peserta sebagai hadir
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const body = await req.json();
     const qr: string = body.qr || body.registrationId || '';
@@ -130,6 +135,8 @@ export async function POST(req: NextRequest) {
 // DELETE: Batalkan attendance (kalau salah scan)
 // Body: { registrationId: string }
 export async function DELETE(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const { registrationId } = await req.json();
     if (!registrationId) return NextResponse.json({ error: 'Missing registrationId' }, { status: 400 });

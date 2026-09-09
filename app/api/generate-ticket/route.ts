@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateTicket } from '@/app/lib/generate-ticket';
+import { requireAdmin } from '@/app/lib/apiAuth';
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const body = await req.json();
     if (!body.registrationId || !body.fullName || !body.eventTitle) {

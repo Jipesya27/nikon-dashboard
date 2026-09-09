@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { generateTicket } from '@/app/lib/generate-ticket';
 import { sendWATemplate, sendWATemplateStrict, sendNotif } from '@/app/lib/notify';
-import { getAuditUser, writeAuditLog } from '@/app/lib/audit';
+import { getAuditUserVerified, writeAuditLog } from '@/app/lib/audit';
+import { verifyAdminSession } from '@/app/lib/session';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,11 +13,23 @@ const supabase = createClient(
 
 // ─── Email HTML builders (untuk notif via email channel) ─────────────────────
 
+/** Escape nilai user (nama/event/nomor/alasan) sebelum masuk ke HTML email — cegah HTML/JS injection. */
+function esc(s: unknown): string {
+  return String(s ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string
+  ));
+}
+
 function buildApprovalEmailHtml(opts: {
   nama: string; eventTitle: string; eventDate: string;
   ticketUrl: string; nomorWa: string; tipeKamera: string; registrationId: string;
 }): string {
-  const { nama, eventTitle, eventDate, ticketUrl, nomorWa, tipeKamera, registrationId } = opts;
+  const nama = esc(opts.nama);
+  const eventTitle = esc(opts.eventTitle);
+  const eventDate = esc(opts.eventDate);
+  const nomorWa = esc(opts.nomorWa);
+  const tipeKamera = esc(opts.tipeKamera);
+  const { ticketUrl, registrationId } = opts;
   const ticketNo = `EVT-${registrationId.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
   return `<!DOCTYPE html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -67,7 +80,9 @@ function buildApprovalEmailHtml(opts: {
 }
 
 function buildRejectionEmailHtml(opts: { nama: string; eventTitle: string; reason?: string }): string {
-  const { nama, eventTitle, reason } = opts;
+  const nama = esc(opts.nama);
+  const eventTitle = esc(opts.eventTitle);
+  const reason = opts.reason ? esc(opts.reason) : undefined;
   return `<!DOCTYPE html>
 <html lang="id"><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:20px 8px;background:#1a1a1a;font-family:Arial,Helvetica,sans-serif">
@@ -100,7 +115,10 @@ function buildRejectionEmailHtml(opts: { nama: string; eventTitle: string; reaso
 export async function POST(req: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const auditUser = getAuditUser(cookieStore);
+    if (!(await verifyAdminSession(cookieStore))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const auditUser = await getAuditUserVerified(cookieStore);
     const { registrationId, action, rejectionReason, catatanValidasi } = await req.json();
 
     if (!registrationId || !action) {

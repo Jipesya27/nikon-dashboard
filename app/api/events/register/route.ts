@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendNotif, sendWATemplate } from '@/app/lib/notify';
 import { generateTicket } from '@/app/lib/generate-ticket';
+import { checkPublicRateLimit } from '@/app/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -168,6 +169,9 @@ export async function GET() {
 
 // POST: submit pendaftaran event
 export async function POST(req: Request) {
+  if (!(await checkPublicRateLimit(req, 'eventreg', 20))) {
+    return NextResponse.json({ error: 'Terlalu banyak pendaftaran. Coba lagi dalam 15 menit.' }, { status: 429 });
+  }
   try {
     const formData = await req.formData();
 

@@ -12,6 +12,7 @@
  * Nama file di Drive: {EventName}_{IGAccount}_foto{N}.{ext}
  */
 import { NextResponse } from 'next/server';
+import { checkPublicRateLimit } from '@/app/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -125,6 +126,9 @@ async function uploadFileToDrive(
 }
 
 export async function POST(req: Request) {
+  if (!(await checkPublicRateLimit(req, 'lomba', 30))) {
+    return NextResponse.json({ error: 'Terlalu banyak upload. Coba lagi dalam 15 menit.' }, { status: 429 });
+  }
   try {
     const formData = await req.formData();
     const eventName = (formData.get('eventName') as string | null)?.trim();

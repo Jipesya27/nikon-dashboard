@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { verifyAdminSession } from '@/app/lib/session';
-import { getAuditUser, writeAuditLog } from '@/app/lib/audit';
+import { getAuditUserVerified, writeAuditLog } from '@/app/lib/audit';
 import { logSystemError } from '@/app/lib/errorLog';
 
 export const dynamic = 'force-dynamic';
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const auditUser = getAuditUser(cookieStore);
+  const auditUser = await getAuditUserVerified(cookieStore);
 
   let payload: WritePayload;
   try {

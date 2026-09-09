@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { sendNotif } from '@/app/lib/notify';
-import { getAuditUser, writeAuditLog } from '@/app/lib/audit';
+import { getAuditUserVerified, writeAuditLog } from '@/app/lib/audit';
+import { verifyAdminSession } from '@/app/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const supabase = getSupabase();
     const cookieStore = await cookies();
-    const auditUser = getAuditUser(cookieStore);
+    if (!(await verifyAdminSession(cookieStore))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const auditUser = await getAuditUserVerified(cookieStore);
     const { id } = await params;
     const body = await req.json() as Record<string, string>;
 

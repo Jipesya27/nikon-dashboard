@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 // import { createClient } from '@/utils/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { checkPublicRateLimit } from '@/app/lib/rateLimit';
 
 export async function GET(request: Request) {
   const cookieStore = cookies();
@@ -97,6 +98,9 @@ async function uploadToDrive(file: File, fileName: string, accessToken: string):
 }
 
 export async function POST(request: Request) {
+  if (!(await checkPublicRateLimit(request, 'garansi', 20))) {
+    return NextResponse.json({ error: 'Terlalu banyak pendaftaran. Coba lagi dalam 15 menit.' }, { status: 429 });
+  }
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
   try {

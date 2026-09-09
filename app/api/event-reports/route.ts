@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/app/lib/apiAuth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +10,8 @@ const supabase = createClient(
 const PREFIX = 'event_report_';
 
 export async function GET(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const eventId = req.nextUrl.searchParams.get('eventId');
     if (eventId) {
@@ -35,6 +38,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const { eventId, report } = await req.json();
     const { error } = await supabase
@@ -51,6 +56,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const eventId = req.nextUrl.searchParams.get('eventId');
     if (!eventId) return NextResponse.json({ error: 'Missing eventId' }, { status: 400 });

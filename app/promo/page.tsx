@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import DOMPurify from 'isomorphic-dompurify';
 
 type PromoItem = {
   id: string;
@@ -386,7 +387,7 @@ export default function PromoPage() {
                 <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6">
                   <div
                     className="rich-content text-sm text-gray-700 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: promo.deskripsi }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(promo.deskripsi, { USE_PROFILES: { html: true } }) }}
                   />
                 </div>
               </div>

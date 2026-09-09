@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { DEFAULT_NIKON_CONFIG, NikonPageConfig } from '@/app/lib/homepageTypes';
+import { requireAdmin } from '@/app/lib/apiAuth';
 
 const supabase = createClient(
    process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,6 +30,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+   const denied = await requireAdmin();
+   if (denied) return denied;
    try {
       const { config } = await req.json() as { config: NikonPageConfig };
       const { error } = await supabase

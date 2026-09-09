@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/app/lib/apiAuth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -8,6 +9,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const EDGE_FUNCTION_URL = `${supabaseUrl}/functions/v1/meta-bot`;
 
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const results: Record<string, unknown> = {};
 
   // 1. Ping edge function (GET)

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendNotif } from '@/app/lib/notify';
+import { checkPublicRateLimit } from '@/app/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,6 +132,9 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 // POST: submit form claim — UPDATE konsumen + INSERT claim_promo + UPLOAD ke Drive
 export async function POST(req: Request) {
+  if (!(await checkPublicRateLimit(req, 'claim', 20))) {
+    return NextResponse.json({ error: 'Terlalu banyak pengajuan. Coba lagi dalam 15 menit.' }, { status: 429 });
+  }
   try {
     const supabase = getSupabase();
     const formData = await req.formData();

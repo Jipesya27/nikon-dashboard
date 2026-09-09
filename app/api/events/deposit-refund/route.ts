@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { uploadToGoogleDrive } from '@/app/lib/google-drive';
 import { sendWATemplate } from '@/app/lib/notify';
+import { requireAdmin } from '@/app/lib/apiAuth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +10,8 @@ const supabase = createClient(
 );
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
   try {
     const formData = await req.formData();
     const registrationId = formData.get('registrationId') as string;
