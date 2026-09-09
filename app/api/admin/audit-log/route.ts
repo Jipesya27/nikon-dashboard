@@ -19,10 +19,13 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const table = searchParams.get('table');
   const user = searchParams.get('user');
+  const action = searchParams.get('action');
+  const search = searchParams.get('search');
   const from = searchParams.get('from');
   const to = searchParams.get('to');
+  const isExport = searchParams.get('export') === '1';
   const page = parseInt(searchParams.get('page') || '1', 10);
-  const pageSize = 50;
+  const pageSize = isExport ? 5000 : 50;
 
   let q = sbAdmin
     .from('data_log')
@@ -31,12 +34,32 @@ export async function GET(req: NextRequest) {
     .range((page - 1) * pageSize, page * pageSize - 1);
 
   if (table) q = q.eq('table_name', table);
+  if (action) q = q.eq('action', action);
   if (user) q = q.ilike('user_name', `%${user}%`);
+  if (search) q = q.or(`record_id.ilike.%${search}%,note.ilike.%${search}%`);
   if (from) q = q.gte('created_at', from);
   if (to) q = q.lte('created_at', to);
 
   const { data, error, count } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ data, count, page, pageSize });
+  // Daftar nilai distinct untuk dropdown filter (ringan — tabel kecil, di-cap 1000)
+  const { data: meta } = await sbAdmin
+    .from('data_log')
+    .select('table_name, action, user_name')
+    .order('created_at', { ascending: false })
+    .limit(1000);
+  const uniq = (arr: (string | null)[]) => [...new Set(arr.filter(Boolean) as string[])].sort();
+
+  return NextResponse.json({
+    data,
+    count,
+    page,
+    pageSize,
+    filters: {
+      tables: uniq((meta || []).map(m => m.table_name)),
+      actions: uniq((meta || []).map(m => m.action)),
+      users: uniq((meta || []).map(m => m.user_name)),
+    },
+  });
 }

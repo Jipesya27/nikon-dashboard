@@ -127,16 +127,21 @@ export async function POST(req: NextRequest) {
     const eventDate = (eventInfo?.event_date as string) || '';
 
     if (action === 'reject') {
+      const nowReject = new Date().toISOString();
+      const rejectNote = `Pembayaran ditolak: ${rejectionReason || 'Pembayaran tidak valid'}`;
       await supabase
         .from('event_registrations')
         .update({
           status_pendaftaran: 'ditolak',
           rejection_reason: rejectionReason || null,
           catatan_validasi: catatanValidasi || null,
+          last_action_by: auditUser,
+          last_action_at: nowReject,
+          last_action_note: rejectNote,
         })
         .eq('id', registrationId);
 
-      void writeAuditLog({ user_name: auditUser, action: 'reject_payment', table_name: 'event_registrations', record_id: registrationId, new_values: { status_pendaftaran: 'ditolak', rejection_reason: rejectionReason || null, catatan_validasi: catatanValidasi || null } });
+      void writeAuditLog({ user_name: auditUser, action: 'reject_payment', table_name: 'event_registrations', record_id: registrationId, old_values: { status_pendaftaran: reg.status_pendaftaran || null }, new_values: { status_pendaftaran: 'ditolak', rejection_reason: rejectionReason || null, catatan_validasi: catatanValidasi || null }, note: rejectionReason || 'Pembayaran tidak valid' });
 
       // WA (Meta template) + Email (via channel settings)
       await Promise.allSettled([
@@ -177,16 +182,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Ticket generation failed: ${message}` }, { status: 500 });
     }
 
+    const nowApprove = new Date().toISOString();
     await supabase
       .from('event_registrations')
       .update({
         status_pendaftaran: 'terdaftar',
         ticket_url: ticketUrl,
         catatan_validasi: catatanValidasi || null,
+        last_action_by: auditUser,
+        last_action_at: nowApprove,
+        last_action_note: 'Pembayaran disetujui, tiket digenerate',
       })
       .eq('id', registrationId);
 
-    void writeAuditLog({ user_name: auditUser, action: 'approve_payment', table_name: 'event_registrations', record_id: registrationId, new_values: { status_pendaftaran: 'terdaftar', ticket_url: ticketUrl, catatan_validasi: catatanValidasi || null } });
+    void writeAuditLog({ user_name: auditUser, action: 'approve_payment', table_name: 'event_registrations', record_id: registrationId, old_values: { status_pendaftaran: reg.status_pendaftaran || null }, new_values: { status_pendaftaran: 'terdaftar', ticket_url: ticketUrl, catatan_validasi: catatanValidasi || null }, note: catatanValidasi || undefined });
 
     // WA (Meta template) + Email (via channel settings)
     const waGroupLink = (eventInfo?.wa_group_link as string) || '';
@@ -203,7 +212,7 @@ export async function POST(req: NextRequest) {
       ticketWaSent = true;
       await supabase
         .from('event_registrations')
-        .update({ ticket_sent_at: new Date().toISOString() })
+        .update({ ticket_sent_at: new Date().toISOString(), last_action_note: 'Pembayaran disetujui, tiket terkirim via WhatsApp' })
         .eq('id', registrationId);
     } catch (err: unknown) {
       ticketWaError = err instanceof Error ? err.message : String(err);

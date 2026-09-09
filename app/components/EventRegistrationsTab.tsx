@@ -10,6 +10,12 @@ function fmtTicketDate(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 }
 
+function fmtTicketDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB';
+}
+
 /** Badge status pengiriman tiket event untuk 1 peserta. */
 function TicketStatusCell({ reg, isConfirmed }: { reg: EventRegistration; isConfirmed: boolean }) {
   if (!isConfirmed) return <span className="text-gray-300 text-[11px]">–</span>;
@@ -47,6 +53,7 @@ export interface EventRegistrationsTabProps {
   currentUser: Karyawan | null;
   handleMarkAttendance: (id: string) => Promise<void> | void;
   handleSendEventSuccessWA: (reg: EventRegistration) => Promise<void> | void;
+  handleChangeRegStatus: (reg: EventRegistration) => void;
   handleDelete: (type: 'eventregistration', id: string) => unknown;
 }
 
@@ -59,6 +66,7 @@ export default function EventRegistrationsTab({
   currentUser,
   handleMarkAttendance,
   handleSendEventSuccessWA,
+  handleChangeRegStatus,
   handleDelete,
 }: EventRegistrationsTabProps) {
   const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin';
@@ -151,6 +159,12 @@ export default function EventRegistrationsTab({
                     <td className="px-3 py-2.5">
                       <p className="font-bold text-slate-800">{reg.full_name || reg.nama_lengkap || '-'}</p>
                       <p className="text-[10px] text-gray-500">{reg.camera_model || reg.tipe_kamera || '-'}</p>
+                      {reg.last_action_at && (
+                        <p className="text-[9px] text-gray-400 mt-1 leading-tight">
+                          <span className="text-gray-500">✎ {reg.last_action_note || 'diubah'}</span><br />
+                          oleh <span className="font-semibold">{reg.last_action_by || '—'}</span> · {fmtTicketDateTime(reg.last_action_at)}
+                        </p>
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <p className="text-xs font-mono">{reg.wa_number || reg.nomor_wa || '-'}</p>
@@ -158,9 +172,19 @@ export default function EventRegistrationsTab({
                     </td>
                     <td className="px-3 py-2.5 text-xs font-bold text-amber-700">{reg.event_name}</td>
                     <td className="px-3 py-2.5 text-center">
-                      <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${isConfirmed ? 'bg-green-100 text-green-700' : isCancelled ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
-                        {reg.status_pendaftaran || reg.status || '-'}
-                      </span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${isConfirmed ? 'bg-green-100 text-green-700' : isCancelled ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                          {reg.status_pendaftaran || reg.status || '-'}
+                        </span>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleChangeRegStatus(reg)}
+                            className="text-[9px] font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            ✎ Ubah Status
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       {reg.is_attended

@@ -40,6 +40,7 @@ import KonsumenTab from '@/app/components/KonsumenTab';
 import UserRoleTab from '@/app/components/UserRoleTab';
 import AutocompleteTab from '@/app/components/AutocompleteTab';
 import InfrastrukturTab from '@/app/components/InfrastrukturTab';
+import ActivityLogTab from '@/app/components/ActivityLogTab';
 import DashboardTab from '@/app/components/DashboardTab';
 import ConfirmModal from '@/app/components/ConfirmModal';
 import { GradientActionBtn, IconEdit, IconTrash, IconSend, IconDoc, IconShield, IconCheck, IconPrint, IconKey } from '@/app/components/GradientActionBtn';
@@ -49,7 +50,7 @@ import { formatEventDate } from '@/app/lib/dateUtils';
 
 // Tab yang punya UI/header sendiri — filter-header bersama (rentang tanggal +
 // toggle Baris/Kartu) tidak dirender sama sekali di atasnya.
-const SELF_CONTAINED_TABS = ['dashboard', 'promo_datacolor', 'affiliate', 'resi', 'expense_claim', 'autocomplete', 'wa_templates', 'infrastruktur'];
+const SELF_CONTAINED_TABS = ['dashboard', 'promo_datacolor', 'affiliate', 'resi', 'expense_claim', 'autocomplete', 'wa_templates', 'infrastruktur', 'activitylog'];
 // Tab yang tetap pakai filter-header bersama tapi TANPA rentang tanggal.
 const NO_DATE_TABS = ['konsumen', 'budgets', 'userrole', 'eventregistrations', 'botsettings'];
 // Tab yang tetap pakai filter-header bersama tapi TANPA toggle Baris/Kartu
@@ -512,6 +513,11 @@ function NikonDashboardInner() {
    const [eventImageFile, setEventImageFile] = useState<File | null>(null);
    const [budgetEventImageFile, setBudgetEventImageFile] = useState<File | null>(null);
    const [registrationForm, setRegistrationForm] = useState<Partial<EventRegistration>>({});
+   // Modal koreksi status pendaftaran (berjaga-jaga admin salah approve/reject)
+   const [statusEditModal, setStatusEditModal] = useState<EventRegistration | null>(null);
+   const [statusEditNew, setStatusEditNew] = useState<'menunggu_validasi' | 'terdaftar' | 'ditolak'>('menunggu_validasi');
+   const [statusEditReason, setStatusEditReason] = useState('');
+   const [statusEditSaving, setStatusEditSaving] = useState(false);
 
    // AFFILIATE
    const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
@@ -3341,6 +3347,42 @@ ${kode ? `
       }
    };
 
+   /** Buka modal koreksi status pendaftaran. */
+   const handleChangeRegStatus = (reg: EventRegistration) => {
+      setStatusEditModal(reg);
+      setStatusEditNew((reg.status_pendaftaran as 'menunggu_validasi' | 'terdaftar' | 'ditolak') || 'menunggu_validasi');
+      setStatusEditReason('');
+   };
+
+   const submitChangeRegStatus = async () => {
+      if (!statusEditModal) return;
+      const reason = statusEditReason.trim();
+      if (!reason) { alert('Alasan perubahan wajib diisi (untuk jejak audit IT).'); return; }
+      if (statusEditNew === statusEditModal.status_pendaftaran) { alert('Status tidak berubah.'); return; }
+      setStatusEditSaving(true);
+      try {
+         const res = await fetch('/api/events/change-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ registrationId: statusEditModal.id, newStatus: statusEditNew, reason }),
+         });
+         const data = await res.json().catch(() => ({}));
+         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+         await fetchEventRegistrations();
+         fetchEvents();
+         setStatusEditModal(null);
+         alert(
+            `Status diubah: ${data.oldStatus} → ${data.newStatus}.` +
+            (data.ticketReset ? '\nTiket lama di-reset (status "belum terkirim").' : '') +
+            (data.newStatus === 'terdaftar' ? '\nKlik "Kirim Tiket" untuk mengirim tiket ke peserta.' : ''),
+         );
+      } catch (err: unknown) {
+         alert('Gagal ubah status: ' + errMsg(err));
+      } finally {
+         setStatusEditSaving(false);
+      }
+   };
+
    const handleSelesaiCS = async (nomor_wa: string) => {
       try {
          await sbWrite({ action: 'update', table: 'riwayat_pesan', data: { bicara_dengan_cs: false }, match: { nomor_wa } });
@@ -4032,6 +4074,7 @@ ${kode ? `
             { id: 'autocomplete', label: '✏️ Saran Isian', count: undefined },
             { id: 'wa_templates', label: '💬 WA Templates', count: undefined },
             { id: 'infrastruktur', label: '🖥️ Infrastruktur', count: undefined },
+            { id: 'activitylog', label: '📋 Log Aktivitas', count: undefined },
          ]
       },
       {
@@ -4678,6 +4721,7 @@ ${kode ? `
                      currentUser={currentUser}
                      handleMarkAttendance={handleMarkAttendance}
                      handleSendEventSuccessWA={handleSendEventSuccessWA}
+                     handleChangeRegStatus={handleChangeRegStatus}
                      handleDelete={handleDelete}
                   />
                )}
@@ -4783,6 +4827,10 @@ ${kode ? `
                {/* ======================= WA TEMPLATES ======================= */}
                {activeTab === 'wa_templates' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
                   <WaTemplatesTab />
+               )}
+
+               {activeTab === 'activitylog' && (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && (
+                  <ActivityLogTab />
                )}
 
                {/* ======================= AFFILIATE ======================= */}
@@ -7957,6 +8005,75 @@ ${kode ? `
          );
       })()}
       <ConfirmModal isOpen={confirmModal.open} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={closeConfirm} />
+
+      {/* ===== Modal Koreksi Status Pendaftaran ===== */}
+      {statusEditModal && (
+         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+               <h3 className="text-lg font-bold text-gray-900 mb-1">Ubah Status Pendaftaran</h3>
+               <p className="text-gray-500 text-sm mb-1">
+                  <strong className="text-gray-900">{statusEditModal.nama_lengkap || statusEditModal.full_name}</strong> — {statusEditModal.event_name}
+               </p>
+               <p className="text-xs text-gray-400 mb-4">
+                  Status sekarang: <span className="font-bold uppercase">{statusEditModal.status_pendaftaran || '-'}</span>
+                  {statusEditModal.last_action_by && (
+                     <> · terakhir diubah oleh {statusEditModal.last_action_by}
+                        {statusEditModal.last_action_at ? ` (${new Date(statusEditModal.last_action_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB)` : ''}
+                     </>
+                  )}
+               </p>
+
+               <label className="label-form">Status Baru</label>
+               <select
+                  aria-label="Status baru"
+                  value={statusEditNew}
+                  onChange={e => setStatusEditNew(e.target.value as 'menunggu_validasi' | 'terdaftar' | 'ditolak')}
+                  className="input-form mb-3"
+               >
+                  <option value="menunggu_validasi">Menunggu Validasi</option>
+                  <option value="terdaftar">Terdaftar</option>
+                  <option value="ditolak">Ditolak</option>
+               </select>
+
+               {statusEditModal.status_pendaftaran === 'terdaftar' && statusEditNew !== 'terdaftar' && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+                     ⚠️ Tiket yang sudah terkirim akan ditandai <strong>tidak berlaku</strong> (status pengiriman tiket di-reset).
+                  </p>
+               )}
+               {statusEditNew === 'terdaftar' && statusEditModal.status_pendaftaran !== 'terdaftar' && (
+                  <p className="text-[11px] text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-3">
+                     ℹ️ Setelah status jadi &quot;terdaftar&quot;, klik tombol <strong>Kirim Tiket</strong> di baris peserta untuk mengirim tiket. Perubahan status ini <strong>tidak</strong> otomatis kirim WA.
+                  </p>
+               )}
+
+               <label className="label-form">Alasan Perubahan <span className="text-red-500">*</span></label>
+               <textarea
+                  value={statusEditReason}
+                  onChange={e => setStatusEditReason(e.target.value)}
+                  placeholder="Contoh: salah klik approve, pembayaran ternyata belum masuk"
+                  rows={3}
+                  className="input-form resize-none"
+               />
+               <p className="text-[11px] text-gray-400 mt-1 mb-4">Alasan &amp; nama akun kamu dicatat di Log Aktivitas untuk review IT.</p>
+
+               <div className="flex gap-3">
+                  <button
+                     onClick={() => setStatusEditModal(null)}
+                     className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-semibold py-2.5 rounded-lg border border-gray-300 transition"
+                  >
+                     Batal
+                  </button>
+                  <button
+                     onClick={submitChangeRegStatus}
+                     disabled={statusEditSaving}
+                     className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-lg transition shadow-sm"
+                  >
+                     {statusEditSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                  </button>
+               </div>
+            </div>
+         </div>
+      )}
       </>
    );
 }

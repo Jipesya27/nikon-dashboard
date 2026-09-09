@@ -27,6 +27,9 @@ export interface EventRegistration {
    bukti_transfer_url?: string | null;
    ticket_url?: string | null;
    ticket_sent_at?: string | null;
+   last_action_by?: string | null;
+   last_action_at?: string | null;
+   last_action_note?: string | null;
    is_attended?: boolean;
    attended_at?: string | null;
    attended_by?: string | null;

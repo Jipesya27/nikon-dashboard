@@ -105,9 +105,16 @@ export async function POST(req: NextRequest) {
     }
 
     const sentAt = new Date().toISOString();
+    const actionNote = `Tiket event dikirim ke WhatsApp ${reg.nomor_wa}`;
     await supabase
       .from('event_registrations')
-      .update({ ticket_sent_at: sentAt, ticket_url: ticketUrl })
+      .update({
+        ticket_sent_at: sentAt,
+        ticket_url: ticketUrl,
+        last_action_by: auditUser,
+        last_action_at: sentAt,
+        last_action_note: actionNote,
+      })
       .eq('id', registrationId);
 
     void writeAuditLog({
@@ -116,6 +123,7 @@ export async function POST(req: NextRequest) {
       table_name: 'event_registrations',
       record_id: registrationId,
       new_values: { ticket_url: ticketUrl, ticket_sent_at: sentAt },
+      note: actionNote,
     });
 
     // Email best-effort (tidak memblokir hasil)

@@ -109,6 +109,17 @@ instance `Error`, hasilnya `[object Object]`. Pakai `errMsg(err)` dari `app/lib/
 - **`/admin/events`**: `handleApprove` (via `/api/events/validate-payment`) sekarang pakai strict send + set `ticket_sent_at`; toast bedakan sukses/gagal WA. Tombol "Kirim Ulang Tiket" per baris peserta.
 - **Bug lama**: approve peserta lewat form edit di dashboard hanya `sbWrite` update status → tiket tidak pernah digenerate/dikirim. Tombol lama "Kirim WA" cuma kirim teks free-form (bukan tiket) + dialog konfirmasi tampil `undefined` (pakai `reg.full_name`, harusnya `nama_lengkap`).
 
+#### Koreksi Status Pendaftaran (kalau admin salah approve/reject)
+- **`POST /api/events/change-status`** `{ registrationId, newStatus, reason }` — `reason` WAJIB (masuk audit). Keluar dari `terdaftar` → `ticket_sent_at` di-reset (tiket lama tak berlaku), `ticket_url` disimpan. TIDAK kirim WA apa pun.
+- Dashboard tab Data Peserta: tombol "✎ Ubah Status" (admin only) di kolom Status → modal pilih status + alasan. Handler `handleChangeRegStatus` / `submitChangeRegStatus` di `page.tsx`.
+- Kolom baru `event_registrations.last_action_by / last_action_at / last_action_note` — jejak perubahan terakhir, tampil sebagai baris kecil di sel Nama peserta. Diisi oleh `validate-payment`, `send-ticket`, `change-status`.
+
+#### Log Aktivitas / Audit Trail (untuk IT check & review)
+- Tabel `data_log` (migration `20260602000001`) — sudah ada, dicatat otomatis oleh `/api/admin/sb-write` untuk `AUDIT_TABLES`. Kolom: `user_name`, `action`, `table_name`, `record_id`, `old_values`, `new_values`, **`note`** (migration `20260909100000`).
+- `writeAuditLog({ ..., note?, old_values? })` di `app/lib/audit.ts`. Endpoint event (approve/reject/change-status/send-ticket) pakai ini dengan `note` = alasan.
+- **`GET /api/admin/audit-log`** — filter `user`, `table`, `action`, `search` (record_id/note), `from`, `to`, `page`; `export=1` → sampai 5000 baris. Balikin juga `filters` (distinct values buat dropdown).
+- **Tab dashboard "📋 Log Aktivitas"** (`ActivityLogTab.tsx`, grup Manajemen, Admin/Super Admin only) — tabel waktu/user/aksi/tabel/record/perubahan/note + filter + pagination + tombol **"⬇️ Download Log (CSV)"** (arsip offline IT).
+
 ### `riwayat_pesan`
 Log semua pesan WhatsApp (IN/OUT): `nomor_wa`, `isi_pesan`, `arah_pesan`, `url_media`, `bicara_dengan_cs`, `jenis_pesan`
 

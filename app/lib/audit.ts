@@ -21,6 +21,8 @@ export async function writeAuditLog(opts: {
   record_id: string;
   old_values?: Record<string, unknown>;
   new_values?: Record<string, unknown>;
+  /** Alasan / keterangan perubahan (free text) — tampil di Log Aktivitas untuk review IT. */
+  note?: string;
 }): Promise<void> {
   try {
     await sbAdmin.from('data_log').insert({
@@ -30,6 +32,7 @@ export async function writeAuditLog(opts: {
       record_id: opts.record_id,
       old_values: opts.old_values ?? {},
       new_values: opts.new_values ?? {},
+      note: opts.note ?? null,
     });
   } catch {
     // audit failure must never break the main request
