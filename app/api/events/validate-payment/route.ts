@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { generateTicket } from '@/app/lib/generate-ticket';
-import { sendWATemplate, sendNotif } from '@/app/lib/notify';
+import { sendWATemplate, sendWATemplateStrict, sendNotif } from '@/app/lib/notify';
 import { getAuditUser, writeAuditLog } from '@/app/lib/audit';
 
 const supabase = createClient(
@@ -194,12 +194,23 @@ export async function POST(req: NextRequest) {
     const waApprovalParams = waGroupLink
       ? [reg.nama_lengkap, reg.event_name, ticketUrl, waGroupLink]
       : [reg.nama_lengkap, reg.event_name, ticketUrl];
+
+    // WA strict — supaya tahu kalau Meta menolak & bisa tandai ticket_sent_at.
+    let ticketWaSent = false;
+    let ticketWaError: string | null = null;
+    try {
+      await sendWATemplateStrict(reg.nomor_wa, waApprovalTemplate, waApprovalParams);
+      ticketWaSent = true;
+      await supabase
+        .from('event_registrations')
+        .update({ ticket_sent_at: new Date().toISOString() })
+        .eq('id', registrationId);
+    } catch (err: unknown) {
+      ticketWaError = err instanceof Error ? err.message : String(err);
+      console.error('validate-payment WA send failed:', ticketWaError);
+    }
+
     await Promise.allSettled([
-      sendWATemplate(
-        reg.nomor_wa,
-        waApprovalTemplate,
-        waApprovalParams,
-      ),
       sendNotif({
         phone: reg.nomor_wa,
         email: reg.email || null,
@@ -217,7 +228,7 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    return NextResponse.json({ success: true, status: 'terdaftar', ticketUrl });
+    return NextResponse.json({ success: true, status: 'terdaftar', ticketUrl, ticketWaSent, ticketWaError });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal error';
     console.error('validate-payment error:', message);

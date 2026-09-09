@@ -177,6 +177,75 @@ export async function sendWATemplate(
 }
 
 /**
+ * Sama seperti sendWATemplate tapi MELEMPAR error kalau Meta menolak / env WA belum diset.
+ * Dipakai alur yang perlu tahu berhasil/tidaknya (mis. tombol "Kirim Tiket" di dashboard,
+ * status pengiriman tiket event). Mengembalikan wamid saat sukses.
+ */
+export async function sendWATemplateStrict(
+  nomor: string,
+  templateName: string,
+  params: string[],
+): Promise<string> {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN || '';
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+  if (!token || !phoneNumberId) throw new Error('WhatsApp API belum dikonfigurasi di server (WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID)');
+  if (!nomor) throw new Error('Nomor WhatsApp peserta kosong');
+  const target = toWaE164(nomor);
+
+  const body = {
+    messaging_product: 'whatsapp',
+    to: target,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: 'id' },
+      components: params.length > 0
+        ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: p })) }]
+        : [],
+    },
+  };
+
+  const res = await fetch(
+    `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(8000),
+    },
+  );
+  const resText = await res.text();
+  console.log('[notify] Meta WA (strict) response:', res.status, resText);
+  if (!res.ok) throw new Error(`Meta WA ${res.status}: ${resText}`);
+
+  let wamid: string | undefined;
+  try { wamid = JSON.parse(resText)?.messages?.[0]?.id; } catch { /* abaikan */ }
+
+  // Log ke riwayat_pesan agar tampil di tab chat dashboard (fire-and-forget).
+  const now = new Date().toISOString();
+  void (async () => {
+    try {
+      await createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      ).from('riwayat_pesan').insert({
+        nomor_wa: target,
+        nama_profil_wa: 'Sistem',
+        arah_pesan: 'OUT',
+        isi_pesan: `Notifikasi terkirim: ${templateName}`,
+        waktu_pesan: now,
+        created_at: now,
+        bicara_dengan_cs: false,
+        jenis_pesan: 'system',
+        wamid: wamid ?? null,
+      });
+    } catch { /* non-kritis, FK mungkin gagal untuk non-konsumen */ }
+  })();
+
+  return wamid || '';
+}
+
+/**
  * Kirim WA template dengan header DOCUMENT (PDF/file).
  * Bekerja di luar 24-jam window. Template harus dibuat di Meta dengan header type DOCUMENT.
  */

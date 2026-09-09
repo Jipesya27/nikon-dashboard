@@ -2923,16 +2923,30 @@ ${kode ? `
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (evt) payload.event_name = (evt as any).event_title || (evt as any).title || payload.event_name;
          }
+         const prevReg = modalAction === 'edit' ? eventRegistrations.find(r => r.id === editingId) : undefined;
+         let savedId = editingId;
          if (modalAction === 'create') {
-            const { error } = await sbWrite({ action: 'insert', table: 'event_registrations', data: payload });
+            const { data, error } = await sbWrite<{ id: string }>({ action: 'insert', table: 'event_registrations', data: payload, select: 'id' });
             if (error) throw new Error(error.message);
+            savedId = data?.[0]?.id || null;
          } else {
             const { error } = await sbWrite({ action: 'update', table: 'event_registrations', data: payload, match: { id: editingId } });
             if (error) throw new Error(error.message);
          }
-         fetchEventRegistrations();
+         await fetchEventRegistrations();
          fetchEvents();
          closeModal();
+
+         // Auto-kirim tiket kalau peserta baru saja jadi "terdaftar" dan belum punya tiket.
+         const becameTerdaftar = payload.status_pendaftaran === 'terdaftar'
+            && prevReg?.status_pendaftaran !== 'terdaftar'
+            && !payload.ticket_url;
+         if (becameTerdaftar && savedId) {
+            void handleSendEventSuccessWA(
+               { id: savedId, event_name: payload.event_name || '', nama_lengkap: payload.nama_lengkap, nomor_wa: payload.nomor_wa } as EventRegistration,
+               { silent: true },
+            );
+         }
       } catch (err: unknown) {
          const message = errMsg(err);
          alert('Gagal: ' + message);
@@ -3294,29 +3308,36 @@ ${kode ? `
       fetchMessages();
    };
 
-   const handleSendEventSuccessWA = async (reg: EventRegistration) => {
-      if (!window.confirm(`Kirim notifikasi konfirmasi pembayaran ke ${reg.full_name}?`)) return;
-      
-      const namaReg = reg.full_name || reg.nama_lengkap || '';
-      const waReg = reg.wa_number || reg.nomor_wa || '';
-      const message = `Halo *${namaReg}*,\n\nPembayaran Anda untuk event *${reg.event_name}* telah kami validasi. ✅\n\nSilakan simpan pesan ini sebagai bukti pendaftaran resmi. Sampai jumpa di lokasi acara!\n\nSalam,\nNikon Indonesia`;
+   /**
+    * Kirim (atau kirim ulang) tiket event resmi ke peserta via WhatsApp template Meta.
+    * Kalau tiket PDF belum digenerate, server akan buat dulu lalu kirim.
+    * Dipakai tombol "Kirim Tiket" di tab Data Peserta + auto-trigger saat approve.
+    */
+   const handleSendEventSuccessWA = async (reg: EventRegistration, opts?: { silent?: boolean }) => {
+      const namaReg = reg.nama_lengkap || reg.full_name || 'peserta ini';
+      if (!opts?.silent && !window.confirm(`Kirim tiket event "${reg.event_name}" ke ${namaReg} via WhatsApp?`)) return;
 
       try {
-         await sendWhatsAppMessage(waReg, message);
-         await sbWrite({ action: 'insert', table: 'riwayat_pesan', data: {
-            nomor_wa: waReg,
-            nama_profil_wa: namaReg,
-            arah_pesan: 'OUT',
-            isi_pesan: message,
-            waktu_pesan: new Date().toISOString(),
-            bicara_dengan_cs: false,
-            created_at: new Date().toISOString(),
-         }});
-         alert('Notifikasi berhasil dikirim!');
+         const res = await fetch('/api/events/send-ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ registrationId: reg.id }),
+         });
+         const data = await res.json().catch(() => ({}));
+         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+         await fetchEventRegistrations();
          fetchMessages();
+         alert(opts?.silent
+            ? `Peserta ${namaReg} disetujui & tiket event terkirim via WhatsApp. ✅`
+            : `Tiket berhasil dikirim ke ${namaReg} via WhatsApp. ✅`);
       } catch (err: unknown) {
-         const message = errMsg(err);
-         alert('Gagal mengirim pesan: ' + message);
+         const msg = errMsg(err);
+         if (opts?.silent) {
+            alert(`Peserta disetujui, tapi pengiriman tiket GAGAL: ${msg}\n\nKlik tombol "Kirim Tiket" di baris peserta untuk coba lagi.`);
+         } else {
+            alert('Gagal mengirim tiket: ' + msg);
+         }
+         await fetchEventRegistrations();
       }
    };
 

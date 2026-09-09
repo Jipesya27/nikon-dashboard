@@ -26,6 +26,7 @@ export interface EventRegistration {
    rejection_reason?: string | null;
    bukti_transfer_url?: string | null;
    ticket_url?: string | null;
+   ticket_sent_at?: string | null;
    is_attended?: boolean;
    attended_at?: string | null;
    attended_by?: string | null;

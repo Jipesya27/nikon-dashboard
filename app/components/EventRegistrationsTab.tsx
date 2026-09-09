@@ -4,6 +4,40 @@ import React from 'react';
 import { EventRegistration, Karyawan } from '@/app/index';
 import { GradientActionBtn, IconTrash, IconSend, IconCheck } from '@/app/components/GradientActionBtn';
 
+function fmtTicketDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
+}
+
+/** Badge status pengiriman tiket event untuk 1 peserta. */
+function TicketStatusCell({ reg, isConfirmed }: { reg: EventRegistration; isConfirmed: boolean }) {
+  if (!isConfirmed) return <span className="text-gray-300 text-[11px]">–</span>;
+
+  if (reg.ticket_sent_at) {
+    return (
+      <div className="flex flex-col items-center gap-0.5">
+        <span className="text-[10px] font-bold px-2 py-1 rounded bg-green-100 text-green-700 whitespace-nowrap">✅ Tiket Terkirim</span>
+        <span className="text-[9px] text-gray-400">{fmtTicketDate(reg.ticket_sent_at)}</span>
+        {reg.ticket_url && (
+          <a href={reg.ticket_url} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-500 hover:underline">Lihat PDF</a>
+        )}
+      </div>
+    );
+  }
+
+  if (reg.ticket_url) {
+    return (
+      <div className="flex flex-col items-center gap-0.5">
+        <span className="text-[10px] font-bold px-2 py-1 rounded bg-amber-100 text-amber-700 whitespace-nowrap">🎫 Belum Terkirim</span>
+        <a href={reg.ticket_url} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-500 hover:underline">Lihat PDF</a>
+      </div>
+    );
+  }
+
+  return <span className="text-[10px] font-bold px-2 py-1 rounded bg-red-100 text-red-700 whitespace-nowrap">⚠️ Tiket Belum Dibuat</span>;
+}
+
 export interface EventRegistrationsTabProps {
   eventRegistrations: EventRegistration[];
   filterRegEventName: string;
@@ -104,6 +138,7 @@ export default function EventRegistrationsTab({
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Kehadiran</th>
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Bukti TF</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Tiket Event</th>
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Aksi</th>
               </tr>
             </thead>
@@ -137,10 +172,13 @@ export default function EventRegistrationsTab({
                         ? <a href={reg.bukti_transfer_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-[11px] font-bold">📎 Lihat</a>
                         : <span className="text-gray-400 text-[11px]">-</span>}
                     </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <TicketStatusCell reg={reg} isConfirmed={isConfirmed} />
+                    </td>
                     <td className="px-3 py-2.5">
                       <div className="flex flex-col gap-1.5">
                         <div className="flex gap-1.5">
-                          {isConfirmed && <GradientActionBtn onClick={() => handleSendEventSuccessWA(reg)} label="Kirim WA" gradientFrom="#25D366" gradientTo="#128C7E" icon={IconSend} />}
+                          {isConfirmed && <GradientActionBtn onClick={() => handleSendEventSuccessWA(reg)} label={reg.ticket_sent_at ? 'Kirim Ulang' : 'Kirim Tiket'} gradientFrom="#25D366" gradientTo="#128C7E" icon={IconSend} />}
                           {isAdmin && (
                             <GradientActionBtn onClick={() => handleDelete('eventregistration', reg.id!)} label="Hapus" gradientFrom="#EF4444" gradientTo="#F87171" icon={IconTrash} />
                           )}

@@ -21,6 +21,7 @@ type Registration = {
   status_pendaftaran: 'menunggu_validasi' | 'terdaftar' | 'ditolak';
   payment_type: 'regular' | 'deposit';
   ticket_url: string | null;
+  ticket_sent_at: string | null;
   status_pengembalian_deposit: string | null;
   bukti_pengembalian_deposit: string | null;
   rejection_reason: string | null;
@@ -99,12 +100,37 @@ export default function AdminEventsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      showToast('Pembayaran disetujui. Tiket dikirim via WhatsApp!');
+      if (data.ticketWaSent) {
+        showToast('Pembayaran disetujui. Tiket terkirim via WhatsApp! ✅');
+      } else {
+        showToast(`Pembayaran disetujui & tiket dibuat, tapi WhatsApp GAGAL: ${data.ticketWaError || 'unknown'}. Coba kirim ulang.`, 'error');
+      }
       setApproveModal(null);
       setCatatanValidasi('');
       fetchRegistrations();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Gagal menyetujui';
+      showToast(message, 'error');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleResendTicket = async (id: string) => {
+    if (!window.confirm('Kirim ulang tiket event ke peserta ini via WhatsApp?')) return;
+    setProcessingId(id);
+    try {
+      const res = await fetch('/api/events/send-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ registrationId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showToast('Tiket berhasil dikirim ulang via WhatsApp! ✅');
+      fetchRegistrations();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal kirim tiket';
       showToast(message, 'error');
     } finally {
       setProcessingId(null);
@@ -383,6 +409,22 @@ export default function AdminEventsPage() {
                       <a href={reg.ticket_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 transition-all flex items-center gap-1 font-medium">
                         🎫 Lihat Tiket
                       </a>
+                    )}
+                    {reg.status_pendaftaran === 'terdaftar' && (
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${reg.ticket_sent_at ? 'bg-green-50 text-green-700 border-green-300' : 'bg-amber-50 text-amber-700 border-amber-300'}`}>
+                          {reg.ticket_sent_at
+                            ? `✅ Tiket terkirim ${new Date(reg.ticket_sent_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}`
+                            : '⚠️ Tiket belum terkirim'}
+                        </span>
+                        <button
+                          onClick={() => handleResendTicket(reg.id)}
+                          disabled={processingId === reg.id}
+                          className="text-xs bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                        >
+                          {processingId === reg.id ? '...' : (reg.ticket_sent_at ? '🔄 Kirim Ulang Tiket' : '📨 Kirim Tiket')}
+                        </button>
+                      </div>
                     )}
 
                     {reg.status_pendaftaran === 'menunggu_validasi' && (

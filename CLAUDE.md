@@ -99,7 +99,15 @@ instance `Error`, hasilnya `[object Object]`. Pakai `errMsg(err)` dari `app/lib/
 - Frontend (`app/nikon/page.tsx`, `app/events/register/page.tsx`) handle state "Segera" saat `registration_not_open=true`
 
 ### `event_registrations`
-`id`, `created_at`, `nama_lengkap`, `nomor_wa`, `email`, `kabupaten_kotamadya`, `tipe_kamera`, `event_name`, `event_id`, `bukti_transfer_url`, `status_pendaftaran` (`menunggu_validasi`|`terdaftar`|`ditolak`), `payment_type` (`regular`|`deposit`), `ticket_url`, `rejection_reason`, `is_attended`, `attended_at`, `attended_by`, `nama_bank`, `no_rekening`, `nama_pemilik_rekening`, `status_pengembalian_deposit` (`requested`|`Processed`), `bukti_pengembalian_deposit`, `refund_requested_at`
+`id`, `created_at`, `nama_lengkap`, `nomor_wa`, `email`, `kabupaten_kotamadya`, `tipe_kamera`, `event_name`, `event_id`, `bukti_transfer_url`, `status_pendaftaran` (`menunggu_validasi`|`terdaftar`|`ditolak`), `payment_type` (`regular`|`deposit`), `ticket_url`, `ticket_sent_at` (TIMESTAMPTZ), `rejection_reason`, `is_attended`, `attended_at`, `attended_by`, `nama_bank`, `no_rekening`, `nama_pemilik_rekening`, `status_pengembalian_deposit` (`requested`|`Processed`), `bukti_pengembalian_deposit`, `refund_requested_at`
+
+#### Pengiriman Tiket Event (WA)
+- `ticket_url` = tiket PDF sudah digenerate (Google Drive) · `ticket_sent_at` = tiket **berhasil** dikirim ke WA peserta (Meta template accepted). NULL = belum terkirim.
+- **`POST /api/events/send-ticket`** `{ registrationId }` — (re)kirim tiket ke 1 peserta status `terdaftar`. Generate PDF kalau belum ada, kirim `notif_event_approved_v2` (kalau event ada `wa_group_link`) / `notif_event_approved` pakai `sendWATemplateStrict` (THROW kalau Meta nolak), lalu set `ticket_sent_at`. HTTP 502 = tiket dibuat tapi WA gagal.
+- `sendWATemplateStrict()` di `notify.ts` = varian `sendWATemplate` yang melempar error + return wamid (dipakai alur yang butuh tahu berhasil/tidak). `sendWA`/`sendWATemplate` biasa **menelan error diam-diam**.
+- **Dashboard tab Data Peserta** (`EventRegistrationsTab.tsx`): kolom "Tiket Event" (badge ✅ terkirim / 🎫 belum terkirim / ⚠️ belum dibuat) + tombol "Kirim Tiket"/"Kirim Ulang". `handleSaveRegistration` auto-panggil send-ticket (silent) saat status peserta baru berubah jadi `terdaftar` tanpa `ticket_url`.
+- **`/admin/events`**: `handleApprove` (via `/api/events/validate-payment`) sekarang pakai strict send + set `ticket_sent_at`; toast bedakan sukses/gagal WA. Tombol "Kirim Ulang Tiket" per baris peserta.
+- **Bug lama**: approve peserta lewat form edit di dashboard hanya `sbWrite` update status → tiket tidak pernah digenerate/dikirim. Tombol lama "Kirim WA" cuma kirim teks free-form (bukan tiket) + dialog konfirmasi tampil `undefined` (pakai `reg.full_name`, harusnya `nama_lengkap`).
 
 ### `riwayat_pesan`
 Log semua pesan WhatsApp (IN/OUT): `nomor_wa`, `isi_pesan`, `arah_pesan`, `url_media`, `bicara_dengan_cs`, `jenis_pesan`
