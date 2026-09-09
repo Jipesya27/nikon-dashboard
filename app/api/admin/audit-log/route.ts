@@ -36,7 +36,11 @@ export async function GET(req: NextRequest) {
   if (table) q = q.eq('table_name', table);
   if (action) q = q.eq('action', action);
   if (user) q = q.ilike('user_name', `%${user}%`);
-  if (search) q = q.or(`record_id.ilike.%${search}%,note.ilike.%${search}%`);
+  if (search) {
+    // Buang karakter yang bisa merusak sintaks filter PostgREST (koma, kurung, titik).
+    const safe = search.replace(/[(),.*]/g, ' ').trim();
+    if (safe) q = q.or(`record_id.ilike.%${safe}%,note.ilike.%${safe}%`);
+  }
   if (from) q = q.gte('created_at', from);
   if (to) q = q.lte('created_at', to);
 
