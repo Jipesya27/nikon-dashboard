@@ -46,6 +46,21 @@ export async function GET() {
     maxAge: SESSION_MAX_AGE_SECONDS,
     path: '/',
   });
+
+  // Perpanjang juga karyawan_identity supaya tidak lebih dulu expired daripada
+  // admin_session yang di-rolling-renew ini. Nilainya tidak diubah (tidak di-mint
+  // ulang) — cuma reset masa berlaku browser. Kalau cookie-nya sudah hilang,
+  // /api/auth/me yang menerbitkan ulang saat dashboard/RoleGate load.
+  const identity = cookieStore.get('karyawan_identity')?.value;
+  if (identity) {
+    res.cookies.set('karyawan_identity', identity, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: SESSION_MAX_AGE_SECONDS,
+      path: '/',
+    });
+  }
   return res;
 }
 

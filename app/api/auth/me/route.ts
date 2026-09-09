@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
-import { verifyAdminSession, verifyIdentityToken } from '@/app/lib/session';
+import { verifyAdminSession, verifyIdentityToken, buildIdentityToken, SESSION_MAX_AGE_SECONDS } from '@/app/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +50,39 @@ export async function GET(req: NextRequest) {
   if (error || !karyawan) {
     return NextResponse.json({ error: 'Karyawan tidak ditemukan' }, { status: 404 });
   }
+  if (karyawan.status_aktif === false) {
+    return NextResponse.json({ error: 'Akun dinonaktifkan' }, { status: 403 });
+  }
 
-  return NextResponse.json({ karyawan });
+  const res = NextResponse.json({ karyawan });
+
+  // Re-issue cookie karyawan_identity dengan masa berlaku baru.
+  //
+  // Kenapa: `admin_session` di-rolling-renew tiap 90 detik (lihat /api/admin/auth GET),
+  // tapi `karyawan_identity` dulu tidak pernah diperpanjang — jadi setelah maxAge lewat
+  // (atau untuk sesi lama dari sebelum cookie ini ada), `admin_session` masih hidup
+  // sementara `karyawan_identity` hilang. Satu-satunya fitur yang baca cookie identity
+  // di server adalah Kalender (`getCalendarUser`) → muncul "User tidak dikenali"
+  // padahal dashboard lain jalan normal. Endpoint ini dipanggil tiap load dashboard &
+  // RoleGate, jadi menaruh refresh di sini menyembuhkan sesi lama tanpa perlu login ulang.
+  //
+  // Sumber identitas: cookie identity terverifikasi kalau ada; kalau tidak, hasil lookup
+  // DB (username dari localStorage) — konsisten dengan model kepercayaan saat ini
+  // (semua karyawan login sudah bisa panggil semua API admin; RBAC per-rute = TODO).
+  try {
+    const freshIdentity = await buildIdentityToken({
+      nama: karyawan.nama_karyawan || '',
+      username: karyawan.username || '',
+      role: karyawan.role || '',
+    });
+    res.cookies.set('karyawan_identity', freshIdentity, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: SESSION_MAX_AGE_SECONDS,
+      path: '/',
+    });
+  } catch { /* kalau secret belum di-set, jangan gagalkan /me */ }
+
+  return res;
 }
